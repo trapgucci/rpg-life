@@ -466,9 +466,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   language: 'ru',
 }
 
-// ─── Database schema (SQLite-ready) ─────────────────────────────────────────
-
-export interface TaskRow {
+// ─── Database schema (SQLite-ready) ─────────────────────────────────────────export interface TaskRow {
   id: TaskId
   title: string
   notes: string | null
