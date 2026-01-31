@@ -1,0 +1,41 @@
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.nav {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.nav a {
+  opacity: 0.85;
+}
+
+.nav a.active {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.app-main {
+  flex: 1;
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
