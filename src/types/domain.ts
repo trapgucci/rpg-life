@@ -139,6 +139,14 @@ export interface Habit {
   difficultyMultiplierCustom?: number
   /** Множитель срабатывает раз в N дней */
   multiplierIntervalDays?: number
+  /** Множитель применяется к XP */
+  multiplierAppliesToXp?: boolean
+  /** Множитель применяется к монетам */
+  multiplierAppliesToCoins?: boolean
+  /** Множитель применяется к гемам */
+  multiplierAppliesToGems?: boolean
+  /** История по дням: ключ YYYY-MM-DD, значение positive | negative */
+  dailyCompletion?: Record<string, 'positive' | 'negative'>
   /** Счётчик + за сегодня */
   todayPositive: number
   /** Счётчик - за сегодня */

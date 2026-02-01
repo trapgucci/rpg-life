@@ -44,6 +44,11 @@ function getTodayStart(): number {
   return d.getTime()
 }
 
+function getDateKey(ts: number): string {
+  const d = new Date(ts)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function createDefaultProfile(name: string): Profile {
   const id = crypto.randomUUID()
   const attributes: Attribute[] = DEFAULT_ATTRIBUTES.map((a, i) => ({
@@ -594,9 +599,10 @@ export const useRpgStore = create<RpgStoreState>()(
           const profile = getActiveProfile()
           if (!habit || !profile || !habit.positiveEnabled) return
 
-          // Reset daily counters if new day
           const todayStart = getTodayStart()
           const isNewDay = habit.lastResetDate < todayStart
+          // Один раз в день: если уже действовал сегодня — не обрабатывать
+          if (!isNewDay && (habit.todayPositive > 0 || habit.todayNegative > 0)) return
 
           // Add XP to attribute
           if (habit.attributeId && habit.positiveXp > 0) {
@@ -614,9 +620,13 @@ export const useRpgStore = create<RpgStoreState>()(
             get().addCurrency(CURRENCY_IDS.GEMS, habit.positiveGems ?? 0)
           }
 
+          const dateKey = getDateKey(todayStart)
+          const dailyCompletion = { ...(habit.dailyCompletion ?? {}), [dateKey]: 'positive' as const }
+
           // Update habit
           get().updateHabit(id, (h) => ({
             ...h,
+            dailyCompletion,
             todayPositive: isNewDay ? 1 : h.todayPositive + 1,
             todayNegative: isNewDay ? 0 : h.todayNegative,
             lastResetDate: todayStart,
@@ -639,6 +649,8 @@ export const useRpgStore = create<RpgStoreState>()(
 
           const todayStart = getTodayStart()
           const isNewDay = habit.lastResetDate < todayStart
+          // Один раз в день: если уже действовал сегодня — не обрабатывать
+          if (!isNewDay && (habit.todayPositive > 0 || habit.todayNegative > 0)) return
 
           // Deduct XP
           if (habit.attributeId && habit.negativeXp > 0) {
@@ -656,9 +668,13 @@ export const useRpgStore = create<RpgStoreState>()(
             get().deductCurrency(CURRENCY_IDS.GEMS, habit.negativeGems ?? 0)
           }
 
+          const dateKey = getDateKey(todayStart)
+          const dailyCompletion = { ...(habit.dailyCompletion ?? {}), [dateKey]: 'negative' as const }
+
           // Update habit
           get().updateHabit(id, (h) => ({
             ...h,
+            dailyCompletion,
             todayPositive: isNewDay ? 0 : h.todayPositive,
             todayNegative: isNewDay ? 1 : h.todayNegative + 1,
             lastResetDate: todayStart,

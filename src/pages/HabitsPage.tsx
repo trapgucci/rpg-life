@@ -20,6 +20,12 @@ function HabitCard({ habit, onEdit }: HabitCardProps) {
   const attributes = profile?.attributes ?? []
   const attr = habit.attributeId ? attributes.find((a) => a.id === habit.attributeId) : null
 
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const todayStartTs = todayStart.getTime()
+  const isNewDay = habit.lastResetDate < todayStartTs
+  const hasActedToday = habit.lastResetDate >= todayStartTs && (habit.todayPositive > 0 || habit.todayNegative > 0)
+
   return (
     <div className="glass-card group relative rounded-2xl p-5 transition-all duration-200 hover:scale-[1.01]">
       {/* Action buttons */}
@@ -47,12 +53,13 @@ function HabitCard({ habit, onEdit }: HabitCardProps) {
         {habit.negativeEnabled && (
           <button
             type="button"
-            onClick={() => clickNegative(habit.id)}
+            onClick={() => !hasActedToday && clickNegative(habit.id)}
+            disabled={hasActedToday}
             className={cn(
               'flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl',
+              hasActedToday ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 active:scale-95',
               'bg-gradient-to-br from-red-500/20 to-red-600/10 text-red-500',
-              'transition-all duration-200 hover:scale-110 hover:shadow-lg hover:shadow-red-500/20',
-              'active:scale-95'
+              'transition-all duration-200 hover:shadow-lg hover:shadow-red-500/20'
             )}
           >
             <Minus className="h-7 w-7" />
@@ -77,12 +84,6 @@ function HabitCard({ habit, onEdit }: HabitCardProps) {
                 <p className="text-sm text-[var(--fg-muted)] line-clamp-1 mt-0.5">{habit.notes}</p>
               )}
             </div>
-            {habit.streak > 0 && (
-              <div className="flex items-center gap-1.5 rounded-xl bg-orange-500/10 px-3 py-1.5">
-                <Flame className="h-4 w-4 text-orange-500" />
-                <span className="font-semibold text-orange-500">{habit.streak}</span>
-              </div>
-            )}
           </div>
 
           {/* Stats row */}
@@ -109,11 +110,57 @@ function HabitCard({ habit, onEdit }: HabitCardProps) {
             )}
           </div>
 
-          {/* Today counters */}
-          <div className="mt-3 flex items-center gap-4 text-xs text-[var(--fg-muted)]">
-            <span>Сегодня: <span className="text-emerald-500 font-medium">+{habit.todayPositive}</span></span>
-            <span><span className="text-red-500 font-medium">−{habit.todayNegative}</span></span>
-            <span>Всего: <span className="font-medium text-[var(--fg)]">{habit.totalPositive - habit.totalNegative}</span></span>
+          {/* 7-day circles */}
+          <div className="mt-3 flex items-center gap-1.5">
+            {(() => {
+              const today = new Date()
+              today.setHours(0, 0, 0, 0)
+              const getDateKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+              const todayKey = getDateKey(today)
+              return [-2, -1, 0, 1, 2, 3, 4].map((offset) => {
+                const d = new Date(today)
+                d.setDate(d.getDate() + offset)
+                const key = getDateKey(d)
+                const dayNum = d.getDate()
+                const isToday = offset === 0
+                const isPast = offset < 0
+                const isFuture = offset > 0
+                let status = habit.dailyCompletion?.[key]
+                if (isToday && !status && habit.lastResetDate >= todayStartTs && (habit.todayPositive > 0 || habit.todayNegative > 0)) {
+                  status = habit.todayPositive > 0 ? 'positive' : 'negative'
+                }
+                const completed = status === 'positive'
+                const failed = status === 'negative' || (isPast && !status)
+                const color = completed ? 'bg-emerald-500/20 text-emerald-600 border-emerald-500/50' : failed ? 'bg-red-500/20 text-red-600 border-red-500/50' : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)]'
+                return (
+                  <div
+                    key={key}
+                    className={cn(
+                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium border-2 transition-all',
+                      color,
+                      isToday && 'ring-2 ring-[var(--accent)] ring-offset-1 ring-offset-[var(--surface-overlay)]'
+                    )}
+                    style={isToday ? { boxShadow: '0 0 0 1px var(--accent-subtle), 0 0 16px var(--accent-glow)' } : undefined}
+                  >
+                    {dayNum}
+                  </div>
+                )
+              })
+            })()}
+          </div>
+
+          {/* Streak */}
+          <div className="mt-2 flex items-center gap-2 text-sm">
+            <span className="text-[var(--fg-muted)]">Стрик:</span>
+            <div className={cn(
+              'flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-semibold',
+              habit.streak > 0 ? 'bg-[var(--surface)]' : ''
+            )}>
+              <Flame className={cn('h-4 w-4 shrink-0', habit.streak > 0 ? getStreakColor(habit.streak).icon : 'text-[var(--fg-muted)]')} />
+              <span className={habit.streak > 0 ? getStreakColor(habit.streak).text : 'text-[var(--fg-muted)]'}>
+                {habit.streak}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -121,12 +168,14 @@ function HabitCard({ habit, onEdit }: HabitCardProps) {
         {habit.positiveEnabled && (
           <button
             type="button"
-            onClick={() => clickPositive(habit.id)}
+            onClick={() => !hasActedToday && clickPositive(habit.id)}
+            disabled={hasActedToday}
             className={cn(
               'flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl',
+              hasActedToday ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 active:scale-95',
               'bg-gradient-to-br from-emerald-500 to-green-600 text-white',
-              'transition-all duration-200 hover:scale-110 shadow-lg shadow-emerald-500/30',
-              'hover:shadow-xl hover:shadow-emerald-500/40 active:scale-95'
+              'transition-all duration-200 shadow-lg shadow-emerald-500/30',
+              'hover:shadow-xl hover:shadow-emerald-500/40'
             )}
           >
             <Plus className="h-7 w-7" />
@@ -145,6 +194,24 @@ interface HabitFormProps {
 }
 
 const HABIT_ICONS = ['💪', '🏃', '📚', '🧘', '💧', '🍎', '😴', '🎯', '✍️', '🎸', '🎮', '🍺', '🍔', '📱', '💤', '🧠', '❤️', '🔥']
+
+/** Цвета огонька стрика по порогам: [порог, классы для иконки и текста] */
+const STREAK_COLORS: { threshold: number; icon: string; text: string }[] = [
+  { threshold: 365, icon: 'text-amber-400', text: 'text-amber-500' },
+  { threshold: 180, icon: 'text-amber-300', text: 'text-amber-400' },
+  { threshold: 90, icon: 'text-yellow-400', text: 'text-yellow-500' },
+  { threshold: 30, icon: 'text-violet-400', text: 'text-violet-500' },
+  { threshold: 14, icon: 'text-red-500', text: 'text-red-500' },
+  { threshold: 7, icon: 'text-amber-500', text: 'text-amber-500' },
+  { threshold: 3, icon: 'text-emerald-500', text: 'text-emerald-500' },
+]
+
+function getStreakColor(streak: number) {
+  for (const { threshold, icon, text } of STREAK_COLORS) {
+    if (streak >= threshold) return { icon, text }
+  }
+  return { icon: 'text-orange-400', text: 'text-orange-500' }
+}
 
 const PRESET_COLORS = [
   '#6366f1', '#8b5cf6', '#a855f7', '#ec4899',
@@ -178,6 +245,9 @@ function HabitForm({ habit, onClose }: HabitFormProps) {
   )
   const [customMultiplier, setCustomMultiplier] = useState(habit?.difficultyMultiplierCustom ?? 1.5)
   const [multiplierIntervalDays, setMultiplierIntervalDays] = useState(habit?.multiplierIntervalDays ?? 3)
+  const [multiplierAppliesToXp, setMultiplierAppliesToXp] = useState(habit?.multiplierAppliesToXp ?? true)
+  const [multiplierAppliesToCoins, setMultiplierAppliesToCoins] = useState(habit?.multiplierAppliesToCoins ?? true)
+  const [multiplierAppliesToGems, setMultiplierAppliesToGems] = useState(habit?.multiplierAppliesToGems ?? true)
   const [xpTooltipVisible, setXpTooltipVisible] = useState(false)
   const [negativeXpTooltipVisible, setNegativeXpTooltipVisible] = useState(false)
   const xpTooltipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -233,6 +303,9 @@ function HabitForm({ habit, onClose }: HabitFormProps) {
       difficultyMultiplierLevel: difficultyLevel === 'off' ? undefined : difficultyLevel,
       difficultyMultiplierCustom: difficultyLevel === 'custom' ? customMultiplier : undefined,
       multiplierIntervalDays: difficultyLevel !== 'off' ? multiplierIntervalDays : undefined,
+      multiplierAppliesToXp: difficultyLevel !== 'off' ? (multiplierAppliesToXp || (!multiplierAppliesToCoins && !multiplierAppliesToGems)) : undefined,
+      multiplierAppliesToCoins: difficultyLevel !== 'off' ? multiplierAppliesToCoins : undefined,
+      multiplierAppliesToGems: difficultyLevel !== 'off' ? multiplierAppliesToGems : undefined,
     }
 
     if (habit) {
@@ -549,7 +622,7 @@ function HabitForm({ habit, onClose }: HabitFormProps) {
             </div>
 
             {difficultyLevel !== 'off' && (
-              <div className="pt-3 border-t border-[var(--border)]">
+              <div className="pt-3 space-y-3 border-t border-[var(--border)]">
                 <label className="flex items-center gap-2 text-sm text-[var(--fg)] flex-wrap">
                   Множитель срабатывает раз в
                   <input
@@ -562,6 +635,51 @@ function HabitForm({ habit, onClose }: HabitFormProps) {
                   />
                   дня
                 </label>
+                <div>
+                  <p className="text-sm font-medium text-[var(--fg)] mb-2">Множитель работает на:</p>
+                  <div className="flex flex-wrap gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={multiplierAppliesToXp}
+                        onChange={(e) => {
+                          const v = e.target.checked
+                          if (!v && !multiplierAppliesToCoins && !multiplierAppliesToGems) return
+                          setMultiplierAppliesToXp(v)
+                        }}
+                        className="rounded border-[var(--border)]"
+                      />
+                      <span className="text-sm text-[var(--fg)]">XP</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={multiplierAppliesToCoins}
+                        onChange={(e) => {
+                          const v = e.target.checked
+                          if (!v && !multiplierAppliesToXp && !multiplierAppliesToGems) return
+                          setMultiplierAppliesToCoins(v)
+                        }}
+                        className="rounded border-[var(--border)]"
+                      />
+                      <span className="text-sm text-[var(--fg)]">монеты</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={multiplierAppliesToGems}
+                        onChange={(e) => {
+                          const v = e.target.checked
+                          if (!v && !multiplierAppliesToXp && !multiplierAppliesToCoins) return
+                          setMultiplierAppliesToGems(v)
+                        }}
+                        className="rounded border-[var(--border)]"
+                      />
+                      <span className="text-sm text-[var(--fg)]">гемы</span>
+                    </label>
+                  </div>
+                  <p className="text-xs text-[var(--fg-muted)] mt-1">Можно выбрать один или все, но минимум 1</p>
+                </div>
               </div>
             )}
           </div>
