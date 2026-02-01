@@ -57,6 +57,22 @@ function getNextDayStart(ts: number): number {
   return d.getTime()
 }
 
+const MULTIPLIER_BY_LEVEL: Record<string, number> = { easy: 1.25, medium: 1.75, hard: 2.5 }
+
+/** Эффективный множитель награды: streak >= 3 и streak >= interval, иначе 1 */
+function getHabitEffectiveMultiplier(habit: Habit, streakAfterAction: number): number {
+  if (!habit.difficultyMultiplierEnabled || streakAfterAction < 3) return 1
+  const interval = habit.multiplierIntervalDays ?? 3
+  if (streakAfterAction < interval) return 1
+  const level = habit.difficultyMultiplierLevel ?? 'easy'
+  return level === 'custom' ? (habit.difficultyMultiplierCustom ?? 1.5) : (MULTIPLIER_BY_LEVEL[level] ?? 1)
+}
+
+function applyMultiplierCeil(value: number, mult: number, applies: boolean): number {
+  if (!applies || mult <= 1) return value
+  return Math.ceil(value * mult)
+}
+
 function createDefaultProfile(name: string): Profile {
   const id = crypto.randomUUID()
   const attributes: Attribute[] = DEFAULT_ATTRIBUTES.map((a, i) => ({
@@ -612,20 +628,30 @@ export const useRpgStore = create<RpgStoreState>()(
           // Один раз в день: если уже действовал сегодня — не обрабатывать (кроме экспериментального режима)
           if (!asNextDay && !isNewDay && (habit.todayPositive > 0 || habit.todayNegative > 0)) return
 
+          const streakAfter = isNewDay ? habit.streak + 1 : habit.streak
+          const mult = getHabitEffectiveMultiplier(habit, streakAfter)
+          const appliesXp = habit.multiplierAppliesToXp !== false
+          const appliesCoins = habit.multiplierAppliesToCoins !== false
+          const appliesGems = habit.multiplierAppliesToGems !== false
+
+          const xpGain = applyMultiplierCeil(habit.positiveXp, mult, appliesXp)
+          const coinsGain = applyMultiplierCeil(habit.positiveCoins, mult, appliesCoins)
+          const gemsGain = applyMultiplierCeil(habit.positiveGems ?? 0, mult, appliesGems)
+
           // Add XP to attribute
-          if (habit.attributeId && habit.positiveXp > 0) {
-            const nextAttributes = addXpToAttribute(profile, habit.attributeId, habit.positiveXp)
+          if (habit.attributeId && xpGain > 0) {
+            const nextAttributes = addXpToAttribute(profile, habit.attributeId, xpGain)
             updateProfile(profile.id, (p) => ({ ...p, attributes: nextAttributes }))
           }
 
           // Add coins
-          if (habit.positiveCoins > 0) {
-            get().addCurrency(CURRENCY_IDS.COINS, habit.positiveCoins)
+          if (coinsGain > 0) {
+            get().addCurrency(CURRENCY_IDS.COINS, coinsGain)
           }
 
           // Add gems
-          if ((habit.positiveGemsEnabled ?? false) && (habit.positiveGems ?? 0) > 0) {
-            get().addCurrency(CURRENCY_IDS.GEMS, habit.positiveGems ?? 0)
+          if ((habit.positiveGemsEnabled ?? false) && gemsGain > 0) {
+            get().addCurrency(CURRENCY_IDS.GEMS, gemsGain)
           }
 
           const dateKey = getDateKey(todayStart)

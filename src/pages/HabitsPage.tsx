@@ -32,8 +32,8 @@ function HabitCard({ habit, onEdit, experimentalMode }: HabitCardProps) {
 
   return (
     <div className="glass-card group relative rounded-2xl p-5 transition-all duration-200 hover:scale-[1.01]">
-      {/* Action buttons */}
-      <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* Edit / Delete — внизу справа, не добавляют высоту карточке */}
+      <div className="absolute bottom-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
           type="button"
           onClick={onEdit}
@@ -90,18 +90,13 @@ function HabitCard({ habit, onEdit, experimentalMode }: HabitCardProps) {
             </div>
           </div>
 
-          {/* Stats row */}
+          {/* Stats row: только награды (+) */}
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            {habit.positiveEnabled && (
+            {habit.positiveEnabled && (habit.positiveXp > 0 || habit.positiveCoins > 0 || ((habit.positiveGemsEnabled && (habit.positiveGems ?? 0) > 0))) && (
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-emerald-500 font-medium">+{habit.positiveXp} XP</span>
-                <span className="text-amber-500 font-medium">+{habit.positiveCoins} 🪙</span>
-              </div>
-            )}
-            {habit.negativeEnabled && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-red-500 font-medium">−{habit.negativeXp} XP</span>
-                <span className="text-red-400 font-medium">−{habit.negativeCoins} 🪙</span>
+                {habit.positiveXp > 0 && <span className="text-emerald-500 font-medium">+{getPositiveRewardDisplay(habit).xp} XP</span>}
+                {habit.positiveCoins > 0 && <span className="text-amber-500 font-medium">+{getPositiveRewardDisplay(habit).coins} 🪙</span>}
+                {(habit.positiveGemsEnabled && (habit.positiveGems ?? 0) > 0) && <span className="text-violet-500 font-medium">+{getPositiveRewardDisplay(habit).gems} 💎</span>}
               </div>
             )}
             {attr && (
@@ -166,18 +161,26 @@ function HabitCard({ habit, onEdit, experimentalMode }: HabitCardProps) {
             <HabitCalendarModal habit={habit} onClose={() => setShowCalendar(false)} />
           )}
 
-          {/* Streak */}
-          <div className="mt-2 flex items-center gap-2 text-sm">
-            <span className="text-[var(--fg-muted)]">Стрик:</span>
-            <div className={cn(
-              'flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-semibold',
-              habit.streak > 0 ? 'bg-[var(--surface)]' : ''
-            )}>
-              <Flame className={cn('h-4 w-4 shrink-0', habit.streak > 0 ? getStreakColor(habit.streak).icon : 'text-[var(--fg-muted)]', habit.streak > 0 && 'streak-flame-animate')} />
-              <span className={habit.streak > 0 ? getStreakColor(habit.streak).text : 'text-[var(--fg-muted)]'}>
-                {habit.streak}
-              </span>
+          {/* Streak и множитель сложности */}
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-[var(--fg-muted)]">Стрик:</span>
+              <div className={cn(
+                'flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-semibold',
+                habit.streak > 0 ? 'bg-[var(--surface)]' : ''
+              )}>
+                <Flame className={cn('h-4 w-4 shrink-0', habit.streak > 0 ? getStreakColor(habit.streak).icon : 'text-[var(--fg-muted)]', habit.streak > 0 && 'streak-flame-animate')} />
+                <span className={habit.streak > 0 ? getStreakColor(habit.streak).text : 'text-[var(--fg-muted)]'}>
+                  {habit.streak}
+                </span>
+              </div>
             </div>
+            {getHabitMultiplierDisplay(habit) !== null && (
+              <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 bg-[var(--surface)]">
+                <span className="text-[var(--fg-muted)]">Множитель</span>
+                <span className="font-semibold text-[var(--accent)]">{getHabitMultiplierDisplay(habit)}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -213,6 +216,41 @@ interface HabitFormProps {
 const HABIT_ICONS = ['💪', '🏃', '📚', '🧘', '💧', '🍎', '😴', '🎯', '✍️', '🎸', '🎮', '🍺', '🍔', '📱', '💤', '🧠', '❤️', '🔥']
 
 /** Цвета огонька стрика по порогам: [порог, классы для иконки и текста] */
+/** Множители сложности по уровню */
+const MULTIPLIER_BY_LEVEL: Record<string, number> = { easy: 1.25, medium: 1.75, hard: 2.5 }
+
+function getHabitEffectiveMultiplier(habit: Habit): number {
+  if (!habit.difficultyMultiplierEnabled || habit.streak < 3) return 1
+  const interval = habit.multiplierIntervalDays ?? 3
+  if (habit.streak < interval) return 1
+  const level = habit.difficultyMultiplierLevel ?? 'easy'
+  return level === 'custom' ? (habit.difficultyMultiplierCustom ?? 1.5) : (MULTIPLIER_BY_LEVEL[level] ?? 1)
+}
+
+function getHabitMultiplierDisplay(habit: Habit): string | null {
+  if (!habit.difficultyMultiplierEnabled) return null
+  if (habit.streak < 3 || habit.streak < (habit.multiplierIntervalDays ?? 3)) return '0x'
+  const mult = getHabitEffectiveMultiplier(habit)
+  return `${mult}x`
+}
+
+function applyMultiplier(value: number, mult: number, applies: boolean): number {
+  if (!applies || mult <= 1) return value
+  return Math.ceil(value * mult)
+}
+
+function getPositiveRewardDisplay(habit: Habit): { xp: number; coins: number; gems: number } {
+  const mult = getHabitEffectiveMultiplier(habit)
+  const appliesXp = habit.multiplierAppliesToXp !== false
+  const appliesCoins = habit.multiplierAppliesToCoins !== false
+  const appliesGems = habit.multiplierAppliesToGems !== false
+  return {
+    xp: applyMultiplier(habit.positiveXp, mult, appliesXp),
+    coins: applyMultiplier(habit.positiveCoins, mult, appliesCoins),
+    gems: applyMultiplier(habit.positiveGems ?? 0, mult, appliesGems),
+  }
+}
+
 const STREAK_COLORS: { threshold: number; icon: string; text: string }[] = [
   { threshold: 365, icon: 'text-amber-400', text: 'text-amber-500' },
   { threshold: 180, icon: 'text-amber-300', text: 'text-amber-400' },
