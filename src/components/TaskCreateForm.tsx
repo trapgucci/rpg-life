@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, X, ChevronDown, ChevronUp, Calendar, Repeat } from 'lucide-react'
+import { Plus, X, ChevronDown, ChevronUp, ChevronRight, Calendar } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRecurrence, TaskRpg, SubtaskItem } from '../types/domain'
 import { useRpgStore } from '../store/useRpgStore'
@@ -13,6 +13,15 @@ const RECURRENCE_OPTIONS: { value: TaskRecurrence; label: string }[] = [
   { value: 'yearly', label: 'Ежегодно' },
   { value: 'instant', label: 'Инстант (можно выполнять снова после награды)' },
 ]
+
+const RECURRENCE_STATUS_LABEL: Record<TaskRecurrence, string> = {
+  once: 'Без повтора',
+  daily: 'Ежедневно',
+  weekly: 'Еженедельно',
+  monthly: 'Ежемесячно',
+  yearly: 'Ежегодно',
+  instant: 'Инстант',
+}
 
 interface TaskCreateFormProps {
   defaultGroupId?: TaskGroupId | null
@@ -159,22 +168,23 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
               </button>
             </div>
           ))}
-          <div className="flex gap-2">
+          <div className="flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-elevated)] pl-4 pr-2 py-1.5 transition-colors hover:border-[var(--border-strong)] focus-within:border-[var(--accent)] focus-within:ring-1 focus-within:ring-[var(--accent)]">
             <input
               type="text"
               value={newSubtaskTitle}
               onChange={(e) => setNewSubtaskTitle(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSubtask())}
-              placeholder="Добавить подзадачу..."
-              className="input flex-1 text-sm"
+              placeholder="Добавить подзадачу"
+              className="min-w-0 flex-1 border-0 bg-transparent text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] focus:outline-none focus:ring-0"
             />
             <button
               type="button"
               onClick={addSubtask}
-              className="btn-secondary flex items-center gap-1.5 px-3 text-sm"
+              disabled={!newSubtaskTitle.trim()}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--fg)] transition-colors hover:bg-[var(--surface)] disabled:opacity-40"
+              title="Добавить подзадачу"
             >
               <Plus className="h-4 w-4" />
-              Добавить
             </button>
           </div>
         </div>
@@ -182,26 +192,27 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
 
       {/* 4. Правило повтора */}
       <div>
-        <button
-          type="button"
-          onClick={() => setShowRepeat(!showRepeat)}
-          className={cn(
-            'flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition-all',
-            showRepeat
-              ? 'border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]'
-              : 'border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:border-[var(--border-strong)]'
-          )}
-        >
-          <span className="flex items-center gap-2">
-            <Repeat className="h-4 w-4" />
-            Правило повтора
-          </span>
-          {showRepeat ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </button>
+        <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Правило повтора</label>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+          <div className="px-4 py-3">
+            <p className="text-sm font-semibold text-[var(--fg)]">{RECURRENCE_STATUS_LABEL[recurrence]}</p>
+          </div>
+          <div className="h-px bg-[var(--border)]" />
+          <button
+            type="button"
+            onClick={() => setShowRepeat(!showRepeat)}
+            className={cn(
+              'flex w-full items-center justify-between px-4 py-3 text-left text-sm transition-colors',
+              showRepeat ? 'text-[var(--accent)]' : 'text-[var(--accent)] hover:bg-[var(--accent-subtle)]'
+            )}
+          >
+            <span>Параметры повтора</span>
+            <ChevronRight className={cn('h-4 w-4 shrink-0 transition-transform', showRepeat && 'rotate-90')} />
+          </button>
+        </div>
 
         {showRepeat && (
           <div className="mt-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-            {/* а) Повтор */}
             <div className="mb-4">
               <label className="block text-xs font-medium text-[var(--fg-muted)] mb-2">Повтор</label>
               <select
@@ -217,7 +228,6 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
               </select>
             </div>
 
-            {/* б) Время дедлайна */}
             <div>
               <label className="block text-xs font-medium text-[var(--fg-muted)] mb-2">
                 Дедлайн (когда нужно закончить)
