@@ -97,6 +97,33 @@ export default function TasksPage() {
 
   const countNoGroup = taskCountByGroup.get(null) ?? 0
 
+  // Режим «Новая задача»: форма на всю зелёную область, список задач скрыт
+  if (showForm) {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="glass-card mb-4 flex shrink-0 items-center justify-between rounded-2xl px-4 py-3">
+          <h2 className="text-lg font-semibold text-[var(--fg)]">Новая задача</h2>
+          <button
+            type="button"
+            onClick={() => setShowForm(false)}
+            className="icon-btn h-9 w-9 shrink-0 rounded-full p-0 text-[var(--fg-muted)] hover:text-[var(--fg)]"
+            title="Закрыть"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="glass-card h-full min-h-0 rounded-2xl p-4">
+            <TaskCreateForm
+              defaultGroupId={selectedGroupId === NO_GROUP_ID ? null : selectedGroupId}
+              onCreated={() => setShowForm(false)}
+            />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-full min-h-0 gap-4">
       <div className="flex w-[400px] shrink-0 flex-col gap-4">
@@ -114,7 +141,7 @@ export default function TasksPage() {
             </div>
             <button
               type="button"
-              onClick={() => setShowForm(!showForm)}
+              onClick={() => setShowForm(true)}
               className="btn-primary flex items-center gap-2"
             >
               <Plus className="h-4 w-4" />
@@ -246,15 +273,6 @@ export default function TasksPage() {
             </div>
           </div>
         </div>
-
-        {showForm && (
-          <div className="glass-card max-h-[min(65vh,500px)] overflow-y-auto rounded-2xl p-4">
-            <TaskCreateForm
-              defaultGroupId={selectedGroupId === NO_GROUP_ID ? null : selectedGroupId}
-              onCreated={() => setShowForm(false)}
-            />
-          </div>
-        )}
 
         <div className="flex-1 overflow-y-auto rounded-2xl">
           {sortedTasks.length === 0 ? (

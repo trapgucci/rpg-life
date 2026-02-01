@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useLayoutEffect, useEffect } from 'react'
 import { Plus, X, ChevronRight, Calendar, BarChart3, Gift } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRecurrence, TaskRpg, SubtaskItem } from '../types/domain'
@@ -43,6 +43,25 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   const [deadlineAt, setDeadlineAt] = useState<string>('') // '' или ISO datetime-local
   const [showRewardAttributes, setShowRewardAttributes] = useState(false)
   const [showRewardItems, setShowRewardItems] = useState(false)
+  const [rewardSheetOpen, setRewardSheetOpen] = useState<null | 'attribute' | 'item'>(null)
+  const [sheetAnimatedOpen, setSheetAnimatedOpen] = useState(false)
+
+  useLayoutEffect(() => {
+    if (rewardSheetOpen) {
+      const id = requestAnimationFrame(() => setSheetAnimatedOpen(true))
+      return () => cancelAnimationFrame(id)
+    }
+    setSheetAnimatedOpen(false)
+  }, [rewardSheetOpen])
+
+  useEffect(() => {
+    if (!sheetAnimatedOpen && rewardSheetOpen) {
+      const t = setTimeout(() => setRewardSheetOpen(null), 300)
+      return () => clearTimeout(t)
+    }
+  }, [sheetAnimatedOpen, rewardSheetOpen])
+
+  const closeRewardSheet = () => setSheetAnimatedOpen(false)
 
   const addSubtask = () => {
     const text = newSubtaskTitle.trim()
@@ -120,6 +139,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   }
 
   return (
+    <>
     <form onSubmit={handleSubmit} className={cn('flex flex-col gap-4', className)}>
       {error && (
         <div className="rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-2.5 text-sm text-red-600 dark:text-red-400">
@@ -272,6 +292,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
               <div className="border-t border-[var(--border)] px-4 pb-3 pt-2">
                 <button
                   type="button"
+                  onClick={() => setRewardSheetOpen('attribute')}
                   className="btn-primary inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm"
                 >
                   <Plus className="h-4 w-4" />
@@ -298,6 +319,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
               <div className="border-t border-[var(--border)] px-4 pb-3 pt-2">
                 <button
                   type="button"
+                  onClick={() => setRewardSheetOpen('item')}
                   className="btn-primary inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm"
                 >
                   <Plus className="h-4 w-4" />
@@ -314,5 +336,46 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         Добавить задачу
       </button>
     </form>
+
+    {/* Bottom sheet: атрибут / предмет — Coming soon */}
+    {rewardSheetOpen !== null && (
+      <>
+        <div
+          role="presentation"
+          onClick={closeRewardSheet}
+          className={cn(
+            'fixed inset-0 z-40 bg-black/50 transition-opacity duration-300',
+            sheetAnimatedOpen ? 'opacity-100' : 'opacity-0'
+          )}
+        />
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={rewardSheetOpen === 'attribute' ? 'Добавить атрибут' : 'Добавить предмет'}
+          className={cn(
+            'fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl bg-white dark:bg-[var(--surface-overlay)] shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transition-transform duration-300 ease-out',
+            sheetAnimatedOpen ? 'translate-y-0' : 'translate-y-full'
+          )}
+        >
+          <div className="flex items-center justify-between px-4 pt-4 pb-2">
+            <div className="h-1 w-12 shrink-0 rounded-full bg-[var(--border)]" />
+            <button
+              type="button"
+              onClick={closeRewardSheet}
+              className="icon-btn h-9 w-9 shrink-0 rounded-full p-0 text-[var(--fg-muted)] hover:text-[var(--fg)]"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="px-4 pb-8 pt-6 flex flex-col items-center justify-center min-h-[180px]">
+            <p className="text-2xl font-semibold tracking-tight text-[var(--fg-muted)]">Coming soon</p>
+            <p className="mt-2 text-sm text-[var(--fg-muted)]">
+              {rewardSheetOpen === 'attribute' ? 'Настройка вознаграждения атрибутами' : 'Настройка вознаграждения предметами'} будет доступна в следующем обновлении.
+            </p>
+          </div>
+        </div>
+      </>
+    )}
+    </>
   )
 }
