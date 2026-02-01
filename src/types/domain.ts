@@ -121,8 +121,24 @@ export interface Habit {
   positiveCoins: number
   /** Монеты за - действие (отнимаются) */
   negativeCoins: number
+  /** Включены ли гемы за + действие */
+  positiveGemsEnabled?: boolean
+  /** Гемы за + действие */
+  positiveGems?: number
+  /** Включены ли гемы за − действие (отнимаются) */
+  negativeGemsEnabled?: boolean
+  /** Гемы за − действие (отнимаются) */
+  negativeGems?: number
   /** Привязка к атрибуту */
   attributeId: AttributeId | null
+  /** Включён множитель сложности (награда увеличивается через N дней) */
+  difficultyMultiplierEnabled?: boolean
+  /** Уровень сложности: easy 1.25, medium 1.75, hard 2.5, custom — своё значение */
+  difficultyMultiplierLevel?: 'easy' | 'medium' | 'hard' | 'custom'
+  /** Кастомный множитель (когда level === 'custom') */
+  difficultyMultiplierCustom?: number
+  /** Множитель срабатывает раз в N дней */
+  multiplierIntervalDays?: number
   /** Счётчик + за сегодня */
   todayPositive: number
   /** Счётчик - за сегодня */

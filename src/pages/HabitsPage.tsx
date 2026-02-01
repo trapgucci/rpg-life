@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Plus, Minus, Flame, Pencil, Trash2, X, Repeat, Zap, Coins } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Plus, Minus, Flame, Pencil, Trash2, X, Repeat, Zap, Coins, Check, ChevronDown, ChevronRight, ArrowLeft } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
 import type { Habit, AttributeId } from '../types/domain'
@@ -166,13 +166,48 @@ function HabitForm({ habit, onClose }: HabitFormProps) {
   const [notes, setNotes] = useState(habit?.notes ?? '')
   const [icon, setIcon] = useState(habit?.icon ?? '💪')
   const [color, setColor] = useState(habit?.color ?? '#6366f1')
-  const [positiveEnabled, setPositiveEnabled] = useState(habit?.positiveEnabled ?? true)
-  const [negativeEnabled, setNegativeEnabled] = useState(habit?.negativeEnabled ?? true)
   const [positiveXp, setPositiveXp] = useState(habit?.positiveXp ?? 50)
   const [negativeXp, setNegativeXp] = useState(habit?.negativeXp ?? 25)
-  const [positiveCoins, setPositiveCoins] = useState(habit?.positiveCoins ?? 5)
-  const [negativeCoins, setNegativeCoins] = useState(habit?.negativeCoins ?? 2)
   const [attributeId, setAttributeId] = useState<AttributeId | null>(habit?.attributeId ?? null)
+  const [showAdditionalSettings, setShowAdditionalSettings] = useState(false)
+  const [screen, setScreen] = useState<'main' | 'multiplier'>('main')
+  const [difficultyLevel, setDifficultyLevel] = useState<'off' | 'easy' | 'medium' | 'hard' | 'custom'>(
+    habit?.difficultyMultiplierEnabled === true
+      ? (habit?.difficultyMultiplierLevel ?? 'easy')
+      : 'off'
+  )
+  const [customMultiplier, setCustomMultiplier] = useState(habit?.difficultyMultiplierCustom ?? 1.5)
+  const [multiplierIntervalDays, setMultiplierIntervalDays] = useState(habit?.multiplierIntervalDays ?? 3)
+  const [xpTooltipVisible, setXpTooltipVisible] = useState(false)
+  const [negativeXpTooltipVisible, setNegativeXpTooltipVisible] = useState(false)
+  const xpTooltipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const negativeXpTooltipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => {
+    if (xpTooltipTimeoutRef.current) clearTimeout(xpTooltipTimeoutRef.current)
+    if (negativeXpTooltipTimeoutRef.current) clearTimeout(negativeXpTooltipTimeoutRef.current)
+  }, [])
+
+  const handleXpTooltipEnter = () => {
+    xpTooltipTimeoutRef.current = setTimeout(() => setXpTooltipVisible(true), 1000)
+  }
+  const handleXpTooltipLeave = () => {
+    if (xpTooltipTimeoutRef.current) {
+      clearTimeout(xpTooltipTimeoutRef.current)
+      xpTooltipTimeoutRef.current = null
+    }
+    setXpTooltipVisible(false)
+  }
+  const handleNegativeXpTooltipEnter = () => {
+    negativeXpTooltipTimeoutRef.current = setTimeout(() => setNegativeXpTooltipVisible(true), 1000)
+  }
+  const handleNegativeXpTooltipLeave = () => {
+    if (negativeXpTooltipTimeoutRef.current) {
+      clearTimeout(negativeXpTooltipTimeoutRef.current)
+      negativeXpTooltipTimeoutRef.current = null
+    }
+    setNegativeXpTooltipVisible(false)
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -183,13 +218,21 @@ function HabitForm({ habit, onClose }: HabitFormProps) {
       notes: notes.trim() || undefined,
       icon,
       color,
-      positiveEnabled,
-      negativeEnabled,
+      positiveEnabled: true,
+      negativeEnabled: true,
       positiveXp,
       negativeXp,
-      positiveCoins,
-      negativeCoins,
+      positiveCoins: 0,
+      negativeCoins: 0,
+      positiveGemsEnabled: false,
+      positiveGems: 0,
+      negativeGemsEnabled: false,
+      negativeGems: 0,
       attributeId,
+      difficultyMultiplierEnabled: difficultyLevel !== 'off',
+      difficultyMultiplierLevel: difficultyLevel === 'off' ? undefined : difficultyLevel,
+      difficultyMultiplierCustom: difficultyLevel === 'custom' ? customMultiplier : undefined,
+      multiplierIntervalDays: difficultyLevel !== 'off' ? multiplierIntervalDays : undefined,
     }
 
     if (habit) {
@@ -203,20 +246,22 @@ function HabitForm({ habit, onClose }: HabitFormProps) {
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal-content max-w-lg">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-[var(--fg)]">
-            {habit ? 'Редактировать привычку' : 'Новая привычка'}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="icon-btn"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+        {screen === 'main' ? (
+          <>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-[var(--fg)]">
+                {habit ? 'Редактировать привычку' : 'Новая привычка'}
+              </h2>
+              <button
+                type="button"
+                onClick={onClose}
+                className="icon-btn"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           {/* Title */}
           <input
             type="text"
@@ -233,7 +278,7 @@ function HabitForm({ habit, onClose }: HabitFormProps) {
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Описание (опционально)"
             rows={2}
-            className="input resize-none"
+            className="input resize-y min-h-[4.5rem]"
           />
 
           {/* Icon & Color */}
@@ -280,73 +325,96 @@ function HabitForm({ habit, onClose }: HabitFormProps) {
           </div>
 
           {/* Positive/Negative toggles */}
-          <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Награда и наказание</label>
+            <div className="grid grid-cols-2 gap-4">
             <div className="rounded-xl bg-[var(--surface)] p-4">
-              <label className="flex items-center gap-2 mb-3">
-                <input
-                  type="checkbox"
-                  checked={positiveEnabled}
-                  onChange={(e) => setPositiveEnabled(e.target.checked)}
-                  className="h-4 w-4 rounded accent-emerald-500"
-                />
-                <span className="font-medium text-emerald-500">Положительно (+)</span>
-              </label>
-              {positiveEnabled && (
-                <div className="flex flex-col gap-2 text-sm">
-                  <label className="flex items-center justify-between">
-                    <span className="text-[var(--fg-muted)]">XP:</span>
-                    <input
-                      type="number"
-                      value={positiveXp}
-                      onChange={(e) => setPositiveXp(Number(e.target.value) || 0)}
-                      className="w-20 rounded-lg border border-[var(--border)] bg-transparent px-2 py-1 text-right"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between">
-                    <span className="text-[var(--fg-muted)]">Монеты:</span>
-                    <input
-                      type="number"
-                      value={positiveCoins}
-                      onChange={(e) => setPositiveCoins(Number(e.target.value) || 0)}
-                      className="w-20 rounded-lg border border-[var(--border)] bg-transparent px-2 py-1 text-right"
-                    />
-                  </label>
-                </div>
-              )}
+              <div className="flex items-center gap-2 mb-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-2 border-emerald-500 bg-emerald-500/20 text-emerald-600">
+                  <Check className="h-5 w-5" strokeWidth={2.5} />
+                </span>
+                <span className="font-medium text-emerald-500">Выполнено (+)</span>
+              </div>
+              <div className="flex flex-col gap-3 text-sm">
+                <label
+                  className="relative flex items-center justify-between"
+                  onMouseEnter={handleXpTooltipEnter}
+                  onMouseLeave={handleXpTooltipLeave}
+                >
+                  <span className="text-[var(--fg-muted)]">XP<span className="text-amber-400">*</span>:</span>
+                  <input
+                    type="number"
+                    value={positiveXp}
+                    onChange={(e) => setPositiveXp(Number(e.target.value) || 0)}
+                    className="w-20 rounded-lg border border-[var(--border)] bg-transparent px-2 py-1 text-right"
+                  />
+                  {xpTooltipVisible && (
+                    <span
+                      role="tooltip"
+                      className="absolute left-0 top-full z-50 mt-2 max-w-[240px] rounded-lg bg-[var(--fg)] px-3 py-2 text-xs font-normal text-[var(--bg-solid)] shadow-lg"
+                    >
+                      XP начисляется как в выбранный вами атрибут, так и в общий ваш уровень
+                    </span>
+                  )}
+                </label>
+                <button
+                  type="button"
+                  disabled
+                  className={cn(
+                    'flex w-full items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-sm font-medium',
+                    'bg-gradient-to-r from-emerald-500/15 to-emerald-600/10 text-emerald-600',
+                    'border border-emerald-500/30 cursor-not-allowed opacity-90'
+                  )}
+                >
+                  <Plus className="h-4 w-4" />
+                  Добавить награду
+                </button>
+              </div>
             </div>
 
             <div className="rounded-xl bg-[var(--surface)] p-4">
-              <label className="flex items-center gap-2 mb-3">
-                <input
-                  type="checkbox"
-                  checked={negativeEnabled}
-                  onChange={(e) => setNegativeEnabled(e.target.checked)}
-                  className="h-4 w-4 rounded accent-red-500"
-                />
-                <span className="font-medium text-red-500">Отрицательно (−)</span>
-              </label>
-              {negativeEnabled && (
-                <div className="flex flex-col gap-2 text-sm">
-                  <label className="flex items-center justify-between">
-                    <span className="text-[var(--fg-muted)]">XP:</span>
-                    <input
-                      type="number"
-                      value={negativeXp}
-                      onChange={(e) => setNegativeXp(Number(e.target.value) || 0)}
-                      className="w-20 rounded-lg border border-[var(--border)] bg-transparent px-2 py-1 text-right"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between">
-                    <span className="text-[var(--fg-muted)]">Монеты:</span>
-                    <input
-                      type="number"
-                      value={negativeCoins}
-                      onChange={(e) => setNegativeCoins(Number(e.target.value) || 0)}
-                      className="w-20 rounded-lg border border-[var(--border)] bg-transparent px-2 py-1 text-right"
-                    />
-                  </label>
-                </div>
-              )}
+              <div className="flex items-center gap-2 mb-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-2 border-red-500 bg-red-500/20 text-red-600">
+                  <X className="h-5 w-5" strokeWidth={2.5} />
+                </span>
+                <span className="font-medium text-red-500">Не выполнено (−)</span>
+              </div>
+              <div className="flex flex-col gap-3 text-sm">
+                <label
+                  className="relative flex items-center justify-between"
+                  onMouseEnter={handleNegativeXpTooltipEnter}
+                  onMouseLeave={handleNegativeXpTooltipLeave}
+                >
+                  <span className="text-[var(--fg-muted)]">XP<span className="text-amber-400">*</span>:</span>
+                  <input
+                    type="number"
+                    value={negativeXp}
+                    onChange={(e) => setNegativeXp(Number(e.target.value) || 0)}
+                    className="w-20 rounded-lg border border-[var(--border)] bg-transparent px-2 py-1 text-right"
+                  />
+                  {negativeXpTooltipVisible && (
+                    <span
+                      role="tooltip"
+                      className="absolute left-0 top-full z-50 mt-2 max-w-[260px] rounded-lg bg-[var(--fg)] px-3 py-2 text-xs font-normal text-[var(--bg-solid)] shadow-lg"
+                    >
+                      XP вычитается из вашего общего опыта и опыта выбранного атрибута
+                    </span>
+                  )}
+                </label>
+                <button
+                  type="button"
+                  disabled
+                  className={cn(
+                    'flex w-full items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-sm font-medium',
+                    'bg-gradient-to-r from-red-500/15 to-red-600/10 text-red-600',
+                    'border border-red-500/30 cursor-not-allowed opacity-90'
+                  )}
+                >
+                  <Plus className="h-4 w-4" />
+                  Наказание
+                </button>
+              </div>
+            </div>
             </div>
           </div>
 
@@ -367,6 +435,33 @@ function HabitForm({ habit, onClose }: HabitFormProps) {
             </select>
           </div>
 
+          {/* Дополнительно */}
+          <div>
+            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Дополнительно</label>
+            <button
+              type="button"
+              onClick={() => setShowAdditionalSettings((v) => !v)}
+              className={cn(
+                'w-full flex items-center justify-center py-1.5 rounded-lg mb-2',
+                'text-[var(--fg-muted)] hover:text-[var(--fg)]',
+                'bg-[var(--surface)] hover:bg-[var(--surface-elevated)] transition-all',
+                'border border-[var(--border)]'
+              )}
+            >
+              <ChevronDown className={cn('h-4 w-4 transition-transform', showAdditionalSettings && 'rotate-180')} />
+            </button>
+            {showAdditionalSettings && (
+              <button
+                type="button"
+                onClick={() => setScreen('multiplier')}
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-[var(--surface)] hover:bg-[var(--surface-elevated)] border border-[var(--border)] transition-colors text-left"
+              >
+                <span className="text-sm font-medium text-[var(--fg)]">Множитель сложности</span>
+                <ChevronRight className="h-4 w-4 text-[var(--fg-muted)] shrink-0" />
+              </button>
+            )}
+          </div>
+
           {/* Buttons */}
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">
@@ -377,6 +472,100 @@ function HabitForm({ habit, onClose }: HabitFormProps) {
             </button>
           </div>
         </form>
+          </>
+        ) : (
+          /* Экран множителя сложности */
+          <div className="flex flex-col gap-5">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setScreen('main')}
+                className="icon-btn"
+                aria-label="Назад"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <h2 className="text-xl font-bold text-[var(--fg)] flex-1">Множитель сложности</h2>
+              <button
+                type="button"
+                onClick={onClose}
+                className="icon-btn"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-[var(--fg-muted)]">
+              Можно добавить множитель награды в зависимости от сложности
+            </p>
+
+            <div className="space-y-2">
+              {[
+                { id: 'off' as const, label: 'Не использовать', mult: null },
+                { id: 'easy' as const, label: 'Легко', mult: 1.25 },
+                { id: 'medium' as const, label: 'Средне', mult: 1.75 },
+                { id: 'hard' as const, label: 'Сложно', mult: 2.5 },
+                { id: 'custom' as const, label: 'Индивидуально', mult: null },
+              ].map(({ id, label, mult }) => (
+                <label
+                  key={id}
+                  className={cn(
+                    'flex items-center gap-2 py-2.5 px-3 rounded-xl cursor-pointer transition-colors',
+                    difficultyLevel === id ? 'bg-[var(--accent-subtle)]' : 'hover:bg-[var(--surface-elevated)] bg-[var(--surface)]'
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="difficultyLevel"
+                    checked={difficultyLevel === id}
+                    onChange={() => setDifficultyLevel(id)}
+                    className="sr-only"
+                  />
+                  <span className={cn(
+                    'flex h-4 w-4 shrink-0 rounded-full border-2 items-center justify-center',
+                    difficultyLevel === id ? 'border-[var(--accent)]' : 'border-[var(--border)]'
+                  )}>
+                    {difficultyLevel === id && <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />}
+                  </span>
+                  <span className="text-sm text-[var(--fg)]">{label}</span>
+                  {mult !== null && <span className="text-xs text-[var(--fg-muted)]">(x{mult})</span>}
+                  {id === 'custom' && (
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.5"
+                      max="10"
+                      value={customMultiplier}
+                      onChange={(e) => {
+                        const v = String(e.target.value).replace(',', '.')
+                        setCustomMultiplier(Math.min(10, Math.max(0.5, parseFloat(v) || 1)))
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="ml-auto w-16 rounded border border-[var(--border)] bg-transparent px-2 py-1 text-sm text-right"
+                    />
+                  )}
+                </label>
+              ))}
+            </div>
+
+            {difficultyLevel !== 'off' && (
+              <div className="pt-3 border-t border-[var(--border)]">
+                <label className="flex items-center gap-2 text-sm text-[var(--fg)] flex-wrap">
+                  Множитель срабатывает раз в
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={multiplierIntervalDays}
+                    onChange={(e) => setMultiplierIntervalDays(Math.max(1, Number(e.target.value) || 1))}
+                    className="w-14 rounded border border-[var(--border)] bg-transparent px-2 py-1 text-sm text-center"
+                  />
+                  дня
+                </label>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

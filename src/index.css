@@ -476,7 +476,7 @@ html.dark,
   }
 
   .modal-content {
-    @apply w-full max-w-md rounded-3xl p-6;
+    @apply w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl p-6;
     background: var(--surface-overlay);
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);

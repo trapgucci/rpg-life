@@ -609,6 +609,11 @@ export const useRpgStore = create<RpgStoreState>()(
             get().addCurrency(CURRENCY_IDS.COINS, habit.positiveCoins)
           }
 
+          // Add gems
+          if ((habit.positiveGemsEnabled ?? false) && (habit.positiveGems ?? 0) > 0) {
+            get().addCurrency(CURRENCY_IDS.GEMS, habit.positiveGems ?? 0)
+          }
+
           // Update habit
           get().updateHabit(id, (h) => ({
             ...h,
@@ -644,6 +649,11 @@ export const useRpgStore = create<RpgStoreState>()(
           // Deduct coins
           if (habit.negativeCoins > 0) {
             get().deductCurrency(CURRENCY_IDS.COINS, habit.negativeCoins)
+          }
+
+          // Deduct gems
+          if ((habit.negativeGemsEnabled ?? false) && (habit.negativeGems ?? 0) > 0) {
+            get().deductCurrency(CURRENCY_IDS.GEMS, habit.negativeGems ?? 0)
           }
 
           // Update habit
