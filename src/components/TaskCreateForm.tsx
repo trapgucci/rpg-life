@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, X, ChevronDown, ChevronUp, ChevronRight, Calendar } from 'lucide-react'
+import { Plus, X, ChevronRight, Calendar, BarChart3, Gift } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRecurrence, TaskRpg, SubtaskItem } from '../types/domain'
 import { useRpgStore } from '../store/useRpgStore'
@@ -41,6 +41,8 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   const [showRepeat, setShowRepeat] = useState(false)
   const [recurrence, setRecurrence] = useState<TaskRecurrence>('once')
   const [deadlineAt, setDeadlineAt] = useState<string>('') // '' или ISO datetime-local
+  const [showRewardAttributes, setShowRewardAttributes] = useState(false)
+  const [showRewardItems, setShowRewardItems] = useState(false)
 
   const addSubtask = () => {
     const text = newSubtaskTitle.trim()
@@ -247,6 +249,64 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
             </div>
           </div>
         )}
+      </div>
+
+      {/* 5. Система вознаграждения */}
+      <div>
+        <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Система вознаграждения</label>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+          {/* а) Атрибуты */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowRewardAttributes((v) => !v)}
+              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-[var(--fg)] transition-colors hover:bg-[var(--surface-elevated)]"
+            >
+              <span className="flex items-center gap-3">
+                <BarChart3 className="h-5 w-5 text-[var(--accent)]" />
+                Атрибуты
+              </span>
+              <ChevronRight className={cn('h-4 w-4 shrink-0 text-[var(--fg-muted)] transition-transform', showRewardAttributes && 'rotate-90')} />
+            </button>
+            {showRewardAttributes && (
+              <div className="border-t border-[var(--border)] px-4 pb-3 pt-2">
+                <button
+                  type="button"
+                  className="btn-primary inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm"
+                >
+                  <Plus className="h-4 w-4" />
+                  Добавить атрибут
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="h-px bg-[var(--border)]" />
+          {/* б) Предметы */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowRewardItems((v) => !v)}
+              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-[var(--fg)] transition-colors hover:bg-[var(--surface-elevated)]"
+            >
+              <span className="flex items-center gap-3">
+                <Gift className="h-5 w-5 text-[var(--accent)]" />
+                Предметы
+              </span>
+              <ChevronRight className={cn('h-4 w-4 shrink-0 text-[var(--fg-muted)] transition-transform', showRewardItems && 'rotate-90')} />
+            </button>
+            {showRewardItems && (
+              <div className="border-t border-[var(--border)] px-4 pb-3 pt-2">
+                <button
+                  type="button"
+                  className="btn-primary inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm"
+                >
+                  <Plus className="h-4 w-4" />
+                  Добавить предмет
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       <button type="submit" className="btn-primary flex items-center justify-center gap-2">
