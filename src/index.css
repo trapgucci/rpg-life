@@ -70,6 +70,23 @@
   --shadow-glow: 0 0 20px var(--accent-glow);
 }
 
+/* Анимация огонька стрика: пульс + свечение в цвете иконки */
+@keyframes streak-flame-burn {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 2px currentColor);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 8px currentColor);
+    opacity: 0.92;
+  }
+}
+.streak-flame-animate {
+  animation: streak-flame-burn 1.2s ease-in-out infinite;
+}
+
 /* Dark Mode */
 .dark,
 html.dark,

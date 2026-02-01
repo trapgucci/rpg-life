@@ -49,6 +49,14 @@ function getDateKey(ts: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+/** Начало следующего календарного дня после ts (полночь следующего дня) */
+function getNextDayStart(ts: number): number {
+  const d = new Date(ts)
+  d.setDate(d.getDate() + 1)
+  d.setHours(0, 0, 0, 0)
+  return d.getTime()
+}
+
 function createDefaultProfile(name: string): Profile {
   const id = crypto.randomUUID()
   const attributes: Attribute[] = DEFAULT_ATTRIBUTES.map((a, i) => ({
@@ -189,8 +197,8 @@ interface RpgStoreState {
   addHabit: (habit: Omit<Habit, 'id' | 'createdAt' | 'updatedAt' | 'profileId' | 'todayPositive' | 'todayNegative' | 'lastResetDate' | 'streak' | 'totalPositive' | 'totalNegative'>) => Habit
   updateHabit: (id: HabitId, updater: (h: Habit) => Habit) => void
   deleteHabit: (id: HabitId) => void
-  clickHabitPositive: (id: HabitId) => void
-  clickHabitNegative: (id: HabitId) => void
+  clickHabitPositive: (id: HabitId, asNextDay?: boolean) => void
+  clickHabitNegative: (id: HabitId, asNextDay?: boolean) => void
   resetDailyHabits: () => void
 
   // Achievement actions
@@ -593,16 +601,16 @@ export const useRpgStore = create<RpgStoreState>()(
 
         deleteHabit: (id) => set((s) => ({ habits: s.habits.filter((h) => h.id !== id) })),
 
-        clickHabitPositive: (id) => {
+        clickHabitPositive: (id, asNextDay = false) => {
           const { habits, getActiveProfile, updateProfile, checkAchievements, tryRandomFragmentDrop } = get()
           const habit = habits.find((h) => h.id === id)
           const profile = getActiveProfile()
           if (!habit || !profile || !habit.positiveEnabled) return
 
-          const todayStart = getTodayStart()
+          const todayStart = asNextDay ? getNextDayStart(habit.lastResetDate) : getTodayStart()
           const isNewDay = habit.lastResetDate < todayStart
-          // Один раз в день: если уже действовал сегодня — не обрабатывать
-          if (!isNewDay && (habit.todayPositive > 0 || habit.todayNegative > 0)) return
+          // Один раз в день: если уже действовал сегодня — не обрабатывать (кроме экспериментального режима)
+          if (!asNextDay && !isNewDay && (habit.todayPositive > 0 || habit.todayNegative > 0)) return
 
           // Add XP to attribute
           if (habit.attributeId && habit.positiveXp > 0) {
@@ -641,16 +649,16 @@ export const useRpgStore = create<RpgStoreState>()(
           checkAchievements()
         },
 
-        clickHabitNegative: (id) => {
+        clickHabitNegative: (id, asNextDay = false) => {
           const { habits, getActiveProfile, updateProfile } = get()
           const habit = habits.find((h) => h.id === id)
           const profile = getActiveProfile()
           if (!habit || !profile || !habit.negativeEnabled) return
 
-          const todayStart = getTodayStart()
+          const todayStart = asNextDay ? getNextDayStart(habit.lastResetDate) : getTodayStart()
           const isNewDay = habit.lastResetDate < todayStart
-          // Один раз в день: если уже действовал сегодня — не обрабатывать
-          if (!isNewDay && (habit.todayPositive > 0 || habit.todayNegative > 0)) return
+          // Один раз в день: если уже действовал сегодня — не обрабатывать (кроме экспериментального режима)
+          if (!asNextDay && !isNewDay && (habit.todayPositive > 0 || habit.todayNegative > 0)) return
 
           // Deduct XP
           if (habit.attributeId && habit.negativeXp > 0) {

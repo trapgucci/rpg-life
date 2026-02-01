@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect } from 'react'
-import { Plus, Minus, Flame, Pencil, Trash2, X, Repeat, Zap, Coins, Check, ChevronDown, ChevronRight, ArrowLeft } from 'lucide-react'
+import { Plus, Minus, Flame, Pencil, Trash2, X, Repeat, Zap, Coins, Check, ChevronDown, ChevronRight, ArrowLeft, FlaskConical } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
-import type { Habit, AttributeId } from '../types/domain'
+import type { Habit, AttributeId, HabitId } from '../types/domain'
 
 interface HabitCardProps {
   habit: Habit
   onEdit: () => void
+  /** В экспериментальном режиме можно нажимать +/- многократно, каждый клик — следующий день */
+  experimentalMode?: boolean
 }
 
-function HabitCard({ habit, onEdit }: HabitCardProps) {
+function HabitCard({ habit, onEdit, experimentalMode }: HabitCardProps) {
   const clickPositive = useRpgStore((s) => s.clickHabitPositive)
   const clickNegative = useRpgStore((s) => s.clickHabitNegative)
   const deleteHabit = useRpgStore((s) => s.deleteHabit)
@@ -24,7 +26,7 @@ function HabitCard({ habit, onEdit }: HabitCardProps) {
   todayStart.setHours(0, 0, 0, 0)
   const todayStartTs = todayStart.getTime()
   const isNewDay = habit.lastResetDate < todayStartTs
-  const hasActedToday = habit.lastResetDate >= todayStartTs && (habit.todayPositive > 0 || habit.todayNegative > 0)
+  const hasActedToday = !experimentalMode && habit.lastResetDate >= todayStartTs && (habit.todayPositive > 0 || habit.todayNegative > 0)
 
   return (
     <div className="glass-card group relative rounded-2xl p-5 transition-all duration-200 hover:scale-[1.01]">
@@ -53,7 +55,7 @@ function HabitCard({ habit, onEdit }: HabitCardProps) {
         {habit.negativeEnabled && (
           <button
             type="button"
-            onClick={() => !hasActedToday && clickNegative(habit.id)}
+            onClick={() => (experimentalMode ? clickNegative(habit.id, true) : !hasActedToday && clickNegative(habit.id))}
             disabled={hasActedToday}
             className={cn(
               'flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl',
@@ -156,7 +158,7 @@ function HabitCard({ habit, onEdit }: HabitCardProps) {
               'flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-semibold',
               habit.streak > 0 ? 'bg-[var(--surface)]' : ''
             )}>
-              <Flame className={cn('h-4 w-4 shrink-0', habit.streak > 0 ? getStreakColor(habit.streak).icon : 'text-[var(--fg-muted)]')} />
+              <Flame className={cn('h-4 w-4 shrink-0', habit.streak > 0 ? getStreakColor(habit.streak).icon : 'text-[var(--fg-muted)]', habit.streak > 0 && 'streak-flame-animate')} />
               <span className={habit.streak > 0 ? getStreakColor(habit.streak).text : 'text-[var(--fg-muted)]'}>
                 {habit.streak}
               </span>
@@ -168,7 +170,7 @@ function HabitCard({ habit, onEdit }: HabitCardProps) {
         {habit.positiveEnabled && (
           <button
             type="button"
-            onClick={() => !hasActedToday && clickPositive(habit.id)}
+            onClick={() => (experimentalMode ? clickPositive(habit.id, true) : !hasActedToday && clickPositive(habit.id))}
             disabled={hasActedToday}
             className={cn(
               'flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl',
@@ -697,6 +699,37 @@ export default function HabitsPage() {
   const habits = activeProfileId ? allHabits.filter((h) => h.profileId === activeProfileId) : []
   const [showForm, setShowForm] = useState(false)
   const [editingHabit, setEditingHabit] = useState<Habit | undefined>()
+  const [experimentalMode, setExperimentalMode] = useState(false)
+  /** Снимок привычек на момент включения экспериментального режима — восстанавливаем при выключении */
+  const experimentalSnapshotRef = useRef<Record<HabitId, Pick<Habit, 'streak' | 'lastResetDate' | 'todayPositive' | 'todayNegative' | 'dailyCompletion'>> | null>(null)
+
+  const toggleExperimentalMode = () => {
+    const updateHabit = useRpgStore.getState().updateHabit
+    if (experimentalMode) {
+      // Выключаем: восстанавливаем привычки из снимка
+      const snapshot = experimentalSnapshotRef.current
+      if (snapshot) {
+        Object.entries(snapshot).forEach(([id, data]) => {
+          updateHabit(id as HabitId, (h) => ({ ...h, ...data }))
+        })
+        experimentalSnapshotRef.current = null
+      }
+    } else {
+      // Включаем: сохраняем текущее состояние привычек текущего профиля
+      const snapshot: Record<string, Pick<Habit, 'streak' | 'lastResetDate' | 'todayPositive' | 'todayNegative' | 'dailyCompletion'>> = {}
+      activeHabits.forEach((h) => {
+        snapshot[h.id] = {
+          streak: h.streak,
+          lastResetDate: h.lastResetDate,
+          todayPositive: h.todayPositive,
+          todayNegative: h.todayNegative,
+          dailyCompletion: h.dailyCompletion ? { ...h.dailyCompletion } : undefined,
+        }
+      })
+      experimentalSnapshotRef.current = snapshot
+    }
+    setExperimentalMode((v) => !v)
+  }
 
   const handleEdit = (habit: Habit) => {
     setEditingHabit(habit)
@@ -713,7 +746,7 @@ export default function HabitsPage() {
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto pb-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/30">
             <Repeat className="h-6 w-6 text-white" />
@@ -723,14 +756,30 @@ export default function HabitsPage() {
             <p className="text-sm text-[var(--fg-muted)]">{activeHabits.length} активных</p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowForm(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Новая привычка
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleExperimentalMode}
+            className={cn(
+              'flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
+              experimentalMode
+                ? 'bg-amber-500/20 text-amber-600 border border-amber-500/40 hover:bg-amber-500/30'
+                : 'bg-[var(--surface)] text-[var(--fg-muted)] border border-[var(--border)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)]'
+            )}
+            title={experimentalMode ? 'Выключить: снова один клик в день' : 'Включить: можно нажимать +/- многократно, каждый клик — следующий день'}
+          >
+            <FlaskConical className="h-4 w-4 shrink-0" />
+            {experimentalMode ? 'Эксперимент вкл' : 'Экспериментальный режим'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Новая привычка
+          </button>
+        </div>
       </div>
 
       {/* Habits list */}
@@ -753,7 +802,12 @@ export default function HabitsPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {activeHabits.map((habit) => (
-            <HabitCard key={habit.id} habit={habit} onEdit={() => handleEdit(habit)} />
+            <HabitCard
+              key={habit.id}
+              habit={habit}
+              onEdit={() => handleEdit(habit)}
+              experimentalMode={experimentalMode}
+            />
           ))}
         </div>
       )}
