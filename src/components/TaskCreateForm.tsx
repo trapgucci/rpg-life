@@ -1,5 +1,5 @@
 import { useState, useLayoutEffect, useEffect } from 'react'
-import { Plus, X, ChevronRight, Calendar, BarChart3, Gift, Hash, Target } from 'lucide-react'
+import { Plus, X, ChevronRight, Calendar, BarChart3, Gift, Hash, Target, Construction } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRecurrence, TaskRpg, SubtaskItem } from '../types/domain'
 import { useRpgStore } from '../store/useRpgStore'
@@ -49,6 +49,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   const [countingTaskEnabled, setCountingTaskEnabled] = useState(false)
   const [targetQuantity, setTargetQuantity] = useState(1)
   const [countUnit, setCountUnit] = useState('раз')
+  const [reflectionOnCompletion, setReflectionOnCompletion] = useState(false)
 
   useLayoutEffect(() => {
     if (rewardSheetOpen) {
@@ -137,6 +138,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       setCountingTaskEnabled(false)
       setTargetQuantity(1)
       setCountUnit('раз')
+      setReflectionOnCompletion(false)
       onCreated?.()
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Не удалось создать задачу'
@@ -223,8 +225,12 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       <div>
         <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Правило повтора</label>
         <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
-          <div className="px-4 py-3">
+          <div className="flex items-center justify-between gap-3 px-4 py-3">
             <p className="text-sm font-semibold text-[var(--fg)]">{RECURRENCE_STATUS_LABEL[recurrence]}</p>
+            <span className="inline-flex items-center gap-1.5 shrink-0 rounded-full bg-amber-100 dark:bg-amber-500/20 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+              <Construction className="h-3.5 w-3.5 shrink-0" />
+              Функция в разработке
+            </span>
           </div>
           <div className="h-px bg-[var(--border)]" />
           <button
@@ -287,11 +293,15 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
             <button
               type="button"
               onClick={() => setShowRewardAttributes((v) => !v)}
-              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-[var(--fg)] transition-colors hover:bg-[var(--surface-elevated)]"
+              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold text-[var(--fg)] transition-colors hover:bg-[var(--surface-elevated)]"
             >
               <span className="flex items-center gap-3">
                 <BarChart3 className="h-5 w-5 text-[var(--accent)]" />
                 Атрибуты
+              </span>
+              <span className="inline-flex items-center gap-1.5 shrink-0 rounded-full bg-amber-100 dark:bg-amber-500/20 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                <Construction className="h-3.5 w-3.5 shrink-0" />
+                Функция в разработке
               </span>
               <ChevronRight className={cn('h-4 w-4 shrink-0 text-[var(--fg-muted)] transition-transform', showRewardAttributes && 'rotate-90')} />
             </button>
@@ -314,11 +324,15 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
             <button
               type="button"
               onClick={() => setShowRewardItems((v) => !v)}
-              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-[var(--fg)] transition-colors hover:bg-[var(--surface-elevated)]"
+              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold text-[var(--fg)] transition-colors hover:bg-[var(--surface-elevated)]"
             >
               <span className="flex items-center gap-3">
                 <Gift className="h-5 w-5 text-[var(--accent)]" />
                 Предметы
+              </span>
+              <span className="inline-flex items-center gap-1.5 shrink-0 rounded-full bg-amber-100 dark:bg-amber-500/20 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                <Construction className="h-3.5 w-3.5 shrink-0" />
+                Функция в разработке
               </span>
               <ChevronRight className={cn('h-4 w-4 shrink-0 text-[var(--fg-muted)] transition-transform', showRewardItems && 'rotate-90')} />
             </button>
@@ -439,6 +453,60 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                   </div>
                 </div>
               </div>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-500/20 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                <Construction className="h-3.5 w-3.5 shrink-0" />
+                Функция в разработке
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 7. Настройки завершения */}
+      <div>
+        <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Настройки завершения</label>
+        <div className="rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] overflow-hidden">
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => setReflectionOnCompletion((v) => !v)}
+            onKeyDown={(e) => e.key === 'Enter' && setReflectionOnCompletion((v) => !v)}
+            className={cn(
+              'flex w-full items-center justify-between px-4 py-3 text-left transition-colors cursor-pointer',
+              'hover:bg-[var(--surface-elevated)]'
+            )}
+          >
+            <span className="text-sm font-medium text-[var(--fg)]">Отзыв после выполнения</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={reflectionOnCompletion}
+              onClick={(e) => {
+                e.stopPropagation()
+                setReflectionOnCompletion((v) => !v)
+              }}
+              className={cn(
+                'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200',
+                reflectionOnCompletion ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
+              )}
+            >
+              <span
+                className={cn(
+                  'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
+                  reflectionOnCompletion ? 'right-1 left-auto' : 'left-1 right-auto'
+                )}
+              />
+            </button>
+          </div>
+          {reflectionOnCompletion && (
+            <div className="border-t border-[var(--border)] px-4 pb-3 pt-2">
+              <p className="text-xs text-[var(--fg-muted)]">
+                После выполнения каждой задачи вам будет предложено записать свои мысли и впечатления.
+              </p>
+              <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-500/20 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                <Construction className="h-3.5 w-3.5 shrink-0" />
+                Функция в разработке
+              </span>
             </div>
           )}
         </div>

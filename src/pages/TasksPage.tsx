@@ -132,7 +132,7 @@ export default function TasksPage() {
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="glass-card h-full min-h-0 rounded-2xl p-4">
+          <div className="glass-card min-h-0 rounded-2xl p-4">
             <TaskCreateForm
               defaultGroupId={selectedGroupId === NO_GROUP_ID ? null : selectedGroupId}
               onCreated={() => setShowForm(false)}
