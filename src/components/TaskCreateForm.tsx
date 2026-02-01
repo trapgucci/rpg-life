@@ -1,5 +1,5 @@
 import { useState, useLayoutEffect, useEffect } from 'react'
-import { Plus, X, ChevronRight, Calendar, BarChart3, Gift } from 'lucide-react'
+import { Plus, X, ChevronRight, Calendar, BarChart3, Gift, Hash, Target } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRecurrence, TaskRpg, SubtaskItem } from '../types/domain'
 import { useRpgStore } from '../store/useRpgStore'
@@ -45,6 +45,10 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   const [showRewardItems, setShowRewardItems] = useState(false)
   const [rewardSheetOpen, setRewardSheetOpen] = useState<null | 'attribute' | 'item'>(null)
   const [sheetAnimatedOpen, setSheetAnimatedOpen] = useState(false)
+  // Настройка счетчика (задача со счетчиком)
+  const [countingTaskEnabled, setCountingTaskEnabled] = useState(false)
+  const [targetQuantity, setTargetQuantity] = useState(1)
+  const [countUnit, setCountUnit] = useState('раз')
 
   useLayoutEffect(() => {
     if (rewardSheetOpen) {
@@ -130,6 +134,9 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       setShowRepeat(false)
       setRecurrence('once')
       setDeadlineAt('')
+      setCountingTaskEnabled(false)
+      setTargetQuantity(1)
+      setCountUnit('раз')
       onCreated?.()
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Не удалось создать задачу'
@@ -328,6 +335,112 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* 6. Настройка счетчика */}
+      <div>
+        <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Настройка счетчика</label>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setCountingTaskEnabled((v) => !v)}
+            className={cn(
+              'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors',
+              'hover:bg-[var(--surface-elevated)]'
+            )}
+          >
+            <div
+              className={cn(
+                'flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
+                countingTaskEnabled ? 'bg-[var(--accent-subtle)] text-[var(--accent)]' : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)]'
+              )}
+            >
+              <Hash className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-[var(--fg)]">Задача со счетчиком</p>
+              <p className="mt-0.5 text-xs text-[var(--fg-muted)]">
+                Установите целевое количество и единицы измерения
+              </p>
+            </div>
+            {/* Ползунок (toggle) */}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={countingTaskEnabled}
+              onClick={(e) => {
+                e.stopPropagation()
+                setCountingTaskEnabled((v) => !v)
+              }}
+              className={cn(
+                'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200',
+                countingTaskEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
+              )}
+            >
+              <span
+                className={cn(
+                  'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
+                  countingTaskEnabled ? 'right-1 left-auto' : 'left-1 right-auto'
+                )}
+              />
+            </button>
+          </button>
+
+          {countingTaskEnabled && (
+            <div className="border-t border-[var(--border)] p-4 space-y-4">
+              {/* Целевые показатели */}
+              <div className="rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface-elevated)] p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/20">
+                    <Target className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-[var(--fg)]">Целевые показатели</h3>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-medium text-[var(--fg-muted)]">Целевое количество</label>
+                      <span className="text-[10px] text-[var(--fg-muted)]">Минимум 1</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setTargetQuantity((n) => Math.max(1, n - 1))}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        min={1}
+                        value={targetQuantity}
+                        onChange={(e) => setTargetQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                        className="input flex-1 text-center h-9"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setTargetQuantity((n) => n + 1)}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1">Единица измерения</label>
+                    <input
+                      type="text"
+                      value={countUnit}
+                      onChange={(e) => setCountUnit(e.target.value)}
+                      placeholder="раз"
+                      className="input w-full h-9 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

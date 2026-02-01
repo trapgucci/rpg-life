@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { cn } from '../lib/cn'
 import { CheckSquare, Plus, Sparkles, Target, FolderOpen, Pencil, Trash2, X } from 'lucide-react'
 import TaskCreateForm from '../components/TaskCreateForm'
@@ -31,6 +31,17 @@ export default function TasksPage() {
   const [selectedGroupId, setSelectedGroupId] = useState<TaskGroupId | null>(NO_GROUP_ID)
   const [selectedId, setSelectedId] = useState<TaskRpg['id'] | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [formVisible, setFormVisible] = useState(false)
+
+  useEffect(() => {
+    if (showForm) {
+      // Небольшая задержка для запуска анимации
+      const timeout = setTimeout(() => setFormVisible(true), 20)
+      return () => clearTimeout(timeout)
+    } else {
+      setFormVisible(false)
+    }
+  }, [showForm])
   const [newGroupName, setNewGroupName] = useState('')
   const [addingGroup, setAddingGroup] = useState(false)
   const [editingGroupId, setEditingGroupId] = useState<TaskGroupId | null>(null)
@@ -97,10 +108,18 @@ export default function TasksPage() {
 
   const countNoGroup = taskCountByGroup.get(null) ?? 0
 
-  // Режим «Новая задача»: форма на всю зелёную область, список задач скрыт
+  // Режим «Новая задача»: форма на всю зелёную область, эффект джинна снизу
   if (showForm) {
     return (
-      <div className="flex h-full min-h-0 flex-col">
+      <div 
+        className={cn(
+          "flex h-full min-h-0 flex-col origin-bottom",
+          "transition-all duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
+          formVisible 
+            ? "opacity-100 translate-y-0 scale-y-100" 
+            : "opacity-0 translate-y-full scale-y-95"
+        )}
+      >
         <div className="glass-card mb-4 flex shrink-0 items-center justify-between rounded-2xl px-4 py-3">
           <h2 className="text-lg font-semibold text-[var(--fg)]">Новая задача</h2>
           <button
