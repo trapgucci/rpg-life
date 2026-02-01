@@ -1,5 +1,5 @@
 import { useState, useLayoutEffect, useEffect } from 'react'
-import { Plus, X, ChevronRight, Calendar, BarChart3, Gift, Hash, Target, Construction } from 'lucide-react'
+import { Plus, X, ChevronRight, Calendar, BarChart3, Gift, Hash, Target, Construction, ListPlus } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRecurrence, TaskRpg, SubtaskItem } from '../types/domain'
 import { useRpgStore } from '../store/useRpgStore'
@@ -38,6 +38,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   const [description, setDescription] = useState('')
   const [subtasks, setSubtasks] = useState<{ id: string; title: string }[]>([])
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
+  const [showSubtasksPanel, setShowSubtasksPanel] = useState(false)
   const [showRepeat, setShowRepeat] = useState(false)
   const [recurrence, setRecurrence] = useState<TaskRecurrence>('once')
   const [deadlineAt, setDeadlineAt] = useState<string>('') // '' или ISO datetime-local
@@ -132,6 +133,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       setDescription('')
       setSubtasks([])
       setNewSubtaskTitle('')
+      setShowSubtasksPanel(false)
       setShowRepeat(false)
       setRecurrence('once')
       setDeadlineAt('')
@@ -183,42 +185,57 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       {/* 3. Подзадачи */}
       <div>
         <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Подзадачи</label>
-        <div className="flex flex-col gap-2 rounded-xl bg-[var(--surface)] p-3">
-          {subtasks.map((s) => (
-            <div
-              key={s.id}
-              className="flex items-center gap-2 rounded-lg bg-[var(--surface-elevated)] px-3 py-2"
-            >
-              <span className="flex-1 truncate text-sm text-[var(--fg)]">{s.title}</span>
+        <button
+          type="button"
+          onClick={() => setShowSubtasksPanel((v) => !v)}
+          className={cn(
+            'flex w-full items-center gap-3 rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] px-4 py-3 text-left transition-colors',
+            'hover:bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]'
+          )}
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]">
+            <ListPlus className="h-5 w-5" />
+          </div>
+          <span className="text-sm font-semibold text-[var(--accent)]">Добавить подзадачу</span>
+        </button>
+        {showSubtasksPanel && (
+          <div className="mt-2 flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
+            {subtasks.map((s) => (
+              <div
+                key={s.id}
+                className="flex items-center gap-2 rounded-lg bg-[var(--surface-elevated)] px-3 py-2"
+              >
+                <span className="flex-1 truncate text-sm text-[var(--fg)]">{s.title}</span>
+                <button
+                  type="button"
+                  onClick={() => removeSubtask(s.id)}
+                  className="icon-btn icon-btn-danger h-7 w-7 shrink-0 p-0"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+            <div className="flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-elevated)] pl-4 pr-2 py-1.5 transition-colors hover:border-[var(--border-strong)] focus-within:border-[var(--accent)] focus-within:ring-1 focus-within:ring-[var(--accent)]">
+              <input
+                type="text"
+                value={newSubtaskTitle}
+                onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSubtask())}
+                placeholder="Название подзадачи"
+                className="min-w-0 flex-1 border-0 bg-transparent text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] focus:outline-none focus:ring-0"
+              />
               <button
                 type="button"
-                onClick={() => removeSubtask(s.id)}
-                className="icon-btn icon-btn-danger h-7 w-7 shrink-0 p-0"
+                onClick={addSubtask}
+                disabled={!newSubtaskTitle.trim()}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--accent)] transition-colors hover:bg-[var(--accent-subtle)] disabled:opacity-40"
+                title="Добавить"
               >
-                <X className="h-3.5 w-3.5" />
+                <Plus className="h-4 w-4" />
               </button>
             </div>
-          ))}
-          <div className="flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-elevated)] pl-4 pr-2 py-1.5 transition-colors hover:border-[var(--border-strong)] focus-within:border-[var(--accent)] focus-within:ring-1 focus-within:ring-[var(--accent)]">
-            <input
-              type="text"
-              value={newSubtaskTitle}
-              onChange={(e) => setNewSubtaskTitle(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSubtask())}
-              placeholder="Добавить подзадачу"
-              className="min-w-0 flex-1 border-0 bg-transparent text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] focus:outline-none focus:ring-0"
-            />
-            <button
-              type="button"
-              onClick={addSubtask}
-              disabled={!newSubtaskTitle.trim()}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--fg)] transition-colors hover:bg-[var(--surface)] disabled:opacity-40"
-              title="Добавить подзадачу"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
           </div>
-        </div>
+        )}
       </div>
 
       {/* 4. Правило повтора */}
