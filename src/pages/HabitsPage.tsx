@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
-import { Plus, Minus, Flame, Pencil, Trash2, X, Repeat, Zap, Coins, Check, ChevronDown, ChevronRight, ArrowLeft, FlaskConical } from 'lucide-react'
+import { Plus, Minus, Flame, Pencil, Trash2, X, Repeat, Zap, Coins, Check, ChevronDown, ChevronRight, ArrowLeft, FlaskConical, Calendar } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
 import type { Habit, AttributeId, HabitId } from '../types/domain'
+import HabitCalendarModal from '../components/HabitCalendarModal'
 
 interface HabitCardProps {
   habit: Habit
@@ -12,6 +13,7 @@ interface HabitCardProps {
 }
 
 function HabitCard({ habit, onEdit, experimentalMode }: HabitCardProps) {
+  const [showCalendar, setShowCalendar] = useState(false)
   const clickPositive = useRpgStore((s) => s.clickHabitPositive)
   const clickNegative = useRpgStore((s) => s.clickHabitNegative)
   const deleteHabit = useRpgStore((s) => s.deleteHabit)
@@ -112,7 +114,7 @@ function HabitCard({ habit, onEdit, experimentalMode }: HabitCardProps) {
             )}
           </div>
 
-          {/* 7-day circles */}
+          {/* 7-day circles + кнопка календаря */}
           <div className="mt-3 flex items-center gap-1.5">
             {(() => {
               const today = new Date()
@@ -149,7 +151,20 @@ function HabitCard({ habit, onEdit, experimentalMode }: HabitCardProps) {
                 )
               })
             })()}
+            <button
+              type="button"
+              onClick={() => setShowCalendar(true)}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)] transition-all"
+              title="Открыть календарь"
+              aria-label="Открыть календарь"
+            >
+              <Calendar className="h-4 w-4" />
+            </button>
           </div>
+
+          {showCalendar && (
+            <HabitCalendarModal habit={habit} onClose={() => setShowCalendar(false)} />
+          )}
 
           {/* Streak */}
           <div className="mt-2 flex items-center gap-2 text-sm">
