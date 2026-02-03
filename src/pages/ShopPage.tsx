@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { cn } from '../lib/cn'
 import { 
   ShoppingBag, Package, Plus, Pencil, Trash2, X, 
-  Coins, Gem, Gift, Sparkles, Check, ChevronRight, Box, Lightbulb
+  Coins, Gem, Gift, Sparkles, Check, ChevronRight, Box, Lightbulb, Hammer
 } from 'lucide-react'
 import { useRpgStore } from '../store/useRpgStore'
 import type { ShopItem, ItemRarity } from '../types/domain'
@@ -577,6 +577,142 @@ function InventoryItemCard({ itemId, quantity }: InventoryItemCardProps) {
   )
 }
 
+// ─── Crafting type picker & recipe modals ───────────────────────────────────
+
+interface CraftingTypePickerModalProps {
+  onSelect: (type: 'create' | 'material' | 'transform') => void
+  onClose: () => void
+}
+
+function CraftingTypePickerModal({ onSelect, onClose }: CraftingTypePickerModalProps) {
+  const options = [
+    { type: 'create' as const, label: 'Создание предмета', desc: 'Крафт нового предмета из материалов', icon: '⚒️' },
+    { type: 'material' as const, label: 'Материал для крафта', desc: 'Предмет используется как ингредиент', icon: '🧩' },
+    { type: 'transform' as const, label: 'Преобразование / Улучшение', desc: 'Улучшение или превращение предмета', icon: '✨' },
+  ]
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content max-w-md">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-[var(--fg)]">Тип рецепта крафта</h3>
+          <button type="button" onClick={onClose} className="icon-btn">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="text-sm text-[var(--fg-muted)] mb-4">Выберите тип рецепта для настройки</p>
+        <div className="space-y-2">
+          {options.map((opt) => (
+            <button
+              key={opt.type}
+              type="button"
+              onClick={() => onSelect(opt.type)}
+              className="w-full flex items-center gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-left hover:bg-[var(--surface-elevated)] hover:border-[var(--accent)]/50 transition-colors"
+            >
+              <span className="text-2xl">{opt.icon}</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-[var(--fg)]">{opt.label}</div>
+                <div className="text-xs text-[var(--fg-muted)] mt-0.5">{opt.desc}</div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-[var(--fg-muted)] shrink-0" />
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CraftingCreateItemModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content max-w-lg">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-[var(--fg)]">Создание предмета</h3>
+          <button type="button" onClick={onClose} className="icon-btn">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="text-sm text-[var(--fg-muted)] mb-4">Настройте рецепт: из каких материалов и в каком количестве создаётся предмет.</p>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Ингредиенты</label>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-center text-sm text-[var(--fg-muted)]">
+              Выбор материалов и количества — скоро
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Результат</label>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-center text-sm text-[var(--fg-muted)]">
+              Предмет результата крафта
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-2 mt-6">
+          <button type="button" onClick={onClose} className="btn-secondary flex-1">Отмена</button>
+          <button type="button" className="btn-primary flex-1">Сохранить</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CraftingMaterialModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content max-w-lg">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-[var(--fg)]">Материал для крафта</h3>
+          <button type="button" onClick={onClose} className="icon-btn">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="text-sm text-[var(--fg-muted)] mb-4">Настройте, в каких рецептах этот предмет выступает ингредиентом и в каком количестве.</p>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 text-center text-sm text-[var(--fg-muted)]">
+          Список рецептов, где используется предмет — скоро
+        </div>
+        <div className="flex gap-2 mt-6">
+          <button type="button" onClick={onClose} className="btn-secondary flex-1">Отмена</button>
+          <button type="button" className="btn-primary flex-1">Сохранить</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CraftingTransformModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content max-w-lg">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-[var(--fg)]">Преобразование / Улучшение</h3>
+          <button type="button" onClick={onClose} className="icon-btn">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="text-sm text-[var(--fg-muted)] mb-4">Настройте рецепт улучшения или превращения предмета в другой.</p>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Исходный предмет</label>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-center text-sm text-[var(--fg-muted)]">
+              Выбор предмета и количества
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Результат улучшения</label>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-center text-sm text-[var(--fg-muted)]">
+              Предмет или улучшённая версия
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-2 mt-6">
+          <button type="button" onClick={onClose} className="btn-secondary flex-1">Отмена</button>
+          <button type="button" className="btn-primary flex-1">Сохранить</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Item Form ──────────────────────────────────────────────────────────────
 
 interface ItemFormProps {
@@ -600,6 +736,8 @@ function ItemForm({ item, onClose }: ItemFormProps) {
   const [availableForPurchase, setAvailableForPurchase] = useState(item?.availableForPurchase ?? true)
   const [canGetForFree, setCanGetForFree] = useState(item?.canGetForFree ?? false)
   const [showLootboxModal, setShowLootboxModal] = useState(false)
+  const [showCraftingTypePicker, setShowCraftingTypePicker] = useState(false)
+  const [activeCraftingModal, setActiveCraftingModal] = useState<'create' | 'material' | 'transform' | null>(null)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -633,7 +771,7 @@ function ItemForm({ item, onClose }: ItemFormProps) {
   const divider = <div className="border-t border-[var(--border)]" />
 
   return (
-    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && !showLootboxModal && onClose()}>
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && !showLootboxModal && !showCraftingTypePicker && !activeCraftingModal && onClose()}>
       <div className="modal-content">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-[var(--fg)]">
@@ -859,6 +997,31 @@ function ItemForm({ item, onClose }: ItemFormProps) {
             )}
           </div>
 
+          {/* Рецепты крафта */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+            <p className="text-xs font-medium text-[var(--fg-muted)] mb-2">Рецепты крафта</p>
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] py-10 px-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--surface)] mb-4">
+                <Hammer className="h-8 w-8 text-[var(--fg-muted)]" />
+              </div>
+              <p className="font-semibold text-[var(--fg)] text-center">Рецептов крафта пока нет</p>
+              <p className="mt-2 text-sm text-[var(--fg-muted)] text-center max-w-sm">
+                Создавайте рецепты крафта, чтобы открыть новые способы получения или использования предметов
+              </p>
+              <div className="mt-6 w-full flex flex-col items-stretch">
+                <div className="h-px w-full bg-[var(--border)] mb-3" aria-hidden />
+                <button
+                  type="button"
+                  onClick={() => setShowCraftingTypePicker(true)}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl py-3.5 font-medium text-[var(--accent)] bg-[var(--accent-subtle)] hover:bg-[var(--accent-subtle)]/80 transition-colors border border-[var(--accent)]/30"
+                >
+                  <Plus className="h-5 w-5" />
+                  — Добавить рецепт
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">
               Отмена
@@ -870,6 +1033,24 @@ function ItemForm({ item, onClose }: ItemFormProps) {
         </form>
       </div>
 
+      {showCraftingTypePicker && (
+        <CraftingTypePickerModal
+          onSelect={(type) => {
+            setShowCraftingTypePicker(false)
+            setActiveCraftingModal(type)
+          }}
+          onClose={() => setShowCraftingTypePicker(false)}
+        />
+      )}
+      {activeCraftingModal === 'create' && (
+        <CraftingCreateItemModal onClose={() => setActiveCraftingModal(null)} />
+      )}
+      {activeCraftingModal === 'material' && (
+        <CraftingMaterialModal onClose={() => setActiveCraftingModal(null)} />
+      )}
+      {activeCraftingModal === 'transform' && (
+        <CraftingTransformModal onClose={() => setActiveCraftingModal(null)} />
+      )}
       {showLootboxModal && (
         <LootboxEffectModal
           lootTable={lootTable}
