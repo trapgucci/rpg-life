@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { cn } from '../lib/cn'
 import { 
   ShoppingBag, Package, Plus, Pencil, Trash2, X, 
-  Coins, Gem, Gift, Sparkles, Check
+  Coins, Gem, Gift, Sparkles, Check, ChevronRight, Box, Lightbulb
 } from 'lucide-react'
 import { useRpgStore } from '../store/useRpgStore'
 import type { ShopItem, ItemRarity } from '../types/domain'
@@ -32,6 +32,357 @@ const RARITY_GRADIENTS: Record<ItemRarity, string> = {
   rare: 'from-blue-400 to-indigo-500',
   epic: 'from-purple-400 to-violet-500',
   legendary: 'from-amber-400 to-orange-500',
+}
+
+type LootTableEntry = { id: string; weight: number; quantity?: number }
+
+// ─── Reward Picker Modal (multi-select shop items + coins + gems) ────────────
+
+interface RewardPickerModalProps {
+  shopItems: ShopItem[]
+  excludeIds?: string[]
+  onSelect: (ids: string[]) => void
+  onClose: () => void
+}
+
+function RewardPickerModal({ shopItems, excludeIds = [], onSelect, onClose }: RewardPickerModalProps) {
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  const toggle = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleConfirm = () => {
+    onSelect(Array.from(selected))
+    onClose()
+  }
+
+  const options = [
+    { id: CURRENCY_IDS.COINS, name: 'Монеты', icon: '🪙' },
+    { id: CURRENCY_IDS.GEMS, name: 'Кристаллы', icon: '💎' },
+    ...shopItems.filter((i) => !excludeIds.includes(i.id)).map((i) => ({ id: i.id, name: i.name, icon: i.isLootBox ? '🎁' : '⚔️' })),
+  ]
+
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-[var(--fg)]">Выберите награды</h3>
+          <button type="button" onClick={onClose} className="icon-btn">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto space-y-1 mb-4">
+          {options.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => toggle(opt.id)}
+              className={cn(
+                'w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors',
+                selected.has(opt.id)
+                  ? 'border-[var(--accent)] bg-[var(--accent-subtle)]'
+                  : 'border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
+              )}
+            >
+              <span className="text-2xl">{opt.icon}</span>
+              <span className="font-medium text-[var(--fg)]">{opt.name}</span>
+              {selected.has(opt.id) && <Check className="h-5 w-5 text-[var(--accent)] ml-auto" />}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <button type="button" onClick={onClose} className="btn-secondary flex-1">Отмена</button>
+          <button type="button" onClick={handleConfirm} className="btn-primary flex-1">Добавить</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Lootbox Effect Modal ───────────────────────────────────────────────────
+
+interface LootboxEffectModalProps {
+  lootTable: LootTableEntry[]
+  shopItems: ShopItem[]
+  onSave: (table: LootTableEntry[]) => void
+  onClose: () => void
+}
+
+function LootboxEffectModal({ lootTable: initial, shopItems, onSave, onClose }: LootboxEffectModalProps) {
+  const safeInitial = Array.isArray(initial)
+    ? initial.filter((e): e is LootTableEntry => e != null && typeof e.id === 'string' && typeof e.weight === 'number')
+    : []
+  const [entries, setEntries] = useState<LootTableEntry[]>(safeInitial.length ? safeInitial : [])
+  const [showPicker, setShowPicker] = useState(false)
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+
+  const totalPercentCorrect = entries.reduce((s, e) => s + e.weight, 0)
+
+  const addRewards = (ids: string[]) => {
+    const weightPer = ids.length ? 100 / ids.length : 0
+    setEntries((prev) => [
+      ...prev,
+      ...ids.map((id) => ({ id, weight: Math.round(weightPer), quantity: 1 })),
+    ])
+    setShowPicker(false)
+  }
+
+  const replaceReward = (id: string) => {
+    if (editingIndex === null) return
+    setEntries((prev) => prev.map((e, i) => (i === editingIndex ? { ...e, id, quantity: e.quantity ?? 1 } : e)))
+    setEditingIndex(null)
+    setShowPicker(false)
+  }
+
+  const updateEntry = (index: number, updater: (e: LootTableEntry) => LootTableEntry) => {
+    setEntries((prev) => prev.map((e, i) => (i === index ? updater(e) : e)))
+  }
+
+  const removeEntry = (index: number) => {
+    setEntries((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const getEntryName = (id: string) => {
+    if (id === CURRENCY_IDS.COINS) return 'Монеты'
+    if (id === CURRENCY_IDS.GEMS) return 'Кристаллы'
+    return shopItems.find((i) => i.id === id)?.name ?? id
+  }
+
+  const getEntryIcon = (id: string) => {
+    if (id === CURRENCY_IDS.COINS) return '🪙'
+    if (id === CURRENCY_IDS.GEMS) return '💎'
+    const item = shopItems.find((i) => i.id === id)
+    return item?.isLootBox ? '🎁' : '⚔️'
+  }
+
+  return (
+    <div
+      className="modal-backdrop"
+      onClick={(e) => e.target === e.currentTarget && !showPicker && editingIndex === null && onClose()}
+    >
+      <div className="modal-content max-w-lg max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xl font-bold text-[var(--fg)]">Эффект лутбокса</h2>
+          <button type="button" onClick={onClose} className="icon-btn">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="text-sm text-[var(--fg-muted)] mb-4">
+          Каждое открытие — независимое событие и случайным образом выдаёт одну из наград.
+        </p>
+
+        <div className="flex-1 overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 mb-4">
+          {entries.length === 0 ? (
+            <>
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-[var(--surface-elevated)] mb-4">
+                  <Box className="h-10 w-10 text-[var(--fg-muted)]" />
+                </div>
+                <p className="text-sm font-medium text-[var(--fg-muted)]">Наград пока нет</p>
+              </div>
+              <div className="border-t border-[var(--border)] pt-4 mt-4" />
+            </>
+          ) : (
+            <div className="space-y-4">
+              {entries.map((entry, index) => (
+                <div
+                  key={`${entry.id}-${index}`}
+                  className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] p-4"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{getEntryIcon(entry.id)}</span>
+                      <span className="font-medium text-[var(--fg)]">{getEntryName(entry.id)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingIndex(index)}
+                        className="text-sm font-medium text-[var(--accent)] hover:underline"
+                      >
+                        Изменить
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeEntry(index)}
+                        className="icon-btn icon-btn-danger p-1"
+                        title="Удалить награду"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1">Количество</label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => updateEntry(index, (e) => ({ ...e, quantity: Math.max(1, (e.quantity ?? 1) - 1) }))}
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)]"
+                        >
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          min={1}
+                          value={entry.quantity ?? 1}
+                          onChange={(ev) => updateEntry(index, (entry) => ({ ...entry, quantity: Math.max(1, Number(ev.target?.value) || 1) }))}
+                          className="input flex-1 text-center h-9"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => updateEntry(index, (e) => ({ ...e, quantity: (e.quantity ?? 1) + 1 }))}
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)]"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1">Шанс выпадения, %</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={entry.weight}
+                        onChange={(ev) => {
+                          const newWeight = Number(ev.target?.value) || 0
+                          const otherSum = entries.reduce((sum, e, i) => (i === index ? sum : sum + e.weight), 0)
+                          const maxWeight = Math.max(0, 100 - otherSum)
+                          updateEntry(index, (entry) => ({ ...entry, weight: Math.min(maxWeight, Math.max(0, newWeight)) }))
+                        }}
+                        className="input w-full h-9"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => (editingIndex !== null ? setEditingIndex(null) : setShowPicker(true))}
+            className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] py-3 text-sm font-medium text-[var(--accent)] hover:bg-[var(--accent-subtle)]"
+          >
+            <Plus className="h-5 w-5" />
+            Добавить награду
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </div>
+
+        {entries.length > 0 && (
+          <>
+            <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 mb-2">
+              <Sparkles className="h-5 w-5 text-[var(--accent)]" />
+              <span className="text-sm font-medium text-[var(--fg)]">Общий шанс выпадения: {totalPercentCorrect}%</span>
+            </div>
+            {totalPercentCorrect < 100 && (
+              <div className="flex items-start gap-2 rounded-xl border border-[var(--warning)] bg-[var(--warning-subtle)] px-4 py-3 mb-2 text-sm text-[var(--fg-muted)]">
+                <Lightbulb className="h-5 w-5 shrink-0 text-[var(--warning)]" />
+                <span>Общая вероятность меньше 100%. Оставшиеся {100 - totalPercentCorrect}% не дадут наград.</span>
+              </div>
+            )}
+          </>
+        )}
+
+        <div className="flex gap-2 pt-2">
+          <button type="button" onClick={onClose} className="btn-secondary flex-1">Отмена</button>
+          <button
+            type="button"
+            onClick={() => { onSave(entries); onClose() }}
+            className="btn-primary flex-1"
+          >
+            Сохранить
+          </button>
+        </div>
+      </div>
+
+      {showPicker && editingIndex === null && (
+        <RewardPickerModal
+          shopItems={shopItems}
+          onSelect={addRewards}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
+      {editingIndex !== null && entries[editingIndex] && (
+        <RewardPickerModalSingle
+          shopItems={shopItems}
+          currentId={entries[editingIndex].id}
+          onSelect={(id) => replaceReward(id)}
+          onClose={() => setEditingIndex(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+// When picker is open for "replace" we need to select one item
+function RewardPickerModalSingle({
+  shopItems,
+  currentId,
+  onSelect,
+  onClose,
+}: {
+  shopItems: ShopItem[]
+  currentId: string
+  onSelect: (id: string) => void
+  onClose: () => void
+}) {
+  const [selected, setSelected] = useState<string | null>(currentId)
+
+  const options = [
+    { id: CURRENCY_IDS.COINS, name: 'Монеты', icon: '🪙' },
+    { id: CURRENCY_IDS.GEMS, name: 'Кристаллы', icon: '💎' },
+    ...shopItems.map((i) => ({ id: i.id, name: i.name, icon: i.isLootBox ? '🎁' : '⚔️' })),
+  ]
+
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-[var(--fg)]">Изменить награду</h3>
+          <button type="button" onClick={onClose} className="icon-btn">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto space-y-1 mb-4">
+          {options.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setSelected(opt.id)}
+              className={cn(
+                'w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors',
+                selected === opt.id ? 'border-[var(--accent)] bg-[var(--accent-subtle)]' : 'border-[var(--border)] bg-[var(--surface)]'
+              )}
+            >
+              <span className="text-2xl">{opt.icon}</span>
+              <span className="font-medium text-[var(--fg)]">{opt.name}</span>
+              {selected === opt.id && <Check className="h-5 w-5 text-[var(--accent)] ml-auto" />}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <button type="button" onClick={onClose} className="btn-secondary flex-1">Отмена</button>
+          <button
+            type="button"
+            onClick={() => selected && (onSelect(selected), onClose())}
+            className="btn-primary flex-1"
+          >
+            Выбрать
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ─── Shop Item Card ─────────────────────────────────────────────────────────
@@ -236,6 +587,7 @@ interface ItemFormProps {
 function ItemForm({ item, onClose }: ItemFormProps) {
   const addItem = useRpgStore((s) => s.addShopItem)
   const updateItem = useRpgStore((s) => s.updateShopItem)
+  const shopItems = useRpgStore((s) => s.shopItems)
 
   const [name, setName] = useState(item?.name ?? '')
   const [description, setDescription] = useState(item?.description ?? '')
@@ -243,22 +595,31 @@ function ItemForm({ item, onClose }: ItemFormProps) {
   const [coinCost, setCoinCost] = useState(item?.cost[CURRENCY_IDS.COINS] ?? 100)
   const [gemCost, setGemCost] = useState(item?.cost[CURRENCY_IDS.GEMS] ?? 0)
   const [isLootBox, setIsLootBox] = useState(item?.isLootBox ?? false)
+  const [lootTable, setLootTable] = useState<LootTableEntry[]>(item?.lootTable ?? [])
   const [stock, setStock] = useState<number | undefined>(item?.stock)
+  const [availableForPurchase, setAvailableForPurchase] = useState(item?.availableForPurchase ?? true)
+  const [canGetForFree, setCanGetForFree] = useState(item?.canGetForFree ?? false)
+  const [showLootboxModal, setShowLootboxModal] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
 
+    const cost = availableForPurchase && !canGetForFree
+      ? { [CURRENCY_IDS.COINS]: coinCost, [CURRENCY_IDS.GEMS]: gemCost }
+      : { [CURRENCY_IDS.COINS]: 0, [CURRENCY_IDS.GEMS]: 0 }
+
     const data: Omit<ShopItem, 'id'> = {
       name: name.trim(),
       description: description.trim() || undefined,
       rarity,
-      cost: {
-        [CURRENCY_IDS.COINS]: coinCost,
-        [CURRENCY_IDS.GEMS]: gemCost,
-      },
+      cost,
       isLootBox,
+      lootTable: isLootBox ? lootTable : undefined,
       stock,
+      availableForPurchase,
+      canGetForFree,
+      groupId: item?.groupId,
     }
 
     if (item) {
@@ -269,8 +630,10 @@ function ItemForm({ item, onClose }: ItemFormProps) {
     onClose()
   }
 
+  const divider = <div className="border-t border-[var(--border)]" />
+
   return (
-    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && !showLootboxModal && onClose()}>
       <div className="modal-content">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-[var(--fg)]">
@@ -282,22 +645,154 @@ function ItemForm({ item, onClose }: ItemFormProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Название предмета"
-            className="input"
-            autoFocus
-          />
+          {/* Название предмета */}
+          <div>
+            <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Название предмета</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Введите название..."
+              className="input w-full text-base"
+              autoFocus
+            />
+          </div>
 
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Описание (опционально)"
-            rows={2}
-            className="input resize-none"
-          />
+          {/* Описание предмета */}
+          <div>
+            <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Описание предмета</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Описание (опционально)"
+              rows={3}
+              className="input w-full resize-none"
+            />
+          </div>
+
+          {/* Группа */}
+          <div>
+            <p className="text-sm font-medium text-[var(--fg-muted)] mb-2">Группа</p>
+            <button
+              type="button"
+              disabled
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-left text-sm text-[var(--fg-muted)] cursor-not-allowed opacity-70"
+            >
+              Выберите группу
+            </button>
+          </div>
+
+          {/* Способ получения */}
+          <div>
+            <p className="text-sm font-medium text-[var(--fg-muted)] mb-3">Способ получения</p>
+
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+              <div className="flex items-center justify-between gap-3 px-4 py-3">
+                <span className="text-sm font-medium text-[var(--fg)]">Доступно для покупки</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={availableForPurchase}
+                  onClick={() => setAvailableForPurchase((v) => !v)}
+                  className={cn(
+                    'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200',
+                    availableForPurchase ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
+                      availableForPurchase ? 'right-1 left-auto' : 'left-1 right-auto'
+                    )}
+                  />
+                </button>
+              </div>
+
+              {availableForPurchase && (
+                <>
+                  {divider}
+                  <div className="flex items-center justify-between gap-3 px-4 py-3">
+                    <span className="text-sm font-medium text-[var(--fg)]">Можно получить бесплатно</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={canGetForFree}
+                      onClick={() => setCanGetForFree((v) => !v)}
+                      className={cn(
+                        'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200',
+                        canGetForFree ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
+                          canGetForFree ? 'right-1 left-auto' : 'left-1 right-auto'
+                        )}
+                      />
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {!availableForPurchase && (
+                <>
+                  {divider}
+                  <p className="px-4 py-3 text-xs text-[var(--fg-muted)]">
+                    Этот предмет не будет продаваться в магазине, но его по-прежнему можно получить за выполнение заданий, достижений или через другие игровые активности.
+                  </p>
+                </>
+              )}
+
+              {availableForPurchase && !canGetForFree && (
+                <>
+                  {divider}
+                  <p className="px-4 py-3 text-xs text-[var(--fg-muted)]">
+                    Выберите ниже ресурсы или валюту, необходимые для покупки (обмена) этого предмета
+                  </p>
+                  {divider}
+                  <div className="px-4 py-3">
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3 text-sm font-medium text-[var(--accent)] cursor-not-allowed opacity-70"
+                    >
+                      <Plus className="h-5 w-5" />
+                      Выбрать предмет
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 px-4 py-3">
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Монеты</label>
+                      <input
+                        type="number"
+                        value={coinCost}
+                        onChange={(e) => setCoinCost(Number(e.target.value) || 0)}
+                        className="input w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Гемы</label>
+                      <input
+                        type="number"
+                        value={gemCost}
+                        onChange={(e) => setGemCost(Number(e.target.value) || 0)}
+                        className="input w-full"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {availableForPurchase && canGetForFree && (
+                <>
+                  {divider}
+                  <p className="px-4 py-3 text-xs text-[var(--fg-muted)]">
+                    Этот предмет можно получить в магазине бесплатно
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -324,39 +819,45 @@ function ItemForm({ item, onClose }: ItemFormProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Монеты</label>
-              <input
-                type="number"
-                value={coinCost}
-                onChange={(e) => setCoinCost(Number(e.target.value) || 0)}
-                className="input w-full"
-              />
+          {/* Лутбокс — тумблер */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <span className="font-medium text-[var(--fg)]">Лутбокс</span>
+                <p className="text-xs text-[var(--fg-muted)] mt-0.5">Случайный предмет при открытии</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isLootBox}
+                onClick={() => setIsLootBox((v) => !v)}
+                className={cn(
+                  'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200',
+                  isLootBox ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
+                )}
+              >
+                <span
+                  className={cn(
+                    'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
+                    isLootBox ? 'right-1 left-auto' : 'left-1 right-auto'
+                  )}
+                />
+              </button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Гемы</label>
-              <input
-                type="number"
-                value={gemCost}
-                onChange={(e) => setGemCost(Number(e.target.value) || 0)}
-                className="input w-full"
-              />
-            </div>
+            {isLootBox && (
+              <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                <button
+                  type="button"
+                  onClick={() => setShowLootboxModal(true)}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] py-3 text-sm font-medium text-[var(--accent)] hover:bg-[var(--accent-subtle)]"
+                >
+                  <Gift className="h-5 w-5" />
+                  Настроить лутбокс
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
+            )}
           </div>
-
-          <label className="flex items-center gap-3 rounded-xl bg-[var(--surface)] p-4">
-            <input
-              type="checkbox"
-              checked={isLootBox}
-              onChange={(e) => setIsLootBox(e.target.checked)}
-              className="h-5 w-5 rounded accent-[var(--accent)]"
-            />
-            <div>
-              <span className="font-medium text-[var(--fg)]">Лутбокс</span>
-              <p className="text-xs text-[var(--fg-muted)]">Случайный предмет при открытии</p>
-            </div>
-          </label>
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">
@@ -368,6 +869,15 @@ function ItemForm({ item, onClose }: ItemFormProps) {
           </div>
         </form>
       </div>
+
+      {showLootboxModal && (
+        <LootboxEffectModal
+          lootTable={lootTable}
+          shopItems={shopItems}
+          onSave={setLootTable}
+          onClose={() => setShowLootboxModal(false)}
+        />
+      )}
     </div>
   )
 }
@@ -525,7 +1035,7 @@ export default function ShopPage() {
       )}
 
       {/* Form modal */}
-      {showForm && <ItemForm item={editingItem} onClose={handleCloseForm} />}
+      {showForm && <ItemForm key={editingItem?.id ?? 'new'} item={editingItem} onClose={handleCloseForm} />}
     </div>
   )
 }

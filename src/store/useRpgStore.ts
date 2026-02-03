@@ -946,11 +946,11 @@ export const useRpgStore = create<RpgStoreState>()(
           for (const entry of item.lootTable) {
             random -= entry.weight
             if (random <= 0) {
-              // Check if it's a currency or item
+              const qty = entry.quantity ?? 1
               if (entry.id === CURRENCY_IDS.COINS || entry.id === CURRENCY_IDS.GEMS) {
-                addCurrency(entry.id as CurrencyId, entry.weight * 10) // Weight * 10 as amount
+                addCurrency(entry.id as CurrencyId, qty)
               } else {
-                addToInventory(entry.id)
+                addToInventory(entry.id, qty)
               }
               const resultItem = get().shopItems.find((i) => i.id === entry.id)
               return { itemId: entry.id, name: resultItem?.name ?? 'Награда' }

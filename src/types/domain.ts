@@ -324,8 +324,14 @@ export interface ShopItem {
   cost: Record<CurrencyId, number>
   /** Is this a loot box? On "use" rolls probability table */
   isLootBox: boolean
-  /** For loot boxes: drop table (itemId or currencyId -> weight) */
-  lootTable?: { id: string; weight: number }[]
+  /** For loot boxes: drop table. weight = chance weight, quantity = amount to grant (default 1) */
+  lootTable?: { id: string; weight: number; quantity?: number }[]
+  /** Item group (for future use) */
+  groupId?: string
+  /** Shown in shop and can be bought (default true) */
+  availableForPurchase?: boolean
+  /** When true, item costs nothing in shop (default false) */
+  canGetForFree?: boolean
 }
 
 export interface InventoryEntry {
