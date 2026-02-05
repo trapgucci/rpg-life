@@ -156,8 +156,10 @@ interface RpgStoreState {
   craftRecipes: CraftRecipe[]
   shopItems: ShopItem[]
   inventory: InventoryEntry[]
+  /** Активная скидка в магазине в % (только на монеты), сбрасывается после одной покупки */
+  activeShopDiscountPercent: number | null
   settings: AppSettings
-  
+
   // Stats
   stats: {
     totalTasksCompleted: number
@@ -286,6 +288,7 @@ export const useRpgStore = create<RpgStoreState>()(
         craftRecipes: [],
         shopItems: [],
         inventory: [],
+        activeShopDiscountPercent: null,
         settings: { ...DEFAULT_SETTINGS },
         stats: {
           totalTasksCompleted: 0,
@@ -989,21 +992,28 @@ export const useRpgStore = create<RpgStoreState>()(
         deleteShopItem: (id) => set((s) => ({ shopItems: s.shopItems.filter((i) => i.id !== id) })),
 
         purchaseItem: (itemId) => {
-          const { shopItems, deductCurrency, addToInventory, openLootbox } = get()
+          const { shopItems, deductCurrency, addToInventory, openLootbox, activeShopDiscountPercent } = get()
           const item = shopItems.find((i) => i.id === itemId)
           if (!item) return false
 
-          // Check all currencies
-          for (const [currencyId, cost] of Object.entries(item.cost)) {
+          const coinCost = item.cost[CURRENCY_IDS.COINS] ?? 0
+          const gemCost = item.cost[CURRENCY_IDS.GEMS] ?? 0
+          const effectiveCoinCost =
+            activeShopDiscountPercent != null && coinCost > 0
+              ? Math.ceil(coinCost * (1 - activeShopDiscountPercent / 100))
+              : coinCost
+          const effectiveCosts = { ...item.cost, [CURRENCY_IDS.COINS]: effectiveCoinCost }
+
+          for (const [currencyId, cost] of Object.entries(effectiveCosts)) {
             if (get().getCurrency(currencyId as CurrencyId) < cost) return false
           }
 
-          // Deduct all currencies
-          for (const [currencyId, cost] of Object.entries(item.cost)) {
+          for (const [currencyId, cost] of Object.entries(effectiveCosts)) {
             deductCurrency(currencyId as CurrencyId, cost)
           }
 
-          // Handle lootbox or regular item
+          set((s) => ({ activeShopDiscountPercent: null }))
+
           if (item.isLootBox) {
             openLootbox(itemId)
           } else {
@@ -1082,8 +1092,16 @@ export const useRpgStore = create<RpgStoreState>()(
         useItem: (itemId) => {
           const { shopItems, getActiveProfile, updateProfile, removeFromInventory } = get()
           const item = shopItems.find((i) => i.id === itemId)
+          if (!item) return false
+
+          if (item.isDiscountVoucher && (item.discountPercent ?? 0) > 0) {
+            const percent = Math.min(85, Math.max(1, item.discountPercent ?? 0))
+            set((s) => ({ activeShopDiscountPercent: percent }))
+            return removeFromInventory(itemId, 1)
+          }
+
           const profile = getActiveProfile()
-          if (item && profile && item.streakFreezeEnabled && (item.streakFreezeDays ?? 1) > 0) {
+          if (profile && item.streakFreezeEnabled && (item.streakFreezeDays ?? 1) > 0) {
             const todayStart = getTodayStart()
             const days = item.streakFreezeDays ?? 1
             const endDate = new Date(todayStart)
@@ -1114,6 +1132,7 @@ export const useRpgStore = create<RpgStoreState>()(
             craftRecipes: state.craftRecipes,
             shopItems: state.shopItems,
             inventory: state.inventory,
+            activeShopDiscountPercent: state.activeShopDiscountPercent,
             settings: state.settings,
             stats: state.stats,
           }
@@ -1135,6 +1154,7 @@ export const useRpgStore = create<RpgStoreState>()(
               craftRecipes: data.craftRecipes ?? [],
               shopItems: data.shopItems ?? [],
               inventory: data.inventory ?? [],
+              activeShopDiscountPercent: data.activeShopDiscountPercent ?? null,
               settings: { ...DEFAULT_SETTINGS, ...data.settings },
               stats: data.stats ?? get().stats,
             })
@@ -1155,6 +1175,7 @@ export const useRpgStore = create<RpgStoreState>()(
             achievements: [],
             craftRecipes: [],
             inventory: [],
+            activeShopDiscountPercent: null,
             stats: {
               totalTasksCompleted: 0,
               totalHabitsPositive: 0,
@@ -1183,11 +1204,13 @@ export const useRpgStore = create<RpgStoreState>()(
         craftRecipes: s.craftRecipes,
         shopItems: s.shopItems,
         inventory: s.inventory,
+        activeShopDiscountPercent: s.activeShopDiscountPercent,
         settings: s.settings,
         stats: s.stats,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return
+        if (state.activeShopDiscountPercent === undefined) useRpgStore.setState({ activeShopDiscountPercent: null })
         if (!state.taskGroups) useRpgStore.setState({ taskGroups: [] })
         if (!state.itemGroups) useRpgStore.setState({ itemGroups: [] })
         if (!state.tasks) useRpgStore.setState({ tasks: [] })

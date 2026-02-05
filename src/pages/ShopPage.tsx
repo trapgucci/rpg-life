@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { cn } from '../lib/cn'
 import { 
   ShoppingBag, Package, Plus, Pencil, Trash2, X, 
-  Coins, Gem, Gift, Sparkles, Check, ChevronRight, ChevronDown, Box, Lightbulb, Hammer, CheckCircle2, Trash, GripVertical, Settings
+  Coins, Gem, Gift, Sparkles, Check, ChevronRight, ChevronDown, Box, Lightbulb, Hammer, CheckCircle2, Trash, GripVertical, Settings, Ban, Percent
 } from 'lucide-react'
 import { useRpgStore } from '../store/useRpgStore'
 import type { ShopItem, ItemRarity, CraftRecipe, FragmentSourceType, ItemGroup } from '../types/domain'
@@ -543,6 +543,55 @@ function RewardPickerModalSingle({
   )
 }
 
+// ─── Discount Voucher Modal (размер скидки до 85%) ────────────────────────────
+
+interface DiscountVoucherModalProps {
+  value: number
+  onSave: (percent: number) => void
+  onClose: () => void
+}
+
+function DiscountVoucherModal({ value, onSave, onClose }: DiscountVoucherModalProps) {
+  const [percent, setPercent] = useState(Math.min(85, Math.max(1, value || 10)))
+
+  const handleSave = () => {
+    const p = Math.min(85, Math.max(1, percent))
+    onSave(p)
+    onClose()
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content max-w-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-[var(--fg)]">Размер скидки</h3>
+          <button type="button" onClick={onClose} className="icon-btn">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="text-sm text-[var(--fg-muted)] mb-4">
+          Скидка применяется только к монетам, до 85%.
+        </p>
+        <div className="flex items-center gap-2 mb-6">
+          <input
+            type="number"
+            min={1}
+            max={85}
+            value={percent}
+            onChange={(e) => setPercent(Math.min(85, Math.max(1, Number(e.target.value) || 1)))}
+            className="input flex-1 h-10 text-center text-lg"
+          />
+          <span className="text-[var(--fg-muted)]">%</span>
+        </div>
+        <div className="flex gap-2">
+          <button type="button" onClick={onClose} className="btn-secondary flex-1">Отмена</button>
+          <button type="button" onClick={handleSave} className="btn-primary flex-1">Сохранить</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Shop Item Card ─────────────────────────────────────────────────────────
 
 interface ShopItemCardProps {
@@ -553,16 +602,22 @@ interface ShopItemCardProps {
 function ShopItemCard({ item, onEdit }: ShopItemCardProps) {
   const purchaseItem = useRpgStore((s) => s.purchaseItem)
   const deleteItem = useRpgStore((s) => s.deleteShopItem)
+  const activeShopDiscountPercent = useRpgStore((s) => s.activeShopDiscountPercent)
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
-  
+
   const profile = profiles.find((p) => p.id === activeProfileId)
   const coins = profile?.currencies[CURRENCY_IDS.COINS] ?? 0
   const gems = profile?.currencies[CURRENCY_IDS.GEMS] ?? 0
 
   const coinCost = item.cost[CURRENCY_IDS.COINS] ?? 0
   const gemCost = item.cost[CURRENCY_IDS.GEMS] ?? 0
-  const canAfford = coins >= coinCost && gems >= gemCost
+  const effectiveCoinCost =
+    activeShopDiscountPercent != null && coinCost > 0
+      ? Math.ceil(coinCost * (1 - activeShopDiscountPercent / 100))
+      : coinCost
+  const canAfford = coins >= effectiveCoinCost && gems >= gemCost
+  const availableForPurchase = item.availableForPurchase !== false
 
   const handlePurchase = () => {
     purchaseItem(item.id)
@@ -605,7 +660,7 @@ function ShopItemCard({ item, onEdit }: ShopItemCardProps) {
           )}
           style={{ boxShadow: `0 8px 20px ${rarityColor}40` }}
         >
-          {item.isLootBox ? '🎁' : '⚔️'}
+          {item.isLootBox ? '🎁' : item.isDiscountVoucher ? '🎫' : '⚔️'}
         </div>
 
         {/* Name */}
@@ -621,6 +676,7 @@ function ShopItemCard({ item, onEdit }: ShopItemCardProps) {
         >
           {RARITY_LABELS[item.rarity]}
           {item.isLootBox && ' • Лутбокс'}
+          {item.isDiscountVoucher && ' • Скидочный талон'}
         </span>
 
         {/* Description */}
@@ -629,11 +685,18 @@ function ShopItemCard({ item, onEdit }: ShopItemCardProps) {
         )}
 
         {/* Price */}
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 justify-center">
           {coinCost > 0 && (
             <span className="flex items-center gap-1.5 text-sm font-semibold text-amber-600 dark:text-amber-400">
-              <Coins className="h-4 w-4" />
-              {coinCost.toLocaleString('ru-RU')}
+              <Coins className="h-4 w-4 shrink-0" />
+              {activeShopDiscountPercent != null && effectiveCoinCost < coinCost ? (
+                <>
+                  <span className="line-through opacity-70">{coinCost.toLocaleString('ru-RU')}</span>
+                  <span>{effectiveCoinCost.toLocaleString('ru-RU')}</span>
+                </>
+              ) : (
+                coinCost.toLocaleString('ru-RU')
+              )}
             </span>
           )}
           {gemCost > 0 && (
@@ -646,19 +709,35 @@ function ShopItemCard({ item, onEdit }: ShopItemCardProps) {
 
         {/* Buy button */}
         {item.stock !== 0 && (
-          <button
-            type="button"
-            onClick={handlePurchase}
-            disabled={!canAfford}
-            className={cn(
-              'mt-4 w-full rounded-xl py-2.5 font-medium transition-all duration-200',
-              canAfford
-                ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40'
-                : 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed'
+          <>
+            {!availableForPurchase ? (
+              <button
+                type="button"
+                disabled
+                className="mt-4 w-full rounded-xl py-2.5 font-medium flex items-center justify-center gap-2 bg-[var(--surface-elevated)] text-[var(--fg-muted)] border border-[var(--border)] cursor-not-allowed"
+              >
+                <Ban className="h-5 w-5 shrink-0" />
+                Не для продажи
+              </button>
+            ) : !canAfford ? (
+              <button
+                type="button"
+                disabled
+                className="mt-4 w-full rounded-xl py-2.5 font-medium flex items-center justify-center gap-2 bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 cursor-not-allowed shadow-sm"
+              >
+                <X className="h-5 w-5 shrink-0" />
+                Недостаточно средств
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handlePurchase}
+                className="mt-4 w-full rounded-xl py-2.5 font-medium transition-all duration-200 bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40"
+              >
+                Купить
+              </button>
             )}
-          >
-            {canAfford ? 'Купить' : 'Недостаточно средств'}
-          </button>
+          </>
         )}
 
         {/* Stock info */}
@@ -709,7 +788,7 @@ function InventoryItemCard({ itemId, quantity }: InventoryItemCardProps) {
             `bg-gradient-to-br ${RARITY_GRADIENTS[item.rarity]}`
           )}
         >
-          {item.isLootBox ? '🎁' : '⚔️'}
+          {item.isLootBox ? '🎁' : item.isDiscountVoucher ? '🎫' : '⚔️'}
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-[var(--fg)] truncate">{item.name}</h3>
@@ -728,7 +807,7 @@ function InventoryItemCard({ itemId, quantity }: InventoryItemCardProps) {
           onClick={handleUse}
           className="btn-secondary text-sm"
         >
-          {item.isLootBox ? 'Открыть' : 'Использовать'}
+          {item.isLootBox ? 'Открыть' : item.isDiscountVoucher ? 'Активировать' : 'Использовать'}
         </button>
       </div>
     </div>
@@ -872,6 +951,9 @@ function ItemForm({ item, onClose }: ItemFormProps) {
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
   const [streakFreezeEnabled, setStreakFreezeEnabled] = useState(item?.streakFreezeEnabled ?? false)
   const [streakFreezeDays, setStreakFreezeDays] = useState(item?.streakFreezeDays ?? 3)
+  const [isDiscountVoucher, setIsDiscountVoucher] = useState(item?.isDiscountVoucher ?? false)
+  const [discountPercent, setDiscountPercent] = useState(item?.discountPercent ?? 10)
+  const [showDiscountModal, setShowDiscountModal] = useState(false)
   const [showCraftingTypePicker, setShowCraftingTypePicker] = useState(false)
   const [activeCraftingModal, setActiveCraftingModal] = useState<'create' | 'material' | null>(null)
   const [groupsExpanded, setGroupsExpanded] = useState(false)
@@ -892,9 +974,13 @@ function ItemForm({ item, onClose }: ItemFormProps) {
     if (item) {
       setStreakFreezeEnabled(item.streakFreezeEnabled ?? false)
       setStreakFreezeDays(item.streakFreezeDays ?? 3)
+      setIsDiscountVoucher(item.isDiscountVoucher ?? false)
+      setDiscountPercent(Math.min(85, Math.max(1, item.discountPercent ?? 10)))
     } else {
       setStreakFreezeEnabled(false)
       setStreakFreezeDays(3)
+      setIsDiscountVoucher(false)
+      setDiscountPercent(10)
     }
   }, [item?.id])
 
@@ -919,6 +1005,8 @@ function ItemForm({ item, onClose }: ItemFormProps) {
       groupId,
       streakFreezeEnabled: streakFreezeEnabled || undefined,
       streakFreezeDays: streakFreezeEnabled ? streakFreezeDays : undefined,
+      isDiscountVoucher: isDiscountVoucher || undefined,
+      discountPercent: isDiscountVoucher ? Math.min(85, Math.max(1, discountPercent)) : undefined,
     }
 
     if (item) {
@@ -932,7 +1020,7 @@ function ItemForm({ item, onClose }: ItemFormProps) {
   const divider = <div className="border-t border-[var(--border)]" />
 
   return (
-    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && !showLootboxModal && !showCraftingTypePicker && !activeCraftingModal && !showAdvancedSettings && onClose()}>
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && !showLootboxModal && !showCraftingTypePicker && !activeCraftingModal && !showAdvancedSettings && !showDiscountModal && onClose()}>
       <div className="modal-content">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-[var(--fg)]">
@@ -1277,8 +1365,14 @@ function ItemForm({ item, onClose }: ItemFormProps) {
               </button>
             </div>
             <div className="space-y-4">
+              <p className="text-xs text-[var(--fg-muted)] mb-2">
+                Включить можно только одну опцию: лутбокс, заморозка стрика или скидочный талон.
+              </p>
               {/* Лутбокс — перенесён сюда */}
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+              <div className={cn(
+                'rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4',
+                (streakFreezeEnabled || isDiscountVoucher) && 'opacity-70'
+              )}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <span className="font-medium text-[var(--fg)]">Лутбокс</span>
@@ -1290,9 +1384,16 @@ function ItemForm({ item, onClose }: ItemFormProps) {
                     type="button"
                     role="switch"
                     aria-checked={isLootBox}
-                    onClick={() => setIsLootBox((v) => !v)}
+                    disabled={streakFreezeEnabled || isDiscountVoucher}
+                    onClick={() => {
+                      setIsLootBox((v) => !v)
+                      if (!isLootBox) {
+                        setStreakFreezeEnabled(false)
+                        setIsDiscountVoucher(false)
+                      }
+                    }}
                     className={cn(
-                      'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200',
+                      'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed',
                       isLootBox ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
                     )}
                   >
@@ -1320,7 +1421,10 @@ function ItemForm({ item, onClose }: ItemFormProps) {
               </div>
 
               {/* Заморозка стрика */}
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+              <div className={cn(
+                'rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4',
+                (isLootBox || isDiscountVoucher) && 'opacity-70'
+              )}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <span className="font-medium text-[var(--fg)]">Заморозка стрика</span>
@@ -1332,9 +1436,16 @@ function ItemForm({ item, onClose }: ItemFormProps) {
                     type="button"
                     role="switch"
                     aria-checked={streakFreezeEnabled}
-                    onClick={() => setStreakFreezeEnabled((v) => !v)}
+                    disabled={isLootBox || isDiscountVoucher}
+                    onClick={() => {
+                      setStreakFreezeEnabled((v) => !v)
+                      if (!streakFreezeEnabled) {
+                        setIsLootBox(false)
+                        setIsDiscountVoucher(false)
+                      }
+                    }}
                     className={cn(
-                      'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200',
+                      'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed',
                       streakFreezeEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
                     )}
                   >
@@ -1375,9 +1486,69 @@ function ItemForm({ item, onClose }: ItemFormProps) {
                   </div>
                 )}
               </div>
+
+              {/* Скидочный талон */}
+              <div className={cn(
+                'rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4',
+                (isLootBox || streakFreezeEnabled) && 'opacity-70'
+              )}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <span className="font-medium text-[var(--fg)]">Скидочный талон</span>
+                    <p className="text-xs text-[var(--fg-muted)] mt-0.5">
+                      Снижает цены в магазине на N% на следующую покупку (только монеты)
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isDiscountVoucher}
+                    disabled={isLootBox || streakFreezeEnabled}
+                    onClick={() => {
+                      setIsDiscountVoucher((v) => !v)
+                      if (!isDiscountVoucher) {
+                        setIsLootBox(false)
+                        setStreakFreezeEnabled(false)
+                        setShowDiscountModal(true)
+                      }
+                    }}
+                    className={cn(
+                      'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed',
+                      isDiscountVoucher ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
+                        isDiscountVoucher ? 'right-1 left-auto' : 'left-1 right-auto'
+                      )}
+                    />
+                  </button>
+                </div>
+                {isDiscountVoucher && (
+                  <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                    <button
+                      type="button"
+                      onClick={() => setShowDiscountModal(true)}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] py-3 text-sm font-medium text-[var(--accent)] hover:bg-[var(--accent-subtle)]"
+                    >
+                      <Percent className="h-5 w-5" />
+                      Размер скидки: {Math.min(85, Math.max(1, discountPercent))}%
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
+      )}
+      {showDiscountModal && (
+        <DiscountVoucherModal
+          value={discountPercent}
+          onSave={(p) => setDiscountPercent(p)}
+          onClose={() => setShowDiscountModal(false)}
+        />
       )}
       {showLootboxModal && (
         <LootboxEffectModal

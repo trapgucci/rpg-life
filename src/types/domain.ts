@@ -351,6 +351,10 @@ export interface ShopItem {
   streakFreezeEnabled?: boolean
   /** Длительность заморозки (дней) при streakFreezeEnabled */
   streakFreezeDays?: number
+  /** Скидочный талон: при использовании в инвентаре даёт скидку на следующую покупку (только монеты) */
+  isDiscountVoucher?: boolean
+  /** Размер скидки в % (1–85) при isDiscountVoucher */
+  discountPercent?: number
 }
 
 export interface InventoryEntry {
