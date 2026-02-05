@@ -3,6 +3,7 @@ export type TaskId = string
 export type TaskGroupId = string
 export type AttributeId = string
 export type ProfileId = string
+export type ItemGroupId = string
 export type ItemId = string
 export type CurrencyId = string
 export type AchievementId = string
@@ -35,6 +36,16 @@ export interface RecurrenceCustom {
 /** Группа задач — пользовательская категория (например "Работа", "Дом") */
 export interface TaskGroup {
   id: TaskGroupId
+  profileId: ProfileId
+  name: string
+  sortOrder: number
+  createdAt: number
+  updatedAt: number
+}
+
+/** Группа предметов магазина — пользовательская категория (например "Базовые", "Премиум") */
+export interface ItemGroup {
+  id: ItemGroupId
   profileId: ProfileId
   name: string
   sortOrder: number
@@ -326,8 +337,8 @@ export interface ShopItem {
   isLootBox: boolean
   /** For loot boxes: drop table. weight = chance weight, quantity = amount to grant (default 1) */
   lootTable?: { id: string; weight: number; quantity?: number }[]
-  /** Item group (for future use) */
-  groupId?: string
+  /** Группа предмета (для пользовательской сортировки в магазине) */
+  groupId?: ItemGroupId | null
   /** Shown in shop and can be bought (default true) */
   availableForPurchase?: boolean
   /** When true, item costs nothing in shop (default false) */

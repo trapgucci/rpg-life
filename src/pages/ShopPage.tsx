@@ -2,13 +2,13 @@ import { useState } from 'react'
 import { cn } from '../lib/cn'
 import { 
   ShoppingBag, Package, Plus, Pencil, Trash2, X, 
-  Coins, Gem, Gift, Sparkles, Check, ChevronRight, Box, Lightbulb, Hammer
+  Coins, Gem, Gift, Sparkles, Check, ChevronRight, Box, Lightbulb, Hammer, CheckCircle2, Edit3, Trash
 } from 'lucide-react'
 import { useRpgStore } from '../store/useRpgStore'
-import type { ShopItem, ItemRarity } from '../types/domain'
+import type { ShopItem, ItemRarity, CraftRecipe, FragmentSourceType, ItemGroup } from '../types/domain'
 import { CURRENCY_IDS } from '../types/domain'
 
-type Tab = 'shop' | 'inventory'
+type Tab = 'shop' | 'crafting' | 'inventory'
 
 const RARITY_COLORS: Record<ItemRarity, string> = {
   common: '#9ca3af',
@@ -35,6 +35,109 @@ const RARITY_GRADIENTS: Record<ItemRarity, string> = {
 }
 
 type LootTableEntry = { id: string; weight: number; quantity?: number }
+
+// ─── Item Groups Manager Modal ────────────────────────────────────────────────
+
+interface ItemGroupManagerModalProps {
+  onClose: () => void
+}
+
+function ItemGroupManagerModal({ onClose }: ItemGroupManagerModalProps) {
+  const allGroups = useRpgStore((s) => s.itemGroups)
+  const activeProfileId = useRpgStore((s) => s.activeProfileId)
+  const addItemGroup = useRpgStore((s) => s.addItemGroup)
+  const updateItemGroup = useRpgStore((s) => s.updateItemGroup)
+  const deleteItemGroup = useRpgStore((s) => s.deleteItemGroup)
+  const [name, setName] = useState('')
+
+  const groups = activeProfileId
+    ? allGroups
+        .filter((g) => g.profileId === activeProfileId)
+        .slice()
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+    : []
+
+  const handleCreate = (e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmed = name.trim()
+    if (!trimmed) return
+    addItemGroup(trimmed)
+    setName('')
+  }
+
+  const handleRename = (group: ItemGroup, newName: string) => {
+    const trimmed = newName.trim()
+    if (!trimmed || trimmed === group.name) return
+    updateItemGroup(group.id, (g) => ({ ...g, name: trimmed }))
+  }
+
+  return (
+    <div
+      className="modal-backdrop"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="modal-content max-w-md">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-[var(--fg)]">Группы предметов</h3>
+          <button type="button" onClick={onClose} className="icon-btn">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <p className="text-sm text-[var(--fg-muted)] mb-4">
+          Создавайте пользовательские группы, чтобы удобно сортировать предметы в магазине.
+        </p>
+
+        <form onSubmit={handleCreate} className="flex gap-2 mb-4">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Название группы, например «Базовые»"
+            className="input flex-1"
+          />
+          <button type="submit" className="btn-primary">
+            <Plus className="h-4 w-4" />
+          </button>
+        </form>
+
+        {groups.length === 0 ? (
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm text-[var(--fg-muted)] text-center">
+            Пока нет ни одной группы. Создайте первую, чтобы начать сортировку.
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {groups.map((group) => (
+              <div
+                key={group.id}
+                className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
+              >
+                <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                <input
+                  defaultValue={group.name}
+                  onBlur={(e) => handleRename(group, e.target.value)}
+                  className="bg-transparent flex-1 text-sm text-[var(--fg)] outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm('Удалить группу? Предметы из неё останутся без группы.')) {
+                      deleteItemGroup(group.id)
+                    }
+                  }}
+                  className="icon-btn icon-btn-danger"
+                  title="Удалить группу"
+                >
+                  <Trash className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 // ─── Reward Picker Modal (multi-select shop items + coins + gems) ────────────
 
@@ -580,7 +683,7 @@ function InventoryItemCard({ itemId, quantity }: InventoryItemCardProps) {
 // ─── Crafting type picker & recipe modals ───────────────────────────────────
 
 interface CraftingTypePickerModalProps {
-  onSelect: (type: 'create' | 'material' | 'transform') => void
+  onSelect: (type: 'create' | 'material') => void
   onClose: () => void
 }
 
@@ -588,7 +691,6 @@ function CraftingTypePickerModal({ onSelect, onClose }: CraftingTypePickerModalP
   const options = [
     { type: 'create' as const, label: 'Создание предмета', desc: 'Крафт нового предмета из материалов', icon: '⚒️' },
     { type: 'material' as const, label: 'Материал для крафта', desc: 'Предмет используется как ингредиент', icon: '🧩' },
-    { type: 'transform' as const, label: 'Преобразование / Улучшение', desc: 'Улучшение или превращение предмета', icon: '✨' },
   ]
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -679,40 +781,6 @@ function CraftingMaterialModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-function CraftingTransformModal({ onClose }: { onClose: () => void }) {
-  return (
-    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-content max-w-lg">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-[var(--fg)]">Преобразование / Улучшение</h3>
-          <button type="button" onClick={onClose} className="icon-btn">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <p className="text-sm text-[var(--fg-muted)] mb-4">Настройте рецепт улучшения или превращения предмета в другой.</p>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Исходный предмет</label>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-center text-sm text-[var(--fg-muted)]">
-              Выбор предмета и количества
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Результат улучшения</label>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-center text-sm text-[var(--fg-muted)]">
-              Предмет или улучшённая версия
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-2 mt-6">
-          <button type="button" onClick={onClose} className="btn-secondary flex-1">Отмена</button>
-          <button type="button" className="btn-primary flex-1">Сохранить</button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ─── Item Form ──────────────────────────────────────────────────────────────
 
 interface ItemFormProps {
@@ -724,20 +792,30 @@ function ItemForm({ item, onClose }: ItemFormProps) {
   const addItem = useRpgStore((s) => s.addShopItem)
   const updateItem = useRpgStore((s) => s.updateShopItem)
   const shopItems = useRpgStore((s) => s.shopItems)
+  const allItemGroups = useRpgStore((s) => s.itemGroups)
+  const activeProfileId = useRpgStore((s) => s.activeProfileId)
+
+  const itemGroups = activeProfileId
+    ? allItemGroups
+        .filter((g) => g.profileId === activeProfileId)
+        .slice()
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+    : []
 
   const [name, setName] = useState(item?.name ?? '')
   const [description, setDescription] = useState(item?.description ?? '')
   const [rarity, setRarity] = useState<ItemRarity>(item?.rarity ?? 'common')
-  const [coinCost, setCoinCost] = useState(item?.cost[CURRENCY_IDS.COINS] ?? 100)
+  const [coinCost, setCoinCost] = useState(item?.cost[CURRENCY_IDS.COINS] ?? 15)
   const [gemCost, setGemCost] = useState(item?.cost[CURRENCY_IDS.GEMS] ?? 0)
   const [isLootBox, setIsLootBox] = useState(item?.isLootBox ?? false)
   const [lootTable, setLootTable] = useState<LootTableEntry[]>(item?.lootTable ?? [])
   const [stock, setStock] = useState<number | undefined>(item?.stock)
   const [availableForPurchase, setAvailableForPurchase] = useState(item?.availableForPurchase ?? true)
   const [canGetForFree, setCanGetForFree] = useState(item?.canGetForFree ?? false)
+  const [groupId, setGroupId] = useState<string | null>(item?.groupId ?? null)
   const [showLootboxModal, setShowLootboxModal] = useState(false)
   const [showCraftingTypePicker, setShowCraftingTypePicker] = useState(false)
-  const [activeCraftingModal, setActiveCraftingModal] = useState<'create' | 'material' | 'transform' | null>(null)
+  const [activeCraftingModal, setActiveCraftingModal] = useState<'create' | 'material' | null>(null)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -757,7 +835,7 @@ function ItemForm({ item, onClose }: ItemFormProps) {
       stock,
       availableForPurchase,
       canGetForFree,
-      groupId: item?.groupId,
+      groupId,
     }
 
     if (item) {
@@ -811,13 +889,42 @@ function ItemForm({ item, onClose }: ItemFormProps) {
           {/* Группа */}
           <div>
             <p className="text-sm font-medium text-[var(--fg-muted)] mb-2">Группа</p>
-            <button
-              type="button"
-              disabled
-              className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-left text-sm text-[var(--fg-muted)] cursor-not-allowed opacity-70"
-            >
-              Выберите группу
-            </button>
+            {itemGroups.length === 0 ? (
+              <p className="text-xs text-[var(--fg-muted)]">
+                Группы пока не созданы. Добавьте их на странице магазина через кнопку «Управлять группами».
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setGroupId(null)}
+                  className={cn(
+                    'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
+                    groupId === null
+                      ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
+                      : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
+                  )}
+                >
+                  Без группы
+                </button>
+                {itemGroups.map((group) => (
+                  <button
+                    key={group.id}
+                    type="button"
+                    onClick={() => setGroupId(group.id)}
+                    className={cn(
+                      'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
+                      groupId === group.id
+                        ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
+                        : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
+                    )}
+                  >
+                    <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                    {group.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Способ получения */}
@@ -998,27 +1105,23 @@ function ItemForm({ item, onClose }: ItemFormProps) {
           </div>
 
           {/* Рецепты крафта */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-            <p className="text-xs font-medium text-[var(--fg-muted)] mb-2">Рецепты крафта</p>
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] py-10 px-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--surface)] mb-4">
-                <Hammer className="h-8 w-8 text-[var(--fg-muted)]" />
+          <div className="mt-4">
+            <div className="glass-card flex flex-col items-center justify-center rounded-2xl px-6 py-8 text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-500/10">
+                <Hammer className="h-8 w-8 text-purple-500" />
               </div>
-              <p className="font-semibold text-[var(--fg)] text-center">Рецептов крафта пока нет</p>
-              <p className="mt-2 text-sm text-[var(--fg-muted)] text-center max-w-sm">
-                Создавайте рецепты крафта, чтобы открыть новые способы получения или использования предметов
+              <p className="text-sm font-semibold text-[var(--fg)]">Рецептов крафта пока нет</p>
+              <p className="mt-1 text-sm text-[var(--fg-muted)] max-w-xs">
+                Создайте рецепты крафта, чтобы получать этот предмет разными способами: из фрагментов, за задания или другие активности.
               </p>
-              <div className="mt-6 w-full flex flex-col items-stretch">
-                <div className="h-px w-full bg-[var(--border)] mb-3" aria-hidden />
-                <button
-                  type="button"
-                  onClick={() => setShowCraftingTypePicker(true)}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl py-3.5 font-medium text-[var(--accent)] bg-[var(--accent-subtle)] hover:bg-[var(--accent-subtle)]/80 transition-colors border border-[var(--accent)]/30"
-                >
-                  <Plus className="h-5 w-5" />
-                  — Добавить рецепт
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowCraftingTypePicker(true)}
+                className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white shadow-md hover:shadow-lg transition-shadow"
+              >
+                <Plus className="h-4 w-4" />
+                Добавить рецепт
+              </button>
             </div>
           </div>
 
@@ -1048,9 +1151,6 @@ function ItemForm({ item, onClose }: ItemFormProps) {
       {activeCraftingModal === 'material' && (
         <CraftingMaterialModal onClose={() => setActiveCraftingModal(null)} />
       )}
-      {activeCraftingModal === 'transform' && (
-        <CraftingTransformModal onClose={() => setActiveCraftingModal(null)} />
-      )}
       {showLootboxModal && (
         <LootboxEffectModal
           lootTable={lootTable}
@@ -1063,15 +1163,409 @@ function ItemForm({ item, onClose }: ItemFormProps) {
   )
 }
 
+// ─── Crafting components (recipes) ──────────────────────────────────────────
+
+interface RecipeCardProps {
+  recipe: CraftRecipe
+  onEdit: () => void
+}
+
+function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
+  const deleteRecipe = useRpgStore((s) => s.deleteCraftRecipe)
+  const craftItem = useRpgStore((s) => s.craftItem)
+
+  const progress = recipe.fragmentsRequired > 0
+    ? Math.min(1, recipe.fragmentsCollected / recipe.fragmentsRequired)
+    : 0
+
+  const canCraft = recipe.fragmentsCollected >= recipe.fragmentsRequired && !recipe.crafted
+  const rarityColor = RARITY_COLORS[recipe.resultRarity]
+
+  const handleCraft = () => {
+    if (craftItem(recipe.id)) {
+      // success
+    }
+  }
+
+  return (
+    <div
+      className={cn(
+        'glass-card group relative rounded-2xl p-5 transition-all duration-300',
+        recipe.crafted && 'opacity-60',
+        recipe.resultRarity === 'legendary' && !recipe.crafted && 'animate-pulse-glow'
+      )}
+      style={{ 
+        borderColor: `${rarityColor}30`,
+        boxShadow: recipe.resultRarity === 'legendary' && !recipe.crafted ? `0 0 20px ${rarityColor}30` : undefined
+      }}
+    >
+      {/* Edit/Delete buttons */}
+      <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button type="button" onClick={onEdit} className="icon-btn">
+          <Pencil className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => { if (confirm('Удалить рецепт?')) deleteRecipe(recipe.id) }}
+          className="icon-btn icon-btn-danger"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Crafted badge */}
+      {recipe.crafted && (
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-lg bg-emerald-500/20 px-2 py-1 text-xs font-medium text-emerald-500">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          Скрафчено
+        </div>
+      )}
+
+      <div className="flex flex-col items-center text-center pt-4">
+        {/* Fragment icon */}
+        <div
+          className={cn(
+            'flex h-20 w-20 items-center justify-center rounded-2xl text-4xl mb-4 shadow-lg',
+            `bg-gradient-to-br ${RARITY_GRADIENTS[recipe.resultRarity]}`
+          )}
+          style={{ boxShadow: `0 8px 20px ${rarityColor}40` }}
+        >
+          {recipe.fragmentIcon}
+        </div>
+
+        {/* Fragment name */}
+        <h3 className="font-semibold text-[var(--fg)]">{recipe.fragmentName}</h3>
+
+        {/* Result info */}
+        <div className="mt-2 flex items-center gap-2">
+          <span
+            className="rounded-lg px-2.5 py-1 text-xs font-semibold"
+            style={{ backgroundColor: `${rarityColor}20`, color: rarityColor }}
+          >
+            {RARITY_LABELS[recipe.resultRarity]}
+          </span>
+          <span className="text-xs text-[var(--fg-muted)]">→</span>
+          <span className="text-sm text-[var(--fg)]">{recipe.resultItemName}</span>
+        </div>
+
+        {/* Source info */}
+        <p className="mt-3 text-xs text-[var(--fg-muted)]">
+          {recipe.fragmentSource.type === 'task_linked' 
+            ? '🎯 Привязано к задачам' 
+            : '🎲 Случайный дроп'}
+          {recipe.fragmentSource.type === 'random_drop' && (
+            <span className="ml-1">
+              ({recipe.fragmentSource.dropChance}% шанс)
+            </span>
+          )}
+        </p>
+
+        {/* Progress */}
+        <div className="mt-4 w-full">
+          <div className="flex justify-between text-sm mb-1.5">
+            <span className="text-[var(--fg-muted)]">Фрагменты</span>
+            <span className="font-semibold" style={{ color: canCraft ? '#10b981' : 'var(--fg)' }}>
+              {recipe.fragmentsCollected} / {recipe.fragmentsRequired}
+            </span>
+          </div>
+          <div className="h-3 w-full overflow-hidden rounded-full bg-[var(--border)]">
+            <div
+              className="h-full rounded-full transition-all duration-500 ease-out"
+              style={{ 
+                width: `${progress * 100}%`,
+                background: canCraft 
+                  ? 'linear-gradient(90deg, #10b981, #34d399)'
+                  : `linear-gradient(90deg, ${rarityColor}, ${rarityColor}cc)`
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Craft button */}
+        {!recipe.crafted && (
+          <button
+            type="button"
+            onClick={handleCraft}
+            disabled={!canCraft}
+            className={cn(
+              'mt-4 w-full rounded-xl py-3 font-semibold transition-all duration-200',
+              canCraft
+                ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40'
+                : 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed'
+            )}
+          >
+            {canCraft ? (
+              <>
+                <Sparkles className="h-4 w-4 inline mr-2" />
+                Скрафтить!
+              </>
+            ) : (
+              `Нужно ещё ${recipe.fragmentsRequired - recipe.fragmentsCollected} фрагментов`
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+interface RecipeFormProps {
+  recipe?: CraftRecipe
+  onClose: () => void
+}
+
+const FRAGMENT_ICONS = ['🧩', '💎', '⚡', '🔮', '🌟', '🔥', '❄️', '🌊', '🍀', '🎭', '⚙️', '🗝️', '📜', '🧬', '💠']
+
+function RecipeForm({ recipe, onClose }: RecipeFormProps) {
+  const addRecipe = useRpgStore((s) => s.addCraftRecipe)
+  const updateRecipe = useRpgStore((s) => s.updateCraftRecipe)
+  const allTasks = useRpgStore((s) => s.tasks)
+  const activeProfileId = useRpgStore((s) => s.activeProfileId)
+  const tasks = activeProfileId ? allTasks.filter((t) => t.profileId === activeProfileId) : []
+
+  const [fragmentName, setFragmentName] = useState(recipe?.fragmentName ?? '')
+  const [fragmentIcon, setFragmentIcon] = useState(recipe?.fragmentIcon ?? '🧩')
+  const [fragmentsRequired, setFragmentsRequired] = useState(recipe?.fragmentsRequired ?? 10)
+  const [resultItemName, setResultItemName] = useState(recipe?.resultItemName ?? '')
+  const [resultRarity, setResultRarity] = useState<ItemRarity>(recipe?.resultRarity ?? 'rare')
+  const [sourceType, setSourceType] = useState<FragmentSourceType>(
+    recipe?.fragmentSource.type ?? 'random_drop'
+  )
+  const [dropChance, setDropChance] = useState(recipe?.fragmentSource.dropChance ?? 15)
+  const [linkedTaskIds, setLinkedTaskIds] = useState<string[]>(
+    recipe?.fragmentSource.linkedTaskIds ?? []
+  )
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!fragmentName.trim() || !resultItemName.trim()) return
+
+    const data = {
+      fragmentName: fragmentName.trim(),
+      fragmentIcon,
+      fragmentsRequired,
+      resultItemName: resultItemName.trim(),
+      resultRarity,
+      fragmentSource: sourceType === 'task_linked'
+        ? { type: 'task_linked' as const, linkedTaskIds }
+        : { type: 'random_drop' as const, dropChance },
+    }
+
+    if (recipe) {
+      updateRecipe(recipe.id, (r) => ({ ...r, ...data }))
+    } else {
+      addRecipe(data)
+    }
+    onClose()
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content max-w-lg">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-[var(--fg)]">
+            {recipe ? 'Редактировать рецепт' : 'Новый рецепт'}
+          </h2>
+          <button type="button" onClick={onClose} className="icon-btn">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {/* Fragment info */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Название фрагмента</label>
+              <input
+                type="text"
+                value={fragmentName}
+                onChange={(e) => setFragmentName(e.target.value)}
+                placeholder="Осколок тьмы"
+                className="input w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Нужно фрагментов</label>
+              <input
+                type="number"
+                value={fragmentsRequired}
+                onChange={(e) => setFragmentsRequired(Number(e.target.value) || 1)}
+                min={1}
+                className="input w-full"
+              />
+            </div>
+          </div>
+
+          {/* Fragment icon */}
+          <div>
+            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Иконка фрагмента</label>
+            <div className="flex flex-wrap gap-2">
+              {FRAGMENT_ICONS.map((i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setFragmentIcon(i)}
+                  className={cn(
+                    'h-10 w-10 rounded-xl text-xl transition-all',
+                    fragmentIcon === i 
+                      ? 'bg-[var(--accent)] shadow-lg scale-110' 
+                      : 'bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
+                  )}
+                >
+                  {i}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Result info */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Результат крафта</label>
+              <input
+                type="text"
+                value={resultItemName}
+                onChange={(e) => setResultItemName(e.target.value)}
+                placeholder="Меч тьмы"
+                className="input w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Редкость</label>
+              <select
+                value={resultRarity}
+                onChange={(e) => setResultRarity(e.target.value as ItemRarity)}
+                className="select w-full"
+              >
+                {Object.entries(RARITY_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Source type */}
+          <div>
+            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Источник фрагментов</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setSourceType('random_drop')}
+                className={cn(
+                  'rounded-xl p-4 text-left transition-all',
+                  sourceType === 'random_drop' 
+                    ? 'bg-[var(--accent-subtle)] border-2 border-[var(--accent)]' 
+                    : 'bg-[var(--surface)] border-2 border-transparent'
+                )}
+              >
+                <div className="text-lg mb-1">🎲</div>
+                <div className="font-medium text-sm">Случайный дроп</div>
+                <div className="text-xs text-[var(--fg-muted)]">Шанс при выполнении задач</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSourceType('task_linked')}
+                className={cn(
+                  'rounded-xl p-4 text-left transition-all',
+                  sourceType === 'task_linked' 
+                    ? 'bg-[var(--accent-subtle)] border-2 border-[var(--accent)]' 
+                    : 'bg-[var(--surface)] border-2 border-transparent'
+                )}
+              >
+                <div className="text-lg mb-1">🎯</div>
+                <div className="font-medium text-sm">Привязка к задачам</div>
+                <div className="text-xs text-[var(--fg-muted)]">Конкретные задачи</div>
+              </button>
+            </div>
+          </div>
+
+          {/* Source options */}
+          {sourceType === 'random_drop' && (
+            <div>
+              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">
+                Шанс выпадения (%)
+              </label>
+              <input
+                type="number"
+                value={dropChance}
+                onChange={(e) => setDropChance(Number(e.target.value) || 1)}
+                min={1}
+                max={100}
+                className="input w-full"
+              />
+            </div>
+          )}
+
+          {sourceType === 'task_linked' && (
+            <div>
+              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">
+                Привязанные задачи
+              </label>
+              <div className="max-h-40 overflow-y-auto rounded-xl bg-[var(--surface)] p-2">
+                {tasks.filter(t => !t.archived && !t.isCompleted).map((task) => (
+                  <label
+                    key={task.id}
+                    className="flex items-center gap-2 rounded-lg p-2 hover:bg-[var(--surface-elevated)] cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={linkedTaskIds.includes(task.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setLinkedTaskIds([...linkedTaskIds, task.id])
+                        } else {
+                          setLinkedTaskIds(linkedTaskIds.filter(id => id !== task.id))
+                        }
+                      }}
+                      className="h-4 w-4 rounded accent-[var(--accent)]"
+                    />
+                    <span className="text-sm truncate">{task.title}</span>
+                  </label>
+                ))}
+                {tasks.filter(t => !t.archived && !t.isCompleted).length === 0 && (
+                  <p className="text-sm text-[var(--fg-muted)] text-center py-4">Нет активных задач</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="btn-secondary flex-1">
+              Отмена
+            </button>
+            <button type="submit" className="btn-primary flex-1">
+              {recipe ? 'Сохранить' : 'Создать'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Shop Page ─────────────────────────────────────────────────────────
 
 export default function ShopPage() {
   const shopItems = useRpgStore((s) => s.shopItems)
   const inventory = useRpgStore((s) => s.inventory)
+  const allRecipes = useRpgStore((s) => s.craftRecipes)
+  const allItemGroups = useRpgStore((s) => s.itemGroups)
+  const activeProfileId = useRpgStore((s) => s.activeProfileId)
+  const recipes = activeProfileId ? allRecipes.filter((r) => r.profileId === activeProfileId) : []
   const [tab, setTab] = useState<Tab>('shop')
   const [showForm, setShowForm] = useState(false)
   const [editingItem, setEditingItem] = useState<ShopItem | undefined>()
-  const [filter, setFilter] = useState<ItemRarity | 'all'>('all')
+  const [groupFilter, setGroupFilter] = useState<'all' | string>('all')
+  const [showGroupManager, setShowGroupManager] = useState(false)
+  const [showRecipeForm, setShowRecipeForm] = useState(false)
+  const [editingRecipe, setEditingRecipe] = useState<CraftRecipe | undefined>()
+
+  const itemGroups = activeProfileId
+    ? allItemGroups
+        .filter((g) => g.profileId === activeProfileId)
+        .slice()
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+    : []
 
   const handleEdit = (item: ShopItem) => {
     setEditingItem(item)
@@ -1083,9 +1577,23 @@ export default function ShopPage() {
     setEditingItem(undefined)
   }
 
-  const filteredItems = filter === 'all'
-    ? shopItems
-    : shopItems.filter((i) => i.rarity === filter)
+  const filteredItems =
+    groupFilter === 'all'
+      ? shopItems
+      : shopItems.filter((i) => i.groupId === groupFilter)
+
+  const handleEditRecipe = (recipe: CraftRecipe) => {
+    setEditingRecipe(recipe)
+    setShowRecipeForm(true)
+  }
+
+  const handleCloseRecipeForm = () => {
+    setShowRecipeForm(false)
+    setEditingRecipe(undefined)
+  }
+
+  const activeRecipes = recipes.filter((r) => !r.crafted)
+  const craftedRecipes = recipes.filter((r) => r.crafted)
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto pb-6">
@@ -1096,9 +1604,13 @@ export default function ShopPage() {
             <ShoppingBag className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-[var(--fg)]">Магазин</h1>
+            <h1 className="text-xl font-bold text-[var(--fg)]">Предметы</h1>
             <p className="text-sm text-[var(--fg-muted)]">
-              {tab === 'shop' ? `${shopItems.length} предметов` : `${inventory.length} в инвентаре`}
+              {tab === 'shop'
+                ? `${shopItems.length} предметов`
+                : tab === 'inventory'
+                  ? `${inventory.length} в инвентаре`
+                  : `${recipes.length} рецептов крафта`}
             </p>
           </div>
         </div>
@@ -1129,10 +1641,28 @@ export default function ShopPage() {
         </button>
         <button
           type="button"
+          onClick={() => setTab('crafting')}
+          className={cn(
+            'flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all',
+          tab === 'crafting' 
+              ? 'bg-[var(--accent)] text-white shadow-md' 
+              : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'
+          )}
+        >
+          <Hammer className="h-4 w-4" />
+          Крафт
+          {recipes.length > 0 && (
+            <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
+              {recipes.length}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
           onClick={() => setTab('inventory')}
           className={cn(
             'flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all',
-            tab === 'inventory' 
+          tab === 'inventory' 
               ? 'bg-[var(--accent)] text-white shadow-md' 
               : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'
           )}
@@ -1150,26 +1680,47 @@ export default function ShopPage() {
       {/* Content */}
       {tab === 'shop' && (
         <>
-          {/* Filter */}
-          <div className="flex flex-wrap gap-2">
+          {/* Filter by groups */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setGroupFilter('all')}
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
+                  groupFilter === 'all'
+                    ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
+                    : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
+                )}
+              >
+                <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                Все предметы
+              </button>
+              {itemGroups.map((group) => (
+                <button
+                  key={group.id}
+                  type="button"
+                  onClick={() => setGroupFilter(group.id)}
+                  className={cn(
+                    'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
+                    groupFilter === group.id
+                      ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
+                      : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
+                  )}
+                >
+                  <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  {group.name}
+                </button>
+              ))}
+            </div>
             <button
               type="button"
-              onClick={() => setFilter('all')}
-              className={cn('tab', filter === 'all' && 'tab-active')}
+              onClick={() => setShowGroupManager(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
             >
-              Все
+              Управлять группами
+              <ChevronRight className="h-3.5 w-3.5" />
             </button>
-            {(Object.keys(RARITY_LABELS) as ItemRarity[]).map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setFilter(r)}
-                className={cn('tab', filter === r && 'tab-active')}
-                style={filter === r ? { color: RARITY_COLORS[r] } : {}}
-              >
-                {RARITY_LABELS[r]}
-              </button>
-            ))}
           </div>
 
           {/* Shop items grid */}
@@ -1215,8 +1766,59 @@ export default function ShopPage() {
         </>
       )}
 
+      {tab === 'crafting' && (
+        <>
+          {recipes.length === 0 ? (
+            <div className="glass-card flex flex-col items-center justify-center rounded-2xl py-16">
+              <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-purple-500/10 mb-4">
+                <Package className="h-10 w-10 text-purple-500" />
+              </div>
+              <p className="font-medium text-[var(--fg)]">Нет рецептов</p>
+              <p className="mt-1 text-sm text-[var(--fg-muted)]">Создайте свой первый рецепт крафта</p>
+              <button
+                type="button"
+                onClick={() => setShowRecipeForm(true)}
+                className="btn-primary mt-4"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Создать рецепт
+              </button>
+            </div>
+          ) : (
+            <>
+              {activeRecipes.length > 0 && (
+                <div>
+                  <h2 className="text-lg font-semibold text-[var(--fg)] mb-4">В процессе</h2>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {activeRecipes.map((recipe) => (
+                      <RecipeCard key={recipe.id} recipe={recipe} onEdit={() => handleEditRecipe(recipe)} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {craftedRecipes.length > 0 && (
+                <div>
+                  <h2 className="text-lg font-semibold text-[var(--fg)] mb-4">Скрафченные</h2>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {craftedRecipes.map((recipe) => (
+                      <RecipeCard key={recipe.id} recipe={recipe} onEdit={() => handleEditRecipe(recipe)} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </>
+      )}
+
       {/* Form modal */}
       {showForm && <ItemForm key={editingItem?.id ?? 'new'} item={editingItem} onClose={handleCloseForm} />}
+      {showRecipeForm && <RecipeForm recipe={editingRecipe} onClose={handleCloseRecipeForm} />}
+
+      {showGroupManager && (
+        <ItemGroupManagerModal onClose={() => setShowGroupManager(false)} />
+      )}
     </div>
   )
 }

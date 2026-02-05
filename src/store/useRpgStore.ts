@@ -5,6 +5,8 @@ import type {
   TaskId,
   TaskGroup,
   TaskGroupId,
+  ItemGroup,
+  ItemGroupId,
   Profile,
   ProfileId,
   Attribute,
@@ -147,6 +149,7 @@ interface RpgStoreState {
   profiles: Profile[]
   activeProfileId: ProfileId | null
   taskGroups: TaskGroup[]
+  itemGroups: ItemGroup[]
   tasks: TaskRpg[]
   habits: Habit[]
   achievements: Achievement[]
@@ -192,6 +195,11 @@ interface RpgStoreState {
   addTaskGroup: (name: string) => TaskGroup
   updateTaskGroup: (id: TaskGroupId, updater: (g: TaskGroup) => TaskGroup) => void
   deleteTaskGroup: (id: TaskGroupId) => void
+
+  // Item group actions (shop)
+  addItemGroup: (name: string) => ItemGroup
+  updateItemGroup: (id: ItemGroupId, updater: (g: ItemGroup) => ItemGroup) => void
+  deleteItemGroup: (id: ItemGroupId) => void
 
   // Task actions
   getTasks: () => TaskRpg[]
@@ -269,6 +277,7 @@ export const useRpgStore = create<RpgStoreState>()(
         profiles: [],
         activeProfileId: null,
         taskGroups: [],
+        itemGroups: [],
         tasks: [],
         habits: [],
         achievements: [],
@@ -414,6 +423,42 @@ export const useRpgStore = create<RpgStoreState>()(
           set((s) => ({
             taskGroups: s.taskGroups.filter((g) => g.id !== id),
             tasks: s.tasks.map((t) => (t.groupId === id ? { ...t, groupId: null } : t)),
+          }))
+        },
+
+        // ─── Item groups (shop) ─────────────────────────────────────────────
+        addItemGroup: (name) => {
+          const profile = get().getActiveProfile()
+          if (!profile) throw new Error('No active profile')
+          const groups = get().getItemGroups()
+          const sortOrder =
+            groups.length === 0 ? 0 : Math.max(...groups.map((g) => g.sortOrder), 0) + 1
+          const newGroup: ItemGroup = {
+            id: crypto.randomUUID(),
+            profileId: profile.id,
+            name: name.trim(),
+            sortOrder,
+            createdAt: now(),
+            updatedAt: now(),
+          }
+          set((s) => ({ itemGroups: [...s.itemGroups, newGroup] }))
+          return newGroup
+        },
+
+        updateItemGroup: (id, updater) => {
+          set((s) => ({
+            itemGroups: s.itemGroups.map((g) =>
+              g.id === id ? { ...updater(g), updatedAt: now() } : g
+            ),
+          }))
+        },
+
+        deleteItemGroup: (id) => {
+          set((s) => ({
+            itemGroups: s.itemGroups.filter((g) => g.id !== id),
+            shopItems: s.shopItems.map((i) =>
+              i.groupId === id ? { ...i, groupId: null } : i
+            ),
           }))
         },
 
@@ -1079,6 +1124,7 @@ export const useRpgStore = create<RpgStoreState>()(
         profiles: s.profiles,
         activeProfileId: s.activeProfileId,
         taskGroups: s.taskGroups,
+        itemGroups: s.itemGroups,
         tasks: s.tasks,
         habits: s.habits,
         achievements: s.achievements,
@@ -1091,6 +1137,7 @@ export const useRpgStore = create<RpgStoreState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return
         if (!state.taskGroups) useRpgStore.setState({ taskGroups: [] })
+        if (!state.itemGroups) useRpgStore.setState({ itemGroups: [] })
         if (!state.tasks) useRpgStore.setState({ tasks: [] })
         if (state.tasks?.length && state.tasks.some((t: TaskRpg) => t.groupId === undefined || t.deadlineAt === undefined)) {
           useRpgStore.setState({

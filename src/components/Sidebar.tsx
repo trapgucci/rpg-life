@@ -18,8 +18,7 @@ import { useState } from 'react'
 const navItems = [
   { to: '/', label: 'Задачи', icon: CheckSquare, color: '#6366f1' },
   { to: '/habits', label: 'Привычки', icon: Repeat, color: '#10b981' },
-  { to: '/shop', label: 'Магазин', icon: ShoppingBag, color: '#f59e0b' },
-  { to: '/crafting', label: 'Крафт', icon: Hammer, color: '#8b5cf6' },
+  { to: '/shop', label: 'Предметы', icon: ShoppingBag, color: '#f59e0b' },
   { to: '/status', label: 'Статус', icon: Activity, color: '#3b82f6' },
   { to: '/achievements', label: 'Достижения', icon: Trophy, color: '#eab308' },
 ] as const
