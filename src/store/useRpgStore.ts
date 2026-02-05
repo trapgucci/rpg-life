@@ -197,9 +197,11 @@ interface RpgStoreState {
   deleteTaskGroup: (id: TaskGroupId) => void
 
   // Item group actions (shop)
+  getItemGroups: () => ItemGroup[]
   addItemGroup: (name: string) => ItemGroup
   updateItemGroup: (id: ItemGroupId, updater: (g: ItemGroup) => ItemGroup) => void
   deleteItemGroup: (id: ItemGroupId) => void
+  reorderItemGroups: (orderedIds: ItemGroupId[]) => void
 
   // Task actions
   getTasks: () => TaskRpg[]
@@ -427,6 +429,16 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         // ─── Item groups (shop) ─────────────────────────────────────────────
+        getItemGroups: () => {
+          const { itemGroups, activeProfileId } = get()
+          return activeProfileId
+            ? itemGroups
+                .filter((g) => g.profileId === activeProfileId)
+                .slice()
+                .sort((a, b) => a.sortOrder - b.sortOrder)
+            : []
+        },
+
         addItemGroup: (name) => {
           const profile = get().getActiveProfile()
           if (!profile) throw new Error('No active profile')
@@ -459,6 +471,24 @@ export const useRpgStore = create<RpgStoreState>()(
             shopItems: s.shopItems.map((i) =>
               i.groupId === id ? { ...i, groupId: null } : i
             ),
+          }))
+        },
+
+        reorderItemGroups: (orderedIds) => {
+          const { itemGroups, activeProfileId } = get()
+          if (!activeProfileId) return
+          const idSet = new Set(orderedIds)
+          const reordered = orderedIds
+            .map((id, index) => {
+              const g = itemGroups.find((g) => g.id === id && g.profileId === activeProfileId)
+              return g ? { ...g, sortOrder: index, updatedAt: now() } : null
+            })
+            .filter((g): g is ItemGroup => g != null)
+          const rest = itemGroups.filter((g) => g.profileId === activeProfileId && !idSet.has(g.id))
+          const maxSo = reordered.length - 1
+          rest.forEach((g, i) => reordered.push({ ...g, sortOrder: maxSo + 1 + i, updatedAt: now() }))
+          set((s) => ({
+            itemGroups: s.itemGroups.filter((g) => g.profileId !== activeProfileId).concat(reordered),
           }))
         },
 
@@ -1057,6 +1087,7 @@ export const useRpgStore = create<RpgStoreState>()(
             profiles: state.profiles,
             activeProfileId: state.activeProfileId,
             taskGroups: state.taskGroups,
+            itemGroups: state.itemGroups,
             tasks: state.tasks,
             habits: state.habits,
             achievements: state.achievements,
@@ -1077,6 +1108,7 @@ export const useRpgStore = create<RpgStoreState>()(
               profiles: data.profiles ?? [],
               activeProfileId: data.activeProfileId ?? null,
               taskGroups: data.taskGroups ?? [],
+              itemGroups: data.itemGroups ?? [],
               tasks: (data.tasks ?? []).map((t: TaskRpg) => ({ ...t, groupId: t.groupId ?? null, deadlineAt: t.deadlineAt ?? null })),
               habits: data.habits ?? [],
               achievements: data.achievements ?? [],

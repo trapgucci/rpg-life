@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { cn } from '../lib/cn'
 import { 
   ShoppingBag, Package, Plus, Pencil, Trash2, X, 
-  Coins, Gem, Gift, Sparkles, Check, ChevronRight, Box, Lightbulb, Hammer, CheckCircle2, Edit3, Trash
+  Coins, Gem, Gift, Sparkles, Check, ChevronRight, ChevronDown, Box, Lightbulb, Hammer, CheckCircle2, Trash, GripVertical, Settings
 } from 'lucide-react'
 import { useRpgStore } from '../store/useRpgStore'
 import type { ShopItem, ItemRarity, CraftRecipe, FragmentSourceType, ItemGroup } from '../types/domain'
@@ -43,19 +43,25 @@ interface ItemGroupManagerModalProps {
 }
 
 function ItemGroupManagerModal({ onClose }: ItemGroupManagerModalProps) {
-  const allGroups = useRpgStore((s) => s.itemGroups)
+  const allItemGroups = useRpgStore((s) => s.itemGroups)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
+  const groups = useMemo(
+    () =>
+      activeProfileId
+        ? allItemGroups
+            .filter((g) => g.profileId === activeProfileId)
+            .slice()
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+        : [],
+    [allItemGroups, activeProfileId]
+  )
   const addItemGroup = useRpgStore((s) => s.addItemGroup)
   const updateItemGroup = useRpgStore((s) => s.updateItemGroup)
   const deleteItemGroup = useRpgStore((s) => s.deleteItemGroup)
+  const reorderItemGroups = useRpgStore((s) => s.reorderItemGroups)
   const [name, setName] = useState('')
-
-  const groups = activeProfileId
-    ? allGroups
-        .filter((g) => g.profileId === activeProfileId)
-        .slice()
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-    : []
+  const [draggedId, setDraggedId] = useState<string | null>(null)
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault()
@@ -69,6 +75,37 @@ function ItemGroupManagerModal({ onClose }: ItemGroupManagerModalProps) {
     const trimmed = newName.trim()
     if (!trimmed || trimmed === group.name) return
     updateItemGroup(group.id, (g) => ({ ...g, name: trimmed }))
+  }
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedId(id)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', id)
+    e.dataTransfer.setData('application/x-group-id', id)
+  }
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault()
+    if (draggedId && draggedId !== id) setDragOverId(id)
+  }
+  const handleDragLeave = () => setDragOverId(null)
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault()
+    setDragOverId(null)
+    setDraggedId(null)
+    const id = e.dataTransfer.getData('application/x-group-id')
+    if (!id || id === targetId) return
+    const ids = groups.map((g) => g.id)
+    const fromIdx = ids.indexOf(id)
+    const toIdx = ids.indexOf(targetId)
+    if (fromIdx === -1 || toIdx === -1) return
+    const next = [...ids]
+    next.splice(fromIdx, 1)
+    next.splice(toIdx, 0, id)
+    reorderItemGroups(next)
+  }
+  const handleDragEnd = () => {
+    setDraggedId(null)
+    setDragOverId(null)
   }
 
   return (
@@ -85,7 +122,7 @@ function ItemGroupManagerModal({ onClose }: ItemGroupManagerModalProps) {
         </div>
 
         <p className="text-sm text-[var(--fg-muted)] mb-4">
-          Создавайте пользовательские группы, чтобы удобно сортировать предметы в магазине.
+          Создавайте пользовательские группы, чтобы удобно сортировать предметы в магазине. Порядок групп здесь = порядок в строке магазина. Перетаскивайте группы для изменения порядка.
         </p>
 
         <form onSubmit={handleCreate} className="flex gap-2 mb-4">
@@ -106,30 +143,48 @@ function ItemGroupManagerModal({ onClose }: ItemGroupManagerModalProps) {
             Пока нет ни одной группы. Создайте первую, чтобы начать сортировку.
           </div>
         ) : (
-          <div className="space-y-2 max-h-60 overflow-y-auto">
+          <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
             {groups.map((group) => (
               <div
                 key={group.id}
-                className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
+                draggable
+                onDragStart={(e) => handleDragStart(e, group.id)}
+                onDragOver={(e) => handleDragOver(e, group.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, group.id)}
+                onDragEnd={handleDragEnd}
+                className={cn(
+                  'group-card flex items-center gap-2 rounded-xl border bg-[var(--surface)] px-3 py-2 transition-colors',
+                  dragOverId === group.id ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/30' : 'border-[var(--border)]',
+                  draggedId === group.id && 'opacity-50'
+                )}
               >
-                <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                <input
-                  defaultValue={group.name}
-                  onBlur={(e) => handleRename(group, e.target.value)}
-                  className="bg-transparent flex-1 text-sm text-[var(--fg)] outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (confirm('Удалить группу? Предметы из неё останутся без группы.')) {
-                      deleteItemGroup(group.id)
-                    }
-                  }}
-                  className="icon-btn icon-btn-danger"
-                  title="Удалить группу"
-                >
-                  <Trash className="h-4 w-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="cursor-grab active:cursor-grabbing text-[var(--fg-muted)] hover:text-[var(--fg)] touch-none"
+                    title="Перетащить для изменения порядка"
+                  >
+                    <GripVertical className="h-4 w-4" />
+                  </span>
+                  <span className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" />
+                  <input
+                    defaultValue={group.name}
+                    onBlur={(e) => handleRename(group, e.target.value)}
+                    className="bg-transparent flex-1 text-sm text-[var(--fg)] outline-none min-w-0"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm('Удалить группу? Предметы из неё останутся без группы.')) {
+                        deleteItemGroup(group.id)
+                      }
+                    }}
+                    className="icon-btn icon-btn-danger shrink-0"
+                    title="Удалить группу"
+                  >
+                    <Trash className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -816,6 +871,19 @@ function ItemForm({ item, onClose }: ItemFormProps) {
   const [showLootboxModal, setShowLootboxModal] = useState(false)
   const [showCraftingTypePicker, setShowCraftingTypePicker] = useState(false)
   const [activeCraftingModal, setActiveCraftingModal] = useState<'create' | 'material' | null>(null)
+  const [groupsExpanded, setGroupsExpanded] = useState(false)
+  const groupsContainerRef = useRef<HTMLDivElement>(null)
+  const [groupsFormOverflow, setGroupsFormOverflow] = useState(false)
+
+  useEffect(() => {
+    const el = groupsContainerRef.current
+    if (!el) return
+    const check = () => setGroupsFormOverflow(el.scrollHeight > el.clientHeight)
+    check()
+    const ro = new ResizeObserver(check)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [itemGroups])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -894,36 +962,53 @@ function ItemForm({ item, onClose }: ItemFormProps) {
                 Группы пока не созданы. Добавьте их на странице магазина через кнопку «Управлять группами».
               </p>
             ) : (
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setGroupId(null)}
+              <>
+                <div
+                  ref={groupsContainerRef}
                   className={cn(
-                    'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
-                    groupId === null
-                      ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
-                      : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
+                    'flex flex-wrap gap-1.5',
+                    !groupsExpanded && 'max-h-[4.5rem] overflow-hidden'
                   )}
                 >
-                  Без группы
-                </button>
-                {itemGroups.map((group) => (
                   <button
-                    key={group.id}
                     type="button"
-                    onClick={() => setGroupId(group.id)}
+                    onClick={() => setGroupId(null)}
                     className={cn(
                       'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
-                      groupId === group.id
+                      groupId === null
                         ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
                         : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
                     )}
                   >
-                    <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                    {group.name}
+                    Без группы
                   </button>
-                ))}
-              </div>
+                  {itemGroups.map((group) => (
+                    <button
+                      key={group.id}
+                      type="button"
+                      onClick={() => setGroupId(group.id)}
+                      className={cn(
+                        'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
+                        groupId === group.id
+                          ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
+                          : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
+                      )}
+                    >
+                      <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                      {group.name}
+                    </button>
+                  ))}
+                </div>
+                {(groupsFormOverflow || groupsExpanded) && (
+                  <button
+                    type="button"
+                    onClick={() => setGroupsExpanded((v) => !v)}
+                    className="mt-2 text-xs font-medium text-[var(--accent)] hover:underline"
+                  >
+                    {groupsExpanded ? 'Свернуть' : 'Показать все группы'}
+                  </button>
+                )}
+              </>
             )}
           </div>
 
@@ -1250,13 +1335,15 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
 
         {/* Source info */}
         <p className="mt-3 text-xs text-[var(--fg-muted)]">
-          {recipe.fragmentSource.type === 'task_linked' 
-            ? '🎯 Привязано к задачам' 
-            : '🎲 Случайный дроп'}
+          {recipe.fragmentSource.type === 'task_linked' && '🎯 Привязано к задачам'}
+          {recipe.fragmentSource.type === 'habit_linked' && '🔁 Привязано к привычкам'}
           {recipe.fragmentSource.type === 'random_drop' && (
-            <span className="ml-1">
-              ({recipe.fragmentSource.dropChance}% шанс)
-            </span>
+            <>
+              🎲 Случайный дроп
+              <span className="ml-1">
+                ({recipe.fragmentSource.dropChance}% шанс)
+              </span>
+            </>
           )}
         </p>
 
@@ -1325,9 +1412,9 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
 
   const [fragmentName, setFragmentName] = useState(recipe?.fragmentName ?? '')
   const [fragmentIcon, setFragmentIcon] = useState(recipe?.fragmentIcon ?? '🧩')
-  const [fragmentsRequired, setFragmentsRequired] = useState(recipe?.fragmentsRequired ?? 10)
-  const [resultItemName, setResultItemName] = useState(recipe?.resultItemName ?? '')
-  const [resultRarity, setResultRarity] = useState<ItemRarity>(recipe?.resultRarity ?? 'rare')
+  const [fragmentsRequired, setFragmentsRequired] = useState(recipe?.fragmentsRequired ?? 1)
+  const [resultItemName] = useState(recipe?.resultItemName ?? 'Награда')
+  const [resultRarity, setResultRarity] = useState<ItemRarity>(recipe?.resultRarity ?? 'common')
   const [sourceType, setSourceType] = useState<FragmentSourceType>(
     recipe?.fragmentSource.type ?? 'random_drop'
   )
@@ -1335,10 +1422,11 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
   const [linkedTaskIds, setLinkedTaskIds] = useState<string[]>(
     recipe?.fragmentSource.linkedTaskIds ?? []
   )
+  const [showTaskPicker, setShowTaskPicker] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!fragmentName.trim() || !resultItemName.trim()) return
+    if (!fragmentName.trim()) return
 
     const data = {
       fragmentName: fragmentName.trim(),
@@ -1348,7 +1436,9 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
       resultRarity,
       fragmentSource: sourceType === 'task_linked'
         ? { type: 'task_linked' as const, linkedTaskIds }
-        : { type: 'random_drop' as const, dropChance },
+        : sourceType === 'habit_linked'
+          ? { type: 'habit_linked' as const }
+          : { type: 'random_drop' as const, dropChance },
     }
 
     if (recipe) {
@@ -1385,14 +1475,30 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Нужно фрагментов</label>
-              <input
-                type="number"
-                value={fragmentsRequired}
-                onChange={(e) => setFragmentsRequired(Number(e.target.value) || 1)}
-                min={1}
-                className="input w-full"
-              />
+              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Доступно фрагментов</label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFragmentsRequired((prev) => Math.max(1, prev - 1))}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)]"
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  value={fragmentsRequired}
+                  onChange={(e) => setFragmentsRequired(Math.max(1, Number(e.target.value) || 1))}
+                  min={1}
+                  className="input w-full text-center h-9"
+                />
+                <button
+                  type="button"
+                  onClick={() => setFragmentsRequired((prev) => prev + 1)}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)]"
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1418,36 +1524,26 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
             </div>
           </div>
 
-          {/* Result info */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Результат крафта</label>
-              <input
-                type="text"
-                value={resultItemName}
-                onChange={(e) => setResultItemName(e.target.value)}
-                placeholder="Меч тьмы"
-                className="input w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Редкость</label>
-              <select
-                value={resultRarity}
-                onChange={(e) => setResultRarity(e.target.value as ItemRarity)}
-                className="select w-full"
-              >
-                {Object.entries(RARITY_LABELS).map(([value, label]) => (
+          {/* Result rarity */}
+          <div>
+            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Редкость</label>
+            <select
+              value={resultRarity}
+              onChange={(e) => setResultRarity(e.target.value as ItemRarity)}
+              className="select w-full"
+            >
+              {Object.entries(RARITY_LABELS)
+                .filter(([value]) => value !== 'uncommon')
+                .map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
-              </select>
-            </div>
+            </select>
           </div>
 
           {/* Source type */}
           <div>
             <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Источник фрагментов</label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <button
                 type="button"
                 onClick={() => setSourceType('random_drop')}
@@ -1476,6 +1572,20 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
                 <div className="font-medium text-sm">Привязка к задачам</div>
                 <div className="text-xs text-[var(--fg-muted)]">Конкретные задачи</div>
               </button>
+              <button
+                type="button"
+                onClick={() => setSourceType('habit_linked')}
+                className={cn(
+                  'rounded-xl p-4 text-left transition-all',
+                  sourceType === 'habit_linked' 
+                    ? 'bg-[var(--accent-subtle)] border-2 border-[var(--accent)]' 
+                    : 'bg-[var(--surface)] border-2 border-transparent'
+                )}
+              >
+                <div className="text-lg mb-1">🔁</div>
+                <div className="font-medium text-sm">Привязка к привычкам</div>
+                <div className="text-xs text-[var(--fg-muted)]">Награда за выполнение привычек</div>
+              </button>
             </div>
           </div>
 
@@ -1497,37 +1607,33 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
           )}
 
           {sourceType === 'task_linked' && (
-            <div>
-              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">
-                Привязанные задачи
-              </label>
-              <div className="max-h-40 overflow-y-auto rounded-xl bg-[var(--surface)] p-2">
-                {tasks.filter(t => !t.archived && !t.isCompleted).map((task) => (
-                  <label
-                    key={task.id}
-                    className="flex items-center gap-2 rounded-lg p-2 hover:bg-[var(--surface-elevated)] cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={linkedTaskIds.includes(task.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setLinkedTaskIds([...linkedTaskIds, task.id])
-                        } else {
-                          setLinkedTaskIds(linkedTaskIds.filter(id => id !== task.id))
-                        }
-                      }}
-                      className="h-4 w-4 rounded accent-[var(--accent)]"
-                    />
-                    <span className="text-sm truncate">{task.title}</span>
-                  </label>
-                ))}
-                {tasks.filter(t => !t.archived && !t.isCompleted).length === 0 && (
-                  <p className="text-sm text-[var(--fg-muted)] text-center py-4">Нет активных задач</p>
-                )}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-[var(--fg)]">Привязанные задачи</p>
+                <p className="text-xs text-[var(--fg-muted)] mt-0.5">
+                  Выбрано задач: {linkedTaskIds.length || 0}
+                </p>
               </div>
+              <button
+                type="button"
+                onClick={() => setShowTaskPicker(true)}
+                className="btn-secondary text-sm px-3 py-1.5"
+              >
+                Выбрать задачи
+              </button>
             </div>
           )}
+
+          {/* Дополнительные настройки (пока неактивно) */}
+          <div className="mt-2 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-4 py-3 flex items-center gap-3 opacity-80 cursor-default select-none">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface-elevated)]">
+              <Settings className="h-5 w-5 text-[var(--fg-muted)]" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-[var(--fg)]">Дополнительные настройки</p>
+              <p className="text-xs text-[var(--fg-muted)]">Скоро здесь появятся продвинутые параметры рецепта.</p>
+            </div>
+          </div>
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">
@@ -1539,6 +1645,65 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
           </div>
         </form>
       </div>
+
+      {showTaskPicker && (
+        <div
+          className="modal-backdrop"
+          onClick={(e) => e.target === e.currentTarget && setShowTaskPicker(false)}
+        >
+          <div className="modal-content max-w-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-[var(--fg)]">Выбрать задачи</h3>
+              <button
+                type="button"
+                onClick={() => setShowTaskPicker(false)}
+                className="icon-btn"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-sm text-[var(--fg-muted)] mb-3">
+              Отметьте одну или несколько задач, за выполнение которых будут выдаваться фрагменты.
+            </p>
+            <div className="max-h-72 overflow-y-auto rounded-xl bg-[var(--surface)] p-2 mb-4">
+              {tasks.filter(t => !t.archived && !t.isCompleted).map((task) => (
+                <label
+                  key={task.id}
+                  className="flex items-center gap-2 rounded-lg p-2 hover:bg-[var(--surface-elevated)] cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={linkedTaskIds.includes(task.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setLinkedTaskIds((prev) => [...prev, task.id])
+                      } else {
+                        setLinkedTaskIds((prev) => prev.filter(id => id !== task.id))
+                      }
+                    }}
+                    className="h-4 w-4 rounded accent-[var(--accent)]"
+                  />
+                  <span className="text-sm truncate">{task.title}</span>
+                </label>
+              ))}
+              {tasks.filter(t => !t.archived && !t.isCompleted).length === 0 && (
+                <p className="text-sm text-[var(--fg-muted)] text-center py-4">
+                  Нет активных задач
+                </p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowTaskPicker(false)}
+                className="btn-secondary flex-1"
+              >
+                Готово
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1557,6 +1722,7 @@ export default function ShopPage() {
   const [editingItem, setEditingItem] = useState<ShopItem | undefined>()
   const [groupFilter, setGroupFilter] = useState<'all' | string>('all')
   const [showGroupManager, setShowGroupManager] = useState(false)
+  const [showGroupsOverflow, setShowGroupsOverflow] = useState(false)
   const [showRecipeForm, setShowRecipeForm] = useState(false)
   const [editingRecipe, setEditingRecipe] = useState<CraftRecipe | undefined>()
 
@@ -1595,16 +1761,74 @@ export default function ShopPage() {
   const activeRecipes = recipes.filter((r) => !r.crafted)
   const craftedRecipes = recipes.filter((r) => r.crafted)
 
+  const groupsRowOuterRef = useRef<HTMLDivElement>(null)
+  const groupsRowInnerRef = useRef<HTMLDivElement>(null)
+  const [visibleGroupCount, setVisibleGroupCount] = useState(0)
+
+  useEffect(() => {
+    if (tab !== 'shop') return
+    const outer = groupsRowOuterRef.current
+    const inner = groupsRowInnerRef.current
+    if (!outer || !inner || !itemGroups.length) {
+      setVisibleGroupCount(itemGroups.length)
+      return
+    }
+    const check = () => {
+      const children = inner.children
+      if (!children.length) {
+        setVisibleGroupCount(itemGroups.length)
+        return
+      }
+      const outerRight = outer.getBoundingClientRect().right
+      let lastVisible = -1
+      for (let i = 0; i < children.length; i++) {
+        const childRight = (children[i] as HTMLElement).getBoundingClientRect().right
+        if (childRight <= outerRight + 2) lastVisible = i
+      }
+      const count = lastVisible >= 0 ? lastVisible : 0
+      setVisibleGroupCount((prev) => {
+        const next = Math.min(count, itemGroups.length)
+        return prev !== next ? next : prev
+      })
+    }
+    const raf = requestAnimationFrame(check)
+    const ro = new ResizeObserver(() => requestAnimationFrame(check))
+    ro.observe(outer)
+    return () => {
+      cancelAnimationFrame(raf)
+      ro.disconnect()
+    }
+  }, [tab, itemGroups])
+
+  const visibleGroups = itemGroups.slice(0, visibleGroupCount)
+  const overflowGroups = itemGroups.slice(visibleGroupCount)
+  const groupsOverflow = overflowGroups.length > 0
+
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto pb-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/30">
-            <ShoppingBag className="h-6 w-6 text-white" />
+          <div
+            className={cn(
+              'flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br shadow-lg',
+              tab === 'shop' && 'from-amber-500 to-orange-600 shadow-amber-500/30',
+              tab === 'crafting' && 'from-purple-500 to-violet-600 shadow-purple-500/30',
+              tab === 'inventory' && 'from-amber-800 to-amber-900 shadow-amber-900/30'
+            )}
+          >
+            {tab === 'shop' && <ShoppingBag className="h-6 w-6 text-white" />}
+            {tab === 'crafting' && <Hammer className="h-6 w-6 text-white" />}
+            {tab === 'inventory' && <Box className="h-6 w-6 text-white" />}
           </div>
           <div>
-            <h1 className="text-xl font-bold text-[var(--fg)]">Предметы</h1>
+            <h1 className="text-xl font-bold text-[var(--fg)]">
+              {tab === 'shop'
+                ? 'Магазин'
+                : tab === 'crafting'
+                  ? 'Мастерская'
+                  : 'Инвентарь'}
+            </h1>
             <p className="text-sm text-[var(--fg-muted)]">
               {tab === 'shop'
                 ? `${shopItems.length} предметов`
@@ -1616,7 +1840,13 @@ export default function ShopPage() {
         </div>
         <button
           type="button"
-          onClick={() => setShowForm(true)}
+          onClick={() => {
+            if (tab === 'crafting') {
+              setShowRecipeForm(true)
+            } else {
+              setShowForm(true)
+            }
+          }}
           className="btn-primary flex items-center gap-2"
         >
           <Plus className="h-4 w-4" />
@@ -1681,13 +1911,33 @@ export default function ShopPage() {
       {tab === 'shop' && (
         <>
           {/* Filter by groups */}
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex flex-wrap gap-1.5">
+          <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0 relative flex gap-1.5 flex-nowrap">
+            {/* Скрытый контейнер для измерения — все группы, чтобы вычислить visibleGroupCount */}
+            <div
+              ref={groupsRowOuterRef}
+              className="absolute inset-0 overflow-hidden opacity-0 pointer-events-none"
+              aria-hidden
+            >
+              <div ref={groupsRowInnerRef} className="flex gap-1.5 flex-nowrap">
+                <span className="shrink-0 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border">
+                  <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  Все предметы
+                </span>
+                {itemGroups.map((g) => (
+                  <span key={g.id} className="shrink-0 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border">
+                    <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                    {g.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+            {/* Видимая строка — только полностью помещающиеся группы */}
               <button
                 type="button"
                 onClick={() => setGroupFilter('all')}
                 className={cn(
-                  'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
+                  'shrink-0 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
                   groupFilter === 'all'
                     ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
                     : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
@@ -1696,13 +1946,13 @@ export default function ShopPage() {
                 <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                 Все предметы
               </button>
-              {itemGroups.map((group) => (
+              {visibleGroups.map((group) => (
                 <button
                   key={group.id}
                   type="button"
                   onClick={() => setGroupFilter(group.id)}
                   className={cn(
-                    'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
+                    'shrink-0 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
                     groupFilter === group.id
                       ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
                       : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
@@ -1713,10 +1963,52 @@ export default function ShopPage() {
                 </button>
               ))}
             </div>
+            {groupsOverflow && (
+              <div className="relative shrink-0 flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setShowGroupsOverflow((v) => !v)}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)] active:bg-[var(--surface-elevated)] transition-colors"
+                  title="Остальные группы"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+                {showGroupsOverflow && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40 bg-black/20"
+                      onClick={() => setShowGroupsOverflow(false)}
+                      aria-hidden="true"
+                    />
+                    <div className="absolute right-0 top-full mt-1 z-50 min-w-[180px] rounded-xl border border-[var(--border)] bg-[var(--surface)] py-2 shadow-xl overflow-hidden">
+                      {overflowGroups.map((group) => (
+                          <button
+                            key={group.id}
+                            type="button"
+                            onClick={() => {
+                              setGroupFilter(group.id)
+                              setShowGroupsOverflow(false)
+                            }}
+                            className={cn(
+                              'w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm transition-colors',
+                              groupFilter === group.id
+                                ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium'
+                                : 'bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
+                            )}
+                          >
+                            <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                            {group.name}
+                          </button>
+                        ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             <button
               type="button"
               onClick={() => setShowGroupManager(true)}
-              className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
+              className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
             >
               Управлять группами
               <ChevronRight className="h-3.5 w-3.5" />

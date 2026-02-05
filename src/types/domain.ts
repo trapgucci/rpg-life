@@ -421,12 +421,14 @@ export interface Achievement {
 // ─── Crafting System ────────────────────────────────────────────────────────
 
 /** Источник получения фрагментов */
-export type FragmentSourceType = 'task_linked' | 'random_drop'
+export type FragmentSourceType = 'task_linked' | 'habit_linked' | 'random_drop'
 
 export interface FragmentSource {
   type: FragmentSourceType
   /** ID задачи (для task_linked) */
   taskId?: TaskId
+  /** ID привычки (для habit_linked) */
+  habitId?: HabitId
   /** Шанс дропа 0.0-1.0 (для random_drop) */
   dropChance?: number
 }
