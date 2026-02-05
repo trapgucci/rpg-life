@@ -483,6 +483,10 @@ html.dark,
     color: var(--fg-muted);
   }
 
+  .icon-btn-compact {
+    @apply p-1 rounded-lg;
+  }
+
   .icon-btn:hover {
     background: var(--accent-subtle);
     color: var(--accent);

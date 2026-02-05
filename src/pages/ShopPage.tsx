@@ -583,16 +583,16 @@ function ShopItemCard({ item, onEdit }: ShopItemCardProps) {
       }}
     >
       {/* Edit/Delete buttons */}
-      <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button type="button" onClick={onEdit} className="icon-btn">
-          <Pencil className="h-4 w-4" />
+      <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button type="button" onClick={onEdit} className="icon-btn icon-btn-compact">
+          <Pencil className="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
           onClick={() => { if (confirm('Удалить предмет?')) deleteItem(item.id) }}
-          className="icon-btn icon-btn-danger"
+          className="icon-btn icon-btn-danger icon-btn-compact"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
 
@@ -1428,16 +1428,16 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
       }}
     >
       {/* Edit/Delete buttons */}
-      <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button type="button" onClick={onEdit} className="icon-btn">
-          <Pencil className="h-4 w-4" />
+      <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button type="button" onClick={onEdit} className="icon-btn icon-btn-compact">
+          <Pencil className="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
           onClick={() => { if (confirm('Удалить рецепт?')) deleteRecipe(recipe.id) }}
-          className="icon-btn icon-btn-danger"
+          className="icon-btn icon-btn-danger icon-btn-compact"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
 
@@ -1464,16 +1464,14 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
         {/* Fragment name */}
         <h3 className="font-semibold text-[var(--fg)]">{recipe.fragmentName}</h3>
 
-        {/* Result info */}
-        <div className="mt-2 flex items-center gap-2">
+        {/* Result rarity */}
+        <div className="mt-2 flex justify-center">
           <span
             className="rounded-lg px-2.5 py-1 text-xs font-semibold"
             style={{ backgroundColor: `${rarityColor}20`, color: rarityColor }}
           >
             {RARITY_LABELS[recipe.resultRarity]}
           </span>
-          <span className="text-xs text-[var(--fg-muted)]">→</span>
-          <span className="text-sm text-[var(--fg)]">{recipe.resultItemName}</span>
         </div>
 
         {/* Source info */}
@@ -1493,7 +1491,7 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
         {/* Progress */}
         <div className="mt-4 w-full">
           <div className="flex justify-between text-sm mb-1.5">
-            <span className="text-[var(--fg-muted)]">Фрагменты</span>
+            <span className="text-[var(--fg-muted)]">Доступно</span>
             <span className="font-semibold" style={{ color: canCraft ? '#10b981' : 'var(--fg)' }}>
               {recipe.fragmentsCollected} / {recipe.fragmentsRequired}
             </span>
@@ -1512,26 +1510,17 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
         </div>
 
         {/* Craft button */}
-        {!recipe.crafted && (
+        {!recipe.crafted && canCraft && (
           <button
             type="button"
             onClick={handleCraft}
-            disabled={!canCraft}
             className={cn(
               'mt-4 w-full rounded-xl py-3 font-semibold transition-all duration-200',
-              canCraft
-                ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40'
-                : 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed'
+              'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40'
             )}
           >
-            {canCraft ? (
-              <>
-                <Sparkles className="h-4 w-4 inline mr-2" />
-                Скрафтить!
-              </>
-            ) : (
-              `Нужно ещё ${recipe.fragmentsRequired - recipe.fragmentsCollected} фрагментов`
-            )}
+            <Sparkles className="h-4 w-4 inline mr-2" />
+            Скрафтить!
           </button>
         )}
       </div>
@@ -2017,13 +2006,13 @@ export default function ShopPage() {
           onClick={() => setTab('crafting')}
           className={cn(
             'flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all',
-          tab === 'crafting' 
+            tab === 'crafting' 
               ? 'bg-[var(--accent)] text-white shadow-md' 
               : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'
           )}
         >
           <Hammer className="h-4 w-4" />
-          Крафт
+          Мастерская
           {recipes.length > 0 && (
             <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
               {recipes.length}
