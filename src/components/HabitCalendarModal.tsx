@@ -2,9 +2,22 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '../lib/cn'
+import { useRpgStore } from '../store/useRpgStore'
 import type { Habit } from '../types/domain'
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+
+function getDateKeyFromTs(ts: number): string {
+  const d = new Date(ts)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function isDateInFreeze(key: string, freezeFrom?: number | null, freezeUntil?: number | null): boolean {
+  if (!freezeFrom || !freezeUntil) return false
+  const fromKey = getDateKeyFromTs(freezeFrom)
+  const untilKey = getDateKeyFromTs(freezeUntil)
+  return key >= fromKey && key <= untilKey
+}
 const MONTH_NAMES = [
   'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
   'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
@@ -20,6 +33,11 @@ interface HabitCalendarModalProps {
 }
 
 export default function HabitCalendarModal({ habit, onClose }: HabitCalendarModalProps) {
+  const profile = useRpgStore((s) => {
+    const pid = s.activeProfileId
+    return pid ? s.profiles.find((p) => p.id === pid) ?? null : null
+  })
+
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const todayKey = getDateKey(today)
@@ -35,15 +53,19 @@ export default function HabitCalendarModal({ habit, onClose }: HabitCalendarModa
   // Пн = 1, Вс = 0 → сдвиг: (startWeekday + 6) % 7
   const padStart = (startWeekday + 6) % 7
 
-  /** Возвращает: positive (выполнено), negative (минус), 'skipped' (прошлый день без отметки), null (будущее/сегодня без действия) */
-  function getStatusForKey(key: string): 'positive' | 'negative' | 'skipped' | null {
+  /** Возвращает: positive, negative, 'frozen' (защищён заморозкой), 'skipped', null */
+  function getStatusForKey(key: string): 'positive' | 'negative' | 'frozen' | 'skipped' | null {
     let status = habit.dailyCompletion?.[key] ?? null
     if (key === todayKey && !status && habit.lastResetDate >= todayStartTs && (habit.todayPositive > 0 || habit.todayNegative > 0)) {
       status = habit.todayPositive > 0 ? 'positive' : 'negative'
     }
+    if (status === 'frozen') return 'frozen'
     if (status !== null) return status
-    // Прошедший день без записи = пропущен (красный)
-    if (key < todayKey) return 'skipped'
+    // Прошедший день без записи: если в периоде заморозки — frozen (синий), иначе skipped (красный)
+    if (key < todayKey) {
+      if (isDateInFreeze(key, profile?.streakFreezeFrom, profile?.streakFreezeUntil)) return 'frozen'
+      return 'skipped'
+    }
     return null
   }
 
@@ -68,7 +90,7 @@ export default function HabitCalendarModal({ habit, onClose }: HabitCalendarModa
   const prevYear = () => setViewYear((y) => y - 1)
   const nextYear = () => setViewYear((y) => y + 1)
 
-  const cells: { key: string; day: number | null; status: 'positive' | 'negative' | 'skipped' | null; isToday: boolean }[] = []
+  const cells: { key: string; day: number | null; status: 'positive' | 'negative' | 'frozen' | 'skipped' | null; isToday: boolean }[] = []
   for (let i = 0; i < padStart; i++) {
     cells.push({ key: `empty-${i}`, day: null, status: null, isToday: false })
   }
@@ -173,6 +195,7 @@ export default function HabitCalendarModal({ habit, onClose }: HabitCalendarModa
             const isEmpty = day === null
             const isCompleted = status === 'positive'
             const isSkippedOrNegative = status === 'negative' || status === 'skipped'
+            const isFrozen = status === 'frozen'
             const isNeutral = !isEmpty && status === null
             return (
               <div
@@ -182,6 +205,7 @@ export default function HabitCalendarModal({ habit, onClose }: HabitCalendarModa
                   isEmpty && 'invisible',
                   !isEmpty && isCompleted && 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/40 dark:border-emerald-400/40',
                   !isEmpty && isSkippedOrNegative && 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/40 dark:border-red-400/40',
+                  !isEmpty && isFrozen && 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/40 dark:border-blue-400/40',
                   isNeutral && 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)]',
                   isToday && 'ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--surface-overlay)] border-[var(--accent)]'
                 )}
@@ -201,6 +225,10 @@ export default function HabitCalendarModal({ habit, onClose }: HabitCalendarModa
           <span className="flex items-center gap-1.5">
             <span className="w-3.5 h-3.5 rounded-lg bg-red-500/30 border border-red-500/50" />
             Пропущен / минус
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3.5 h-3.5 rounded-lg bg-blue-500/30 border border-blue-500/50" />
+            Заморозка
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-3.5 h-3.5 rounded-lg bg-[var(--surface)] border border-[var(--border)]" />

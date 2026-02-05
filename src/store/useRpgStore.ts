@@ -761,6 +761,11 @@ export const useRpgStore = create<RpgStoreState>()(
           // Один раз в день: если уже действовал сегодня — не обрабатывать (кроме экспериментального режима)
           if (!asNextDay && !isNewDay && (habit.todayPositive > 0 || habit.todayNegative > 0)) return
 
+          // Заморозка стрика: в период действия эффекта минус не сбрасывает streak
+          const freezeFrom = profile.streakFreezeFrom ?? 0
+          const freezeUntil = profile.streakFreezeUntil ?? 0
+          const isInFreeze = freezeFrom > 0 && freezeUntil > 0 && todayStart >= freezeFrom && todayStart <= freezeUntil
+
           // Deduct XP
           if (habit.attributeId && habit.negativeXp > 0) {
             const nextAttributes = deductXpFromAttribute(profile, habit.attributeId, habit.negativeXp)
@@ -788,7 +793,7 @@ export const useRpgStore = create<RpgStoreState>()(
             todayNegative: isNewDay ? 1 : h.todayNegative + 1,
             lastResetDate: todayStart,
             totalNegative: h.totalNegative + 1,
-            streak: 0, // Reset streak on negative
+            streak: isInFreeze ? h.streak : 0, // При заморозке стрик не сбрасывается
           }))
 
           updateStats((s) => ({ totalHabitsNegative: s.totalHabitsNegative + 1 }))
@@ -1075,7 +1080,22 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         useItem: (itemId) => {
-          return get().removeFromInventory(itemId, 1)
+          const { shopItems, getActiveProfile, updateProfile, removeFromInventory } = get()
+          const item = shopItems.find((i) => i.id === itemId)
+          const profile = getActiveProfile()
+          if (item && profile && item.streakFreezeEnabled && (item.streakFreezeDays ?? 1) > 0) {
+            const todayStart = getTodayStart()
+            const days = item.streakFreezeDays ?? 1
+            const endDate = new Date(todayStart)
+            endDate.setDate(endDate.getDate() + days - 1)
+            endDate.setHours(23, 59, 59, 999)
+            updateProfile(profile.id, (p) => ({
+              ...p,
+              streakFreezeFrom: todayStart,
+              streakFreezeUntil: endDate.getTime(),
+            }))
+          }
+          return removeFromInventory(itemId, 1)
         },
 
         // ─── Export/Import ────────────────────────────────────────────────

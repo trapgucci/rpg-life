@@ -156,8 +156,8 @@ export interface Habit {
   multiplierAppliesToCoins?: boolean
   /** Множитель применяется к гемам */
   multiplierAppliesToGems?: boolean
-  /** История по дням: ключ YYYY-MM-DD, значение positive | negative */
-  dailyCompletion?: Record<string, 'positive' | 'negative'>
+  /** История по дням: ключ YYYY-MM-DD, значение positive | negative | frozen (защищён заморозкой) */
+  dailyCompletion?: Record<string, 'positive' | 'negative' | 'frozen'>
   /** Счётчик + за сегодня */
   todayPositive: number
   /** Счётчик - за сегодня */
@@ -307,6 +307,10 @@ export interface Profile {
   attributes: Attribute[]
   /** Multi-currency: coins (primary), diamonds, etc. */
   currencies: Record<CurrencyId, number>
+  /** Начало периода заморозки стрика (timestamp, start of first protected day). null = не активна */
+  streakFreezeFrom?: number | null
+  /** Конец периода заморозки стрика (timestamp, end of last protected day). null = не активна */
+  streakFreezeUntil?: number | null
   createdAt: number
   updatedAt: number
 }
@@ -343,6 +347,10 @@ export interface ShopItem {
   availableForPurchase?: boolean
   /** When true, item costs nothing in shop (default false) */
   canGetForFree?: boolean
+  /** Заморозка стрика: при использовании предмета защищает серию от сброса N дней */
+  streakFreezeEnabled?: boolean
+  /** Длительность заморозки (дней) при streakFreezeEnabled */
+  streakFreezeDays?: number
 }
 
 export interface InventoryEntry {

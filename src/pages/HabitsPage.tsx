@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Plus, Minus, Flame, Pencil, Trash2, X, Repeat, Zap, Coins, Check, ChevronDown, ChevronRight, ArrowLeft, FlaskConical, Calendar } from 'lucide-react'
+import { Plus, Minus, Flame, Pencil, Trash2, X, Repeat, Zap, Coins, Check, ChevronDown, ChevronRight, ArrowLeft, FlaskConical, Calendar, Snowflake } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
 import type { Habit, AttributeId, HabitId } from '../types/domain'
@@ -12,6 +12,18 @@ interface HabitCardProps {
   experimentalMode?: boolean
 }
 
+function getDateKeyFromTs(ts: number): string {
+  const d = new Date(ts)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function isDateInFreeze(key: string, freezeFrom?: number | null, freezeUntil?: number | null): boolean {
+  if (!freezeFrom || !freezeUntil) return false
+  const fromKey = getDateKeyFromTs(freezeFrom)
+  const untilKey = getDateKeyFromTs(freezeUntil)
+  return key >= fromKey && key <= untilKey
+}
+
 function HabitCard({ habit, onEdit, experimentalMode }: HabitCardProps) {
   const [showCalendar, setShowCalendar] = useState(false)
   const clickPositive = useRpgStore((s) => s.clickHabitPositive)
@@ -19,15 +31,19 @@ function HabitCard({ habit, onEdit, experimentalMode }: HabitCardProps) {
   const deleteHabit = useRpgStore((s) => s.deleteHabit)
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
-  
+
   const profile = profiles.find((p) => p.id === activeProfileId)
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const freezeUntil = profile?.streakFreezeUntil ?? 0
+  const freezeDaysLeft = freezeUntil > 0
+    ? Math.max(0, Math.ceil((freezeUntil - todayStart.getTime()) / (24 * 60 * 60 * 1000)))
+    : 0
+  const isFreezeActive = freezeDaysLeft > 0
   const attributes = profile?.attributes ?? []
   const attr = habit.attributeId ? attributes.find((a) => a.id === habit.attributeId) : null
 
-  const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
   const todayStartTs = todayStart.getTime()
-  const isNewDay = habit.lastResetDate < todayStartTs
   const hasActedToday = !experimentalMode && habit.lastResetDate >= todayStartTs && (habit.todayPositive > 0 || habit.todayNegative > 0)
 
   return (
@@ -115,7 +131,6 @@ function HabitCard({ habit, onEdit, experimentalMode }: HabitCardProps) {
               const today = new Date()
               today.setHours(0, 0, 0, 0)
               const getDateKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-              const todayKey = getDateKey(today)
               return [-2, -1, 0, 1, 2, 3, 4].map((offset) => {
                 const d = new Date(today)
                 d.setDate(d.getDate() + offset)
@@ -123,14 +138,14 @@ function HabitCard({ habit, onEdit, experimentalMode }: HabitCardProps) {
                 const dayNum = d.getDate()
                 const isToday = offset === 0
                 const isPast = offset < 0
-                const isFuture = offset > 0
                 let status = habit.dailyCompletion?.[key]
                 if (isToday && !status && habit.lastResetDate >= todayStartTs && (habit.todayPositive > 0 || habit.todayNegative > 0)) {
                   status = habit.todayPositive > 0 ? 'positive' : 'negative'
                 }
                 const completed = status === 'positive'
-                const failed = status === 'negative' || (isPast && !status)
-                const color = completed ? 'bg-emerald-500/20 text-emerald-600 border-emerald-500/50' : failed ? 'bg-red-500/20 text-red-600 border-red-500/50' : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)]'
+                const frozen = isPast && !status && isDateInFreeze(key, profile?.streakFreezeFrom, profile?.streakFreezeUntil)
+                const failed = status === 'negative' || (isPast && !status && !frozen)
+                const color = completed ? 'bg-emerald-500/20 text-emerald-600 border-emerald-500/50' : frozen ? 'bg-blue-500/20 text-blue-600 border-blue-500/50' : failed ? 'bg-red-500/20 text-red-600 border-red-500/50' : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)]'
                 return (
                   <div
                     key={key}
@@ -179,6 +194,12 @@ function HabitCard({ habit, onEdit, experimentalMode }: HabitCardProps) {
               <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 bg-[var(--surface)]">
                 <span className="text-[var(--fg-muted)]">Множитель</span>
                 <span className="font-semibold text-[var(--accent)]">{getHabitMultiplierDisplay(habit)}</span>
+              </div>
+            )}
+            {isFreezeActive && (
+              <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <Snowflake className="h-4 w-4 shrink-0" />
+                <span className="font-semibold">{freezeDaysLeft} дн.</span>
               </div>
             )}
           </div>
@@ -744,6 +765,40 @@ function HabitForm({ habit, onClose }: HabitFormProps) {
   )
 }
 
+// ─── Test Streak Freeze Button (experimental mode) ───────────────────────────
+
+function ActivateTestStreakFreezeButton() {
+  const getActiveProfile = useRpgStore((s) => s.getActiveProfile)
+  const updateProfile = useRpgStore((s) => s.updateProfile)
+
+  const handleActivate = () => {
+    const profile = getActiveProfile()
+    if (!profile) return
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    const endDate = new Date(todayStart)
+    endDate.setDate(endDate.getDate() + 2) // 3 дня: сегодня + 2
+    endDate.setHours(23, 59, 59, 999)
+    updateProfile(profile.id, (p) => ({
+      ...p,
+      streakFreezeFrom: todayStart.getTime(),
+      streakFreezeUntil: endDate.getTime(),
+    }))
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleActivate}
+      className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium bg-blue-500/20 text-blue-600 border border-blue-500/40 hover:bg-blue-500/30 transition-colors"
+      title="Активировать заморозку стрика на 3 дня (тест, без предмета)"
+    >
+      <Snowflake className="h-4 w-4 shrink-0" />
+      Заморозка 3 дн.
+    </button>
+  )
+}
+
 // ─── Main Habits Page ───────────────────────────────────────────────────────
 
 export default function HabitsPage() {
@@ -810,6 +865,9 @@ export default function HabitsPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {experimentalMode && (
+            <ActivateTestStreakFreezeButton />
+          )}
           <button
             type="button"
             onClick={toggleExperimentalMode}

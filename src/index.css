@@ -346,6 +346,48 @@ html.dark,
     outline: none;
   }
 
+  /* Number input: hide native spin buttons, center text */
+  .input[type="number"],
+  input[type="number"].input {
+    text-align: center;
+    -moz-appearance: textfield;
+  }
+  .input[type="number"]::-webkit-outer-spin-button,
+  .input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"].input::-webkit-outer-spin-button,
+  input[type="number"].input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* Stock input: large centered infinity symbol when unlimited */
+  .input.input-stock-infinite::placeholder {
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: var(--fg);
+    opacity: 0.9;
+  }
+
+  /* Number input group buttons: hover effects */
+  .input-group-btn {
+    @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] transition-colors duration-200;
+  }
+  .input-group-btn-minus {
+    @apply bg-[var(--surface)] text-[var(--fg)];
+  }
+  .input-group-btn-minus:hover {
+    background: var(--surface-elevated);
+    border-color: var(--border-strong);
+  }
+  .input-group-btn-plus {
+    @apply border-[var(--border)] bg-[var(--accent-subtle)] text-[var(--accent)];
+  }
+  .input-group-btn-plus:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+
   /* Select */
   .select {
     @apply px-3 py-2 rounded-xl text-sm transition-all duration-200 cursor-pointer;

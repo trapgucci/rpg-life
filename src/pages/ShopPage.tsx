@@ -859,7 +859,7 @@ function ItemForm({ item, onClose }: ItemFormProps) {
 
   const [name, setName] = useState(item?.name ?? '')
   const [description, setDescription] = useState(item?.description ?? '')
-  const [rarity, setRarity] = useState<ItemRarity>(item?.rarity ?? 'common')
+  const [rarity] = useState<ItemRarity>(item?.rarity ?? 'common')
   const [coinCost, setCoinCost] = useState(item?.cost[CURRENCY_IDS.COINS] ?? 15)
   const [gemCost, setGemCost] = useState(item?.cost[CURRENCY_IDS.GEMS] ?? 0)
   const [isLootBox, setIsLootBox] = useState(item?.isLootBox ?? false)
@@ -869,6 +869,9 @@ function ItemForm({ item, onClose }: ItemFormProps) {
   const [canGetForFree, setCanGetForFree] = useState(item?.canGetForFree ?? false)
   const [groupId, setGroupId] = useState<string | null>(item?.groupId ?? null)
   const [showLootboxModal, setShowLootboxModal] = useState(false)
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
+  const [streakFreezeEnabled, setStreakFreezeEnabled] = useState(item?.streakFreezeEnabled ?? false)
+  const [streakFreezeDays, setStreakFreezeDays] = useState(item?.streakFreezeDays ?? 3)
   const [showCraftingTypePicker, setShowCraftingTypePicker] = useState(false)
   const [activeCraftingModal, setActiveCraftingModal] = useState<'create' | 'material' | null>(null)
   const [groupsExpanded, setGroupsExpanded] = useState(false)
@@ -884,6 +887,16 @@ function ItemForm({ item, onClose }: ItemFormProps) {
     ro.observe(el)
     return () => ro.disconnect()
   }, [itemGroups])
+
+  useEffect(() => {
+    if (item) {
+      setStreakFreezeEnabled(item.streakFreezeEnabled ?? false)
+      setStreakFreezeDays(item.streakFreezeDays ?? 3)
+    } else {
+      setStreakFreezeEnabled(false)
+      setStreakFreezeDays(3)
+    }
+  }, [item?.id])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -904,6 +917,8 @@ function ItemForm({ item, onClose }: ItemFormProps) {
       availableForPurchase,
       canGetForFree,
       groupId,
+      streakFreezeEnabled: streakFreezeEnabled || undefined,
+      streakFreezeDays: streakFreezeEnabled ? streakFreezeDays : undefined,
     }
 
     if (item) {
@@ -917,7 +932,7 @@ function ItemForm({ item, onClose }: ItemFormProps) {
   const divider = <div className="border-t border-[var(--border)]" />
 
   return (
-    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && !showLootboxModal && !showCraftingTypePicker && !activeCraftingModal && onClose()}>
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && !showLootboxModal && !showCraftingTypePicker && !activeCraftingModal && !showAdvancedSettings && onClose()}>
       <div className="modal-content">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-[var(--fg)]">
@@ -1076,38 +1091,58 @@ function ItemForm({ item, onClose }: ItemFormProps) {
               {availableForPurchase && !canGetForFree && (
                 <>
                   {divider}
-                  <p className="px-4 py-3 text-xs text-[var(--fg-muted)]">
-                    Выберите ниже ресурсы или валюту, необходимые для покупки (обмена) этого предмета
-                  </p>
-                  {divider}
-                  <div className="px-4 py-3">
-                    <button
-                      type="button"
-                      disabled
-                      className="w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3 text-sm font-medium text-[var(--accent)] cursor-not-allowed opacity-70"
-                    >
-                      <Plus className="h-5 w-5" />
-                      Выбрать предмет
-                    </button>
-                  </div>
                   <div className="grid grid-cols-2 gap-4 px-4 py-3">
                     <div>
                       <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Монеты</label>
-                      <input
-                        type="number"
-                        value={coinCost}
-                        onChange={(e) => setCoinCost(Number(e.target.value) || 0)}
-                        className="input w-full"
-                      />
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setCoinCost((prev) => Math.max(0, prev - 1))}
+                          className="input-group-btn input-group-btn-minus"
+                        >
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          min={0}
+                          value={coinCost}
+                          onChange={(e) => setCoinCost(Math.max(0, Number(e.target.value) || 0))}
+                          className="input w-full flex-1 min-w-0 h-9 py-0"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setCoinCost((prev) => prev + 1)}
+                          className="input-group-btn input-group-btn-plus"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Гемы</label>
-                      <input
-                        type="number"
-                        value={gemCost}
-                        onChange={(e) => setGemCost(Number(e.target.value) || 0)}
-                        className="input w-full"
-                      />
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setGemCost((prev) => Math.max(0, prev - 1))}
+                          className="input-group-btn input-group-btn-minus"
+                        >
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          min={0}
+                          value={gemCost}
+                          onChange={(e) => setGemCost(Math.max(0, Number(e.target.value) || 0))}
+                          className="input w-full flex-1 min-w-0 h-9 py-0"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setGemCost((prev) => prev + 1)}
+                          className="input-group-btn input-group-btn-plus"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </>
@@ -1126,67 +1161,56 @@ function ItemForm({ item, onClose }: ItemFormProps) {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Редкость</label>
-              <select
-                value={rarity}
-                onChange={(e) => setRarity(e.target.value as ItemRarity)}
-                className="select w-full"
-              >
-                {Object.entries(RARITY_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
               <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Запас</label>
-              <input
-                type="number"
-                value={stock ?? ''}
-                onChange={(e) => setStock(e.target.value ? Number(e.target.value) : undefined)}
-                placeholder="∞"
-                className="input w-full"
-              />
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setStock((prev) => {
+                      if (prev == null || prev <= 1) return undefined
+                      return prev - 1
+                    })
+                  }
+                  className="input-group-btn input-group-btn-minus"
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  min={1}
+                  value={stock ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setStock(value ? Math.max(1, Number(value) || 1) : undefined)
+                  }}
+                  placeholder="∞"
+                  className="input input-stock-infinite w-full flex-1 min-w-0 h-9 py-0"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setStock((prev) => (prev == null ? 1 : prev + 1))
+                  }
+                  className="input-group-btn input-group-btn-plus"
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Лутбокс — тумблер */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <span className="font-medium text-[var(--fg)]">Лутбокс</span>
-                <p className="text-xs text-[var(--fg-muted)] mt-0.5">Случайный предмет при открытии</p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={isLootBox}
-                onClick={() => setIsLootBox((v) => !v)}
-                className={cn(
-                  'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200',
-                  isLootBox ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
-                )}
-              >
-                <span
-                  className={cn(
-                    'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
-                    isLootBox ? 'right-1 left-auto' : 'left-1 right-auto'
-                  )}
-                />
-              </button>
+          {/* Дополнительные настройки (отдельное окно) */}
+          <div
+            className="mt-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-[var(--surface-elevated)] transition-colors"
+            onClick={() => setShowAdvancedSettings(true)}
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface-elevated)]">
+              <Settings className="h-5 w-5 text-[var(--fg-muted)]" />
             </div>
-            {isLootBox && (
-              <div className="mt-4 pt-4 border-t border-[var(--border)]">
-                <button
-                  type="button"
-                  onClick={() => setShowLootboxModal(true)}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] py-3 text-sm font-medium text-[var(--accent)] hover:bg-[var(--accent-subtle)]"
-                >
-                  <Gift className="h-5 w-5" />
-                  Настроить лутбокс
-                  <ChevronRight className="h-5 w-5" />
-                </button>
-              </div>
-            )}
+            <div>
+              <p className="text-sm font-medium text-[var(--fg)]">Дополнительные настройки</p>
+              <p className="text-xs text-[var(--fg-muted)]">Лутбокс и будущие продвинутые параметры предмета.</p>
+            </div>
           </div>
 
           {/* Рецепты крафта */}
@@ -1235,6 +1259,125 @@ function ItemForm({ item, onClose }: ItemFormProps) {
       )}
       {activeCraftingModal === 'material' && (
         <CraftingMaterialModal onClose={() => setActiveCraftingModal(null)} />
+      )}
+      {showAdvancedSettings && (
+        <div
+          className="modal-backdrop"
+          onClick={(e) => e.target === e.currentTarget && setShowAdvancedSettings(false)}
+        >
+          <div className="modal-content max-w-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-[var(--fg)]">Дополнительные настройки</h3>
+              <button
+                type="button"
+                onClick={() => setShowAdvancedSettings(false)}
+                className="icon-btn"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              {/* Лутбокс — перенесён сюда */}
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <span className="font-medium text-[var(--fg)]">Лутбокс</span>
+                    <p className="text-xs text-[var(--fg-muted)] mt-0.5">
+                      Случайный предмет при открытии
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isLootBox}
+                    onClick={() => setIsLootBox((v) => !v)}
+                    className={cn(
+                      'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200',
+                      isLootBox ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
+                        isLootBox ? 'right-1 left-auto' : 'left-1 right-auto'
+                      )}
+                    />
+                  </button>
+                </div>
+                {isLootBox && (
+                  <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                    <button
+                      type="button"
+                      onClick={() => setShowLootboxModal(true)}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] py-3 text-sm font-medium text-[var(--accent)] hover:bg-[var(--accent-subtle)]"
+                    >
+                      <Gift className="h-5 w-5" />
+                      Настроить лутбокс
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Заморозка стрика */}
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <span className="font-medium text-[var(--fg)]">Заморозка стрика</span>
+                    <p className="text-xs text-[var(--fg-muted)] mt-0.5">
+                      Позволяет пропустить выполнение привычек без потери текущего стрика в течение N дней
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={streakFreezeEnabled}
+                    onClick={() => setStreakFreezeEnabled((v) => !v)}
+                    className={cn(
+                      'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200',
+                      streakFreezeEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
+                        streakFreezeEnabled ? 'right-1 left-auto' : 'left-1 right-auto'
+                      )}
+                    />
+                  </button>
+                </div>
+                {streakFreezeEnabled && (
+                  <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                    <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Длительность (дней)</label>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setStreakFreezeDays((prev) => Math.max(1, prev - 1))}
+                        className="input-group-btn input-group-btn-minus"
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        min={1}
+                        value={streakFreezeDays}
+                        onChange={(e) => setStreakFreezeDays(Math.max(1, Number(e.target.value) || 1))}
+                        className="input w-full flex-1 min-w-0 h-9 py-0"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setStreakFreezeDays((prev) => prev + 1)}
+                        className="input-group-btn input-group-btn-plus"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
       {showLootboxModal && (
         <LootboxEffectModal
@@ -1476,11 +1619,11 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
             </div>
             <div>
               <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Доступно фрагментов</label>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setFragmentsRequired((prev) => Math.max(1, prev - 1))}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)]"
+                  className="input-group-btn input-group-btn-minus"
                 >
                   −
                 </button>
@@ -1489,12 +1632,12 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
                   value={fragmentsRequired}
                   onChange={(e) => setFragmentsRequired(Math.max(1, Number(e.target.value) || 1))}
                   min={1}
-                  className="input w-full text-center h-9"
+                  className="input w-full flex-1 min-w-0 h-9 py-0"
                 />
                 <button
                   type="button"
                   onClick={() => setFragmentsRequired((prev) => prev + 1)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)]"
+                  className="input-group-btn input-group-btn-plus"
                 >
                   +
                 </button>
