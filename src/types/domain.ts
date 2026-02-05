@@ -48,6 +48,8 @@ export interface ItemGroup {
   id: ItemGroupId
   profileId: ProfileId
   name: string
+  /** Цвет группы (hex) — используется как фон иконки на карточках товаров */
+  color?: string
   sortOrder: number
   createdAt: number
   updatedAt: number
@@ -334,6 +336,10 @@ export interface ShopItem {
   id: ItemId
   name: string
   description?: string
+  /** Эмодзи/иконка товара (по умолчанию по типу: лутбокс, талон, меч) */
+  icon?: string
+  /** Своё фото (data URL или base64) — показывается вместо icon при наличии */
+  iconImage?: string
   rarity: ItemRarity
   /** Cost per currency */
   cost: Record<CurrencyId, number>

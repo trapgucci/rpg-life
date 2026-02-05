@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { cn } from '../lib/cn'
 import { 
   ShoppingBag, Package, Plus, Pencil, Trash2, X, 
-  Coins, Gem, Gift, Sparkles, Check, ChevronRight, ChevronDown, Box, Lightbulb, Hammer, CheckCircle2, Trash, GripVertical, Settings, Ban, Percent
+  Coins, Gem, Gift, Sparkles, Check, ChevronRight, ChevronDown, Box, Lightbulb, Hammer, CheckCircle2, Trash, GripVertical, Settings, Percent, Smile, ImagePlus, Palette
 } from 'lucide-react'
 import { useRpgStore } from '../store/useRpgStore'
 import type { ShopItem, ItemRarity, CraftRecipe, FragmentSourceType, ItemGroup } from '../types/domain'
@@ -159,32 +159,45 @@ function ItemGroupManagerModal({ onClose }: ItemGroupManagerModalProps) {
                   draggedId === group.id && 'opacity-50'
                 )}
               >
-                <div className="flex items-center gap-2">
+                <span
+                  className="cursor-grab active:cursor-grabbing text-[var(--fg-muted)] hover:text-[var(--fg)] touch-none shrink-0"
+                  title="Перетащить для изменения порядка"
+                >
+                  <GripVertical className="h-4 w-4" />
+                </span>
+                <input
+                  defaultValue={group.name}
+                  onBlur={(e) => handleRename(group, e.target.value)}
+                  className="bg-transparent flex-1 text-sm text-[var(--fg)] outline-none min-w-0"
+                />
+                <label
+                  className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-elevated)] cursor-pointer hover:bg-[var(--surface)] transition-colors"
+                  title="Цвет группы (фон иконки на карточках)"
+                >
+                  <Palette className="h-4 w-4 text-[var(--fg-muted)]" />
                   <span
-                    className="cursor-grab active:cursor-grabbing text-[var(--fg-muted)] hover:text-[var(--fg)] touch-none"
-                    title="Перетащить для изменения порядка"
-                  >
-                    <GripVertical className="h-4 w-4" />
-                  </span>
-                  <span className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" />
-                  <input
-                    defaultValue={group.name}
-                    onBlur={(e) => handleRename(group, e.target.value)}
-                    className="bg-transparent flex-1 text-sm text-[var(--fg)] outline-none min-w-0"
+                    className="absolute bottom-0.5 right-0.5 h-2.5 w-2.5 rounded-full border border-white/80 shadow-sm"
+                    style={{ backgroundColor: group.color ?? '#22c55e' }}
                   />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (confirm('Удалить группу? Предметы из неё останутся без группы.')) {
-                        deleteItemGroup(group.id)
-                      }
-                    }}
-                    className="icon-btn icon-btn-danger shrink-0"
-                    title="Удалить группу"
-                  >
-                    <Trash className="h-4 w-4" />
-                  </button>
-                </div>
+                  <input
+                    type="color"
+                    value={group.color ?? '#22c55e'}
+                    onChange={(e) => updateItemGroup(group.id, (g) => ({ ...g, color: e.target.value }))}
+                    className="sr-only"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm('Удалить группу? Предметы из неё останутся без группы.')) {
+                      deleteItemGroup(group.id)
+                    }
+                  }}
+                  className="icon-btn icon-btn-danger shrink-0"
+                  title="Удалить группу"
+                >
+                  <Trash className="h-4 w-4" />
+                </button>
               </div>
             ))}
           </div>
@@ -223,7 +236,7 @@ function RewardPickerModal({ shopItems, excludeIds = [], onSelect, onClose }: Re
   const options = [
     { id: CURRENCY_IDS.COINS, name: 'Монеты', icon: '🪙' },
     { id: CURRENCY_IDS.GEMS, name: 'Кристаллы', icon: '💎' },
-    ...shopItems.filter((i) => !excludeIds.includes(i.id)).map((i) => ({ id: i.id, name: i.name, icon: i.isLootBox ? '🎁' : '⚔️' })),
+    ...shopItems.filter((i) => !excludeIds.includes(i.id)).map((i) => ({ id: i.id, name: i.name, icon: getItemIcon(i) })),
   ]
 
   return (
@@ -315,8 +328,8 @@ function LootboxEffectModal({ lootTable: initial, shopItems, onSave, onClose }: 
   const getEntryIcon = (id: string) => {
     if (id === CURRENCY_IDS.COINS) return '🪙'
     if (id === CURRENCY_IDS.GEMS) return '💎'
-    const item = shopItems.find((i) => i.id === id)
-    return item?.isLootBox ? '🎁' : '⚔️'
+    const it = shopItems.find((i) => i.id === id)
+    return it ? getItemIcon(it) : '⚔️'
   }
 
   return (
@@ -499,7 +512,7 @@ function RewardPickerModalSingle({
   const options = [
     { id: CURRENCY_IDS.COINS, name: 'Монеты', icon: '🪙' },
     { id: CURRENCY_IDS.GEMS, name: 'Кристаллы', icon: '💎' },
-    ...shopItems.map((i) => ({ id: i.id, name: i.name, icon: i.isLootBox ? '🎁' : '⚔️' })),
+    ...shopItems.map((i) => ({ id: i.id, name: i.name, icon: getItemIcon(i) })),
   ]
 
   return (
@@ -536,6 +549,73 @@ function RewardPickerModalSingle({
             className="btn-primary flex-1"
           >
             Выбрать
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Emoji Picker Modal (выбор иконки для товара) ─────────────────────────────
+
+const ITEM_EMOJI_OPTIONS = ['🎁', '⚔️', '🎫', '🪙', '💎', '⭐', '🔥', '💪', '🧠', '🏃', '🛡️', '🎨', '✨', '🍀', '🎭', '⚙️', '🗝️', '📜', '🧬', '💠', '📦', '🎯', '🔮', '🌟', '❤️', '💀', '🏆', '🎪', '🎬', '📱', '💻', '🌿', '🐉', '🦋', '🌸', '☕', '📚', '🎵', '🛒', '🧪']
+
+interface EmojiPickerModalProps {
+  currentIcon: string
+  onSelect: (emoji: string) => void
+  onClose: () => void
+}
+
+function EmojiPickerModal({ currentIcon, onSelect, onClose }: EmojiPickerModalProps) {
+  const [custom, setCustom] = useState('')
+
+  const handlePick = (emoji: string) => {
+    if (emoji) {
+      onSelect(emoji)
+      onClose()
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content max-w-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-bold text-[var(--fg)]">Выберите иконку</h3>
+          <button type="button" onClick={onClose} className="icon-btn">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2 mb-3 max-h-40 overflow-y-auto">
+          {ITEM_EMOJI_OPTIONS.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => handlePick(emoji)}
+              className={cn(
+                'h-10 w-10 rounded-xl text-xl transition-all flex items-center justify-center',
+                currentIcon === emoji ? 'bg-[var(--accent)] scale-110' : 'bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
+              )}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={custom}
+            onChange={(e) => setCustom(e.target.value)}
+            placeholder="Вставьте любой эмодзи..."
+            className="input flex-1 h-9 text-base"
+            maxLength={4}
+          />
+          <button
+            type="button"
+            onClick={() => handlePick(custom.trim())}
+            disabled={!custom.trim()}
+            className="btn-primary shrink-0"
+          >
+            OK
           </button>
         </div>
       </div>
@@ -599,16 +679,31 @@ interface ShopItemCardProps {
   onEdit: () => void
 }
 
+function getItemIcon(item: ShopItem): string {
+  return item.icon ?? (item.isLootBox ? '🎁' : item.isDiscountVoucher ? '🎫' : '⚔️')
+}
+
+/** Подпись доп. настройки для бейджа под названием (одна строка) */
+function getItemTypeBadgeLabel(item: ShopItem): string | null {
+  if (item.isLootBox) return 'Лутбокс'
+  if (item.streakFreezeEnabled) return 'Заморозка стрика'
+  if (item.isDiscountVoucher) return 'Скидочник'
+  return null
+}
+
 function ShopItemCard({ item, onEdit }: ShopItemCardProps) {
   const purchaseItem = useRpgStore((s) => s.purchaseItem)
   const deleteItem = useRpgStore((s) => s.deleteShopItem)
   const activeShopDiscountPercent = useRpgStore((s) => s.activeShopDiscountPercent)
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
+  const allItemGroups = useRpgStore((s) => s.itemGroups)
 
   const profile = profiles.find((p) => p.id === activeProfileId)
   const coins = profile?.currencies[CURRENCY_IDS.COINS] ?? 0
   const gems = profile?.currencies[CURRENCY_IDS.GEMS] ?? 0
+  const group = item.groupId ? allItemGroups.find((g) => g.id === item.groupId) : null
+  const iconBgColor = group?.color ?? '#9ca3af'
 
   const coinCost = item.cost[CURRENCY_IDS.COINS] ?? 0
   const gemCost = item.cost[CURRENCY_IDS.GEMS] ?? 0
@@ -623,22 +718,14 @@ function ShopItemCard({ item, onEdit }: ShopItemCardProps) {
     purchaseItem(item.id)
   }
 
-  const rarityColor = RARITY_COLORS[item.rarity]
+  const priceRed = availableForPurchase && !canAfford
+  const canGetForFree = item.canGetForFree === true
+  const showFreeButton = availableForPurchase && canGetForFree && item.stock !== 0
 
   return (
-    <div
-      className={cn(
-        'glass-card group relative rounded-2xl p-5 transition-all duration-300',
-        'hover:scale-[1.02]',
-        item.rarity === 'legendary' && 'animate-pulse-glow'
-      )}
-      style={{ 
-        borderColor: `${rarityColor}30`,
-        boxShadow: item.rarity === 'legendary' ? `0 0 20px ${rarityColor}30` : undefined
-      }}
-    >
+    <div className="glass-card group relative rounded-2xl p-5 transition-all duration-300 hover:scale-[1.02] border border-[var(--border)] flex flex-col min-h-[320px]">
       {/* Edit/Delete buttons */}
-      <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
         <button type="button" onClick={onEdit} className="icon-btn icon-btn-compact">
           <Pencil className="h-3.5 w-3.5" />
         </button>
@@ -651,43 +738,44 @@ function ShopItemCard({ item, onEdit }: ShopItemCardProps) {
         </button>
       </div>
 
-      <div className="flex flex-col items-center text-center">
-        {/* Icon */}
+      {/* Верхняя часть: иконка, название, бейдж, описание — сжимается */}
+      <div className="flex flex-col items-center text-center min-h-0 flex-shrink-0">
         <div
-          className={cn(
-            'flex h-20 w-20 items-center justify-center rounded-2xl text-4xl mb-4 shadow-lg',
-            `bg-gradient-to-br ${RARITY_GRADIENTS[item.rarity]}`
+          className="flex h-20 w-20 items-center justify-center rounded-2xl mb-4 shadow-lg overflow-hidden shrink-0"
+          style={{ backgroundColor: iconBgColor, boxShadow: `0 8px 20px ${iconBgColor}60` }}
+        >
+          {item.iconImage ? (
+            <img src={item.iconImage} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <span className="text-4xl">{getItemIcon(item)}</span>
           )}
-          style={{ boxShadow: `0 8px 20px ${rarityColor}40` }}
-        >
-          {item.isLootBox ? '🎁' : item.isDiscountVoucher ? '🎫' : '⚔️'}
         </div>
-
-        {/* Name */}
-        <h3 className="font-semibold text-[var(--fg)] line-clamp-1">{item.name}</h3>
-
-        {/* Rarity badge */}
-        <span
-          className="mt-2 rounded-lg px-3 py-1 text-xs font-semibold"
-          style={{
-            backgroundColor: `${rarityColor}20`,
-            color: rarityColor,
-          }}
-        >
-          {RARITY_LABELS[item.rarity]}
-          {item.isLootBox && ' • Лутбокс'}
-          {item.isDiscountVoucher && ' • Скидочный талон'}
-        </span>
-
-        {/* Description */}
-        {item.description && (
-          <p className="mt-3 text-sm text-[var(--fg-muted)] line-clamp-2">{item.description}</p>
+        <h3 className="font-semibold text-[var(--fg)] line-clamp-2 w-full px-0" title={item.name}>
+          {item.name}
+        </h3>
+        {getItemTypeBadgeLabel(item) && (
+          <span className="mt-1.5 inline-block max-w-full truncate rounded-lg bg-amber-500/20 px-2.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+            {getItemTypeBadgeLabel(item)}
+          </span>
         )}
+        {item.description && (
+          <p className="mt-3 text-sm text-[var(--fg-muted)] line-clamp-2 w-full">
+            {item.description}
+          </p>
+        )}
+      </div>
 
-        {/* Price */}
-        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 justify-center">
-          {coinCost > 0 && (
-            <span className="flex items-center gap-1.5 text-sm font-semibold text-amber-600 dark:text-amber-400">
+      {/* Растягивающийся spacer — прижимает нижний блок к низу */}
+      <div className="flex-1 min-h-2" aria-hidden />
+
+      {/* Нижний блок: цена, кнопка, место под «Осталось» — фиксированная высота */}
+      <div className="flex flex-col items-center text-center w-full flex-shrink-0 mt-2">
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 justify-center text-sm font-semibold">
+          {coinCost > 0 && !canGetForFree && (
+            <span className={cn(
+              'flex items-center gap-1.5',
+              priceRed ? 'text-red-500 dark:text-red-400' : canAfford ? 'text-amber-600 dark:text-amber-400' : 'text-[var(--fg)]'
+            )}>
               <Coins className="h-4 w-4 shrink-0" />
               {activeShopDiscountPercent != null && effectiveCoinCost < coinCost ? (
                 <>
@@ -699,53 +787,59 @@ function ShopItemCard({ item, onEdit }: ShopItemCardProps) {
               )}
             </span>
           )}
-          {gemCost > 0 && (
-            <span className="flex items-center gap-1.5 text-sm font-semibold text-purple-500">
+          {gemCost > 0 && !canGetForFree && (
+            <span className="flex items-center gap-1.5 text-purple-500">
               <Gem className="h-4 w-4" />
               {gemCost.toLocaleString('ru-RU')}
             </span>
           )}
+          {canGetForFree && availableForPurchase && (
+            <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Бесплатно</span>
+          )}
         </div>
 
-        {/* Buy button */}
-        {item.stock !== 0 && (
-          <>
-            {!availableForPurchase ? (
-              <button
-                type="button"
-                disabled
-                className="mt-4 w-full rounded-xl py-2.5 font-medium flex items-center justify-center gap-2 bg-[var(--surface-elevated)] text-[var(--fg-muted)] border border-[var(--border)] cursor-not-allowed"
-              >
-                <Ban className="h-5 w-5 shrink-0" />
-                Не для продажи
-              </button>
-            ) : !canAfford ? (
-              <button
-                type="button"
-                disabled
-                className="mt-4 w-full rounded-xl py-2.5 font-medium flex items-center justify-center gap-2 bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 cursor-not-allowed shadow-sm"
-              >
-                <X className="h-5 w-5 shrink-0" />
-                Недостаточно средств
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handlePurchase}
-                className="mt-4 w-full rounded-xl py-2.5 font-medium transition-all duration-200 bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40"
-              >
-                Купить
-              </button>
-            )}
-          </>
-        )}
-
-        {/* Stock info */}
-        {item.stock !== undefined && item.stock > 0 && (
-          <p className="mt-2 text-xs text-[var(--fg-muted)]">
-            Осталось: {item.stock}
+        {/* Область кнопки + место под «Осталось» — одна высота у всех карточек */}
+        <div className="w-full mt-3 min-h-[4.25rem] flex flex-col justify-end">
+          {item.stock !== 0 && (
+            <>
+              {!availableForPurchase ? (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full rounded-xl py-2.5 font-medium bg-[var(--surface-elevated)] text-[var(--fg-muted)] border border-[var(--border)] cursor-not-allowed"
+                >
+                  Не для продажи
+                </button>
+              ) : showFreeButton ? (
+                <button
+                  type="button"
+                  onClick={handlePurchase}
+                  className="w-full rounded-xl py-2.5 font-medium bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/30 transition-all duration-200"
+                >
+                  Бесплатно
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={canAfford ? handlePurchase : undefined}
+                  disabled={!canAfford}
+                  className={cn(
+                    'w-full rounded-xl py-2.5 font-medium transition-all duration-200',
+                    canAfford
+                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40'
+                      : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)] border border-[var(--border)] cursor-not-allowed'
+                  )}
+                >
+                  Купить
+                </button>
+              )}
+            </>
+          )}
+          {/* Место под «Осталось» — всегда резервируем строку для выравнивания карточек */}
+          <p className="mt-1.5 min-h-[1.25rem] text-xs text-[var(--fg-muted)] flex items-center justify-center">
+            {item.stock !== undefined && item.stock > 0 ? `Осталось: ${item.stock}` : '\u00A0'}
           </p>
-        )}
+        </div>
       </div>
     </div>
   )
@@ -760,13 +854,15 @@ interface InventoryItemCardProps {
 
 function InventoryItemCard({ itemId, quantity }: InventoryItemCardProps) {
   const shopItems = useRpgStore((s) => s.shopItems)
+  const allItemGroups = useRpgStore((s) => s.itemGroups)
   const useItem = useRpgStore((s) => s.useItem)
   const openLootbox = useRpgStore((s) => s.openLootbox)
 
   const item = shopItems.find((i) => i.id === itemId)
   if (!item) return null
 
-  const rarityColor = RARITY_COLORS[item.rarity]
+  const group = item.groupId ? allItemGroups.find((g) => g.id === item.groupId) : null
+  const iconBgColor = group?.color ?? '#9ca3af'
 
   const handleUse = () => {
     if (item.isLootBox) {
@@ -783,22 +879,18 @@ function InventoryItemCard({ itemId, quantity }: InventoryItemCardProps) {
     <div className="glass-card rounded-2xl p-4 transition-all duration-200 hover:scale-[1.02]">
       <div className="flex items-center gap-4">
         <div
-          className={cn(
-            'flex h-14 w-14 items-center justify-center rounded-xl text-2xl shadow-md',
-            `bg-gradient-to-br ${RARITY_GRADIENTS[item.rarity]}`
-          )}
+          className="flex h-14 w-14 items-center justify-center rounded-xl text-2xl shadow-md overflow-hidden shrink-0"
+          style={{ backgroundColor: iconBgColor }}
         >
-          {item.isLootBox ? '🎁' : item.isDiscountVoucher ? '🎫' : '⚔️'}
+          {item.iconImage ? (
+            <img src={item.iconImage} alt="" className="h-full w-full object-cover" />
+          ) : (
+            getItemIcon(item)
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-[var(--fg)] truncate">{item.name}</h3>
           <div className="flex items-center gap-2 mt-1">
-            <span
-              className="rounded-md px-2 py-0.5 text-xs font-medium"
-              style={{ backgroundColor: `${rarityColor}20`, color: rarityColor }}
-            >
-              {RARITY_LABELS[item.rarity]}
-            </span>
             <span className="text-sm text-[var(--fg-muted)]">×{quantity}</span>
           </div>
         </div>
@@ -938,6 +1030,10 @@ function ItemForm({ item, onClose }: ItemFormProps) {
 
   const [name, setName] = useState(item?.name ?? '')
   const [description, setDescription] = useState(item?.description ?? '')
+  const [icon, setIcon] = useState(item?.icon ?? '')
+  const [iconImage, setIconImage] = useState(item?.iconImage ?? '')
+  const [showIconPicker, setShowIconPicker] = useState(false)
+  const iconFileInputRef = useRef<HTMLInputElement>(null)
   const [rarity] = useState<ItemRarity>(item?.rarity ?? 'common')
   const [coinCost, setCoinCost] = useState(item?.cost[CURRENCY_IDS.COINS] ?? 15)
   const [gemCost, setGemCost] = useState(item?.cost[CURRENCY_IDS.GEMS] ?? 0)
@@ -995,6 +1091,8 @@ function ItemForm({ item, onClose }: ItemFormProps) {
     const data: Omit<ShopItem, 'id'> = {
       name: name.trim(),
       description: description.trim() || undefined,
+      icon: icon.trim() || undefined,
+      iconImage: iconImage || undefined,
       rarity,
       cost,
       isLootBox,
@@ -1020,7 +1118,7 @@ function ItemForm({ item, onClose }: ItemFormProps) {
   const divider = <div className="border-t border-[var(--border)]" />
 
   return (
-    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && !showLootboxModal && !showCraftingTypePicker && !activeCraftingModal && !showAdvancedSettings && !showDiscountModal && onClose()}>
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && !showLootboxModal && !showCraftingTypePicker && !activeCraftingModal && !showAdvancedSettings && !showDiscountModal && !showIconPicker && onClose()}>
       <div className="modal-content">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-[var(--fg)]">
@@ -1032,17 +1130,51 @@ function ItemForm({ item, onClose }: ItemFormProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {/* Название предмета */}
-          <div>
-            <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Название предмета</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Введите название..."
-              className="input w-full text-base"
-              autoFocus
-            />
+          {/* Название предмета + две маленькие кнопки: эмодзи, своё фото */}
+          <div className="flex gap-2 items-end">
+            <div className="flex-1 min-w-0">
+              <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Название предмета</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Введите название..."
+                className="input w-full text-base"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-1 shrink-0 pb-0.5">
+              <button
+                type="button"
+                onClick={() => setShowIconPicker(true)}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] transition-colors"
+                title="Выбрать эмодзи"
+              >
+                <Smile className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => iconFileInputRef.current?.click()}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] transition-colors"
+                title="Своё фото из файлов"
+              >
+                <ImagePlus className="h-4 w-4" />
+              </button>
+              <input
+                ref={iconFileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (!file || !file.type.startsWith('image/')) return
+                  const reader = new FileReader()
+                  reader.onload = () => setIconImage(String(reader.result))
+                  reader.readAsDataURL(file)
+                  e.target.value = ''
+                }}
+              />
+            </div>
           </div>
 
           {/* Описание предмета */}
@@ -1097,7 +1229,7 @@ function ItemForm({ item, onClose }: ItemFormProps) {
                           : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
                       )}
                     >
-                      <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                      <span className="inline-flex h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: group.color ?? '#22c55e' }} />
                       {group.name}
                     </button>
                   ))}
@@ -1556,6 +1688,13 @@ function ItemForm({ item, onClose }: ItemFormProps) {
           shopItems={shopItems}
           onSave={setLootTable}
           onClose={() => setShowLootboxModal(false)}
+        />
+      )}
+      {showIconPicker && (
+        <EmojiPickerModal
+          currentIcon={icon}
+          onSelect={setIcon}
+          onClose={() => setShowIconPicker(false)}
         />
       )}
     </div>
@@ -2261,7 +2400,7 @@ export default function ShopPage() {
                       : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
                   )}
                 >
-                  <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  <span className="inline-flex h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: group.color ?? '#22c55e' }} />
                   {group.name}
                 </button>
               ))}
@@ -2299,7 +2438,7 @@ export default function ShopPage() {
                                 : 'bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
                             )}
                           >
-                            <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                            <span className="inline-flex h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: group.color ?? '#22c55e' }} />
                             {group.name}
                           </button>
                         ))}

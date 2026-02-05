@@ -452,6 +452,7 @@ export const useRpgStore = create<RpgStoreState>()(
             id: crypto.randomUUID(),
             profileId: profile.id,
             name: name.trim(),
+            color: '#22c55e',
             sortOrder,
             createdAt: now(),
             updatedAt: now(),
