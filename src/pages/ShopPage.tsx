@@ -315,6 +315,18 @@ function LootboxEffectModal({ lootTable: initial, shopItems, onSave, onClose }: 
     setEntries((prev) => prev.map((e, i) => (i === index ? updater(e) : e)))
   }
 
+  const equalizeChances = () => {
+    setEntries((prev) => {
+      const n = prev.length
+      if (n === 0) return prev
+      const w = 100 / n
+      return prev.map((e, i) => ({
+        ...e,
+        weight: i === prev.length - 1 ? Math.round((100 - (n - 1) * w) * 100) / 100 : Math.round(w * 100) / 100,
+      }))
+    })
+  }
+
   const removeEntry = (index: number) => {
     setEntries((prev) => prev.filter((_, i) => i !== index))
   }
@@ -451,14 +463,27 @@ function LootboxEffectModal({ lootTable: initial, shopItems, onSave, onClose }: 
 
         {entries.length > 0 && (
           <>
-            <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 mb-2">
-              <Sparkles className="h-5 w-5 text-[var(--accent)]" />
-              <span className="text-sm font-medium text-[var(--fg)]">Общий шанс выпадения: {totalPercentCorrect}%</span>
+            <div className="flex flex-col gap-2 mb-2">
+              <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
+                <Sparkles className="h-5 w-5 text-[var(--accent)]" />
+                <span className="text-sm font-medium text-[var(--fg)]">Общий шанс выпадения: {totalPercentCorrect}%</span>
+              </div>
+              {totalPercentCorrect < 99.5 && (
+                <button
+                  type="button"
+                  onClick={equalizeChances}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-2.5 text-sm font-medium text-[var(--accent)] hover:bg-[var(--accent-subtle)]"
+                >
+                  Уравнять шансы
+                </button>
+              )}
             </div>
             {totalPercentCorrect < 100 && (
               <div className="flex items-start gap-2 rounded-xl border border-[var(--warning)] bg-[var(--warning-subtle)] px-4 py-3 mb-2 text-sm text-[var(--fg-muted)]">
                 <Lightbulb className="h-5 w-5 shrink-0 text-[var(--warning)]" />
-                <span>Общая вероятность меньше 100%. Оставшиеся {100 - totalPercentCorrect}% не дадут наград.</span>
+                <span>
+                  Общая вероятность меньше 100%. Оставшиеся {100 - totalPercentCorrect}% — это шанс, что при открытии не выпадет ничего.
+                </span>
               </div>
             )}
           </>
@@ -683,11 +708,12 @@ function getItemIcon(item: ShopItem): string {
   return item.icon ?? (item.isLootBox ? '🎁' : item.isDiscountVoucher ? '🎫' : '⚔️')
 }
 
-/** Подпись доп. настройки для бейджа под названием (одна строка) */
-function getItemTypeBadgeLabel(item: ShopItem): string | null {
-  if (item.isLootBox) return 'Лутбокс'
-  if (item.streakFreezeEnabled) return 'Заморозка стрика'
-  if (item.isDiscountVoucher) return 'Скидочник'
+type ItemTypeBadge = { type: 'lootbox'; label: string } | { type: 'freeze'; label: string } | { type: 'discount'; label: string }
+
+function getItemTypeBadge(item: ShopItem): ItemTypeBadge | null {
+  if (item.isLootBox) return { type: 'lootbox', label: 'Лутбокс' }
+  if (item.streakFreezeEnabled) return { type: 'freeze', label: 'Заморозка стрика' }
+  if (item.isDiscountVoucher) return { type: 'discount', label: 'Скидочник' }
   return null
 }
 
@@ -715,7 +741,12 @@ function ShopItemCard({ item, onEdit }: ShopItemCardProps) {
   const availableForPurchase = item.availableForPurchase !== false
 
   const handlePurchase = () => {
-    purchaseItem(item.id)
+    const result = purchaseItem(item.id)
+    if (result === true) return
+    if (result && typeof result === 'object' && 'loot' in result) {
+      if (result.loot) alert(`Вы получили: ${result.loot.name}!`)
+      else alert('Ничего не выпало.')
+    }
   }
 
   const priceRed = availableForPurchase && !canAfford
@@ -753,11 +784,24 @@ function ShopItemCard({ item, onEdit }: ShopItemCardProps) {
         <h3 className="font-semibold text-[var(--fg)] line-clamp-2 w-full px-0" title={item.name}>
           {item.name}
         </h3>
-        {getItemTypeBadgeLabel(item) && (
-          <span className="mt-1.5 inline-block max-w-full truncate rounded-lg bg-amber-500/20 px-2.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
-            {getItemTypeBadgeLabel(item)}
-          </span>
-        )}
+        {getItemTypeBadge(item) && (() => {
+          const badge = getItemTypeBadge(item)!
+          return (
+            <span
+              className={cn(
+                'mt-1.5 inline-flex max-w-full items-center gap-1.5 truncate rounded-lg px-2.5 py-0.5 text-xs font-medium',
+                badge.type === 'discount' && 'bg-red-500/20 text-red-600 dark:text-red-400',
+                badge.type === 'freeze' && 'bg-gradient-to-r from-sky-100 to-sky-50 dark:from-sky-800/50 dark:to-sky-900/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-600/50 ring-1 ring-white/30 dark:ring-white/10',
+                badge.type === 'lootbox' && 'bg-violet-500/20 text-violet-600 dark:text-violet-400'
+              )}
+            >
+              {badge.type === 'discount' && <Percent className="h-3.5 w-3.5 shrink-0" />}
+              {badge.type === 'freeze' && <span className="text-sm leading-none" aria-hidden>❄️</span>}
+              {badge.type === 'lootbox' && <Gift className="h-3.5 w-3.5 shrink-0" />}
+              <span className="truncate">{badge.label}</span>
+            </span>
+          )
+        })()}
         {item.description && (
           <p className="mt-3 text-sm text-[var(--fg-muted)] line-clamp-2 w-full">
             {item.description}
@@ -793,14 +837,11 @@ function ShopItemCard({ item, onEdit }: ShopItemCardProps) {
               {gemCost.toLocaleString('ru-RU')}
             </span>
           )}
-          {canGetForFree && availableForPurchase && (
-            <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Бесплатно</span>
-          )}
         </div>
 
         {/* Область кнопки + место под «Осталось» — одна высота у всех карточек */}
         <div className="w-full mt-3 min-h-[4.25rem] flex flex-col justify-end">
-          {item.stock !== 0 && (
+          {(item.stock !== 0 || !availableForPurchase) && (
             <>
               {!availableForPurchase ? (
                 <button
@@ -835,9 +876,13 @@ function ShopItemCard({ item, onEdit }: ShopItemCardProps) {
               )}
             </>
           )}
-          {/* Место под «Осталось» — всегда резервируем строку для выравнивания карточек */}
-          <p className="mt-1.5 min-h-[1.25rem] text-xs text-[var(--fg-muted)] flex items-center justify-center">
-            {item.stock !== undefined && item.stock > 0 ? `Осталось: ${item.stock}` : '\u00A0'}
+          {/* Место под кнопкой: «Осталось» — одна высота для выравнивания */}
+          <p className="mt-1.5 min-h-[2.5rem] text-xs text-[var(--fg-muted)] flex items-center justify-center text-center px-1 leading-snug">
+            {!availableForPurchase
+              ? '\u00A0'
+              : item.stock !== undefined && item.stock > 0
+                ? `Осталось: ${item.stock}`
+                : '\u00A0'}
           </p>
         </div>
       </div>
@@ -869,6 +914,8 @@ function InventoryItemCard({ itemId, quantity }: InventoryItemCardProps) {
       const result = openLootbox(item.id)
       if (result) {
         alert(`Вы получили: ${result.name}!`)
+      } else {
+        alert('Ничего не выпало.')
       }
     } else {
       useItem(item.id)
@@ -1130,7 +1177,7 @@ function ItemForm({ item, onClose }: ItemFormProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {/* Название предмета + две маленькие кнопки: эмодзи, своё фото */}
+          {/* Название предмета + две кнопки одной высоты (h-9): эмодзи, своё фото */}
           <div className="flex gap-2 items-end">
             <div className="flex-1 min-w-0">
               <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Название предмета</label>
@@ -1139,15 +1186,15 @@ function ItemForm({ item, onClose }: ItemFormProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Введите название..."
-                className="input w-full text-base"
+                className="input w-full text-base h-9 py-0"
                 autoFocus
               />
             </div>
-            <div className="flex gap-1 shrink-0 pb-0.5">
+            <div className="flex gap-1 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowIconPicker(true)}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] transition-colors"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] transition-colors shrink-0"
                 title="Выбрать эмодзи"
               >
                 <Smile className="h-4 w-4" />
@@ -1155,7 +1202,7 @@ function ItemForm({ item, onClose }: ItemFormProps) {
               <button
                 type="button"
                 onClick={() => iconFileInputRef.current?.click()}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] transition-colors"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] transition-colors shrink-0"
                 title="Своё фото из файлов"
               >
                 <ImagePlus className="h-4 w-4" />

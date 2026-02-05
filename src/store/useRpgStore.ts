@@ -251,7 +251,7 @@ interface RpgStoreState {
   addShopItem: (item: Omit<ShopItem, 'id'>) => ShopItem
   updateShopItem: (id: ItemId, updater: (i: ShopItem) => ShopItem) => void
   deleteShopItem: (id: ItemId) => void
-  purchaseItem: (itemId: ItemId) => boolean
+  purchaseItem: (itemId: ItemId) => boolean | { loot: { itemId: string; name: string } | null }
   openLootbox: (itemId: ItemId) => { itemId: string; name: string } | null
 
   // Inventory actions
@@ -1016,11 +1016,10 @@ export const useRpgStore = create<RpgStoreState>()(
           set((s) => ({ activeShopDiscountPercent: null }))
 
           if (item.isLootBox) {
-            openLootbox(itemId)
-          } else {
-            addToInventory(itemId)
+            const loot = openLootbox(itemId)
+            return { loot }
           }
-
+          addToInventory(itemId)
           return true
         },
 
@@ -1029,14 +1028,14 @@ export const useRpgStore = create<RpgStoreState>()(
           const item = shopItems.find((i) => i.id === itemId)
           if (!item || !item.isLootBox || !item.lootTable) return null
 
-          // Calculate total weight
           const totalWeight = item.lootTable.reduce((sum, entry) => sum + entry.weight, 0)
-          let random = Math.random() * totalWeight
+          const random = Math.random() * 100 // 0..100; оставшиеся (100 - totalWeight)% — шанс ничего не выпасть
+          if (random >= totalWeight) return null
 
-          // Select item based on weight
+          let r = random
           for (const entry of item.lootTable) {
-            random -= entry.weight
-            if (random <= 0) {
+            r -= entry.weight
+            if (r < 0) {
               const qty = entry.quantity ?? 1
               if (entry.id === CURRENCY_IDS.COINS || entry.id === CURRENCY_IDS.GEMS) {
                 addCurrency(entry.id as CurrencyId, qty)
