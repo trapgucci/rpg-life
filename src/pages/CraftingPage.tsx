@@ -42,6 +42,9 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
   const deleteRecipe = useRpgStore((s) => s.deleteCraftRecipe)
   const craftItem = useRpgStore((s) => s.craftItem)
 
+  // Старые сохранённые данные могут не содержать fragmentSource
+  const fragmentSource: any = (recipe as any).fragmentSource ?? { type: 'random_drop', dropChance: 0 }
+
   const progress = recipe.fragmentsRequired > 0
     ? Math.min(1, recipe.fragmentsCollected / recipe.fragmentsRequired)
     : 0
@@ -118,14 +121,15 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
 
         {/* Source info */}
         <p className="mt-3 text-xs text-[var(--fg-muted)]">
-          {recipe.fragmentSource.type === 'task_linked' 
-            ? '🎯 Привязано к задачам' 
+          {fragmentSource.type === 'task_linked'
+            ? '🎯 Привязано к задачам'
             : '🎲 Случайный дроп'}
-          {recipe.fragmentSource.type === 'random_drop' && (
+          {fragmentSource.type === 'random_drop' && typeof fragmentSource.dropChance === 'number' && fragmentSource.dropChance > 0 && (
             <span className="ml-1">
-              ({recipe.fragmentSource.dropChance}% шанс)
+              ({fragmentSource.dropChance}% шанс)
             </span>
           )}
+          {!fragmentSource.type && 'Источник фрагментов не задан'}
         </p>
 
         {/* Progress */}

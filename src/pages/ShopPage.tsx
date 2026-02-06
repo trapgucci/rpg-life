@@ -997,10 +997,83 @@ function CraftingTypePickerModal({ onSelect, onClose }: CraftingTypePickerModalP
   )
 }
 
-function CraftingCreateItemModal({ onClose }: { onClose: () => void }) {
+type RecipeIngredient = { itemId: string; quantity: number }
+type RecipeResultExtra = { itemId: string; quantity: number }
+
+interface CraftingCreateItemModalProps {
+  onClose: () => void
+  /** Название предмета из раздела «Новый предмет» — если пусто, показываем «Неизвестный предмет» */
+  defaultResultName?: string
+  /** Иконка предмета из раздела «Новый предмет» */
+  defaultResultIcon?: string
+}
+
+function CraftingCreateItemModal({ onClose, defaultResultName, defaultResultIcon }: CraftingCreateItemModalProps) {
+  const shopItems = useRpgStore((s) => s.shopItems)
+  const [recipeName, setRecipeName] = useState('')
+  const [recipeDescription, setRecipeDescription] = useState('')
+  const [ingredients, setIngredients] = useState<RecipeIngredient[]>([])
+  const [mainResultQuantity, setMainResultQuantity] = useState(1)
+  const [extraResults, setExtraResults] = useState<RecipeResultExtra[]>([])
+  const [addIngredientId, setAddIngredientId] = useState('')
+  const [addIngredientQty, setAddIngredientQty] = useState(1)
+  const [addResultId, setAddResultId] = useState('')
+  const [addResultQty, setAddResultQty] = useState(1)
+
+  const mainResultLabel = (defaultResultName?.trim() || 'Неизвестный предмет')
+  const mainResultIcon = defaultResultIcon || '⚔️'
+
+  const addIngredient = () => {
+    if (!addIngredientId || addIngredientQty < 1) return
+    setIngredients((prev) => {
+      const idx = prev.findIndex((e) => e.itemId === addIngredientId)
+      if (idx >= 0) {
+        const next = [...prev]
+        next[idx] = { ...next[idx], quantity: next[idx].quantity + addIngredientQty }
+        return next
+      }
+      return [...prev, { itemId: addIngredientId, quantity: addIngredientQty }]
+    })
+    setAddIngredientId('')
+    setAddIngredientQty(1)
+  }
+
+  const updateIngredientQuantity = (itemId: string, quantity: number) => {
+    if (quantity < 1) return
+    setIngredients((prev) => prev.map((e) => (e.itemId === itemId ? { ...e, quantity } : e)))
+  }
+
+  const removeIngredient = (itemId: string) => {
+    setIngredients((prev) => prev.filter((e) => e.itemId !== itemId))
+  }
+
+  const addExtraResult = () => {
+    if (!addResultId || addResultQty < 1) return
+    setExtraResults((prev) => {
+      const idx = prev.findIndex((e) => e.itemId === addResultId)
+      if (idx >= 0) {
+        const next = [...prev]
+        next[idx] = { ...next[idx], quantity: next[idx].quantity + addResultQty }
+        return next
+      }
+      return [...prev, { itemId: addResultId, quantity: addResultQty }]
+    })
+    setAddResultId('')
+    setAddResultQty(1)
+  }
+
+  const updateExtraResultQuantity = (itemId: string, quantity: number) => {
+    if (quantity < 1) return
+    setExtraResults((prev) => prev.map((e) => (e.itemId === itemId ? { ...e, quantity } : e)))
+  }
+
+  const removeExtraResult = (itemId: string) => {
+    setExtraResults((prev) => prev.filter((e) => e.itemId !== itemId))
+  }
+
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-content max-w-lg">
+      <div className="modal-content max-w-lg max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-[var(--fg)]">Создание предмета</h3>
           <button type="button" onClick={onClose} className="icon-btn">
@@ -1008,21 +1081,155 @@ function CraftingCreateItemModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <p className="text-sm text-[var(--fg-muted)] mb-4">Настройте рецепт: из каких материалов и в каком количестве создаётся предмет.</p>
-        <div className="space-y-4">
+
+        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+          {/* Название рецепта */}
+          <div>
+            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Название рецепта</label>
+            <input
+              type="text"
+              value={recipeName}
+              onChange={(e) => setRecipeName(e.target.value)}
+              placeholder="Введите название рецепта..."
+              className="input w-full"
+            />
+          </div>
+          {/* Описание (опционально) */}
+          <div>
+            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Описание</label>
+            <textarea
+              value={recipeDescription}
+              onChange={(e) => setRecipeDescription(e.target.value)}
+              placeholder="Опционально: описание рецепта"
+              className="input w-full min-h-[80px] resize-y"
+              rows={3}
+            />
+          </div>
+          {/* Ингредиенты */}
           <div>
             <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Ингредиенты</label>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-center text-sm text-[var(--fg-muted)]">
-              Выбор материалов и количества — скоро
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
+              {ingredients.length === 0 ? (
+                <p className="text-sm text-[var(--fg-muted)] text-center py-2">Добавьте предметы из магазина</p>
+              ) : (
+                <ul className="space-y-2">
+                  {ingredients.map(({ itemId, quantity }) => {
+                    const item = shopItems.find((i) => i.id === itemId)
+                    const name = item?.name ?? itemId
+                    const icon = item ? getItemIcon(item) : '⚔️'
+                    return (
+                      <li key={itemId} className="flex items-center gap-2 rounded-lg bg-[var(--bg)] p-2">
+                        <span className="text-xl shrink-0">{icon}</span>
+                        <span className="flex-1 min-w-0 truncate text-sm text-[var(--fg)]">{name}</span>
+                        <input
+                          type="number"
+                          min={1}
+                          value={quantity}
+                          onChange={(e) => updateIngredientQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))}
+                          className="input w-16 text-center text-sm py-1"
+                        />
+                        <button type="button" onClick={() => removeIngredient(itemId)} className="icon-btn p-1.5" title="Удалить">
+                          <Trash2 className="h-4 w-4 text-[var(--fg-muted)]" />
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--border)]">
+                <select
+                  value={addIngredientId}
+                  onChange={(e) => setAddIngredientId(e.target.value)}
+                  className="input flex-1 min-w-[120px] text-sm"
+                >
+                  <option value="">Выберите предмет</option>
+                  {shopItems.map((i) => (
+                    <option key={i.id} value={i.id}>{getItemIcon(i)} {i.name}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min={1}
+                  value={addIngredientQty}
+                  onChange={(e) => setAddIngredientQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  className="input w-16 text-center text-sm"
+                />
+                <button type="button" onClick={addIngredient} className="btn-secondary text-sm py-1.5">
+                  Добавить
+                </button>
+              </div>
             </div>
           </div>
+          {/* Результат */}
           <div>
             <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Результат</label>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-center text-sm text-[var(--fg-muted)]">
-              Предмет результата крафта
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
+              {/* Основной предмет (убрать нельзя) */}
+              <div className="flex items-center gap-2 rounded-lg bg-[var(--bg)] p-2 border border-[var(--accent)]/30">
+                <span className="text-xl shrink-0">{mainResultIcon}</span>
+                <span className="flex-1 min-w-0 truncate text-sm text-[var(--fg)]">{mainResultLabel}</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={mainResultQuantity}
+                  onChange={(e) => setMainResultQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  className="input w-16 text-center text-sm py-1"
+                />
+                <span className="text-xs text-[var(--fg-muted)] w-6">основной</span>
+              </div>
+              {/* Доп. предметы результата */}
+              {extraResults.length > 0 && (
+                <ul className="space-y-2">
+                  {extraResults.map(({ itemId, quantity }) => {
+                    const item = shopItems.find((i) => i.id === itemId)
+                    const name = item?.name ?? itemId
+                    const icon = item ? getItemIcon(item) : '⚔️'
+                    return (
+                      <li key={itemId} className="flex items-center gap-2 rounded-lg bg-[var(--bg)] p-2">
+                        <span className="text-xl shrink-0">{icon}</span>
+                        <span className="flex-1 min-w-0 truncate text-sm text-[var(--fg)]">{name}</span>
+                        <input
+                          type="number"
+                          min={1}
+                          value={quantity}
+                          onChange={(e) => updateExtraResultQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))}
+                          className="input w-16 text-center text-sm py-1"
+                        />
+                        <button type="button" onClick={() => removeExtraResult(itemId)} className="icon-btn p-1.5" title="Удалить">
+                          <Trash2 className="h-4 w-4 text-[var(--fg-muted)]" />
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--border)]">
+                <select
+                  value={addResultId}
+                  onChange={(e) => setAddResultId(e.target.value)}
+                  className="input flex-1 min-w-[120px] text-sm"
+                >
+                  <option value="">Добавить предмет из магазина</option>
+                  {shopItems.map((i) => (
+                    <option key={i.id} value={i.id}>{getItemIcon(i)} {i.name}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min={1}
+                  value={addResultQty}
+                  onChange={(e) => setAddResultQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  className="input w-16 text-center text-sm"
+                />
+                <button type="button" onClick={addExtraResult} className="btn-secondary text-sm py-1.5">
+                  Добавить
+                </button>
+              </div>
             </div>
           </div>
         </div>
-        <div className="flex gap-2 mt-6">
+
+        <div className="flex gap-2 mt-6 shrink-0">
           <button type="button" onClick={onClose} className="btn-secondary flex-1">Отмена</button>
           <button type="button" className="btn-primary flex-1">Сохранить</button>
         </div>
@@ -1031,10 +1238,82 @@ function CraftingCreateItemModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-function CraftingMaterialModal({ onClose }: { onClose: () => void }) {
+type MaterialRecipeIngredient = { itemId: string; quantity: number }
+type MaterialRecipeResult = { itemId: string; quantity: number }
+
+interface CraftingMaterialModalProps {
+  onClose: () => void
+  /** Название предмета из раздела «Новый предмет» — в ингредиентах по умолчанию */
+  defaultIngredientName?: string
+  defaultIngredientIcon?: string
+}
+
+function CraftingMaterialModal({ onClose, defaultIngredientName, defaultIngredientIcon }: CraftingMaterialModalProps) {
+  const shopItems = useRpgStore((s) => s.shopItems)
+  const [recipeName, setRecipeName] = useState('')
+  const [recipeDescription, setRecipeDescription] = useState('')
+  const [mainIngredientQuantity, setMainIngredientQuantity] = useState(1)
+  const [extraIngredients, setExtraIngredients] = useState<MaterialRecipeIngredient[]>([])
+  const [results, setResults] = useState<MaterialRecipeResult[]>([])
+  const [addIngredientId, setAddIngredientId] = useState('')
+  const [addIngredientQty, setAddIngredientQty] = useState(1)
+  const [addResultId, setAddResultId] = useState('')
+  const [addResultQty, setAddResultQty] = useState(1)
+
+  const mainIngredientLabel = defaultIngredientName?.trim() || 'Неизвестный предмет'
+  const mainIngredientIcon = defaultIngredientIcon || '⚔️'
+
+  const addExtraIngredient = () => {
+    if (!addIngredientId || addIngredientQty < 1) return
+    setExtraIngredients((prev) => {
+      const idx = prev.findIndex((e) => e.itemId === addIngredientId)
+      if (idx >= 0) {
+        const next = [...prev]
+        next[idx] = { ...next[idx], quantity: next[idx].quantity + addIngredientQty }
+        return next
+      }
+      return [...prev, { itemId: addIngredientId, quantity: addIngredientQty }]
+    })
+    setAddIngredientId('')
+    setAddIngredientQty(1)
+  }
+
+  const updateExtraIngredientQuantity = (itemId: string, quantity: number) => {
+    if (quantity < 1) return
+    setExtraIngredients((prev) => prev.map((e) => (e.itemId === itemId ? { ...e, quantity } : e)))
+  }
+
+  const removeExtraIngredient = (itemId: string) => {
+    setExtraIngredients((prev) => prev.filter((e) => e.itemId !== itemId))
+  }
+
+  const addResult = () => {
+    if (!addResultId || addResultQty < 1) return
+    setResults((prev) => {
+      const idx = prev.findIndex((e) => e.itemId === addResultId)
+      if (idx >= 0) {
+        const next = [...prev]
+        next[idx] = { ...next[idx], quantity: next[idx].quantity + addResultQty }
+        return next
+      }
+      return [...prev, { itemId: addResultId, quantity: addResultQty }]
+    })
+    setAddResultId('')
+    setAddResultQty(1)
+  }
+
+  const updateResultQuantity = (itemId: string, quantity: number) => {
+    if (quantity < 1) return
+    setResults((prev) => prev.map((e) => (e.itemId === itemId ? { ...e, quantity } : e)))
+  }
+
+  const removeResult = (itemId: string) => {
+    setResults((prev) => prev.filter((e) => e.itemId !== itemId))
+  }
+
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-content max-w-lg">
+      <div className="modal-content max-w-lg max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-[var(--fg)]">Материал для крафта</h3>
           <button type="button" onClick={onClose} className="icon-btn">
@@ -1042,10 +1321,155 @@ function CraftingMaterialModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <p className="text-sm text-[var(--fg-muted)] mb-4">Настройте, в каких рецептах этот предмет выступает ингредиентом и в каком количестве.</p>
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 text-center text-sm text-[var(--fg-muted)]">
-          Список рецептов, где используется предмет — скоро
+
+        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+          {/* Название рецепта */}
+          <div>
+            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Название рецепта</label>
+            <input
+              type="text"
+              value={recipeName}
+              onChange={(e) => setRecipeName(e.target.value)}
+              placeholder="Введите название рецепта..."
+              className="input w-full"
+            />
+          </div>
+          {/* Описание (опционально) */}
+          <div>
+            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Описание</label>
+            <textarea
+              value={recipeDescription}
+              onChange={(e) => setRecipeDescription(e.target.value)}
+              placeholder="Опционально: описание рецепта"
+              className="input w-full min-h-[80px] resize-y"
+              rows={3}
+            />
+          </div>
+          {/* Ингредиенты */}
+          <div>
+            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Ингредиенты</label>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
+              {/* Основной предмет (наш настраиваемый — убрать нельзя) */}
+              <div className="flex items-center gap-2 rounded-lg bg-[var(--bg)] p-2 border border-[var(--accent)]/30">
+                <span className="text-xl shrink-0">{mainIngredientIcon}</span>
+                <span className="flex-1 min-w-0 truncate text-sm text-[var(--fg)]">{mainIngredientLabel}</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={mainIngredientQuantity}
+                  onChange={(e) => setMainIngredientQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  className="input w-16 text-center text-sm py-1"
+                />
+                <span className="text-xs text-[var(--fg-muted)] w-6">основной</span>
+              </div>
+              {/* Доп. ингредиенты */}
+              {extraIngredients.length > 0 && (
+                <ul className="space-y-2">
+                  {extraIngredients.map(({ itemId, quantity }) => {
+                    const it = shopItems.find((i) => i.id === itemId)
+                    const itemName = it?.name ?? itemId
+                    const itemIcon = it ? getItemIcon(it) : '⚔️'
+                    return (
+                      <li key={itemId} className="flex items-center gap-2 rounded-lg bg-[var(--bg)] p-2">
+                        <span className="text-xl shrink-0">{itemIcon}</span>
+                        <span className="flex-1 min-w-0 truncate text-sm text-[var(--fg)]">{itemName}</span>
+                        <input
+                          type="number"
+                          min={1}
+                          value={quantity}
+                          onChange={(e) => updateExtraIngredientQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))}
+                          className="input w-16 text-center text-sm py-1"
+                        />
+                        <button type="button" onClick={() => removeExtraIngredient(itemId)} className="icon-btn p-1.5" title="Удалить">
+                          <Trash2 className="h-4 w-4 text-[var(--fg-muted)]" />
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--border)]">
+                <select
+                  value={addIngredientId}
+                  onChange={(e) => setAddIngredientId(e.target.value)}
+                  className="input flex-1 min-w-[120px] text-sm"
+                >
+                  <option value="">Добавить предмет из магазина</option>
+                  {shopItems.map((i) => (
+                    <option key={i.id} value={i.id}>{getItemIcon(i)} {i.name}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min={1}
+                  value={addIngredientQty}
+                  onChange={(e) => setAddIngredientQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  className="input w-16 text-center text-sm"
+                />
+                <button type="button" onClick={addExtraIngredient} className="btn-secondary text-sm py-1.5">
+                  Добавить
+                </button>
+              </div>
+            </div>
+          </div>
+          {/* Результат */}
+          <div>
+            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Результат</label>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
+              {results.length === 0 ? (
+                <p className="text-sm text-[var(--fg-muted)] text-center py-2">Добавьте предметы результата крафта</p>
+              ) : (
+                <ul className="space-y-2">
+                  {results.map(({ itemId, quantity }) => {
+                    const it = shopItems.find((i) => i.id === itemId)
+                    const itemName = it?.name ?? itemId
+                    const itemIcon = it ? getItemIcon(it) : '⚔️'
+                    return (
+                      <li key={itemId} className="flex items-center gap-2 rounded-lg bg-[var(--bg)] p-2">
+                        <span className="text-xl shrink-0">{itemIcon}</span>
+                        <span className="flex-1 min-w-0 truncate text-sm text-[var(--fg)]">{itemName}</span>
+                        <input
+                          type="number"
+                          min={1}
+                          value={quantity}
+                          onChange={(e) => updateResultQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))}
+                          className="input w-16 text-center text-sm py-1"
+                        />
+                        <button type="button" onClick={() => removeResult(itemId)} className="icon-btn p-1.5" title="Удалить">
+                          <Trash2 className="h-4 w-4 text-[var(--fg-muted)]" />
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--border)]">
+                <select
+                  value={addResultId}
+                  onChange={(e) => setAddResultId(e.target.value)}
+                  className="input flex-1 min-w-[120px] text-sm"
+                >
+                  <option value="">Выберите предмет</option>
+                  {shopItems.map((i) => (
+                    <option key={i.id} value={i.id}>{getItemIcon(i)} {i.name}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min={1}
+                  value={addResultQty}
+                  onChange={(e) => setAddResultQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  className="input w-16 text-center text-sm"
+                />
+                <button type="button" onClick={addResult} className="btn-secondary text-sm py-1.5">
+                  Добавить
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="flex gap-2 mt-6">
+
+        <div className="flex gap-2 mt-6 shrink-0">
           <button type="button" onClick={onClose} className="btn-secondary flex-1">Отмена</button>
           <button type="button" className="btn-primary flex-1">Сохранить</button>
         </div>
@@ -1522,10 +1946,18 @@ function ItemForm({ item, onClose }: ItemFormProps) {
         />
       )}
       {activeCraftingModal === 'create' && (
-        <CraftingCreateItemModal onClose={() => setActiveCraftingModal(null)} />
+        <CraftingCreateItemModal
+          onClose={() => setActiveCraftingModal(null)}
+          defaultResultName={name}
+          defaultResultIcon={icon || (item ? getItemIcon(item) : '⚔️')}
+        />
       )}
       {activeCraftingModal === 'material' && (
-        <CraftingMaterialModal onClose={() => setActiveCraftingModal(null)} />
+        <CraftingMaterialModal
+          onClose={() => setActiveCraftingModal(null)}
+          defaultIngredientName={name}
+          defaultIngredientIcon={icon || (item ? getItemIcon(item) : '⚔️')}
+        />
       )}
       {showAdvancedSettings && (
         <div
@@ -1759,6 +2191,9 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
   const deleteRecipe = useRpgStore((s) => s.deleteCraftRecipe)
   const craftItem = useRpgStore((s) => s.craftItem)
 
+  // Старые сохранённые данные могут не содержать fragmentSource
+  const fragmentSource: any = (recipe as any).fragmentSource ?? { type: 'random_drop', dropChance: 0 }
+
   const progress = recipe.fragmentsRequired > 0
     ? Math.min(1, recipe.fragmentsCollected / recipe.fragmentsRequired)
     : 0
@@ -1833,16 +2268,19 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
 
         {/* Source info */}
         <p className="mt-3 text-xs text-[var(--fg-muted)]">
-          {recipe.fragmentSource.type === 'task_linked' && '🎯 Привязано к задачам'}
-          {recipe.fragmentSource.type === 'habit_linked' && '🔁 Привязано к привычкам'}
-          {recipe.fragmentSource.type === 'random_drop' && (
+          {fragmentSource.type === 'task_linked' && '🎯 Привязано к задачам'}
+          {fragmentSource.type === 'habit_linked' && '🔁 Привязано к привычкам'}
+          {fragmentSource.type === 'random_drop' && (
             <>
               🎲 Случайный дроп
-              <span className="ml-1">
-                ({recipe.fragmentSource.dropChance}% шанс)
-              </span>
+              {typeof fragmentSource.dropChance === 'number' && fragmentSource.dropChance > 0 && (
+                <span className="ml-1">
+                  ({fragmentSource.dropChance}% шанс)
+                </span>
+              )}
             </>
           )}
+          {!fragmentSource.type && 'Источник фрагментов не задан'}
         </p>
 
         {/* Progress */}
