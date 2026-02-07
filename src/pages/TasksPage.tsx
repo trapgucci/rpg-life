@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { cn } from '../lib/cn'
-import { CheckSquare, Plus, Sparkles, Target, FolderOpen, Pencil, Trash2, X } from 'lucide-react'
+import { CheckSquare, Plus, Sparkles, Target, FolderOpen, Pencil, Trash2, X, Clock } from 'lucide-react'
 import TaskCreateForm from '../components/TaskCreateForm'
 import TaskCard from '../components/TaskCard'
 import TaskDetailPanel from '../components/TaskDetailPanel'
@@ -9,6 +9,9 @@ import type { TaskRpg, TaskGroupId } from '../types/domain'
 
 /** Специальный id для «Без группы» */
 const NO_GROUP_ID: TaskGroupId | null = null
+
+/** Типы фильтров для вкладок */
+type TaskFilter = 'active' | 'completed' | 'canceled'
 
 export default function TasksPage() {
   const tasks = useRpgStore((s) => s.tasks)
@@ -32,6 +35,7 @@ export default function TasksPage() {
   const [selectedId, setSelectedId] = useState<TaskRpg['id'] | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [formVisible, setFormVisible] = useState(false)
+  const [taskFilter, setTaskFilter] = useState<TaskFilter>('active')
 
   useEffect(() => {
     if (showForm) {
@@ -49,15 +53,31 @@ export default function TasksPage() {
 
   const filteredTasks = useMemo(() => {
     if (!activeProfileId) return []
+    const now = Date.now()
     const list = tasks.filter((t) => {
       if (t.profileId !== activeProfileId) return false
       if (t.archived) return false
+
+      // Фильтр по статусу
+      if (taskFilter === 'active') {
+        // Активные: не выполнены и не просрочены
+        if (t.isCompleted) return false
+        if (t.deadlineAt && now > t.deadlineAt) return false
+      } else if (taskFilter === 'completed') {
+        // Выполненные
+        if (!t.isCompleted) return false
+      } else if (taskFilter === 'canceled') {
+        // Отмененные (просроченные)
+        if (t.isCompleted) return false
+        if (!t.deadlineAt || now <= t.deadlineAt) return false
+      }
+
       const g = t.groupId ?? null
       if (selectedGroupId === NO_GROUP_ID) return g === null
       return g === selectedGroupId
     })
     return list
-  }, [tasks, activeProfileId, selectedGroupId])
+  }, [tasks, activeProfileId, selectedGroupId, taskFilter])
 
   const sortedTasks = useMemo(
     () =>
@@ -171,7 +191,7 @@ export default function TasksPage() {
           {/* Группы */}
           <div className="mt-4">
             <p className="mb-2 text-xs font-medium text-[var(--fg-muted)]">Группы</p>
-            <div className="flex flex-col gap-1 max-h-[220px] overflow-y-auto pr-1">
+            <div className="flex flex-col gap-1 max-h-[160px] overflow-y-auto pr-1">
               {/* Без группы */}
               <button
                 type="button"
@@ -289,6 +309,52 @@ export default function TasksPage() {
                   Добавить группу
                 </button>
               )}
+            </div>
+          </div>
+
+          {/* Фильтр по статусу задач */}
+          <div className="mt-4 border-t border-[var(--border)] pt-4">
+            <p className="mb-2 text-xs font-medium text-[var(--fg-muted)]">Статус задач</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setTaskFilter('active')}
+                className={cn(
+                  'flex flex-1 items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
+                  taskFilter === 'active'
+                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
+                    : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
+                )}
+                title="Активные"
+              >
+                <Target className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setTaskFilter('completed')}
+                className={cn(
+                  'flex flex-1 items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
+                  taskFilter === 'completed'
+                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
+                    : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
+                )}
+                title="Выполненные"
+              >
+                <CheckSquare className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setTaskFilter('canceled')}
+                className={cn(
+                  'flex flex-1 items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
+                  taskFilter === 'canceled'
+                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
+                    : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
+                )}
+                title="Отмененные"
+              >
+                <Clock className="h-5 w-5" />
+              </button>
             </div>
           </div>
         </div>

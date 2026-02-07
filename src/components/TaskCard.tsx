@@ -99,7 +99,7 @@ export default function TaskCard({ task, selected, onSelect }: TaskCardProps) {
   const getTaskRewardPreview = useRpgStore((s) => s.getTaskRewardPreview)
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
-  
+
   const profile = profiles.find((p) => p.id === activeProfileId)
   const attributes = profile?.attributes ?? []
   const { xp, coins, gems } = getTaskRewardPreview(task)
@@ -107,13 +107,37 @@ export default function TaskCard({ task, selected, onSelect }: TaskCardProps) {
   const taskAttrs = taskAttrIds.map((id) => attributes.find((a) => a.id === id)).filter(Boolean)
   const Icon = KIND_ICON[task.kind]
   const diffStyle = DIFFICULTY_COLORS[task.difficulty]
-  
+
   const progress =
     task.kind === 'counter'
       ? Math.min(1, task.target > 0 ? task.current / task.target : 0)
       : task.isCompleted
         ? 1
         : 0
+
+  // Вычисляем дни до дедлайна
+  const getDeadlineInfo = () => {
+    if (!task.deadlineAt) return null
+
+    const now = new Date()
+    const deadline = new Date(task.deadlineAt)
+    const diffTime = deadline.getTime() - now.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+    if (diffDays < 0) {
+      return { text: 'Просрочено', color: 'text-gray-500', bg: 'bg-gray-500/10', border: 'border-gray-500/30' }
+    } else if (diffDays < 1) {
+      return { text: '<1д', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30' }
+    } else if (diffDays <= 3) {
+      return { text: `${diffDays}д`, color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/30' }
+    } else if (diffDays <= 7) {
+      return { text: `${diffDays}д`, color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30' }
+    } else {
+      return { text: `${diffDays}д`, color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/30' }
+    }
+  }
+
+  const deadlineInfo = getDeadlineInfo()
 
   return (
     <>
@@ -196,62 +220,71 @@ export default function TaskCard({ task, selected, onSelect }: TaskCardProps) {
 
           {/* Tags & rewards */}
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
-            {/* Coin reward */}
-            {coins > 0 && (
-              <span
-                className="inline-flex items-center gap-1 rounded-lg bg-amber-500/20 px-2.5 py-1 text-xs font-semibold text-amber-500 border border-amber-500/40"
-                style={{
-                  boxShadow: '0 0 10px rgba(245, 158, 11, 0.25)',
-                }}
-              >
-                <Coins className="h-3.5 w-3.5" />
-                {coins}
+            {/* Currency rewards (Coins + Gems combined) */}
+            {(coins > 0 || gems > 0) && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-50 to-cyan-50 dark:from-amber-950/30 dark:to-cyan-950/30 px-2.5 py-1 text-xs font-semibold border border-amber-200 dark:border-amber-800">
+                {coins > 0 && (
+                  <>
+                    <Coins className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                    <span className="text-amber-600 dark:text-amber-400">{coins}</span>
+                  </>
+                )}
+                {coins > 0 && gems > 0 && (
+                  <span className="text-[var(--fg-muted)]">•</span>
+                )}
+                {gems > 0 && (
+                  <>
+                    <Gem className="h-4 w-4 text-cyan-600 dark:text-cyan-400" strokeWidth={2.5} />
+                    <span className="text-cyan-600 dark:text-cyan-400">{gems}</span>
+                  </>
+                )}
               </span>
             )}
 
-            {/* Gem reward */}
-            {gems > 0 && (
+            {/* XP reward - только если есть атрибуты */}
+            {taskAttrIds.length > 0 && xp > 0 && (
               <span
-                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-cyan-400 border border-cyan-400/50"
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold border',
+                  diffStyle.xp,
+                  task.difficulty === 'easy' && 'bg-emerald-500/10 border-emerald-500/30',
+                  task.difficulty === 'medium' && 'bg-blue-500/10 border-blue-500/30',
+                  task.difficulty === 'hard' && 'bg-orange-500/10 border-orange-500/30',
+                  task.difficulty === 'veryHard' && 'bg-red-500/10 border-red-500/30'
+                )}
                 style={{
-                  background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.25) 0%, rgba(34, 211, 238, 0.25) 100%)',
-                  boxShadow: '0 0 14px rgba(6, 182, 212, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.2)',
+                  boxShadow: task.difficulty === 'easy'
+                    ? '0 0 10px rgba(16, 185, 129, 0.2)'
+                    : task.difficulty === 'medium'
+                    ? '0 0 10px rgba(59, 130, 246, 0.2)'
+                    : task.difficulty === 'hard'
+                    ? '0 0 10px rgba(249, 115, 22, 0.2)'
+                    : '0 0 10px rgba(239, 68, 68, 0.2)'
                 }}
               >
-                <Gem className="h-3.5 w-3.5" />
-                {gems}
+                <Zap className="h-3.5 w-3.5" />
+                {xp} XP
               </span>
             )}
-
-            {/* XP reward - цвет зависит от сложности */}
-            <span
-              className={cn(
-                'inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold border',
-                diffStyle.xp,
-                task.difficulty === 'easy' && 'bg-emerald-500/10 border-emerald-500/30',
-                task.difficulty === 'medium' && 'bg-blue-500/10 border-blue-500/30',
-                task.difficulty === 'hard' && 'bg-orange-500/10 border-orange-500/30',
-                task.difficulty === 'veryHard' && 'bg-red-500/10 border-red-500/30'
-              )}
-              style={{
-                boxShadow: task.difficulty === 'easy'
-                  ? '0 0 10px rgba(16, 185, 129, 0.2)'
-                  : task.difficulty === 'medium'
-                  ? '0 0 10px rgba(59, 130, 246, 0.2)'
-                  : task.difficulty === 'hard'
-                  ? '0 0 10px rgba(249, 115, 22, 0.2)'
-                  : '0 0 10px rgba(239, 68, 68, 0.2)'
-              }}
-            >
-              <Zap className="h-3.5 w-3.5" />
-              {xp} XP
-            </span>
 
             {/* Recurrence */}
             {task.recurrence !== 'once' && (
               <span className="inline-flex items-center gap-1 rounded-lg bg-blue-500/10 px-2.5 py-1 text-xs font-semibold text-blue-500 border border-blue-500/30">
                 <Repeat className="h-3.5 w-3.5" />
                 {task.recurrence === 'daily' ? 'Ежедневно' : task.recurrence === 'weekly' ? 'Еженедельно' : task.recurrence === 'monthly' ? 'Ежемесячно' : task.recurrence === 'yearly' ? 'Ежегодно' : task.recurrence === 'instant' ? 'Инстант' : 'Повтор'}
+              </span>
+            )}
+
+            {/* Deadline Badge */}
+            {deadlineInfo && (
+              <span className={cn(
+                'inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold border',
+                deadlineInfo.color,
+                deadlineInfo.bg,
+                deadlineInfo.border
+              )}>
+                <Clock className="h-3.5 w-3.5" />
+                {deadlineInfo.text}
               </span>
             )}
           </div>

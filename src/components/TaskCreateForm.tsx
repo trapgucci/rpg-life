@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, X, ChevronRight, Calendar, BarChart3, Gift, Hash, Target, Construction, ListPlus, Zap, Coins, Folder, Edit2 } from 'lucide-react'
+import { Plus, X, ChevronRight, Calendar, Clock, BarChart3, Gift, Hash, Target, Construction, ListPlus, Zap, Coins, Folder, Edit2 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRecurrence, SubtaskItem, TaskDifficulty, AttributeId } from '../types/domain'
 import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
@@ -9,15 +9,8 @@ import TaskGroupSelectModal from './TaskGroupSelectModal'
 import TaskAttributeSelectModal from './TaskAttributeSelectModal'
 import TaskRewardsModal from './TaskRewardsModal'
 import SubtaskCreateModal, { type SubtaskEditData, type SubtaskFormData } from './SubtaskCreateModal'
-
-const RECURRENCE_OPTIONS: { value: TaskRecurrence; label: string }[] = [
-  { value: 'once', label: 'Один раз' },
-  { value: 'daily', label: 'Ежедневно' },
-  { value: 'weekly', label: 'Еженедельно' },
-  { value: 'monthly', label: 'Ежемесячно' },
-  { value: 'yearly', label: 'Ежегодно' },
-  { value: 'instant', label: 'Инстант (можно выполнять снова после награды)' },
-]
+import RecurrenceSelectModal from './RecurrenceSelectModal'
+import DateTimePickerModal from './DateTimePickerModal'
 
 const RECURRENCE_STATUS_LABEL: Record<TaskRecurrence, string> = {
   once: 'Без повтора',
@@ -49,9 +42,10 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   const [subtasks, setSubtasks] = useState<(SubtaskFormData & { id: string })[]>([])
   const [showSubtaskModal, setShowSubtaskModal] = useState(false)
   const [editingSubtask, setEditingSubtask] = useState<SubtaskEditData | null>(null)
-  const [showRepeat, setShowRepeat] = useState(false)
   const [recurrence, setRecurrence] = useState<TaskRecurrence>('once')
   const [deadlineAt, setDeadlineAt] = useState<string>('')
+  const [showRecurrenceModal, setShowRecurrenceModal] = useState(false)
+  const [showDeadlineModal, setShowDeadlineModal] = useState(false)
 
   // Атрибуты и сложность
   const [selectedAttributeIds, setSelectedAttributeIds] = useState<AttributeId[]>([])
@@ -198,7 +192,6 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       setCoinReward(10)
       setGemReward(0)
       setSubtasks([])
-      setShowRepeat(false)
       setRecurrence('once')
       setDeadlineAt('')
       setCountingTaskEnabled(false)
@@ -337,63 +330,51 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       <div>
         <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Правило повтора</label>
         <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
-          <div className="flex items-center justify-between gap-3 px-4 py-3">
-            <p className="text-sm font-semibold text-[var(--fg)]">{RECURRENCE_STATUS_LABEL[recurrence]}</p>
-            <span className="inline-flex items-center gap-1.5 shrink-0 rounded-full bg-amber-100 dark:bg-amber-500/20 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
-              <Construction className="h-3.5 w-3.5 shrink-0" />
-              Функция в разработке
-            </span>
+          {/* Повтор */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowRecurrenceModal(true)}
+              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-[var(--surface-elevated)]"
+            >
+              <span className="flex items-center gap-3">
+                <Calendar className="h-5 w-5 text-[var(--accent)]" />
+                <div>
+                  <p className="font-semibold text-[var(--fg)]">Повтор</p>
+                  <p className="text-xs text-[var(--fg-muted)] mt-0.5">
+                    {RECURRENCE_STATUS_LABEL[recurrence]}
+                  </p>
+                </div>
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" />
+            </button>
           </div>
           <div className="h-px bg-[var(--border)]" />
-          <button
-            type="button"
-            onClick={() => setShowRepeat(!showRepeat)}
-            className={cn(
-              'flex w-full items-center justify-between px-4 py-3 text-left text-sm transition-colors',
-              showRepeat ? 'text-[var(--accent)]' : 'text-[var(--accent)] hover:bg-[var(--accent-subtle)]'
-            )}
-          >
-            <span>Параметры повтора</span>
-            <ChevronRight className={cn('h-4 w-4 shrink-0 transition-transform', showRepeat && 'rotate-90')} />
-          </button>
-        </div>
-
-        {showRepeat && (
-          <div className="mt-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-            <div className="mb-4">
-              <label className="block text-xs font-medium text-[var(--fg-muted)] mb-2">Повтор</label>
-              <select
-                value={recurrence}
-                onChange={(e) => setRecurrence(e.target.value as TaskRecurrence)}
-                className="select w-full"
-              >
-                {RECURRENCE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-[var(--fg-muted)] mb-2">
-                Дедлайн (когда нужно закончить)
-              </label>
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-[var(--fg-muted)]" />
-                <input
-                  type="datetime-local"
-                  value={deadlineAt}
-                  onChange={(e) => setDeadlineAt(e.target.value)}
-                  className="input flex-1 text-sm"
-                />
-              </div>
-              <p className="mt-1 text-[10px] text-[var(--fg-muted)]">
-                После дедлайна завершить задачу будет нельзя
-              </p>
-            </div>
+          {/* Дедлайн */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowDeadlineModal(true)}
+              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-[var(--surface-elevated)]"
+            >
+              <span className="flex items-center gap-3">
+                <Clock className="h-5 w-5 text-[var(--accent)]" />
+                <div>
+                  <p className="font-semibold text-[var(--fg)]">Дедлайн</p>
+                  <p className="text-xs text-[var(--fg-muted)] mt-0.5">
+                    {deadlineAt ? new Date(deadlineAt).toLocaleDateString('ru-RU', {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    }) : 'Не установлен'}
+                  </p>
+                </div>
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" />
+            </button>
           </div>
-        )}
+        </div>
       </div>
 
       {/* 5. Система вознаграждения */}
@@ -415,7 +396,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                     {selectedAttrs.length > 0
                       ? selectedAttrs.map((a) => `${a!.icon} ${a!.name}`).join(', ')
                       : 'Не выбрано'}
-                    {' • '}{difficultyXp} XP
+                    {selectedAttrs.length > 0 && ` • ${difficultyXp} XP`}
                   </p>
                 </div>
               </span>
@@ -641,6 +622,18 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       onAdd={addSubtask}
       onEdit={editSubtask}
       onClose={closeSubtaskModal}
+    />
+    <RecurrenceSelectModal
+      isOpen={showRecurrenceModal}
+      selected={recurrence}
+      onSelect={setRecurrence}
+      onClose={() => setShowRecurrenceModal(false)}
+    />
+    <DateTimePickerModal
+      isOpen={showDeadlineModal}
+      value={deadlineAt}
+      onChange={setDeadlineAt}
+      onClose={() => setShowDeadlineModal(false)}
     />
     </>
   )
