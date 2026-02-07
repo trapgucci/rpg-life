@@ -55,7 +55,10 @@ function CurrencyDisplay() {
       
       {/* Currency section */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 rounded-xl bg-amber-500/10 px-3 py-2 transition-all hover:bg-amber-500/15">
+        <div
+          data-currency="coins"
+          className="flex items-center gap-2 rounded-xl bg-amber-500/10 px-3 py-2 transition-all hover:bg-amber-500/15"
+        >
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 shadow-sm">
             <Coins className="h-4 w-4 text-white" />
           </div>
@@ -63,8 +66,11 @@ function CurrencyDisplay() {
             {coins.toLocaleString('ru-RU')}
           </span>
         </div>
-        
-        <div className="flex items-center gap-2 rounded-xl bg-purple-500/10 px-3 py-2 transition-all hover:bg-purple-500/15">
+
+        <div
+          data-currency="gems"
+          className="flex items-center gap-2 rounded-xl bg-purple-500/10 px-3 py-2 transition-all hover:bg-purple-500/15"
+        >
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-purple-400 to-violet-600 shadow-sm">
             <Gem className="h-4 w-4 text-white" />
           </div>

@@ -34,7 +34,7 @@ import {
   xpForLevelCustom,
 } from '../types/domain'
 
-const DEFAULT_PENALTY_FACTOR = 0.2
+// Removed DEFAULT_PENALTY_FACTOR - penalty system removed
 const EMPTY_ATTRIBUTES: Attribute[] = []
 
 function now() {
@@ -518,6 +518,7 @@ export const useRpgStore = create<RpgStoreState>()(
             deadlineAt: task.deadlineAt ?? null,
             recurrence: task.recurrence ?? 'once',
             coinReward: task.coinReward ?? 0,
+            attributeIds: task.attributeIds ?? (task.attributeId ? [task.attributeId] : []),
             id,
             createdAt: created,
             updatedAt: created,
@@ -535,15 +536,15 @@ export const useRpgStore = create<RpgStoreState>()(
         deleteTask: (id) => set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) })),
 
         getTaskRewardPreview: (task) => {
-          const xp = TASK_XP_BY_DIFFICULTY[task.difficulty]
+          const { settings } = get()
+          const xp = task.customXp ?? settings.taskDifficultyXp?.[task.difficulty] ?? TASK_XP_BY_DIFFICULTY[task.difficulty]
           const coins = task.coinReward
           return { xp, coins }
         },
 
         getTaskPenaltyPreview: (task) => {
-          const { xp, coins } = get().getTaskRewardPreview(task)
-          const factor = task.penaltyFactor ?? DEFAULT_PENALTY_FACTOR
-          return { xp: Math.round(xp * factor), coins: Math.round(coins * factor) }
+          // Penalty system removed
+          return { xp: 0, coins: 0 }
         },
 
         canCompleteTask: (task) => {
@@ -554,23 +555,35 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         completeTask: (id) => {
-          const { tasks, getActiveProfile, updateTask, updateProfile, tryRandomFragmentDrop, checkAchievements, canCompleteTask } = get()
+          const { tasks, getActiveProfile, updateTask, updateProfile, tryRandomFragmentDrop, checkAchievements, canCompleteTask, settings } = get()
           const task = tasks.find((t) => t.id === id)
           const profile = getActiveProfile()
           if (!task || !profile) return
           if (!canCompleteTask(task)) return
 
-          const xpGain = TASK_XP_BY_DIFFICULTY[task.difficulty]
+          const xpGain = task.customXp ?? settings.taskDifficultyXp?.[task.difficulty] ?? TASK_XP_BY_DIFFICULTY[task.difficulty]
           const coinGain = task.coinReward
 
-          // Add XP to attribute
-          if (task.attributeId) {
-            const nextAttributes = addXpToAttribute(profile, task.attributeId, xpGain)
-            updateProfile(profile.id, (p) => ({ ...p, attributes: nextAttributes }))
+          // Add XP to all selected attributes
+          const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
+          if (attrIds.length > 0 && xpGain > 0) {
+            let currentAttrs = profile.attributes
+            for (const attrId of attrIds) {
+              const tempProfile = { ...profile, attributes: currentAttrs }
+              currentAttrs = addXpToAttribute(tempProfile, attrId, xpGain)
+            }
+            updateProfile(profile.id, (p) => ({ ...p, attributes: currentAttrs }))
           }
 
           // Add coins
           get().addCurrency(CURRENCY_IDS.COINS, coinGain)
+
+          // Show coin animation
+          if (typeof window !== 'undefined' && coinGain > 0) {
+            import('../components/RewardNotifications').then(({ showReward }) => {
+              showReward('coins', coinGain)
+            })
+          }
 
           // Instant recurrence: после выполнения награды выданы — задача остаётся, можно выполнить снова
           if (task.recurrence === 'instant') {
@@ -610,19 +623,8 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         abandonTask: (id) => {
-          const { tasks, getActiveProfile, updateTask, updateProfile, getTaskPenaltyPreview } = get()
-          const task = tasks.find((t) => t.id === id)
-          const profile = getActiveProfile()
-          if (!task || !profile) return
-
-          const { xp, coins } = getTaskPenaltyPreview(task)
-
-          if (task.attributeId && xp > 0) {
-            const nextAttributes = deductXpFromAttribute(profile, task.attributeId, xp)
-            updateProfile(profile.id, (p) => ({ ...p, attributes: nextAttributes }))
-          }
-
-          get().deductCurrency(CURRENCY_IDS.COINS, coins)
+          const { updateTask } = get()
+          // No penalty - just archive the task
           updateTask(id, (t) => ({ ...t, archived: true, updatedAt: now() }))
         },
 
@@ -649,21 +651,41 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         toggleSubtask: (taskId, subtaskId) => {
-          const { tasks, completeTask } = get()
+          const { tasks, getActiveProfile, updateProfile } = get()
           const task = tasks.find((t) => t.id === taskId)
           if (!task || task.kind !== 'nested') return
 
-          const updatedSubtasks = task.subtasks.map((s) =>
-            s.id === subtaskId ? { ...s, isCompleted: !s.isCompleted, completedAt: !s.isCompleted ? now() : undefined } : s
-          )
-          const allDone = updatedSubtasks.every((s) => s.isCompleted)
+          const subtask = task.subtasks.find((s) => s.id === subtaskId)
+          if (!subtask) return
 
-          if (allDone && !task.isCompleted) {
-            get().updateTask(taskId, (t) => t.kind === 'nested' ? { ...t, subtasks: updatedSubtasks } : t)
-            completeTask(taskId)
-          } else {
-            get().updateTask(taskId, (t) => t.kind === 'nested' ? { ...t, subtasks: updatedSubtasks, isCompleted: false } : t)
+          const wasCompleted = subtask.isCompleted
+          const isNowCompleted = !wasCompleted
+
+          // Award per-subtask rewards only when toggling ON
+          if (isNowCompleted) {
+            const profile = getActiveProfile()
+            if (profile) {
+              const coinRwd = subtask.coinReward ?? 0
+              const xpRwd = subtask.xpReward ?? 0
+              if (coinRwd > 0) get().addCurrency(CURRENCY_IDS.COINS, coinRwd)
+              const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
+              if (xpRwd > 0 && attrIds.length > 0) {
+                let currentAttrs = profile.attributes
+                for (const attrId of attrIds) {
+                  const tempProfile = { ...profile, attributes: currentAttrs }
+                  currentAttrs = addXpToAttribute(tempProfile, attrId, xpRwd)
+                }
+                updateProfile(profile.id, (p) => ({ ...p, attributes: currentAttrs }))
+              }
+            }
           }
+
+          // Просто обновляем статус подзадачи, без влияния на основную задачу
+          const updatedSubtasks = task.subtasks.map((s) =>
+            s.id === subtaskId ? { ...s, isCompleted: isNowCompleted, completedAt: isNowCompleted ? now() : undefined } : s
+          )
+
+          get().updateTask(taskId, (t) => t.kind === 'nested' ? { ...t, subtasks: updatedSubtasks } : t)
         },
 
         // ─── Habits ───────────────────────────────────────────────────────
@@ -1229,14 +1251,33 @@ export const useRpgStore = create<RpgStoreState>()(
         if (!state.taskGroups) useRpgStore.setState({ taskGroups: [] })
         if (!state.itemGroups) useRpgStore.setState({ itemGroups: [] })
         if (!state.tasks) useRpgStore.setState({ tasks: [] })
-        if (state.tasks?.length && state.tasks.some((t: TaskRpg) => t.groupId === undefined || t.deadlineAt === undefined)) {
+
+        // Migrate settings to add taskDifficultyXp if missing
+        if (state.settings && !state.settings.taskDifficultyXp) {
           useRpgStore.setState({
-            tasks: state.tasks.map((t: TaskRpg) => ({
-              ...t,
-              groupId: t.groupId ?? null,
-              deadlineAt: t.deadlineAt ?? null,
-            })),
+            settings: {
+              ...state.settings,
+              taskDifficultyXp: {
+                easy: 10,
+                medium: 40,
+                hard: 100,
+                veryHard: 300,
+              },
+            },
           })
+        }
+        if (state.tasks?.length) {
+          const needsMigration = state.tasks.some((t: any) => t.groupId === undefined || t.deadlineAt === undefined || !t.attributeIds)
+          if (needsMigration) {
+            useRpgStore.setState({
+              tasks: state.tasks.map((t: any) => ({
+                ...t,
+                groupId: t.groupId ?? null,
+                deadlineAt: t.deadlineAt ?? null,
+                attributeIds: t.attributeIds ?? (t.attributeId ? [t.attributeId] : []),
+              })),
+            })
+          }
         }
         const profiles = state.profiles ?? []
         if (profiles.length === 0 && !storeInitialized) {

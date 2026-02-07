@@ -37,19 +37,14 @@ export default function TaskCard({ task, selected, onSelect }: TaskCardProps) {
   const profile = profiles.find((p) => p.id === activeProfileId)
   const attributes = profile?.attributes ?? []
   const { xp, coins } = getTaskRewardPreview(task)
-  const attr = task.attributeId
-    ? attributes.find((a) => a.id === task.attributeId)
-    : null
+  const taskAttrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
+  const taskAttrs = taskAttrIds.map((id) => attributes.find((a) => a.id === id)).filter(Boolean)
   const Icon = KIND_ICON[task.kind]
   const diffStyle = DIFFICULTY_COLORS[task.difficulty]
   
   const progress =
     task.kind === 'counter'
       ? Math.min(1, task.target > 0 ? task.current / task.target : 0)
-      : task.kind === 'nested'
-        ? task.subtasks.length
-          ? task.subtasks.filter((s) => s.isCompleted).length / task.subtasks.length
-        : 0
       : task.isCompleted
         ? 1
         : 0
@@ -89,28 +84,40 @@ export default function TaskCard({ task, selected, onSelect }: TaskCardProps) {
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <h3
-            className={cn(
-              'font-medium text-[var(--fg)] line-clamp-1',
-              task.isCompleted && 'line-through'
+          <div className="flex items-center gap-2">
+            <h3
+              className={cn(
+                'font-medium text-[var(--fg)] line-clamp-1 flex-1',
+                task.isCompleted && 'line-through'
+              )}
+            >
+              {task.title}
+            </h3>
+            {/* Индикатор подзадач */}
+            {task.kind === 'nested' && task.subtasks.length > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-lg bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-500 shrink-0">
+                <ListChecks className="h-3 w-3" />
+                {task.subtasks.filter((s) => s.isCompleted).length}/{task.subtasks.length}
+              </span>
             )}
-          >
-            {task.title}
-          </h3>
+          </div>
 
-          {/* Progress for counter/nested */}
-          {(task.kind === 'counter' || task.kind === 'nested') && (
+          {/* Counter display */}
+          {task.kind === 'counter' && (
             <div className="mt-2">
               <div className="flex items-center justify-between text-xs text-[var(--fg-muted)] mb-1">
-                <span>Прогресс</span>
-                <span>{Math.round(progress * 100)}%</span>
+                <span className="flex items-center gap-1">
+                  <Hash className="h-3 w-3" />
+                  Счетчик
+                </span>
+                <span className="font-semibold">{task.current}/{task.target} {task.countUnit || 'раз'}</span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--border)]">
                 <div
                   className="h-full rounded-full transition-all duration-500 ease-out"
-                  style={{ 
+                  style={{
                     width: `${progress * 100}%`,
-                    background: task.isCompleted 
+                    background: task.isCompleted
                       ? 'linear-gradient(90deg, #10b981, #34d399)'
                       : 'linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)'
                   }}
@@ -118,6 +125,7 @@ export default function TaskCard({ task, selected, onSelect }: TaskCardProps) {
               </div>
             </div>
           )}
+
 
           {/* Tags & rewards */}
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
@@ -148,15 +156,16 @@ export default function TaskCard({ task, selected, onSelect }: TaskCardProps) {
               </span>
             )}
 
-            {/* Attribute */}
-            {attr && (
+            {/* Attributes */}
+            {taskAttrs.map((attr) => attr && (
               <span
+                key={attr.id}
                 className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium"
                 style={{ backgroundColor: `${attr.color}15`, color: attr.color }}
               >
                 {attr.icon} {attr.key}
               </span>
-            )}
+            ))}
           </div>
         </div>
       </div>

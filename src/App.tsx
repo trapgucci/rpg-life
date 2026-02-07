@@ -8,6 +8,7 @@ import CraftingPage from './pages/CraftingPage'
 import StatusPage from './pages/StatusPage'
 import AchievementsPage from './pages/AchievementsPage'
 import SettingsPage from './pages/SettingsPage'
+import RewardNotifications from './components/RewardNotifications'
 import { useRpgStore } from './store/useRpgStore'
 import { ACCENT_COLORS } from './types/domain'
 
@@ -33,18 +34,21 @@ function App() {
   }, [])
 
   return (
-    <Routes>
-      <Route path="/" element={<Layout />}>
-        <Route index element={<TasksPage />} />
-        <Route path="habits" element={<HabitsPage />} />
-        <Route path="shop" element={<ShopPage />} />
-        <Route path="crafting" element={<CraftingPage />} />
-        <Route path="status" element={<StatusPage />} />
-        <Route path="achievements" element={<AchievementsPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+    <>
+      <RewardNotifications />
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<TasksPage />} />
+          <Route path="habits" element={<HabitsPage />} />
+          <Route path="shop" element={<ShopPage />} />
+          <Route path="crafting" element={<CraftingPage />} />
+          <Route path="status" element={<StatusPage />} />
+          <Route path="achievements" element={<AchievementsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </>
   )
 }
 

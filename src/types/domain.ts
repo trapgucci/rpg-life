@@ -12,12 +12,12 @@ export type CraftRecipeId = string
 
 // ─── Task System (Core) ────────────────────────────────────────────────────
 
-/** XP per difficulty (ulives-style) */
+/** XP per difficulty (ulives-style) - now configurable via settings */
 export const TASK_XP_BY_DIFFICULTY = {
-  easy: 100,
-  medium: 200,
-  hard: 400,
-  veryHard: 800,
+  easy: 10,
+  medium: 30,
+  hard: 100,
+  veryHard: 300,
 } as const
 
 export type TaskDifficulty = keyof typeof TASK_XP_BY_DIFFICULTY
@@ -66,8 +66,12 @@ export interface TaskBase {
   updatedAt: number
   kind: TaskKindRpg
   difficulty: TaskDifficulty
-  attributeId: AttributeId | null
-  penaltyFactor: number
+  /** @deprecated Use attributeIds instead */
+  attributeId?: AttributeId | null
+  /** Multiple attributes that receive XP on task completion */
+  attributeIds: AttributeId[]
+  /** Custom XP override for this task (if set, overrides difficulty-based XP) */
+  customXp?: number | null
   dueAt: number | null
   /** Дедлайн: после этого времени завершить задачу нельзя (опционально) */
   deadlineAt?: number | null
@@ -89,6 +93,8 @@ export interface CounterTask extends TaskBase {
   kind: 'counter'
   current: number
   target: number
+  /** Единица измерения (раз, км, стр и т.д.) */
+  countUnit?: string
   isCompleted: boolean
   completedAt?: number
 }
@@ -97,8 +103,11 @@ export interface CounterTask extends TaskBase {
 export interface SubtaskItem {
   id: string
   title: string
+  description?: string
   isCompleted: boolean
   completedAt?: number
+  coinReward?: number
+  xpReward?: number
 }
 
 export interface NestedTask extends TaskBase {
@@ -524,6 +533,13 @@ export interface AppSettings {
   notifyDailyTasks: boolean
   notifyAchievements: boolean
   language: 'ru' | 'en'
+  /** Настройки XP для сложностей задач */
+  taskDifficultyXp: {
+    easy: number
+    medium: number
+    hard: number
+    veryHard: number
+  }
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -533,6 +549,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
   notifyDailyTasks: true,
   notifyAchievements: true,
   language: 'ru',
+  taskDifficultyXp: {
+    easy: 10,
+    medium: 30,
+    hard: 100,
+    veryHard: 300,
+  },
 }
 
 // ─── Database schema (SQLite-ready) ─────────────────────────────────────────
