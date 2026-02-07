@@ -4,6 +4,7 @@ import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
 import type { Habit, AttributeId, HabitId } from '../types/domain'
 import HabitCalendarModal from '../components/HabitCalendarModal'
+import ConfirmModal from '../components/ConfirmModal'
 
 interface HabitCardProps {
   habit: Habit
@@ -25,6 +26,7 @@ function isDateInFreeze(key: string, freezeFrom?: number | null, freezeUntil?: n
 }
 
 function HabitCard({ habit, onEdit, experimentalMode }: HabitCardProps) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showCalendar, setShowCalendar] = useState(false)
   const clickPositive = useRpgStore((s) => s.clickHabitPositive)
   const clickNegative = useRpgStore((s) => s.clickHabitNegative)
@@ -59,9 +61,7 @@ function HabitCard({ habit, onEdit, experimentalMode }: HabitCardProps) {
         </button>
         <button
           type="button"
-          onClick={() => {
-            if (confirm('Удалить привычку?')) deleteHabit(habit.id)
-          }}
+          onClick={() => setShowDeleteConfirm(true)}
           className="icon-btn icon-btn-danger"
         >
           <Trash2 className="h-4 w-4" />
@@ -223,6 +223,17 @@ function HabitCard({ habit, onEdit, experimentalMode }: HabitCardProps) {
           </button>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onConfirm={() => { setShowDeleteConfirm(false); deleteHabit(habit.id) }}
+        onCancel={() => setShowDeleteConfirm(false)}
+        title="Удалить привычку?"
+        message="Привычка будет удалена безвозвратно."
+        confirmText="Удалить"
+        cancelText="Отмена"
+        variant="danger"
+      />
     </div>
   )
 }

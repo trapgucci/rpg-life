@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Check, SkipForward, Pencil, Coins, Zap, Trash2, X,
-  Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder, Edit2, Gem
+  Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder, Edit2, Gem, Target, Hash
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRpg, TaskDifficulty, TaskRecurrence, AttributeId, SubtaskItem, TaskGroupId } from '../types/domain'
@@ -13,6 +13,7 @@ import TaskRewardsModal from './TaskRewardsModal'
 import SubtaskCreateModal, { type SubtaskEditData, type SubtaskFormData } from './SubtaskCreateModal'
 import RecurrenceSelectModal from './RecurrenceSelectModal'
 import DateTimePickerModal from './DateTimePickerModal'
+import ConfirmModal from './ConfirmModal'
 
 const DIFFICULTY_LABELS: Record<TaskDifficulty, string> = {
   easy: 'Лёгкая',
@@ -79,6 +80,15 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const [showDeadlineModal, setShowDeadlineModal] = useState(false)
   const [editingSubtask, setEditingSubtask] = useState<SubtaskItem | null>(null)
   const [rewardFeedback, setRewardFeedback] = useState<{ subtaskId: string; coins: number; xp: number } | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false)
+  // Stores the new task that triggered the unsaved changes prompt
+  const pendingTaskRef = useRef<TaskRpg | null>(null)
+
+  // Counter editing state
+  const [editCounterEnabled, setEditCounterEnabled] = useState(task.kind === 'counter')
+  const [editTarget, setEditTarget] = useState(task.kind === 'counter' ? task.target : 2)
+  const [editCountUnit, setEditCountUnit] = useState(task.kind === 'counter' ? (task.countUnit ?? 'раз') : 'раз')
 
   const profile = profiles.find((p) => p.id === activeProfileId)
   const attributes = profile?.attributes ?? []
@@ -101,8 +111,10 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
     ? task.subtasks.filter((s) => s.isCompleted).length / task.subtasks.length
     : 0
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = (overrideTaskId?: string) => {
     if (!editTitle.trim()) return
+
+    const targetId = overrideTaskId ?? task.id
 
     let deadlineMs: number | null = null
     if (editDeadlineAt) {
@@ -112,19 +124,56 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
       }
     }
 
-    updateTask(task.id, (t) => ({
-      ...t,
-      title: editTitle.trim(),
-      notes: editNotes.trim() || undefined,
-      groupId: editGroupId,
-      attributeIds: editAttributeIds,
-      customXp: editCustomXp,
-      difficulty: editDifficulty,
-      coinReward: editCoinReward,
-      gemReward: editGemReward,
-      recurrence: editRecurrence,
-      deadlineAt: deadlineMs,
-    }))
+    updateTask(targetId, (t) => {
+      const base = {
+        ...t,
+        title: editTitle.trim(),
+        notes: editNotes.trim() || undefined,
+        groupId: editGroupId,
+        attributeIds: editAttributeIds,
+        customXp: editCustomXp,
+        difficulty: editDifficulty,
+        coinReward: editCoinReward,
+        gemReward: editGemReward,
+        recurrence: editRecurrence,
+        deadlineAt: deadlineMs,
+      }
+
+      // Handle counter conversion
+      if (editCounterEnabled && t.kind !== 'counter') {
+        // Convert checkbox to counter
+        const { kind, ...rest } = base as any
+        return {
+          ...rest,
+          kind: 'counter' as const,
+          current: 0,
+          target: editTarget,
+          countUnit: editCountUnit,
+          isCompleted: false,
+        } as TaskRpg
+      }
+
+      if (!editCounterEnabled && t.kind === 'counter') {
+        // Convert counter back to checkbox
+        const { kind, current, target, countUnit, ...rest } = base as any
+        return {
+          ...rest,
+          kind: 'checkbox' as const,
+          isCompleted: false,
+        } as TaskRpg
+      }
+
+      if (editCounterEnabled && t.kind === 'counter') {
+        // Update counter settings
+        return {
+          ...base,
+          target: editTarget,
+          countUnit: editCountUnit,
+        } as TaskRpg
+      }
+
+      return base as TaskRpg
+    })
     setIsEditing(false)
   }
 
@@ -132,10 +181,13 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const settings = useRpgStore((s) => s.settings)
 
   const handleDelete = () => {
-    if (confirm('Удалить задачу?')) {
-      deleteTask(task.id)
-      onDeselect?.()
-    }
+    setShowDeleteConfirm(true)
+  }
+
+  const confirmDelete = () => {
+    setShowDeleteConfirm(false)
+    deleteTask(task.id)
+    onDeselect?.()
   }
 
   const handleAddSubtask = (sub: SubtaskFormData) => {
@@ -209,6 +261,84 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const closeSubtaskModal = () => {
     setShowSubtaskModal(false)
     setEditingSubtask(null)
+  }
+
+  // Keep a ref to the previous task so we can detect unsaved edits on switch
+  const prevTaskRef = useRef(task)
+
+  // Reset edit state helper
+  const resetEditState = useCallback((t: TaskRpg) => {
+    setIsEditing(false)
+    setEditTitle(t.title)
+    setEditNotes(t.notes ?? '')
+    setEditGroupId(t.groupId ?? null)
+    setEditAttributeIds(t.attributeIds?.length ? t.attributeIds : (t.attributeId ? [t.attributeId] : []))
+    setEditDifficulty(t.difficulty)
+    setEditCustomXp(t.customXp ?? null)
+    setEditCoinReward(t.coinReward)
+    setEditGemReward(t.gemReward ?? 0)
+    setEditRecurrence(t.recurrence)
+    setEditDeadlineAt(t.deadlineAt ? new Date(t.deadlineAt).toISOString().slice(0, 16) : '')
+    setEditCounterEnabled(t.kind === 'counter')
+    setEditTarget(t.kind === 'counter' ? t.target : 2)
+    setEditCountUnit(t.kind === 'counter' ? (t.countUnit ?? 'раз') : 'раз')
+  }, [])
+
+  // Handle task switch: detect when task.id changes
+  useEffect(() => {
+    const prev = prevTaskRef.current
+    if (prev.id !== task.id) {
+      if (isEditing) {
+        // Check if edit state differs from the PREVIOUS task (unsaved changes)
+        const prevAttrIds = prev.attributeIds?.length ? prev.attributeIds : (prev.attributeId ? [prev.attributeId] : [])
+        const changed =
+          editTitle !== prev.title ||
+          editNotes !== (prev.notes ?? '') ||
+          editGroupId !== (prev.groupId ?? null) ||
+          JSON.stringify(editAttributeIds) !== JSON.stringify(prevAttrIds) ||
+          editDifficulty !== prev.difficulty ||
+          editCustomXp !== (prev.customXp ?? null) ||
+          editCoinReward !== prev.coinReward ||
+          editGemReward !== (prev.gemReward ?? 0) ||
+          editRecurrence !== prev.recurrence ||
+          editCounterEnabled !== (prev.kind === 'counter') ||
+          (editCounterEnabled && prev.kind === 'counter' && (editTarget !== prev.target || editCountUnit !== (prev.countUnit ?? 'раз')))
+
+        if (changed) {
+          // Show unsaved changes modal, defer reset until user responds
+          pendingTaskRef.current = task
+          setShowUnsavedConfirm(true)
+          return
+        }
+      }
+
+      // No unsaved changes — reset to view mode with new task data
+      resetEditState(task)
+      prevTaskRef.current = task
+    }
+  }, [task.id])
+
+  const handleUnsavedSave = () => {
+    setShowUnsavedConfirm(false)
+    // Save edits to the PREVIOUS task (not the current prop which is already the new task)
+    const prevTaskId = prevTaskRef.current.id
+    handleSaveEdit(prevTaskId)
+    const pending = pendingTaskRef.current
+    if (pending) {
+      resetEditState(pending)
+      prevTaskRef.current = pending
+      pendingTaskRef.current = null
+    }
+  }
+
+  const handleUnsavedDiscard = () => {
+    setShowUnsavedConfirm(false)
+    const pending = pendingTaskRef.current
+    if (pending) {
+      resetEditState(pending)
+      prevTaskRef.current = pending
+      pendingTaskRef.current = null
+    }
   }
 
   const editAttrNames = editAttributeIds.map((id) => attributes.find((a) => a.id === id)).filter(Boolean)
@@ -350,8 +480,195 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 </div>
               </div>
 
+              {/* Целевые показатели — для counter, checkbox (можно конвертировать) */}
+              {task.kind !== 'nested' && (
+                <div>
+                  <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Целевые показатели</label>
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+                    {/* Toggle header */}
+                    <button
+                      type="button"
+                      onClick={() => setEditCounterEnabled((v) => !v)}
+                      className={cn(
+                        'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors',
+                        'hover:bg-[var(--surface-elevated)]'
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all duration-300',
+                          editCounterEnabled
+                            ? 'bg-orange-500/15 text-orange-500'
+                            : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)]'
+                        )}
+                      >
+                        <Target className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-[var(--fg)]">Задача со счетчиком</p>
+                        <p className="mt-0.5 text-[11px] text-[var(--fg-muted)]">
+                          Установите целевое количество и единицы измерения
+                        </p>
+                      </div>
+                      <div
+                        role="switch"
+                        aria-checked={editCounterEnabled}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setEditCounterEnabled((v) => !v)
+                        }}
+                        className={cn(
+                          'relative h-6 w-11 shrink-0 rounded-full transition-colors duration-300 cursor-pointer',
+                          editCounterEnabled ? 'bg-orange-500' : 'bg-[var(--border)]'
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300',
+                            editCounterEnabled ? 'right-0.5 left-auto' : 'left-0.5 right-auto'
+                          )}
+                        />
+                      </div>
+                    </button>
+
+                    {/* Counter settings panel */}
+                    <div
+                      className={cn(
+                        'overflow-hidden transition-all duration-400 ease-out',
+                        editCounterEnabled ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
+                      )}
+                    >
+                      <div className="border-t border-[var(--border)] p-4 space-y-5">
+                        {/* Circular progress preview */}
+                        <div className="flex justify-center">
+                          <div className="relative">
+                            <svg width="100" height="100" viewBox="0 0 100 100" className="transform -rotate-90">
+                              <circle
+                                cx="50" cy="50" r="42"
+                                fill="none"
+                                stroke="var(--border)"
+                                strokeWidth="7"
+                                strokeLinecap="round"
+                              />
+                              <circle
+                                cx="50" cy="50" r="42"
+                                fill="none"
+                                stroke="url(#counterGradientEdit)"
+                                strokeWidth="7"
+                                strokeLinecap="round"
+                                strokeDasharray={`${2 * Math.PI * 42}`}
+                                strokeDashoffset="0"
+                                className="transition-all duration-500 ease-out"
+                              />
+                              <defs>
+                                <linearGradient id="counterGradientEdit" x1="0%" y1="0%" x2="100%" y2="0%">
+                                  <stop offset="0%" stopColor="#f97316" />
+                                  <stop offset="100%" stopColor="#fb923c" />
+                                </linearGradient>
+                              </defs>
+                            </svg>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                              <span className="text-xl font-bold text-[var(--fg)]">{editTarget}</span>
+                              <span className="text-[10px] text-[var(--fg-muted)]">{editCountUnit}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Target quantity with slider */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-xs font-semibold text-[var(--fg-secondary)]">Целевое количество</label>
+                            <span className="text-[10px] text-[var(--fg-muted)]">Мин. 2</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditTarget((n) => Math.max(2, n - 1))}
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] transition-all duration-200 active:scale-90 text-base font-medium"
+                            >
+                              −
+                            </button>
+                            <div className="flex-1 relative">
+                              <input
+                                type="range"
+                                min={2}
+                                max={100}
+                                value={Math.min(editTarget, 100)}
+                                onChange={(e) => setEditTarget(Math.max(2, parseInt(e.target.value, 10)))}
+                                className="target-slider w-full"
+                              />
+                              <div className="relative mt-0.5 h-4">
+                                {[5, 10, 25, 50, 100].map((val) => (
+                                  <button
+                                    key={val}
+                                    type="button"
+                                    onClick={() => setEditTarget(val)}
+                                    className={cn(
+                                      'absolute text-[9px] font-medium transition-all duration-200 -translate-x-1/2',
+                                      editTarget === val
+                                        ? 'text-orange-500 font-bold'
+                                        : 'text-[var(--fg-muted)] hover:text-[var(--fg-secondary)]'
+                                    )}
+                                    style={{ left: `${((val - 2) / (100 - 2)) * 100}%` }}
+                                  >
+                                    {val}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setEditTarget((n) => n + 1)}
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-500 text-white shadow-md shadow-orange-500/30 hover:bg-orange-600 transition-all duration-200 active:scale-90 text-base font-medium"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Unit of measurement */}
+                        <div>
+                          <label className="block text-xs font-semibold text-[var(--fg-secondary)] mb-1.5">Единица измерения</label>
+                          <input
+                            type="text"
+                            value={editCountUnit}
+                            onChange={(e) => e.target.value.length <= 8 && setEditCountUnit(e.target.value)}
+                            maxLength={8}
+                            placeholder="раз"
+                            className="input w-full h-9 text-sm mb-2"
+                          />
+                          <div className="flex gap-1.5">
+                            {[
+                              { label: 'раз' },
+                              { label: 'мин' },
+                              { label: 'км' },
+                              { label: 'стр' },
+                              { label: 'шт' },
+                            ].map((unit) => (
+                              <button
+                                key={unit.label}
+                                type="button"
+                                onClick={() => setEditCountUnit(unit.label)}
+                                className={cn(
+                                  'flex-1 rounded-lg py-1.5 text-[11px] font-medium transition-all duration-200 active:scale-95',
+                                  editCountUnit === unit.label
+                                    ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/30'
+                                    : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)] hover:bg-[var(--surface-overlay)] hover:text-[var(--fg-secondary)] border border-[var(--border)]'
+                                )}
+                              >
+                                {unit.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Подзадачи — для nested и checkbox (можно добавить подзадачи и преобразовать в nested) */}
-              {(task.kind === 'nested' || task.kind === 'checkbox') && (
+              {(task.kind === 'nested' || (task.kind === 'checkbox' && !editCounterEnabled)) && (
                 <div>
                   <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">
                     Подзадачи ({task.kind === 'nested' ? task.subtasks.length : 0})
@@ -441,7 +758,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={handleSaveEdit}
+                  onClick={() => handleSaveEdit()}
                   className="btn-primary flex-1"
                 >
                   Сохранить
@@ -458,6 +775,9 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                     setEditCustomXp(task.customXp ?? null)
                     setEditCoinReward(task.coinReward)
                     setEditGemReward(task.gemReward ?? 0)
+                    setEditCounterEnabled(task.kind === 'counter')
+                    setEditTarget(task.kind === 'counter' ? task.target : 2)
+                    setEditCountUnit(task.kind === 'counter' ? (task.countUnit ?? 'раз') : 'раз')
                   }}
                   className="btn-secondary flex-1"
                 >
@@ -1068,6 +1388,26 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
         value={editDeadlineAt}
         onChange={setEditDeadlineAt}
         onClose={() => setShowDeadlineModal(false)}
+      />
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+        title="Удалить задачу?"
+        message="Задача будет удалена безвозвратно."
+        confirmText="Удалить"
+        cancelText="Отмена"
+        variant="danger"
+      />
+      <ConfirmModal
+        isOpen={showUnsavedConfirm}
+        onConfirm={handleUnsavedSave}
+        onCancel={handleUnsavedDiscard}
+        title="Несохранённые изменения"
+        message="Вы изменили задачу, но не сохранили. Сохранить изменения?"
+        confirmText="Сохранить"
+        cancelText="Не сохранять"
+        variant="save"
       />
     </div>
   )

@@ -5,6 +5,7 @@ import TaskCreateForm from '../components/TaskCreateForm'
 import TaskCard from '../components/TaskCard'
 import TaskDetailPanel from '../components/TaskDetailPanel'
 import { useRpgStore } from '../store/useRpgStore'
+import ConfirmModal from '../components/ConfirmModal'
 import type { TaskRpg, TaskGroupId } from '../types/domain'
 
 /** Специальный id для «Без группы» */
@@ -50,6 +51,7 @@ export default function TasksPage() {
   const [addingGroup, setAddingGroup] = useState(false)
   const [editingGroupId, setEditingGroupId] = useState<TaskGroupId | null>(null)
   const [editingGroupName, setEditingGroupName] = useState('')
+  const [deletingGroupId, setDeletingGroupId] = useState<TaskGroupId | null>(null)
 
   const filteredTasks = useMemo(() => {
     if (!activeProfileId) return []
@@ -108,10 +110,16 @@ export default function TasksPage() {
   }
 
   const handleDeleteGroup = (id: TaskGroupId) => {
-    if (!confirm('Удалить группу? Задачи останутся в «Без группы».')) return
-    deleteTaskGroup(id)
-    if (selectedGroupId === id) setSelectedGroupId(NO_GROUP_ID)
-    setEditingGroupId(null)
+    setDeletingGroupId(id)
+  }
+
+  const confirmDeleteGroup = () => {
+    if (deletingGroupId) {
+      deleteTaskGroup(deletingGroupId)
+      if (selectedGroupId === deletingGroupId) setSelectedGroupId(NO_GROUP_ID)
+      setEditingGroupId(null)
+    }
+    setDeletingGroupId(null)
   }
 
   const taskCountByGroup = useMemo(() => {
@@ -151,7 +159,7 @@ export default function TasksPage() {
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto pb-4">
           <div className="glass-card min-h-0 rounded-2xl p-4">
             <TaskCreateForm
               defaultGroupId={selectedGroupId === NO_GROUP_ID ? null : selectedGroupId}
@@ -398,6 +406,16 @@ export default function TasksPage() {
           </div>
         )}
       </div>
+      <ConfirmModal
+        isOpen={deletingGroupId !== null}
+        onConfirm={confirmDeleteGroup}
+        onCancel={() => setDeletingGroupId(null)}
+        title="Удалить группу?"
+        message="Задачи из этой группы останутся в «Без группы»."
+        confirmText="Удалить"
+        cancelText="Отмена"
+        variant="danger"
+      />
     </div>
   )
 }

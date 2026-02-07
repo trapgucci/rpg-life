@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
+import ConfirmModal from '../components/ConfirmModal'
 import type { Achievement, AchievementConditionType, AttributeId } from '../types/domain'
 
 const ACHIEVEMENT_ICONS = ['🏆', '⭐', '🎯', '🔥', '💎', '👑', '🎖️', '🏅', '🌟', '✨', '💪', '🎉', '🚀', '💫', '🎁']
@@ -17,6 +18,7 @@ interface AchievementCardProps {
 }
 
 function AchievementCard({ achievement, onEdit }: AchievementCardProps) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const deleteAchievement = useRpgStore((s) => s.deleteAchievement)
   const unlockAchievement = useRpgStore((s) => s.unlockAchievement)
   const profiles = useRpgStore((s) => s.profiles)
@@ -69,7 +71,7 @@ function AchievementCard({ achievement, onEdit }: AchievementCardProps) {
         </button>
         <button
           type="button"
-          onClick={() => { if (confirm('Удалить достижение?')) deleteAchievement(achievement.id) }}
+          onClick={() => setShowDeleteConfirm(true)}
           className="icon-btn icon-btn-danger"
         >
           <Trash2 className="h-4 w-4" />
@@ -159,6 +161,17 @@ function AchievementCard({ achievement, onEdit }: AchievementCardProps) {
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onConfirm={() => { setShowDeleteConfirm(false); deleteAchievement(achievement.id) }}
+        onCancel={() => setShowDeleteConfirm(false)}
+        title="Удалить достижение?"
+        message="Достижение будет удалено безвозвратно."
+        confirmText="Удалить"
+        cancelText="Отмена"
+        variant="danger"
+      />
     </div>
   )
 }

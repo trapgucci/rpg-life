@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { cn } from '../lib/cn'
+import ConfirmModal from '../components/ConfirmModal'
 import { 
   ShoppingBag, Package, Plus, Pencil, Trash2, X, 
   Coins, Gem, Gift, Sparkles, Check, ChevronRight, ChevronDown, Box, Lightbulb, Hammer, CheckCircle2, Trash, GripVertical, Settings, Percent, Smile, ImagePlus, Palette, History, ArrowUpDown
@@ -62,6 +63,7 @@ function ItemGroupManagerModal({ onClose }: ItemGroupManagerModalProps) {
   const [name, setName] = useState('')
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
+  const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null)
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault()
@@ -188,11 +190,7 @@ function ItemGroupManagerModal({ onClose }: ItemGroupManagerModalProps) {
                 </label>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (confirm('Удалить группу? Предметы из неё останутся без группы.')) {
-                      deleteItemGroup(group.id)
-                    }
-                  }}
+                  onClick={() => setDeletingGroupId(group.id)}
                   className="icon-btn icon-btn-danger shrink-0"
                   title="Удалить группу"
                 >
@@ -202,6 +200,19 @@ function ItemGroupManagerModal({ onClose }: ItemGroupManagerModalProps) {
             ))}
           </div>
         )}
+
+        <ConfirmModal
+          isOpen={deletingGroupId !== null}
+          title="Удалить группу?"
+          message="Предметы из неё останутся без группы."
+          variant="danger"
+          confirmText="Удалить"
+          onConfirm={() => {
+            if (deletingGroupId) deleteItemGroup(deletingGroupId)
+            setDeletingGroupId(null)
+          }}
+          onCancel={() => setDeletingGroupId(null)}
+        />
       </div>
     </div>
   )
@@ -724,6 +735,7 @@ function ShopItemCard({ item, onEdit }: ShopItemCardProps) {
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const allItemGroups = useRpgStore((s) => s.itemGroups)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const profile = profiles.find((p) => p.id === activeProfileId)
   const coins = profile?.currencies[CURRENCY_IDS.COINS] ?? 0
@@ -762,7 +774,7 @@ function ShopItemCard({ item, onEdit }: ShopItemCardProps) {
         </button>
         <button
           type="button"
-          onClick={() => { if (confirm('Удалить предмет?')) deleteItem(item.id) }}
+          onClick={() => setShowDeleteConfirm(true)}
           className="icon-btn icon-btn-danger icon-btn-compact"
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -886,6 +898,19 @@ function ShopItemCard({ item, onEdit }: ShopItemCardProps) {
           </p>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Удалить предмет?"
+        message="Предмет будет удалён безвозвратно."
+        variant="danger"
+        confirmText="Удалить"
+        onConfirm={() => {
+          deleteItem(item.id)
+          setShowDeleteConfirm(false)
+        }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   )
 }
@@ -2229,6 +2254,7 @@ interface RecipeCardProps {
 function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
   const deleteRecipe = useRpgStore((s) => s.deleteCraftRecipe)
   const craftItem = useRpgStore((s) => s.craftItem)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   if (!recipe) return null
 
@@ -2272,7 +2298,7 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
         </button>
         <button
           type="button"
-          onClick={() => { if (confirm('Удалить рецепт?')) deleteRecipe(recipe.id) }}
+          onClick={() => setShowDeleteConfirm(true)}
           className="icon-btn icon-btn-danger icon-btn-compact"
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -2365,6 +2391,19 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
           </button>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Удалить рецепт?"
+        message="Рецепт будет удалён безвозвратно."
+        variant="danger"
+        confirmText="Удалить"
+        onConfirm={() => {
+          deleteRecipe(recipe.id)
+          setShowDeleteConfirm(false)
+        }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   )
 }

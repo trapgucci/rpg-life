@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { 
-  Settings, User, Palette, Bell, Database, 
+import {
+  Settings, User, Palette, Bell, Database,
   Plus, Pencil, Trash2, X, Save, Download, Upload,
   Sun, Moon, Monitor, Check, AlertTriangle
 } from 'lucide-react'
@@ -8,6 +8,7 @@ import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
 import type { Attribute, ThemeMode, AccentColor } from '../types/domain'
 import { ACCENT_COLORS } from '../types/domain'
+import ConfirmModal from '../components/ConfirmModal'
 
 // ─── Profile Section ────────────────────────────────────────────────────────
 
@@ -209,6 +210,7 @@ function AttributesSection() {
 
   const [showEditor, setShowEditor] = useState(false)
   const [editingAttribute, setEditingAttribute] = useState<Attribute | undefined>()
+  const [deletingAttrId, setDeletingAttrId] = useState<string | null>(null)
 
   const handleEdit = (attr: Attribute) => {
     setEditingAttribute(attr)
@@ -268,7 +270,7 @@ function AttributesSection() {
               </button>
               <button
                 type="button"
-                onClick={() => { if (confirm('Удалить атрибут?')) deleteAttribute(attr.id) }}
+                onClick={() => setDeletingAttrId(attr.id)}
                 className="icon-btn icon-btn-danger h-8 w-8 p-0"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -279,6 +281,20 @@ function AttributesSection() {
       </div>
 
       {showEditor && <AttributeEditor attribute={editingAttribute} onClose={handleClose} />}
+
+      <ConfirmModal
+        isOpen={deletingAttrId !== null}
+        onConfirm={() => {
+          if (deletingAttrId) deleteAttribute(deletingAttrId)
+          setDeletingAttrId(null)
+        }}
+        onCancel={() => setDeletingAttrId(null)}
+        title="Удалить атрибут?"
+        message="Атрибут будет удалён безвозвратно."
+        variant="danger"
+        confirmText="Удалить"
+        cancelText="Отмена"
+      />
     </div>
   )
 }
@@ -415,6 +431,9 @@ function DataSection() {
   const importData = useRpgStore((s) => s.importData)
   const resetProgress = useRpgStore((s) => s.resetProgress)
 
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [showResetFinalConfirm, setShowResetFinalConfirm] = useState(false)
+
   const handleExport = () => {
     const json = exportData()
     const blob = new Blob([json], { type: 'application/json' })
@@ -448,12 +467,7 @@ function DataSection() {
   }
 
   const handleReset = () => {
-    if (confirm('Вы уверены? Все данные будут удалены!')) {
-      if (confirm('Это действие необратимо. Точно удалить ВСЕ данные?')) {
-        resetProgress()
-        alert('Прогресс сброшен')
-      }
-    }
+    setShowResetConfirm(true)
   }
 
   return (
@@ -495,6 +509,34 @@ function DataSection() {
         <AlertTriangle className="h-4 w-4" />
         Сбросить весь прогресс
       </button>
+
+      <ConfirmModal
+        isOpen={showResetConfirm}
+        onConfirm={() => {
+          setShowResetConfirm(false)
+          setShowResetFinalConfirm(true)
+        }}
+        onCancel={() => setShowResetConfirm(false)}
+        title="Сбросить прогресс?"
+        message="Все данные будут удалены!"
+        variant="danger"
+        confirmText="Продолжить"
+        cancelText="Отмена"
+      />
+
+      <ConfirmModal
+        isOpen={showResetFinalConfirm}
+        onConfirm={() => {
+          resetProgress()
+          setShowResetFinalConfirm(false)
+        }}
+        onCancel={() => setShowResetFinalConfirm(false)}
+        title="Точно удалить ВСЕ данные?"
+        message="Это действие необратимо."
+        variant="danger"
+        confirmText="Удалить всё"
+        cancelText="Отмена"
+      />
     </div>
   )
 }

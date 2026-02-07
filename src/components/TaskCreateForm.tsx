@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, X, ChevronRight, Calendar, Clock, BarChart3, Gift, Hash, Target, Construction, ListPlus, Zap, Coins, Folder, Edit2 } from 'lucide-react'
+import { Plus, X, ChevronRight, Calendar, Clock, BarChart3, Gift, Target, Construction, ListPlus, Zap, Coins, Gem, Folder, Edit2 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRecurrence, SubtaskItem, TaskDifficulty, AttributeId } from '../types/domain'
 import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
@@ -61,7 +61,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
 
   // Настройка счетчика
   const [countingTaskEnabled, setCountingTaskEnabled] = useState(false)
-  const [targetQuantity, setTargetQuantity] = useState(1)
+  const [targetQuantity, setTargetQuantity] = useState(2)
   const [countUnit, setCountUnit] = useState('раз')
   const [reflectionOnCompletion, setReflectionOnCompletion] = useState(false)
 
@@ -195,7 +195,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       setRecurrence('once')
       setDeadlineAt('')
       setCountingTaskEnabled(false)
-      setTargetQuantity(1)
+      setTargetQuantity(2)
       setCountUnit('раз')
       setReflectionOnCompletion(false)
       onCreated?.()
@@ -208,7 +208,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
 
   const attributes = getAttributes()
   const selectedAttrs = selectedAttributeIds.map((id) => attributes.find((a) => a.id === id)).filter(Boolean)
-  const difficultyXp = customXp ?? (settings.taskDifficultyXp?.[difficulty] ?? 0)
+  const difficultyXp = customXp ?? (settings.taskDifficultyXp?.[difficulty] ?? TASK_XP_BY_DIFFICULTY[difficulty])
 
   return (
     <>
@@ -392,12 +392,32 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                 <BarChart3 className="h-5 w-5 text-[var(--accent)]" />
                 <div>
                   <p className="font-semibold text-[var(--fg)]">Атрибуты и сложность</p>
-                  <p className="text-xs text-[var(--fg-muted)] mt-0.5">
-                    {selectedAttrs.length > 0
-                      ? selectedAttrs.map((a) => `${a!.icon} ${a!.name}`).join(', ')
-                      : 'Не выбрано'}
-                    {selectedAttrs.length > 0 && ` • ${difficultyXp} XP`}
-                  </p>
+                  {selectedAttrs.length > 0 ? (
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      {selectedAttrs.map((a) => (
+                        <span key={a!.id} className="inline-flex items-center gap-1 rounded-lg bg-[var(--accent-subtle)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]">
+                          {a!.icon} {a!.name}
+                        </span>
+                      ))}
+                      <span className={cn(
+                        'inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-semibold border',
+                        customXp != null
+                          ? 'bg-purple-500/10 text-purple-500 border-purple-500/30'
+                          : difficulty === 'easy'
+                          ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                          : difficulty === 'medium'
+                          ? 'bg-blue-500/10 text-blue-500 border-blue-500/30'
+                          : difficulty === 'hard'
+                          ? 'bg-orange-500/10 text-orange-500 border-orange-500/30'
+                          : 'bg-red-500/10 text-red-500 border-red-500/30'
+                      )}>
+                        <Zap className="h-3 w-3" />
+                        {difficultyXp} XP
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-[var(--fg-muted)] mt-0.5">Не выбрано</p>
+                  )}
                 </div>
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" />
@@ -415,12 +435,27 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                 <Gift className="h-5 w-5 text-[var(--accent)]" />
                 <div>
                   <p className="font-semibold text-[var(--fg)]">Предметы</p>
-                  <p className="text-xs text-[var(--fg-muted)] mt-0.5">
-                    {coinReward > 0 && `🪙 ${coinReward}`}
-                    {coinReward > 0 && gemReward > 0 && ' • '}
-                    {gemReward > 0 && `💎 ${gemReward}`}
-                    {coinReward === 0 && gemReward === 0 && 'Не назначено'}
-                  </p>
+                  {coinReward > 0 || gemReward > 0 ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-50 to-cyan-50 dark:from-amber-950/30 dark:to-cyan-950/30 px-2.5 py-0.5 text-xs font-semibold border border-amber-200 dark:border-amber-800 mt-0.5">
+                      {coinReward > 0 && (
+                        <>
+                          <Coins className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                          <span className="text-amber-600 dark:text-amber-400">{coinReward}</span>
+                        </>
+                      )}
+                      {coinReward > 0 && gemReward > 0 && (
+                        <span className="text-[var(--fg-muted)]">•</span>
+                      )}
+                      {gemReward > 0 && (
+                        <>
+                          <Gem className="h-4 w-4 text-cyan-600 dark:text-cyan-400" strokeWidth={2.5} />
+                          <span className="text-cyan-600 dark:text-cyan-400">{gemReward}</span>
+                        </>
+                      )}
+                    </span>
+                  ) : (
+                    <p className="text-xs text-[var(--fg-muted)] mt-0.5">Не назначено</p>
+                  )}
                 </div>
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" />
@@ -429,11 +464,12 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         </div>
       </div>
 
-      {/* 6. Настройка счетчика */}
+      {/* 6. Целевые показатели */}
       {subtasks.length === 0 && (
         <div>
-          <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Настройка счетчика</label>
+          <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Целевые показатели</label>
           <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+            {/* Toggle header */}
             <button
               type="button"
               onClick={() => setCountingTaskEnabled((v) => !v)}
@@ -444,11 +480,13 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
             >
               <div
                 className={cn(
-                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
-                  countingTaskEnabled ? 'bg-[var(--accent-subtle)] text-[var(--accent)]' : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)]'
+                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-300',
+                  countingTaskEnabled
+                    ? 'bg-orange-500/15 text-orange-500'
+                    : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)]'
                 )}
               >
-                <Hash className="h-5 w-5" />
+                <Target className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-[var(--fg)]">Задача со счетчиком</p>
@@ -465,72 +503,151 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                   setCountingTaskEnabled((v) => !v)
                 }}
                 className={cn(
-                  'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200',
-                  countingTaskEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
+                  'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-300',
+                  countingTaskEnabled ? 'bg-orange-500' : 'bg-[var(--border)]'
                 )}
               >
                 <span
                   className={cn(
-                    'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
+                    'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300',
                     countingTaskEnabled ? 'right-1 left-auto' : 'left-1 right-auto'
                   )}
                 />
               </button>
             </button>
 
-            {countingTaskEnabled && (
-              <div className="border-t border-[var(--border)] p-4 space-y-4">
-                <div className="rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface-elevated)] p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/20">
-                      <Target className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                    </div>
-                    <h3 className="text-sm font-semibold text-[var(--fg)]">Целевые показатели</h3>
-                  </div>
-                  <div className="space-y-3">
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-medium text-[var(--fg-muted)]">Целевое количество</label>
-                        <span className="text-[10px] text-[var(--fg-muted)]">Минимум 1</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setTargetQuantity((n) => Math.max(1, n - 1))}
-                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)] text-lg font-semibold"
-                        >
-                          −
-                        </button>
-                        <input
-                          type="number"
-                          min={1}
-                          value={targetQuantity}
-                          onChange={(e) => setTargetQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                          className="input w-20 text-center h-9"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setTargetQuantity((n) => n + 1)}
-                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors text-lg font-semibold"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1">Единица измерения</label>
-                      <input
-                        type="text"
-                        value={countUnit}
-                        onChange={(e) => setCountUnit(e.target.value)}
-                        placeholder="раз"
-                        className="input w-full h-9 text-sm"
+            {/* Counter settings panel */}
+            <div
+              className={cn(
+                'overflow-hidden transition-all duration-400 ease-out',
+                countingTaskEnabled ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
+              )}
+            >
+              <div className="border-t border-[var(--border)] p-5 space-y-6">
+                {/* Circular progress preview */}
+                <div className="flex justify-center">
+                  <div className="relative">
+                    <svg width="120" height="120" viewBox="0 0 120 120" className="transform -rotate-90">
+                      <circle
+                        cx="60" cy="60" r="52"
+                        fill="none"
+                        stroke="var(--border)"
+                        strokeWidth="8"
+                        strokeLinecap="round"
                       />
+                      <circle
+                        cx="60" cy="60" r="52"
+                        fill="none"
+                        stroke="url(#counterGradientCreate)"
+                        strokeWidth="8"
+                        strokeLinecap="round"
+                        strokeDasharray={`${2 * Math.PI * 52}`}
+                        strokeDashoffset="0"
+                      />
+                      <defs>
+                        <linearGradient id="counterGradientCreate" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#f97316" />
+                          <stop offset="100%" stopColor="#fb923c" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-2xl font-bold text-[var(--fg)]">{targetQuantity}</span>
+                      <span className="text-[11px] text-[var(--fg-muted)]">{countUnit}</span>
                     </div>
                   </div>
                 </div>
+
+                {/* Target quantity with slider */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-semibold text-[var(--fg-secondary)]">Целевое количество</label>
+                    <span className="text-[10px] text-[var(--fg-muted)]">Мин. 2</span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setTargetQuantity((n) => Math.max(2, n - 1))}
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] hover:border-[var(--border-strong)] transition-all duration-200 active:scale-90 text-lg font-medium"
+                    >
+                      −
+                    </button>
+                    <div className="flex-1 relative">
+                      <input
+                        type="range"
+                        min={2}
+                        max={100}
+                        value={Math.min(targetQuantity, 100)}
+                        onChange={(e) => setTargetQuantity(Math.max(2, parseInt(e.target.value, 10)))}
+                        className="target-slider w-full"
+                      />
+                      <div className="relative mt-1 h-4">
+                        {[5, 10, 25, 50, 100].map((val) => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => setTargetQuantity(val)}
+                            className={cn(
+                              'absolute text-[10px] font-medium transition-all duration-200 -translate-x-1/2',
+                              targetQuantity === val
+                                ? 'text-orange-500 font-bold'
+                                : 'text-[var(--fg-muted)] hover:text-[var(--fg-secondary)]'
+                            )}
+                            style={{ left: `${((val - 2) / (100 - 2)) * 100}%` }}
+                          >
+                            {val}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTargetQuantity((n) => n + 1)}
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white shadow-lg shadow-orange-500/30 hover:bg-orange-600 hover:shadow-orange-500/40 transition-all duration-200 active:scale-90 text-lg font-medium"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* Unit of measurement */}
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--fg-secondary)] mb-2">Единица измерения</label>
+                  <input
+                    type="text"
+                    value={countUnit}
+                    onChange={(e) => e.target.value.length <= 8 && setCountUnit(e.target.value)}
+                    maxLength={8}
+                    placeholder="раз"
+                    className="input w-full h-10 text-sm mb-2"
+                  />
+                  <div className="flex gap-1.5">
+                    {[
+                      { label: 'раз', color: 'orange' },
+                      { label: 'мин', color: 'blue' },
+                      { label: 'км', color: 'green' },
+                      { label: 'стр', color: 'purple' },
+                      { label: 'шт', color: 'amber' },
+                    ].map((unit) => (
+                      <button
+                        key={unit.label}
+                        type="button"
+                        onClick={() => setCountUnit(unit.label)}
+                        className={cn(
+                          'flex-1 rounded-lg py-1.5 text-xs font-medium transition-all duration-200 active:scale-95',
+                          countUnit === unit.label
+                            ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/30'
+                            : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)] hover:bg-[var(--surface-overlay)] hover:text-[var(--fg-secondary)] border border-[var(--border)]'
+                        )}
+                      >
+                        {unit.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}

@@ -6,6 +6,7 @@ import {
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
 import type { CraftRecipe, ItemRarity, FragmentSourceType } from '../types/domain'
+import ConfirmModal from '../components/ConfirmModal'
 
 const RARITY_COLORS: Record<ItemRarity, string> = {
   common: '#9ca3af',
@@ -41,6 +42,7 @@ interface RecipeCardProps {
 function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
   const deleteRecipe = useRpgStore((s) => s.deleteCraftRecipe)
   const craftItem = useRpgStore((s) => s.craftItem)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   // Старые сохранённые данные могут не содержать fragmentSource
   const fragmentSource: any = (recipe as any).fragmentSource ?? { type: 'random_drop', dropChance: 0 }
@@ -77,7 +79,7 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
         </button>
         <button
           type="button"
-          onClick={() => { if (confirm('Удалить рецепт?')) deleteRecipe(recipe.id) }}
+          onClick={() => setShowDeleteConfirm(true)}
           className="icon-btn icon-btn-danger"
         >
           <Trash2 className="h-4 w-4" />
@@ -177,6 +179,17 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
           </button>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onConfirm={() => { setShowDeleteConfirm(false); deleteRecipe(recipe.id) }}
+        onCancel={() => setShowDeleteConfirm(false)}
+        title="Удалить рецепт?"
+        message="Рецепт будет удалён безвозвратно."
+        confirmText="Удалить"
+        cancelText="Отмена"
+        variant="danger"
+      />
     </div>
   )
 }
