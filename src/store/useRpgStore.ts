@@ -220,7 +220,7 @@ interface RpgStoreState {
   incrementCounter: (id: TaskId) => void
   decrementCounter: (id: TaskId) => void
   toggleSubtask: (taskId: TaskId, subtaskId: string) => void
-  getTaskRewardPreview: (task: TaskRpg) => { xp: number; coins: number }
+  getTaskRewardPreview: (task: TaskRpg) => { xp: number; coins: number; gems: number }
   getTaskPenaltyPreview: (task: TaskRpg) => { xp: number; coins: number }
 
   // Habit actions
@@ -518,6 +518,7 @@ export const useRpgStore = create<RpgStoreState>()(
             deadlineAt: task.deadlineAt ?? null,
             recurrence: task.recurrence ?? 'once',
             coinReward: task.coinReward ?? 0,
+            gemReward: task.gemReward ?? 0,
             attributeIds: task.attributeIds ?? (task.attributeId ? [task.attributeId] : []),
             id,
             createdAt: created,
@@ -539,7 +540,8 @@ export const useRpgStore = create<RpgStoreState>()(
           const { settings } = get()
           const xp = task.customXp ?? settings.taskDifficultyXp?.[task.difficulty] ?? TASK_XP_BY_DIFFICULTY[task.difficulty]
           const coins = task.coinReward
-          return { xp, coins }
+          const gems = task.gemReward ?? 0
+          return { xp, coins, gems }
         },
 
         getTaskPenaltyPreview: (task) => {
@@ -563,6 +565,7 @@ export const useRpgStore = create<RpgStoreState>()(
 
           const xpGain = task.customXp ?? settings.taskDifficultyXp?.[task.difficulty] ?? TASK_XP_BY_DIFFICULTY[task.difficulty]
           const coinGain = task.coinReward
+          const gemGain = task.gemReward ?? 0
 
           // Add XP to all selected attributes
           const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
@@ -578,10 +581,22 @@ export const useRpgStore = create<RpgStoreState>()(
           // Add coins
           get().addCurrency(CURRENCY_IDS.COINS, coinGain)
 
+          // Add gems
+          if (gemGain > 0) {
+            get().addCurrency(CURRENCY_IDS.GEMS, gemGain)
+          }
+
           // Show coin animation
           if (typeof window !== 'undefined' && coinGain > 0) {
             import('../components/RewardNotifications').then(({ showReward }) => {
               showReward('coins', coinGain)
+            })
+          }
+
+          // Show gem animation
+          if (typeof window !== 'undefined' && gemGain > 0) {
+            import('../components/RewardNotifications').then(({ showReward }) => {
+              showReward('gems', gemGain)
             })
           }
 
@@ -667,9 +682,11 @@ export const useRpgStore = create<RpgStoreState>()(
             const settings = get().settings
             if (profile) {
               const coinRwd = subtask.coinReward ?? 0
+              const gemRwd = subtask.gemReward ?? 0
               const diff = subtask.difficulty ?? 'medium'
               const xpRwd = subtask.customXp ?? settings.taskDifficultyXp?.[diff] ?? TASK_XP_BY_DIFFICULTY[diff] ?? subtask.xpReward ?? 0
               if (coinRwd > 0) get().addCurrency(CURRENCY_IDS.COINS, coinRwd)
+              if (gemRwd > 0) get().addCurrency(CURRENCY_IDS.GEMS, gemRwd)
               const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
               if (xpRwd > 0 && attrIds.length > 0) {
                 let currentAttrs = profile.attributes
@@ -1269,7 +1286,12 @@ export const useRpgStore = create<RpgStoreState>()(
           })
         }
         if (state.tasks?.length) {
-          const needsMigration = state.tasks.some((t: any) => t.groupId === undefined || t.deadlineAt === undefined || !t.attributeIds)
+          const needsMigration = state.tasks.some((t: any) =>
+            t.groupId === undefined ||
+            t.deadlineAt === undefined ||
+            !t.attributeIds ||
+            t.gemReward === undefined
+          )
           if (needsMigration) {
             useRpgStore.setState({
               tasks: state.tasks.map((t: any) => ({
@@ -1277,6 +1299,11 @@ export const useRpgStore = create<RpgStoreState>()(
                 groupId: t.groupId ?? null,
                 deadlineAt: t.deadlineAt ?? null,
                 attributeIds: t.attributeIds ?? (t.attributeId ? [t.attributeId] : []),
+                gemReward: t.gemReward ?? 0,
+                // Мигрируем подзадачи
+                subtasks: t.kind === 'nested' && t.subtasks
+                  ? t.subtasks.map((s: any) => ({ ...s, gemReward: s.gemReward ?? 0 }))
+                  : t.subtasks,
               })),
             })
           }

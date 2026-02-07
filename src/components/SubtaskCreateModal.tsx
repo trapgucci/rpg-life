@@ -1,5 +1,5 @@
 import { useState, useLayoutEffect, useEffect } from 'react'
-import { X, Plus, Save, Zap, Coins } from 'lucide-react'
+import { X, Plus, Save, Zap, Coins, Gem } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
 import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
@@ -16,6 +16,7 @@ export interface SubtaskFormData {
   title: string
   description: string
   coinReward: number
+  gemReward?: number
   difficulty: TaskDifficulty
   customXp: number | null
 }
@@ -25,6 +26,7 @@ export interface SubtaskEditData {
   title: string
   description: string
   coinReward: number
+  gemReward?: number
   difficulty?: TaskDifficulty
   customXp?: number | null
   /** @deprecated Обратная совместимость — используйте difficulty + customXp */
@@ -44,6 +46,7 @@ export default function SubtaskCreateModal({ isOpen, editingSubtask, onAdd, onEd
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [coinReward, setCoinReward] = useState(0)
+  const [gemReward, setGemReward] = useState(0)
   const [difficulty, setDifficulty] = useState<TaskDifficulty>('medium')
   const [customXp, setCustomXp] = useState<number | null>(null)
   const settings = useRpgStore((s) => s.settings)
@@ -66,6 +69,7 @@ export default function SubtaskCreateModal({ isOpen, editingSubtask, onAdd, onEd
       setTitle(editingSubtask.title)
       setDescription(editingSubtask.description)
       setCoinReward(editingSubtask.coinReward)
+      setGemReward(editingSubtask.gemReward ?? 0)
       const { difficulty: d, customXp: x } = getInitialDifficultyAndXp(editingSubtask)
       setDifficulty(d)
       setCustomXp(x)
@@ -73,6 +77,7 @@ export default function SubtaskCreateModal({ isOpen, editingSubtask, onAdd, onEd
       setTitle('')
       setDescription('')
       setCoinReward(0)
+      setGemReward(0)
       setDifficulty('medium')
       setCustomXp(null)
     }
@@ -97,7 +102,7 @@ export default function SubtaskCreateModal({ isOpen, editingSubtask, onAdd, onEd
 
   const handleSubmit = () => {
     if (!title.trim()) return
-    const data = { title: title.trim(), description, coinReward, difficulty, customXp }
+    const data = { title: title.trim(), description, coinReward, gemReward, difficulty, customXp }
     if (editingSubtask && onEdit) {
       onEdit({ id: editingSubtask.id, ...data })
     } else {
@@ -106,6 +111,7 @@ export default function SubtaskCreateModal({ isOpen, editingSubtask, onAdd, onEd
     setTitle('')
     setDescription('')
     setCoinReward(0)
+    setGemReward(0)
     setDifficulty('medium')
     setCustomXp(null)
     handleClose()
@@ -195,6 +201,34 @@ export default function SubtaskCreateModal({ isOpen, editingSubtask, onAdd, onEd
                   <button
                     type="button"
                     onClick={() => setCoinReward((v) => v + 5)}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="flex items-center gap-1 text-xs font-medium text-[var(--fg-muted)] mb-1.5">
+                  💎 Кристаллы
+                </label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setGemReward((v) => Math.max(0, v - 1))}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min={0}
+                    value={gemReward}
+                    onChange={(e) => setGemReward(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    className="input flex-1 h-10 text-center"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setGemReward((v) => v + 1)}
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors"
                   >
                     +

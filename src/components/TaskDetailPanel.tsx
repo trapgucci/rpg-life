@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Check, SkipForward, Pencil, Coins, Zap, Trash2, X,
-  Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder, Edit2
+  Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder, Edit2, Gem
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRpg, TaskDifficulty, TaskRecurrence, AttributeId, SubtaskItem, TaskGroupId } from '../types/domain'
@@ -64,7 +64,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const [editDifficulty, setEditDifficulty] = useState<TaskDifficulty>(task.difficulty)
   const [editCustomXp, setEditCustomXp] = useState<number | null>(task.customXp ?? null)
   const [editCoinReward, setEditCoinReward] = useState(task.coinReward)
-  const [editGemReward, setEditGemReward] = useState(0)
+  const [editGemReward, setEditGemReward] = useState(task.gemReward ?? 0)
   const [showGroupModal, setShowGroupModal] = useState(false)
   const [showAttributeModal, setShowAttributeModal] = useState(false)
   const [showRewardsModal, setShowRewardsModal] = useState(false)
@@ -76,7 +76,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const attributes = profile?.attributes ?? []
   const taskAttrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
   const taskAttrs = taskAttrIds.map((id) => attributes.find((a) => a.id === id)).filter(Boolean)
-  const { xp, coins } = getTaskRewardPreview(task)
+  const { xp, coins, gems } = getTaskRewardPreview(task)
 
   const canComplete = canCompleteTask(task)
   const deadlineAt = task.deadlineAt ?? null
@@ -103,6 +103,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
       customXp: editCustomXp,
       difficulty: editDifficulty,
       coinReward: editCoinReward,
+      gemReward: editGemReward,
     }))
     setIsEditing(false)
   }
@@ -124,6 +125,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
       description: sub.description.trim() || undefined,
       isCompleted: false,
       coinReward: sub.coinReward > 0 ? sub.coinReward : undefined,
+      gemReward: sub.gemReward && sub.gemReward > 0 ? sub.gemReward : undefined,
       difficulty: sub.difficulty,
       customXp: sub.customXp,
     }
@@ -169,6 +171,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 title: sub.title,
                 description: sub.description.trim() || undefined,
                 coinReward: sub.coinReward > 0 ? sub.coinReward : undefined,
+                gemReward: sub.gemReward && sub.gemReward > 0 ? sub.gemReward : undefined,
                 difficulty: sub.difficulty,
                 customXp: sub.customXp,
               }
@@ -299,6 +302,11 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                                 <Coins className="h-2.5 w-2.5" />{subtask.coinReward}
                               </span>
                             )}
+                            {(subtask.gemReward ?? 0) > 0 && (
+                              <span className="inline-flex items-center gap-1 rounded-lg bg-cyan-500/10 px-2 py-0.5 text-[10px] font-medium text-cyan-500">
+                                <Gem className="h-2.5 w-2.5" />{subtask.gemReward}
+                              </span>
+                            )}
                             <button
                               type="button"
                               onClick={() => openEditSubtask(subtask)}
@@ -350,7 +358,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                     setEditDifficulty(task.difficulty)
                     setEditCustomXp(task.customXp ?? null)
                     setEditCoinReward(task.coinReward)
-                    setEditGemReward(0)
+                    setEditGemReward(task.gemReward ?? 0)
                   }}
                   className="btn-secondary flex-1"
                 >
@@ -462,6 +470,17 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                     <p className="text-xs text-[var(--fg-muted)]">Монет</p>
                   </div>
                 </div>
+                {gems > 0 && (
+                  <div className="flex items-center gap-3 rounded-xl bg-cyan-500/10 p-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-500/20">
+                      <Gem className="h-5 w-5 text-cyan-500" />
+                    </div>
+                    <div>
+                      <p className="text-xl font-bold text-cyan-500">+{gems}</p>
+                      <p className="text-xs text-[var(--fg-muted)]">Кристаллов</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -600,6 +619,11 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                               <Coins className="h-2.5 w-2.5" />{subtask.coinReward}
                             </span>
                           )}
+                          {(subtask.gemReward ?? 0) > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-lg bg-cyan-500/10 px-2 py-0.5 text-[10px] font-medium text-cyan-500">
+                              <Gem className="h-2.5 w-2.5" />{subtask.gemReward}
+                            </span>
+                          )}
                         </div>
                         <button
                           type="button"
@@ -730,6 +754,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
           title: editingSubtask.title,
           description: editingSubtask.description ?? '',
           coinReward: editingSubtask.coinReward ?? 0,
+          gemReward: editingSubtask.gemReward ?? 0,
           difficulty: editingSubtask.difficulty,
           customXp: editingSubtask.customXp,
           xpReward: editingSubtask.xpReward,

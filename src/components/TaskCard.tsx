@@ -1,4 +1,4 @@
-import { CheckSquare, Hash, ListChecks, Coins, Zap, Clock, Repeat } from 'lucide-react'
+import { CheckSquare, Hash, ListChecks, Coins, Zap, Clock, Repeat, Gem } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRpg } from '../types/domain'
 import { useRpgStore } from '../store/useRpgStore'
@@ -36,7 +36,7 @@ export default function TaskCard({ task, selected, onSelect }: TaskCardProps) {
   
   const profile = profiles.find((p) => p.id === activeProfileId)
   const attributes = profile?.attributes ?? []
-  const { xp, coins } = getTaskRewardPreview(task)
+  const { xp, coins, gems } = getTaskRewardPreview(task)
   const taskAttrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
   const taskAttrs = taskAttrIds.map((id) => attributes.find((a) => a.id === id)).filter(Boolean)
   const Icon = KIND_ICON[task.kind]
@@ -62,13 +62,6 @@ export default function TaskCard({ task, selected, onSelect }: TaskCardProps) {
         task.isCompleted && 'opacity-60'
       )}
     >
-      {/* Completed indicator */}
-      {task.isCompleted && (
-        <div className="absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white">
-          <CheckSquare className="h-3.5 w-3.5" />
-        </div>
-      )}
-
       <div className="flex items-start gap-3">
         {/* Icon */}
         <div
@@ -99,6 +92,12 @@ export default function TaskCard({ task, selected, onSelect }: TaskCardProps) {
                 <ListChecks className="h-3 w-3" />
                 {task.subtasks.filter((s) => s.isCompleted).length}/{task.subtasks.length}
               </span>
+            )}
+            {/* Completed indicator */}
+            {task.isCompleted && (
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white shrink-0">
+                <CheckSquare className="h-3.5 w-3.5" />
+              </div>
             )}
           </div>
 
@@ -140,6 +139,14 @@ export default function TaskCard({ task, selected, onSelect }: TaskCardProps) {
               <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-600 dark:text-amber-400">
                 <Coins className="h-3 w-3" />
                 {coins}
+              </span>
+            )}
+
+            {/* Gem reward */}
+            {gems > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-lg bg-cyan-500/10 px-2 py-1 text-xs font-medium text-cyan-500">
+                <Gem className="h-3 w-3" />
+                {gems}
               </span>
             )}
 

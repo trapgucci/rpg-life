@@ -79,6 +79,7 @@ export interface TaskBase {
   recurrence: TaskRecurrence
   recurrenceIntervalDays?: number
   coinReward: number
+  gemReward: number
 }
 
 /** Simple checkbox: done or not */
@@ -107,6 +108,7 @@ export interface SubtaskItem {
   isCompleted: boolean
   completedAt?: number
   coinReward?: number
+  gemReward?: number
   /** @deprecated Prefer difficulty + customXp. XP за подзадачу, если не заданы difficulty/customXp */
   xpReward?: number
   /** Сложность подзадачи (Легко / Средне / Сложно / Импосибл) */

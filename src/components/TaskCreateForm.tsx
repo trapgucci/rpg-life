@@ -76,7 +76,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   }
 
   const editSubtask = (sub: SubtaskEditData) => {
-    setSubtasks((prev) => prev.map((s) => s.id === sub.id ? { id: s.id, title: sub.title, description: sub.description, coinReward: sub.coinReward, difficulty: sub.difficulty ?? 'medium', customXp: sub.customXp ?? null } : s))
+    setSubtasks((prev) => prev.map((s) => s.id === sub.id ? { id: s.id, title: sub.title, description: sub.description, coinReward: sub.coinReward, gemReward: sub.gemReward ?? 0, difficulty: sub.difficulty ?? 'medium', customXp: sub.customXp ?? null } : s))
   }
 
   const removeSubtask = (id: string) => {
@@ -84,7 +84,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   }
 
   const openEditSubtask = (subtask: SubtaskFormData & { id: string }) => {
-    setEditingSubtask({ id: subtask.id, title: subtask.title, description: subtask.description, coinReward: subtask.coinReward, difficulty: subtask.difficulty, customXp: subtask.customXp })
+    setEditingSubtask({ id: subtask.id, title: subtask.title, description: subtask.description, coinReward: subtask.coinReward, gemReward: subtask.gemReward ?? 0, difficulty: subtask.difficulty, customXp: subtask.customXp })
     setShowSubtaskModal(true)
   }
 
@@ -133,6 +133,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         archived: false,
         recurrence,
         coinReward,
+        gemReward,
         current: 0,
         target: targetQuantity,
         countUnit,
@@ -145,6 +146,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         description: s.description.trim() || undefined,
         isCompleted: false,
         coinReward: s.coinReward > 0 ? s.coinReward : undefined,
+        gemReward: s.gemReward && s.gemReward > 0 ? s.gemReward : undefined,
         difficulty: s.difficulty ?? 'medium',
         customXp: s.customXp,
       }))
@@ -162,6 +164,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         archived: false,
         recurrence,
         coinReward,
+        gemReward,
         subtasks: subtaskItems,
         isCompleted: false,
       }
@@ -179,6 +182,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         archived: false,
         recurrence,
         coinReward,
+        gemReward,
         isCompleted: false,
       }
     }
