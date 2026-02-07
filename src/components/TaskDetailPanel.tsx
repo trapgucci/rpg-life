@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Check, SkipForward, Pencil, Coins, Zap, Trash2, X,
-  Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder, Edit2, Gem, Target, Hash
+  Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder, Edit2, Gem, Target, Hash, ListChecks
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRpg, TaskDifficulty, TaskRecurrence, AttributeId, SubtaskItem, TaskGroupId } from '../types/domain'
@@ -673,85 +673,99 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">
                     Подзадачи ({task.kind === 'nested' ? task.subtasks.length : 0})
                   </label>
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
-                    {task.kind === 'nested' && task.subtasks.length > 0 && (
-                      <div className="divide-y divide-[var(--border)] max-h-[200px] overflow-y-auto">
-                        {task.subtasks.map((subtask) => (
+                  {task.kind === 'nested' && task.subtasks.length > 0 && (
+                    <div className="flex flex-col gap-2 mb-2">
+                      {task.subtasks.map((subtask) => {
+                        const subDiff = subtask.difficulty ?? 'medium'
+                        const subXp = getSubtaskEffectiveXp(subtask)
+                        const subHasCurrency = (subtask.coinReward ?? 0) > 0 || (subtask.gemReward ?? 0) > 0
+                        return (
                           <div
                             key={subtask.id}
-                            className="group flex items-center gap-2 px-3 py-2"
+                            className="group relative rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition-all hover:border-[var(--border-strong)] hover:shadow-sm"
                           >
-                            <span className="flex-1 truncate text-sm text-[var(--fg)]">{subtask.title}</span>
-                          {getSubtaskEffectiveXp(subtask) > 0 && (
-                            <span
-                              className={cn(
-                                "inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold border-2",
-                                (subtask.difficulty ?? 'medium') === 'easy' && 'bg-emerald-500/15 border-emerald-400/50 text-emerald-400',
-                                (subtask.difficulty ?? 'medium') === 'medium' && 'bg-blue-500/15 border-blue-400/50 text-blue-400',
-                                (subtask.difficulty ?? 'medium') === 'hard' && 'bg-orange-500/15 border-orange-400/50 text-orange-400',
-                                (subtask.difficulty ?? 'medium') === 'veryHard' && 'bg-red-500/15 border-red-400/50 text-red-400'
-                              )}
-                              style={{
-                                boxShadow: (subtask.difficulty ?? 'medium') === 'easy'
-                                  ? '0 0 10px rgba(16, 185, 129, 0.25)'
-                                  : (subtask.difficulty ?? 'medium') === 'medium'
-                                  ? '0 0 10px rgba(59, 130, 246, 0.25)'
-                                  : (subtask.difficulty ?? 'medium') === 'hard'
-                                  ? '0 0 10px rgba(251, 146, 60, 0.25)'
-                                  : '0 0 10px rgba(239, 68, 68, 0.25)'
-                              }}
-                            >
-                              <Zap className="h-3.5 w-3.5" />{getSubtaskEffectiveXp(subtask)}
-                            </span>
-                          )}
-                            {(subtask.coinReward ?? 0) > 0 && (
-                              <span
-                                className="inline-flex items-center gap-1 rounded-lg bg-amber-500/15 px-2 py-1 text-xs font-semibold text-amber-400 border-2 border-amber-400/50"
-                                style={{ boxShadow: '0 0 10px rgba(251, 191, 36, 0.25)' }}
-                              >
-                                <Coins className="h-3.5 w-3.5" />{subtask.coinReward}
-                              </span>
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)]">
+                                <ListChecks className="h-4 w-4" />
+                              </div>
+                              <span className="flex-1 truncate text-sm font-medium text-[var(--fg)]">{subtask.title}</span>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => openEditSubtask(subtask)}
+                                  className="icon-btn h-7 w-7 shrink-0 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title="Редактировать"
+                                >
+                                  <Edit2 className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveSubtask(subtask.id)}
+                                  className="icon-btn icon-btn-danger h-7 w-7 shrink-0 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title="Удалить"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                            {(subXp > 0 || subHasCurrency) && (
+                              <div className="mt-2 ml-11 flex flex-wrap items-center gap-1.5">
+                                {subHasCurrency && (
+                                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-50 to-cyan-50 dark:from-amber-950/30 dark:to-cyan-950/30 px-2 py-0.5 text-xs font-semibold border border-amber-200 dark:border-amber-800">
+                                    {(subtask.coinReward ?? 0) > 0 && (
+                                      <>
+                                        <Coins className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                                        <span className="text-amber-600 dark:text-amber-400">{subtask.coinReward}</span>
+                                      </>
+                                    )}
+                                    {(subtask.coinReward ?? 0) > 0 && (subtask.gemReward ?? 0) > 0 && (
+                                      <span className="text-[var(--fg-muted)]">•</span>
+                                    )}
+                                    {(subtask.gemReward ?? 0) > 0 && (
+                                      <>
+                                        <Gem className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" strokeWidth={2.5} />
+                                        <span className="text-cyan-600 dark:text-cyan-400">{subtask.gemReward}</span>
+                                      </>
+                                    )}
+                                  </span>
+                                )}
+                                {subXp > 0 && (
+                                  <span className={cn(
+                                    'inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold border',
+                                    subtask.customXp != null
+                                      ? 'bg-purple-500/10 text-purple-500 border-purple-500/30'
+                                      : subDiff === 'easy'
+                                      ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                      : subDiff === 'medium'
+                                      ? 'bg-blue-500/10 text-blue-500 border-blue-500/30'
+                                      : subDiff === 'hard'
+                                      ? 'bg-orange-500/10 text-orange-500 border-orange-500/30'
+                                      : 'bg-red-500/10 text-red-500 border-red-500/30'
+                                  )}>
+                                    <Zap className="h-3 w-3" />
+                                    {subXp} XP
+                                  </span>
+                                )}
+                              </div>
                             )}
-                            {(subtask.gemReward ?? 0) > 0 && (
-                              <span
-                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-cyan-300 border-2 border-cyan-400/60"
-                                style={{
-                                  background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(34, 211, 238, 0.2) 100%)',
-                                  boxShadow: '0 0 12px rgba(6, 182, 212, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.1)',
-                                }}
-                              >
-                                <Gem className="h-3.5 w-3.5" />{subtask.gemReward}
-                              </span>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => openEditSubtask(subtask)}
-                              className="icon-btn h-6 w-6 shrink-0 p-0 opacity-70 hover:opacity-100"
-                              title="Редактировать"
-                            >
-                              <Edit2 className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveSubtask(subtask.id)}
-                              className="icon-btn icon-btn-danger h-6 w-6 shrink-0 p-0 opacity-70 hover:opacity-100"
-                              title="Удалить"
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </button>
                           </div>
-                        ))}
-                      </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { setEditingSubtask(null); setShowSubtaskModal(true) }}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] px-4 py-3 text-left transition-colors',
+                      'hover:bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]'
                     )}
-                    <button
-                      type="button"
-                      onClick={() => { setEditingSubtask(null); setShowSubtaskModal(true) }}
-                      className="flex w-full items-center justify-center gap-2 rounded-b-xl border-t border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--accent)] transition-colors hover:bg-[var(--surface-elevated)]"
-                    >
+                  >
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-2 border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]">
                       <Plus className="h-4 w-4" />
-                      Добавить подзадачу
-                    </button>
-                  </div>
+                    </div>
+                    <span className="text-sm font-semibold text-[var(--accent)]">Добавить подзадачу</span>
+                  </button>
                 </div>
               )}
 
@@ -806,7 +820,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 )}
                 {/* Время выполнения */}
                 {task.isCompleted && task.completedAt && (
-                  <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-1.5 text-sm text-emerald-600 dark:text-emerald-400">
+                  <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-1.5 text-sm text-emerald-600 dark:text-emerald-400 border-2 border-emerald-500/30">
                     <Award className="h-4 w-4" />
                     <span>
                       Выполнено {new Date(task.completedAt).toLocaleDateString('ru-RU', {
@@ -821,13 +835,15 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 )}
               </div>
               <div className="flex gap-1 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(true)}
-                  className="icon-btn"
-                >
-                  <Pencil className="h-5 w-5" />
-                </button>
+                {!task.isCompleted && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                    className="icon-btn"
+                  >
+                    <Pencil className="h-5 w-5" />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleDelete}
@@ -860,6 +876,17 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   {a.icon} {a.name}
                 </span>
               ))}
+              <span
+                className="rounded-xl px-3 py-1.5 text-sm font-medium border-2"
+                style={{
+                  backgroundColor: `${diffColor}15`,
+                  color: diffColor,
+                  borderColor: `${diffColor}50`,
+                }}
+              >
+                <Zap className="h-3.5 w-3.5 inline mr-1" />
+                {DIFFICULTY_LABELS[task.difficulty]}
+              </span>
               <span className="rounded-xl bg-blue-500/15 px-3 py-1.5 text-sm font-medium text-blue-500 border-2 border-blue-500/50">
                 <Clock className="h-3.5 w-3.5 inline mr-1" />
                 {RECURRENCE_LABELS[task.recurrence]}
@@ -1202,41 +1229,21 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                         <div className="flex items-center gap-1.5 shrink-0">
                           {getSubtaskEffectiveXp(subtask) > 0 && (
                             <span
-                              className={cn(
-                                "inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold border-2",
-                                (subtask.difficulty ?? 'medium') === 'easy' && 'bg-emerald-500/15 border-emerald-400/50 text-emerald-400',
-                                (subtask.difficulty ?? 'medium') === 'medium' && 'bg-blue-500/15 border-blue-400/50 text-blue-400',
-                                (subtask.difficulty ?? 'medium') === 'hard' && 'bg-orange-500/15 border-orange-400/50 text-orange-400',
-                                (subtask.difficulty ?? 'medium') === 'veryHard' && 'bg-red-500/15 border-red-400/50 text-red-400'
-                              )}
-                              style={{
-                                boxShadow: (subtask.difficulty ?? 'medium') === 'easy'
-                                  ? '0 0 10px rgba(16, 185, 129, 0.25)'
-                                  : (subtask.difficulty ?? 'medium') === 'medium'
-                                  ? '0 0 10px rgba(59, 130, 246, 0.25)'
-                                  : (subtask.difficulty ?? 'medium') === 'hard'
-                                  ? '0 0 10px rgba(251, 146, 60, 0.25)'
-                                  : '0 0 10px rgba(239, 68, 68, 0.25)'
-                              }}
+                              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold border-2 bg-purple-500/10 border-purple-500/30 text-purple-500"
                             >
-                              <Zap className="h-3.5 w-3.5" />{getSubtaskEffectiveXp(subtask)}
+                              <Zap className="h-3.5 w-3.5" />{getSubtaskEffectiveXp(subtask)} XP
                             </span>
                           )}
                           {(subtask.coinReward ?? 0) > 0 && (
                             <span
-                              className="inline-flex items-center gap-1 rounded-lg bg-amber-500/15 px-2 py-1 text-xs font-semibold text-amber-400 border-2 border-amber-400/50"
-                              style={{ boxShadow: '0 0 10px rgba(251, 191, 36, 0.25)' }}
+                              className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-500 border-2 border-amber-500/30"
                             >
                               <Coins className="h-3.5 w-3.5" />{subtask.coinReward}
                             </span>
                           )}
                           {(subtask.gemReward ?? 0) > 0 && (
                             <span
-                              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-cyan-300 border-2 border-cyan-400/60"
-                              style={{
-                                background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(34, 211, 238, 0.2) 100%)',
-                                boxShadow: '0 0 12px rgba(6, 182, 212, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.1)',
-                              }}
+                              className="inline-flex items-center gap-1 rounded-lg bg-cyan-500/10 px-2 py-1 text-xs font-semibold text-cyan-500 border-2 border-cyan-500/30"
                             >
                               <Gem className="h-3.5 w-3.5" />{subtask.gemReward}
                             </span>

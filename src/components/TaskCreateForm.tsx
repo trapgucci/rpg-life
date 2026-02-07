@@ -269,45 +269,83 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         <div>
           <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Подзадачи ({subtasks.length})</label>
           {subtasks.length > 0 && (
-            <div className="mb-2 flex flex-col gap-1.5">
-              {subtasks.map((s) => (
-                <div
-                  key={s.id}
-                  className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
-                >
-                  <span className="flex-1 truncate text-sm text-[var(--fg)]">{s.title}</span>
-                  {(() => {
-                    const diff = s.difficulty ?? 'medium'
-                    const xp = s.customXp ?? settings.taskDifficultyXp?.[diff] ?? TASK_XP_BY_DIFFICULTY[diff]
-                    return xp > 0 ? (
-                      <span className="inline-flex items-center gap-1 rounded-lg bg-purple-500/10 px-2 py-0.5 text-[10px] font-medium text-purple-500">
-                        <Zap className="h-2.5 w-2.5" />{xp}
-                      </span>
-                    ) : null
-                  })()}
-                  {s.coinReward > 0 && (
-                    <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
-                      <Coins className="h-2.5 w-2.5" />{s.coinReward}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => openEditSubtask(s)}
-                    className="icon-btn h-6 w-6 shrink-0 p-0"
-                    title="Редактировать"
+            <div className="mb-2 flex flex-col gap-2">
+              {subtasks.map((s) => {
+                const diff = s.difficulty ?? 'medium'
+                const subtaskXp = s.customXp ?? settings.taskDifficultyXp?.[diff] ?? TASK_XP_BY_DIFFICULTY[diff]
+                const hasCurrency = s.coinReward > 0 || (s.gemReward ?? 0) > 0
+                return (
+                  <div
+                    key={s.id}
+                    className="group relative rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition-all hover:border-[var(--border-strong)] hover:shadow-sm"
                   >
-                    <Edit2 className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeSubtask(s.id)}
-                    className="icon-btn icon-btn-danger h-6 w-6 shrink-0 p-0"
-                    title="Удалить"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)]">
+                        <ListPlus className="h-4 w-4" />
+                      </div>
+                      <span className="flex-1 truncate text-sm font-medium text-[var(--fg)]">{s.title}</span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openEditSubtask(s)}
+                          className="icon-btn h-7 w-7 shrink-0 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Редактировать"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeSubtask(s.id)}
+                          className="icon-btn icon-btn-danger h-7 w-7 shrink-0 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Удалить"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    {(subtaskXp > 0 || hasCurrency) && (
+                      <div className="mt-2 ml-11 flex flex-wrap items-center gap-1.5">
+                        {hasCurrency && (
+                          <span className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-50 to-cyan-50 dark:from-amber-950/30 dark:to-cyan-950/30 px-2 py-0.5 text-xs font-semibold border border-amber-200 dark:border-amber-800">
+                            {s.coinReward > 0 && (
+                              <>
+                                <Coins className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                                <span className="text-amber-600 dark:text-amber-400">{s.coinReward}</span>
+                              </>
+                            )}
+                            {s.coinReward > 0 && (s.gemReward ?? 0) > 0 && (
+                              <span className="text-[var(--fg-muted)]">•</span>
+                            )}
+                            {(s.gemReward ?? 0) > 0 && (
+                              <>
+                                <Gem className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" strokeWidth={2.5} />
+                                <span className="text-cyan-600 dark:text-cyan-400">{s.gemReward}</span>
+                              </>
+                            )}
+                          </span>
+                        )}
+                        {subtaskXp > 0 && (
+                          <span className={cn(
+                            'inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold border',
+                            s.customXp != null
+                              ? 'bg-purple-500/10 text-purple-500 border-purple-500/30'
+                              : diff === 'easy'
+                              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                              : diff === 'medium'
+                              ? 'bg-blue-500/10 text-blue-500 border-blue-500/30'
+                              : diff === 'hard'
+                              ? 'bg-orange-500/10 text-orange-500 border-orange-500/30'
+                              : 'bg-red-500/10 text-red-500 border-red-500/30'
+                          )}>
+                            <Zap className="h-3 w-3" />
+                            {subtaskXp} XP
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
           <button
