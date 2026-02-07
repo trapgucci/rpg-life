@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { cn } from '../lib/cn'
 import { 
   ShoppingBag, Package, Plus, Pencil, Trash2, X, 
-  Coins, Gem, Gift, Sparkles, Check, ChevronRight, ChevronDown, Box, Lightbulb, Hammer, CheckCircle2, Trash, GripVertical, Settings, Percent, Smile, ImagePlus, Palette
+  Coins, Gem, Gift, Sparkles, Check, ChevronRight, ChevronDown, Box, Lightbulb, Hammer, CheckCircle2, Trash, GripVertical, Settings, Percent, Smile, ImagePlus, Palette, History, ArrowUpDown
 } from 'lucide-react'
 import { useRpgStore } from '../store/useRpgStore'
 import type { ShopItem, ItemRarity, CraftRecipe, FragmentSourceType, ItemGroup } from '../types/domain'
@@ -890,24 +890,21 @@ function ShopItemCard({ item, onEdit }: ShopItemCardProps) {
   )
 }
 
-// ─── Inventory Item Card ────────────────────────────────────────────────────
+// ─── Inventory Item Card (compact) ───────────────────────────────────────────
 
 interface InventoryItemCardProps {
-  itemId: string
+  item: ShopItem
   quantity: number
 }
 
-function InventoryItemCard({ itemId, quantity }: InventoryItemCardProps) {
-  const shopItems = useRpgStore((s) => s.shopItems)
+function InventoryItemCard({ item, quantity }: InventoryItemCardProps) {
   const allItemGroups = useRpgStore((s) => s.itemGroups)
   const useItem = useRpgStore((s) => s.useItem)
   const openLootbox = useRpgStore((s) => s.openLootbox)
 
-  const item = shopItems.find((i) => i.id === itemId)
-  if (!item) return null
-
   const group = item.groupId ? allItemGroups.find((g) => g.id === item.groupId) : null
   const iconBgColor = group?.color ?? '#9ca3af'
+  const typeBadge = getItemTypeBadge(item)
 
   const handleUse = () => {
     if (item.isLootBox) {
@@ -923,10 +920,10 @@ function InventoryItemCard({ itemId, quantity }: InventoryItemCardProps) {
   }
 
   return (
-    <div className="glass-card rounded-2xl p-4 transition-all duration-200 hover:scale-[1.02]">
-      <div className="flex items-center gap-4">
+    <div className="glass-card rounded-xl p-4 transition-all duration-200 hover:scale-[1.02] border border-[var(--border)] flex flex-col gap-3 min-h-0 min-w-0">
+      <div className="flex items-start gap-3">
         <div
-          className="flex h-14 w-14 items-center justify-center rounded-xl text-2xl shadow-md overflow-hidden shrink-0"
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl text-2xl shadow-sm overflow-hidden"
           style={{ backgroundColor: iconBgColor }}
         >
           {item.iconImage ? (
@@ -936,19 +933,38 @@ function InventoryItemCard({ itemId, quantity }: InventoryItemCardProps) {
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-[var(--fg)] truncate">{item.name}</h3>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-sm text-[var(--fg-muted)]">×{quantity}</span>
-          </div>
+          <h3 className="font-medium text-[var(--fg)] text-sm line-clamp-2 break-words" title={item.name}>
+            {item.name}
+          </h3>
+          {typeBadge && (
+            <span
+              className={cn(
+                'mt-1.5 inline-flex items-center gap-1 min-w-0 max-w-full rounded-md px-2 py-0.5 text-xs font-medium',
+                typeBadge.type === 'discount' && 'bg-red-500/20 text-red-600 dark:text-red-400',
+                typeBadge.type === 'freeze' && 'bg-sky-500/20 text-sky-600 dark:text-sky-400',
+                typeBadge.type === 'lootbox' && 'bg-violet-500/20 text-violet-600 dark:text-violet-400'
+              )}
+            >
+              {typeBadge.type === 'discount' && <Percent className="h-3 w-3 shrink-0" />}
+              {typeBadge.type === 'freeze' && <span className="text-xs shrink-0" aria-hidden>❄️</span>}
+              {typeBadge.type === 'lootbox' && <Gift className="h-3 w-3 shrink-0" />}
+              <span className="truncate">{typeBadge.label}</span>
+            </span>
+          )}
         </div>
-        <button
-          type="button"
-          onClick={handleUse}
-          className="btn-secondary text-sm"
-        >
-          {item.isLootBox ? 'Открыть' : item.isDiscountVoucher ? 'Активировать' : 'Использовать'}
-        </button>
+        <div className="shrink-0 flex flex-col items-end justify-center">
+          <span className="text-xl font-bold tabular-nums text-[var(--fg)] leading-tight" title="Количество">
+            ×{quantity}
+          </span>
+        </div>
       </div>
+      <button
+        type="button"
+        onClick={handleUse}
+        className="w-full rounded-lg py-2 text-sm font-medium bg-[var(--surface-elevated)] text-[var(--fg)] hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)] border border-[var(--border)] transition-colors"
+      >
+        {item.isLootBox ? 'Открыть' : item.isDiscountVoucher ? 'Активировать' : 'Использовать'}
+      </button>
     </div>
   )
 }
@@ -1000,6 +1016,75 @@ function CraftingTypePickerModal({ onSelect, onClose }: CraftingTypePickerModalP
 type RecipeIngredient = { itemId: string; quantity: number }
 type RecipeResultExtra = { itemId: string; quantity: number }
 
+/** Отдельное модальное окно выбора предмета из магазина (с количеством) */
+function ItemPickerModal({
+  shopItems,
+  title,
+  onSelect,
+  onClose,
+}: {
+  shopItems: ShopItem[]
+  title: string
+  onSelect: (itemId: string, quantity: number) => void
+  onClose: () => void
+}) {
+  const [pickedId, setPickedId] = useState('')
+  const [quantity, setQuantity] = useState(1)
+  const handleAdd = () => {
+    if (!pickedId || quantity < 1) return
+    onSelect(pickedId, quantity)
+    setPickedId('')
+    setQuantity(1)
+    onClose()
+  }
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="bg-[var(--surface-overlay)] backdrop-blur-xl rounded-2xl shadow-2xl border border-[var(--border)] w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
+          <h4 className="text-base font-semibold text-[var(--fg)]">{title}</h4>
+          <button type="button" onClick={onClose} className="p-2 rounded-xl hover:bg-[var(--surface-elevated)] text-[var(--fg-muted)] transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          {shopItems.map((i) => (
+            <button
+              key={i.id}
+              type="button"
+              onClick={() => setPickedId(i.id)}
+              className={cn(
+                'w-full flex items-center gap-3 rounded-xl p-3 text-left transition-all border',
+                pickedId === i.id
+                  ? 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-sm'
+                  : 'border-transparent bg-[var(--surface-elevated)] hover:bg-[var(--bg)] hover:border-[var(--border)]'
+              )}
+            >
+              <span className="text-2xl shrink-0">{getItemIcon(i)}</span>
+              <span className="flex-1 min-w-0 font-medium text-[var(--fg)] truncate">{i.name}</span>
+              {pickedId === i.id && <Check className="h-5 w-5 text-[var(--accent)] shrink-0" />}
+            </button>
+          ))}
+        </div>
+        {pickedId && (
+          <div className="p-4 border-t border-[var(--border)] flex items-center gap-3">
+            <input
+              type="number"
+              min={1}
+              value={quantity}
+              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+              className="input w-20 text-center"
+            />
+            <span className="text-sm text-[var(--fg-muted)]">шт.</span>
+            <button type="button" onClick={handleAdd} className="btn-primary flex-1">
+              Добавить
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 interface CraftingCreateItemModalProps {
   onClose: () => void
   /** Название предмета из раздела «Новый предмет» — если пусто, показываем «Неизвестный предмет» */
@@ -1015,27 +1100,23 @@ function CraftingCreateItemModal({ onClose, defaultResultName, defaultResultIcon
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([])
   const [mainResultQuantity, setMainResultQuantity] = useState(1)
   const [extraResults, setExtraResults] = useState<RecipeResultExtra[]>([])
-  const [addIngredientId, setAddIngredientId] = useState('')
-  const [addIngredientQty, setAddIngredientQty] = useState(1)
-  const [addResultId, setAddResultId] = useState('')
-  const [addResultQty, setAddResultQty] = useState(1)
+  const [showIngredientPicker, setShowIngredientPicker] = useState(false)
+  const [showResultPicker, setShowResultPicker] = useState(false)
 
   const mainResultLabel = (defaultResultName?.trim() || 'Неизвестный предмет')
   const mainResultIcon = defaultResultIcon || '⚔️'
 
-  const addIngredient = () => {
-    if (!addIngredientId || addIngredientQty < 1) return
+  const addIngredient = (itemId: string, quantity: number) => {
     setIngredients((prev) => {
-      const idx = prev.findIndex((e) => e.itemId === addIngredientId)
+      const idx = prev.findIndex((e) => e.itemId === itemId)
       if (idx >= 0) {
         const next = [...prev]
-        next[idx] = { ...next[idx], quantity: next[idx].quantity + addIngredientQty }
+        next[idx] = { ...next[idx], quantity: next[idx].quantity + quantity }
         return next
       }
-      return [...prev, { itemId: addIngredientId, quantity: addIngredientQty }]
+      return [...prev, { itemId, quantity }]
     })
-    setAddIngredientId('')
-    setAddIngredientQty(1)
+    setShowIngredientPicker(false)
   }
 
   const updateIngredientQuantity = (itemId: string, quantity: number) => {
@@ -1047,19 +1128,17 @@ function CraftingCreateItemModal({ onClose, defaultResultName, defaultResultIcon
     setIngredients((prev) => prev.filter((e) => e.itemId !== itemId))
   }
 
-  const addExtraResult = () => {
-    if (!addResultId || addResultQty < 1) return
+  const addExtraResult = (itemId: string, quantity: number) => {
     setExtraResults((prev) => {
-      const idx = prev.findIndex((e) => e.itemId === addResultId)
+      const idx = prev.findIndex((e) => e.itemId === itemId)
       if (idx >= 0) {
         const next = [...prev]
-        next[idx] = { ...next[idx], quantity: next[idx].quantity + addResultQty }
+        next[idx] = { ...next[idx], quantity: next[idx].quantity + quantity }
         return next
       }
-      return [...prev, { itemId: addResultId, quantity: addResultQty }]
+      return [...prev, { itemId, quantity }]
     })
-    setAddResultId('')
-    setAddResultQty(1)
+    setShowResultPicker(false)
   }
 
   const updateExtraResultQuantity = (itemId: string, quantity: number) => {
@@ -1072,169 +1151,152 @@ function CraftingCreateItemModal({ onClose, defaultResultName, defaultResultIcon
   }
 
   return (
-    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-content max-w-lg max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-[var(--fg)]">Создание предмета</h3>
-          <button type="button" onClick={onClose} className="icon-btn">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <p className="text-sm text-[var(--fg-muted)] mb-4">Настройте рецепт: из каких материалов и в каком количестве создаётся предмет.</p>
+    <>
+      <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && !showIngredientPicker && !showResultPicker && onClose()}>
+        <div className="modal-content max-w-lg max-h-[90vh] flex flex-col shadow-2xl rounded-2xl overflow-hidden border border-[var(--border)]">
+          <div className="bg-[var(--surface-elevated)] border-b border-[var(--border)] px-5 py-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold text-[var(--fg)] tracking-tight">Создание предмета</h3>
+              <button type="button" onClick={onClose} className="p-2 rounded-xl hover:bg-[var(--surface-elevated)]/50 text-[var(--fg-muted)] transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-sm text-[var(--fg-muted)] mt-1">Настройте рецепт: из каких материалов и в каком количестве создаётся предмет.</p>
+          </div>
 
-        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-          {/* Название рецепта */}
-          <div>
-            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Название рецепта</label>
-            <input
-              type="text"
-              value={recipeName}
-              onChange={(e) => setRecipeName(e.target.value)}
-              placeholder="Введите название рецепта..."
-              className="input w-full"
-            />
-          </div>
-          {/* Описание (опционально) */}
-          <div>
-            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Описание</label>
-            <textarea
-              value={recipeDescription}
-              onChange={(e) => setRecipeDescription(e.target.value)}
-              placeholder="Опционально: описание рецепта"
-              className="input w-full min-h-[80px] resize-y"
-              rows={3}
-            />
-          </div>
-          {/* Ингредиенты */}
-          <div>
-            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Ингредиенты</label>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
-              {ingredients.length === 0 ? (
-                <p className="text-sm text-[var(--fg-muted)] text-center py-2">Добавьте предметы из магазина</p>
-              ) : (
-                <ul className="space-y-2">
-                  {ingredients.map(({ itemId, quantity }) => {
-                    const item = shopItems.find((i) => i.id === itemId)
-                    const name = item?.name ?? itemId
-                    const icon = item ? getItemIcon(item) : '⚔️'
-                    return (
-                      <li key={itemId} className="flex items-center gap-2 rounded-lg bg-[var(--bg)] p-2">
-                        <span className="text-xl shrink-0">{icon}</span>
-                        <span className="flex-1 min-w-0 truncate text-sm text-[var(--fg)]">{name}</span>
-                        <input
-                          type="number"
-                          min={1}
-                          value={quantity}
-                          onChange={(e) => updateIngredientQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))}
-                          className="input w-16 text-center text-sm py-1"
-                        />
-                        <button type="button" onClick={() => removeIngredient(itemId)} className="icon-btn p-1.5" title="Удалить">
-                          <Trash2 className="h-4 w-4 text-[var(--fg-muted)]" />
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--border)]">
-                <select
-                  value={addIngredientId}
-                  onChange={(e) => setAddIngredientId(e.target.value)}
-                  className="input flex-1 min-w-[120px] text-sm"
-                >
-                  <option value="">Выберите предмет</option>
-                  {shopItems.map((i) => (
-                    <option key={i.id} value={i.id}>{getItemIcon(i)} {i.name}</option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min={1}
-                  value={addIngredientQty}
-                  onChange={(e) => setAddIngredientQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                  className="input w-16 text-center text-sm"
-                />
-                <button type="button" onClick={addIngredient} className="btn-secondary text-sm py-1.5">
-                  Добавить
+          <div className="flex-1 overflow-y-auto p-5 space-y-5">
+            {/* Название рецепта */}
+            <div>
+              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Название рецепта</label>
+              <input
+                type="text"
+                value={recipeName}
+                onChange={(e) => setRecipeName(e.target.value)}
+                placeholder="Введите название рецепта..."
+                className="input w-full rounded-xl border-[var(--border)] focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)]"
+              />
+            </div>
+            {/* Описание */}
+            <div>
+              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Описание</label>
+              <textarea
+                value={recipeDescription}
+                onChange={(e) => setRecipeDescription(e.target.value)}
+                placeholder="Опционально: описание рецепта"
+                className="input w-full min-h-[88px] resize-y rounded-xl border-[var(--border)] focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)]"
+                rows={3}
+              />
+            </div>
+            {/* Ингредиенты */}
+            <div>
+              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Ингредиенты</label>
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/50 p-4 space-y-3">
+                {ingredients.length === 0 ? (
+                  <p className="text-sm text-[var(--fg-muted)] text-center py-4">Добавьте предметы из магазина</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {ingredients.map(({ itemId, quantity }) => {
+                      const item = shopItems.find((i) => i.id === itemId)
+                      const name = item?.name ?? itemId
+                      const icon = item ? getItemIcon(item) : '⚔️'
+                      return (
+                        <li key={itemId} className="flex items-center gap-3 rounded-xl bg-[var(--bg)]/80 p-3 border border-[var(--border)]/50 hover:border-[var(--border)] transition-colors">
+                          <span className="text-2xl shrink-0">{icon}</span>
+                          <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--fg)]">{name}</span>
+                          <input
+                            type="number"
+                            min={1}
+                            value={quantity}
+                            onChange={(e) => updateIngredientQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))}
+                            className="input w-16 text-center text-sm py-1.5 rounded-lg border-[var(--border)]"
+                          />
+                          <button type="button" onClick={() => removeIngredient(itemId)} className="p-2 rounded-lg hover:bg-[var(--surface-elevated)] text-[var(--fg-muted)] transition-colors" title="Удалить">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+                <button type="button" onClick={() => setShowIngredientPicker(true)} className="w-full mt-2 py-3 rounded-xl border-2 border-dashed border-[var(--border)] text-[var(--fg-muted)] text-sm font-medium hover:border-[var(--accent)]/50 hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]/30 transition-colors flex items-center justify-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Выбрать предмет
+                </button>
+              </div>
+            </div>
+            {/* Результат */}
+            <div>
+              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Результат</label>
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/50 p-4 space-y-3">
+                {/* Основной предмет (убрать нельзя, без подписи «основной») */}
+                <div className="flex items-center gap-3 rounded-xl bg-[var(--bg)]/80 p-3 border border-[var(--accent)]/40 shadow-sm">
+                  <span className="text-2xl shrink-0">{mainResultIcon}</span>
+                  <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--fg)]">{mainResultLabel}</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={mainResultQuantity}
+                    onChange={(e) => setMainResultQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    className="input w-16 text-center text-sm py-1.5 rounded-lg border-[var(--border)]"
+                  />
+                </div>
+                {extraResults.length > 0 && (
+                  <ul className="space-y-2">
+                    {extraResults.map(({ itemId, quantity }) => {
+                      const item = shopItems.find((i) => i.id === itemId)
+                      const name = item?.name ?? itemId
+                      const icon = item ? getItemIcon(item) : '⚔️'
+                      return (
+                        <li key={itemId} className="flex items-center gap-3 rounded-xl bg-[var(--bg)]/80 p-3 border border-[var(--border)]/50 hover:border-[var(--border)] transition-colors">
+                          <span className="text-2xl shrink-0">{icon}</span>
+                          <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--fg)]">{name}</span>
+                          <input
+                            type="number"
+                            min={1}
+                            value={quantity}
+                            onChange={(e) => updateExtraResultQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))}
+                            className="input w-16 text-center text-sm py-1.5 rounded-lg border-[var(--border)]"
+                          />
+                          <button type="button" onClick={() => removeExtraResult(itemId)} className="p-2 rounded-lg hover:bg-[var(--surface-elevated)] text-[var(--fg-muted)] transition-colors" title="Удалить">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+                <button type="button" onClick={() => setShowResultPicker(true)} className="w-full mt-2 py-3 rounded-xl border-2 border-dashed border-[var(--border)] text-[var(--fg-muted)] text-sm font-medium hover:border-[var(--accent)]/50 hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]/30 transition-colors flex items-center justify-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Выбрать предмет
                 </button>
               </div>
             </div>
           </div>
-          {/* Результат */}
-          <div>
-            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Результат</label>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
-              {/* Основной предмет (убрать нельзя) */}
-              <div className="flex items-center gap-2 rounded-lg bg-[var(--bg)] p-2 border border-[var(--accent)]/30">
-                <span className="text-xl shrink-0">{mainResultIcon}</span>
-                <span className="flex-1 min-w-0 truncate text-sm text-[var(--fg)]">{mainResultLabel}</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={mainResultQuantity}
-                  onChange={(e) => setMainResultQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                  className="input w-16 text-center text-sm py-1"
-                />
-                <span className="text-xs text-[var(--fg-muted)] w-6">основной</span>
-              </div>
-              {/* Доп. предметы результата */}
-              {extraResults.length > 0 && (
-                <ul className="space-y-2">
-                  {extraResults.map(({ itemId, quantity }) => {
-                    const item = shopItems.find((i) => i.id === itemId)
-                    const name = item?.name ?? itemId
-                    const icon = item ? getItemIcon(item) : '⚔️'
-                    return (
-                      <li key={itemId} className="flex items-center gap-2 rounded-lg bg-[var(--bg)] p-2">
-                        <span className="text-xl shrink-0">{icon}</span>
-                        <span className="flex-1 min-w-0 truncate text-sm text-[var(--fg)]">{name}</span>
-                        <input
-                          type="number"
-                          min={1}
-                          value={quantity}
-                          onChange={(e) => updateExtraResultQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))}
-                          className="input w-16 text-center text-sm py-1"
-                        />
-                        <button type="button" onClick={() => removeExtraResult(itemId)} className="icon-btn p-1.5" title="Удалить">
-                          <Trash2 className="h-4 w-4 text-[var(--fg-muted)]" />
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--border)]">
-                <select
-                  value={addResultId}
-                  onChange={(e) => setAddResultId(e.target.value)}
-                  className="input flex-1 min-w-[120px] text-sm"
-                >
-                  <option value="">Добавить предмет из магазина</option>
-                  {shopItems.map((i) => (
-                    <option key={i.id} value={i.id}>{getItemIcon(i)} {i.name}</option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min={1}
-                  value={addResultQty}
-                  onChange={(e) => setAddResultQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                  className="input w-16 text-center text-sm"
-                />
-                <button type="button" onClick={addExtraResult} className="btn-secondary text-sm py-1.5">
-                  Добавить
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <div className="flex gap-2 mt-6 shrink-0">
-          <button type="button" onClick={onClose} className="btn-secondary flex-1">Отмена</button>
-          <button type="button" className="btn-primary flex-1">Сохранить</button>
+          <div className="flex gap-3 p-5 border-t border-[var(--border)] bg-[var(--surface)]">
+            <button type="button" onClick={onClose} className="btn-secondary flex-1 rounded-xl py-2.5">Отмена</button>
+            <button type="button" className="btn-primary flex-1 rounded-xl py-2.5">Сохранить</button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {showIngredientPicker && (
+        <ItemPickerModal
+          shopItems={shopItems}
+          title="Выберите предмет для ингредиентов"
+          onSelect={addIngredient}
+          onClose={() => setShowIngredientPicker(false)}
+        />
+      )}
+      {showResultPicker && (
+        <ItemPickerModal
+          shopItems={shopItems}
+          title="Добавить предмет в результат"
+          onSelect={addExtraResult}
+          onClose={() => setShowResultPicker(false)}
+        />
+      )}
+    </>
   )
 }
 
@@ -1255,27 +1317,23 @@ function CraftingMaterialModal({ onClose, defaultIngredientName, defaultIngredie
   const [mainIngredientQuantity, setMainIngredientQuantity] = useState(1)
   const [extraIngredients, setExtraIngredients] = useState<MaterialRecipeIngredient[]>([])
   const [results, setResults] = useState<MaterialRecipeResult[]>([])
-  const [addIngredientId, setAddIngredientId] = useState('')
-  const [addIngredientQty, setAddIngredientQty] = useState(1)
-  const [addResultId, setAddResultId] = useState('')
-  const [addResultQty, setAddResultQty] = useState(1)
+  const [showIngredientPicker, setShowIngredientPicker] = useState(false)
+  const [showResultPicker, setShowResultPicker] = useState(false)
 
   const mainIngredientLabel = defaultIngredientName?.trim() || 'Неизвестный предмет'
   const mainIngredientIcon = defaultIngredientIcon || '⚔️'
 
-  const addExtraIngredient = () => {
-    if (!addIngredientId || addIngredientQty < 1) return
+  const addExtraIngredient = (itemId: string, quantity: number) => {
     setExtraIngredients((prev) => {
-      const idx = prev.findIndex((e) => e.itemId === addIngredientId)
+      const idx = prev.findIndex((e) => e.itemId === itemId)
       if (idx >= 0) {
         const next = [...prev]
-        next[idx] = { ...next[idx], quantity: next[idx].quantity + addIngredientQty }
+        next[idx] = { ...next[idx], quantity: next[idx].quantity + quantity }
         return next
       }
-      return [...prev, { itemId: addIngredientId, quantity: addIngredientQty }]
+      return [...prev, { itemId, quantity }]
     })
-    setAddIngredientId('')
-    setAddIngredientQty(1)
+    setShowIngredientPicker(false)
   }
 
   const updateExtraIngredientQuantity = (itemId: string, quantity: number) => {
@@ -1287,19 +1345,17 @@ function CraftingMaterialModal({ onClose, defaultIngredientName, defaultIngredie
     setExtraIngredients((prev) => prev.filter((e) => e.itemId !== itemId))
   }
 
-  const addResult = () => {
-    if (!addResultId || addResultQty < 1) return
+  const addResult = (itemId: string, quantity: number) => {
     setResults((prev) => {
-      const idx = prev.findIndex((e) => e.itemId === addResultId)
+      const idx = prev.findIndex((e) => e.itemId === itemId)
       if (idx >= 0) {
         const next = [...prev]
-        next[idx] = { ...next[idx], quantity: next[idx].quantity + addResultQty }
+        next[idx] = { ...next[idx], quantity: next[idx].quantity + quantity }
         return next
       }
-      return [...prev, { itemId: addResultId, quantity: addResultQty }]
+      return [...prev, { itemId, quantity }]
     })
-    setAddResultId('')
-    setAddResultQty(1)
+    setShowResultPicker(false)
   }
 
   const updateResultQuantity = (itemId: string, quantity: number) => {
@@ -1312,169 +1368,152 @@ function CraftingMaterialModal({ onClose, defaultIngredientName, defaultIngredie
   }
 
   return (
-    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-content max-w-lg max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-[var(--fg)]">Материал для крафта</h3>
-          <button type="button" onClick={onClose} className="icon-btn">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <p className="text-sm text-[var(--fg-muted)] mb-4">Настройте, в каких рецептах этот предмет выступает ингредиентом и в каком количестве.</p>
+    <>
+      <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && !showIngredientPicker && !showResultPicker && onClose()}>
+        <div className="modal-content max-w-lg max-h-[90vh] flex flex-col shadow-2xl rounded-2xl overflow-hidden border border-[var(--border)]">
+          <div className="bg-[var(--surface-elevated)] border-b border-[var(--border)] px-5 py-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold text-[var(--fg)] tracking-tight">Материал для крафта</h3>
+              <button type="button" onClick={onClose} className="p-2 rounded-xl hover:bg-[var(--surface-elevated)]/50 text-[var(--fg-muted)] transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-sm text-[var(--fg-muted)] mt-1">Настройте, в каких рецептах этот предмет выступает ингредиентом и в каком количестве.</p>
+          </div>
 
-        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-          {/* Название рецепта */}
-          <div>
-            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Название рецепта</label>
-            <input
-              type="text"
-              value={recipeName}
-              onChange={(e) => setRecipeName(e.target.value)}
-              placeholder="Введите название рецепта..."
-              className="input w-full"
-            />
-          </div>
-          {/* Описание (опционально) */}
-          <div>
-            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Описание</label>
-            <textarea
-              value={recipeDescription}
-              onChange={(e) => setRecipeDescription(e.target.value)}
-              placeholder="Опционально: описание рецепта"
-              className="input w-full min-h-[80px] resize-y"
-              rows={3}
-            />
-          </div>
-          {/* Ингредиенты */}
-          <div>
-            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Ингредиенты</label>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
-              {/* Основной предмет (наш настраиваемый — убрать нельзя) */}
-              <div className="flex items-center gap-2 rounded-lg bg-[var(--bg)] p-2 border border-[var(--accent)]/30">
-                <span className="text-xl shrink-0">{mainIngredientIcon}</span>
-                <span className="flex-1 min-w-0 truncate text-sm text-[var(--fg)]">{mainIngredientLabel}</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={mainIngredientQuantity}
-                  onChange={(e) => setMainIngredientQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                  className="input w-16 text-center text-sm py-1"
-                />
-                <span className="text-xs text-[var(--fg-muted)] w-6">основной</span>
+          <div className="flex-1 overflow-y-auto p-5 space-y-5">
+            {/* Название рецепта */}
+            <div>
+              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Название рецепта</label>
+              <input
+                type="text"
+                value={recipeName}
+                onChange={(e) => setRecipeName(e.target.value)}
+                placeholder="Введите название рецепта..."
+                className="input w-full rounded-xl border-[var(--border)] focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)]"
+              />
+            </div>
+            {/* Описание */}
+            <div>
+              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Описание</label>
+              <textarea
+                value={recipeDescription}
+                onChange={(e) => setRecipeDescription(e.target.value)}
+                placeholder="Опционально: описание рецепта"
+                className="input w-full min-h-[88px] resize-y rounded-xl border-[var(--border)] focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)]"
+                rows={3}
+              />
+            </div>
+            {/* Ингредиенты */}
+            <div>
+              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Ингредиенты</label>
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/50 p-4 space-y-3">
+                {/* Основной предмет (убрать нельзя, без подписи «основной») */}
+                <div className="flex items-center gap-3 rounded-xl bg-[var(--bg)]/80 p-3 border border-[var(--accent)]/40 shadow-sm">
+                  <span className="text-2xl shrink-0">{mainIngredientIcon}</span>
+                  <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--fg)]">{mainIngredientLabel}</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={mainIngredientQuantity}
+                    onChange={(e) => setMainIngredientQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    className="input w-16 text-center text-sm py-1.5 rounded-lg border-[var(--border)]"
+                  />
+                </div>
+                {extraIngredients.length > 0 && (
+                  <ul className="space-y-2">
+                    {extraIngredients.map(({ itemId, quantity }) => {
+                      const it = shopItems.find((i) => i.id === itemId)
+                      const itemName = it?.name ?? itemId
+                      const itemIcon = it ? getItemIcon(it) : '⚔️'
+                      return (
+                        <li key={itemId} className="flex items-center gap-3 rounded-xl bg-[var(--bg)]/80 p-3 border border-[var(--border)]/50 hover:border-[var(--border)] transition-colors">
+                          <span className="text-2xl shrink-0">{itemIcon}</span>
+                          <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--fg)]">{itemName}</span>
+                          <input
+                            type="number"
+                            min={1}
+                            value={quantity}
+                            onChange={(e) => updateExtraIngredientQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))}
+                            className="input w-16 text-center text-sm py-1.5 rounded-lg border-[var(--border)]"
+                          />
+                          <button type="button" onClick={() => removeExtraIngredient(itemId)} className="p-2 rounded-lg hover:bg-[var(--surface-elevated)] text-[var(--fg-muted)] transition-colors" title="Удалить">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+                <button type="button" onClick={() => setShowIngredientPicker(true)} className="w-full mt-2 py-3 rounded-xl border-2 border-dashed border-[var(--border)] text-[var(--fg-muted)] text-sm font-medium hover:border-[var(--accent)]/50 hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]/30 transition-colors flex items-center justify-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Выбрать предмет
+                </button>
               </div>
-              {/* Доп. ингредиенты */}
-              {extraIngredients.length > 0 && (
-                <ul className="space-y-2">
-                  {extraIngredients.map(({ itemId, quantity }) => {
-                    const it = shopItems.find((i) => i.id === itemId)
-                    const itemName = it?.name ?? itemId
-                    const itemIcon = it ? getItemIcon(it) : '⚔️'
-                    return (
-                      <li key={itemId} className="flex items-center gap-2 rounded-lg bg-[var(--bg)] p-2">
-                        <span className="text-xl shrink-0">{itemIcon}</span>
-                        <span className="flex-1 min-w-0 truncate text-sm text-[var(--fg)]">{itemName}</span>
-                        <input
-                          type="number"
-                          min={1}
-                          value={quantity}
-                          onChange={(e) => updateExtraIngredientQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))}
-                          className="input w-16 text-center text-sm py-1"
-                        />
-                        <button type="button" onClick={() => removeExtraIngredient(itemId)} className="icon-btn p-1.5" title="Удалить">
-                          <Trash2 className="h-4 w-4 text-[var(--fg-muted)]" />
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--border)]">
-                <select
-                  value={addIngredientId}
-                  onChange={(e) => setAddIngredientId(e.target.value)}
-                  className="input flex-1 min-w-[120px] text-sm"
-                >
-                  <option value="">Добавить предмет из магазина</option>
-                  {shopItems.map((i) => (
-                    <option key={i.id} value={i.id}>{getItemIcon(i)} {i.name}</option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min={1}
-                  value={addIngredientQty}
-                  onChange={(e) => setAddIngredientQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                  className="input w-16 text-center text-sm"
-                />
-                <button type="button" onClick={addExtraIngredient} className="btn-secondary text-sm py-1.5">
-                  Добавить
+            </div>
+            {/* Результат */}
+            <div>
+              <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Результат</label>
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/50 p-4 space-y-3">
+                {results.length === 0 ? (
+                  <p className="text-sm text-[var(--fg-muted)] text-center py-4">Добавьте предметы результата крафта</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {results.map(({ itemId, quantity }) => {
+                      const it = shopItems.find((i) => i.id === itemId)
+                      const itemName = it?.name ?? itemId
+                      const itemIcon = it ? getItemIcon(it) : '⚔️'
+                      return (
+                        <li key={itemId} className="flex items-center gap-3 rounded-xl bg-[var(--bg)]/80 p-3 border border-[var(--border)]/50 hover:border-[var(--border)] transition-colors">
+                          <span className="text-2xl shrink-0">{itemIcon}</span>
+                          <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--fg)]">{itemName}</span>
+                          <input
+                            type="number"
+                            min={1}
+                            value={quantity}
+                            onChange={(e) => updateResultQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))}
+                            className="input w-16 text-center text-sm py-1.5 rounded-lg border-[var(--border)]"
+                          />
+                          <button type="button" onClick={() => removeResult(itemId)} className="p-2 rounded-lg hover:bg-[var(--surface-elevated)] text-[var(--fg-muted)] transition-colors" title="Удалить">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+                <button type="button" onClick={() => setShowResultPicker(true)} className="w-full mt-2 py-3 rounded-xl border-2 border-dashed border-[var(--border)] text-[var(--fg-muted)] text-sm font-medium hover:border-[var(--accent)]/50 hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]/30 transition-colors flex items-center justify-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Выбрать предмет
                 </button>
               </div>
             </div>
           </div>
-          {/* Результат */}
-          <div>
-            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Результат</label>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
-              {results.length === 0 ? (
-                <p className="text-sm text-[var(--fg-muted)] text-center py-2">Добавьте предметы результата крафта</p>
-              ) : (
-                <ul className="space-y-2">
-                  {results.map(({ itemId, quantity }) => {
-                    const it = shopItems.find((i) => i.id === itemId)
-                    const itemName = it?.name ?? itemId
-                    const itemIcon = it ? getItemIcon(it) : '⚔️'
-                    return (
-                      <li key={itemId} className="flex items-center gap-2 rounded-lg bg-[var(--bg)] p-2">
-                        <span className="text-xl shrink-0">{itemIcon}</span>
-                        <span className="flex-1 min-w-0 truncate text-sm text-[var(--fg)]">{itemName}</span>
-                        <input
-                          type="number"
-                          min={1}
-                          value={quantity}
-                          onChange={(e) => updateResultQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))}
-                          className="input w-16 text-center text-sm py-1"
-                        />
-                        <button type="button" onClick={() => removeResult(itemId)} className="icon-btn p-1.5" title="Удалить">
-                          <Trash2 className="h-4 w-4 text-[var(--fg-muted)]" />
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--border)]">
-                <select
-                  value={addResultId}
-                  onChange={(e) => setAddResultId(e.target.value)}
-                  className="input flex-1 min-w-[120px] text-sm"
-                >
-                  <option value="">Выберите предмет</option>
-                  {shopItems.map((i) => (
-                    <option key={i.id} value={i.id}>{getItemIcon(i)} {i.name}</option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min={1}
-                  value={addResultQty}
-                  onChange={(e) => setAddResultQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                  className="input w-16 text-center text-sm"
-                />
-                <button type="button" onClick={addResult} className="btn-secondary text-sm py-1.5">
-                  Добавить
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <div className="flex gap-2 mt-6 shrink-0">
-          <button type="button" onClick={onClose} className="btn-secondary flex-1">Отмена</button>
-          <button type="button" className="btn-primary flex-1">Сохранить</button>
+          <div className="flex gap-3 p-5 border-t border-[var(--border)] bg-[var(--surface)]">
+            <button type="button" onClick={onClose} className="btn-secondary flex-1 rounded-xl py-2.5">Отмена</button>
+            <button type="button" className="btn-primary flex-1 rounded-xl py-2.5">Сохранить</button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {showIngredientPicker && (
+        <ItemPickerModal
+          shopItems={shopItems}
+          title="Выберите предмет для ингредиентов"
+          onSelect={addExtraIngredient}
+          onClose={() => setShowIngredientPicker(false)}
+        />
+      )}
+      {showResultPicker && (
+        <ItemPickerModal
+          shopItems={shopItems}
+          title="Выберите предмет для результата"
+          onSelect={addResult}
+          onClose={() => setShowResultPicker(false)}
+        />
+      )}
+    </>
   )
 }
 
@@ -2191,8 +2230,15 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
   const deleteRecipe = useRpgStore((s) => s.deleteCraftRecipe)
   const craftItem = useRpgStore((s) => s.craftItem)
 
+  if (!recipe) return null
+
   // Старые сохранённые данные могут не содержать fragmentSource
-  const fragmentSource: any = (recipe as any).fragmentSource ?? { type: 'random_drop', dropChance: 0 }
+  const rawSource = (recipe as any).fragmentSource
+  const fragmentSource: { type?: string; dropChance?: number; linkedTaskIds?: string[] } =
+    rawSource != null && typeof rawSource === 'object'
+      ? rawSource
+      : { type: 'random_drop', dropChance: 0 }
+  const sourceType = fragmentSource?.type ?? 'random_drop'
 
   const progress = recipe.fragmentsRequired > 0
     ? Math.min(1, recipe.fragmentsCollected / recipe.fragmentsRequired)
@@ -2268,19 +2314,19 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
 
         {/* Source info */}
         <p className="mt-3 text-xs text-[var(--fg-muted)]">
-          {fragmentSource.type === 'task_linked' && '🎯 Привязано к задачам'}
-          {fragmentSource.type === 'habit_linked' && '🔁 Привязано к привычкам'}
-          {fragmentSource.type === 'random_drop' && (
+          {sourceType === 'task_linked' && '🎯 Привязано к задачам'}
+          {sourceType === 'habit_linked' && '🔁 Привязано к привычкам'}
+          {sourceType === 'random_drop' && (
             <>
               🎲 Случайный дроп
-              {typeof fragmentSource.dropChance === 'number' && fragmentSource.dropChance > 0 && (
+              {typeof fragmentSource?.dropChance === 'number' && fragmentSource.dropChance > 0 && (
                 <span className="ml-1">
                   ({fragmentSource.dropChance}% шанс)
                 </span>
               )}
             </>
           )}
-          {!fragmentSource.type && 'Источник фрагментов не задан'}
+          {!sourceType && 'Источник фрагментов не задан'}
         </p>
 
         {/* Progress */}
@@ -2343,11 +2389,11 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
   const [resultItemName] = useState(recipe?.resultItemName ?? 'Награда')
   const [resultRarity, setResultRarity] = useState<ItemRarity>(recipe?.resultRarity ?? 'common')
   const [sourceType, setSourceType] = useState<FragmentSourceType>(
-    recipe?.fragmentSource.type ?? 'random_drop'
+    recipe?.fragmentSource?.type ?? 'random_drop'
   )
-  const [dropChance, setDropChance] = useState(recipe?.fragmentSource.dropChance ?? 15)
+  const [dropChance, setDropChance] = useState(recipe?.fragmentSource?.dropChance ?? 15)
   const [linkedTaskIds, setLinkedTaskIds] = useState<string[]>(
-    recipe?.fragmentSource.linkedTaskIds ?? []
+    recipe?.fragmentSource?.linkedTaskIds ?? []
   )
   const [showTaskPicker, setShowTaskPicker] = useState(false)
 
@@ -2635,7 +2681,94 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
   )
 }
 
+// ─── Purchase History Modal ─────────────────────────────────────────────────
+
+interface PurchaseHistoryModalProps {
+  onClose: () => void
+}
+
+function PurchaseHistoryModal({ onClose }: PurchaseHistoryModalProps) {
+  const purchaseHistory = useRpgStore((s) => s.purchaseHistory)
+  const activeProfileId = useRpgStore((s) => s.activeProfileId)
+  const shopItems = useRpgStore((s) => s.shopItems)
+
+  const entries = useMemo(
+    () =>
+      activeProfileId
+        ? purchaseHistory
+            .filter((e) => e.profileId === activeProfileId)
+            .slice()
+            .sort((a, b) => b.timestamp - a.timestamp)
+        : [],
+    [purchaseHistory, activeProfileId]
+  )
+
+  const getItemDisplay = (itemId: string) => {
+    const it = shopItems.find((i) => i.id === itemId)
+    if (!it) return { type: 'emoji' as const, value: '⚔️' }
+    if (it.iconImage) return { type: 'image' as const, value: it.iconImage }
+    return { type: 'emoji' as const, value: it.icon ?? '⚔️' }
+  }
+
+  return (
+    <div
+      className="modal-backdrop"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="modal-content max-w-md max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between mb-4 flex-shrink-0">
+          <h3 className="text-lg font-bold text-[var(--fg)]">История покупок</h3>
+          <button type="button" onClick={onClose} className="icon-btn">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+          {entries.length === 0 ? (
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-center text-sm text-[var(--fg-muted)]">
+              Покупок пока нет. Совершённые покупки появятся здесь.
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {entries.map((e, idx) => {
+                const display = getItemDisplay(e.itemId)
+                return (
+                  <li
+                    key={`${e.timestamp}-${e.itemId}-${idx}`}
+                    className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-elevated)] text-lg overflow-hidden">
+                      {display.type === 'image' ? (
+                        <img src={display.value} alt="" className="h-6 w-6 rounded object-cover" />
+                      ) : (
+                        display.value
+                      )}
+                    </span>
+                    <span className="flex-1 min-w-0 text-sm font-medium text-[var(--fg)] truncate">
+                      {e.itemName}
+                    </span>
+                    <span className="text-xs text-[var(--fg-muted)] shrink-0">
+                      {new Date(e.timestamp).toLocaleString('ru-RU', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Shop Page ─────────────────────────────────────────────────────────
+
+type ShopSortBy = 'default' | 'name' | 'price' | 'rarity'
 
 export default function ShopPage() {
   const shopItems = useRpgStore((s) => s.shopItems)
@@ -2652,6 +2785,9 @@ export default function ShopPage() {
   const [showGroupsOverflow, setShowGroupsOverflow] = useState(false)
   const [showRecipeForm, setShowRecipeForm] = useState(false)
   const [editingRecipe, setEditingRecipe] = useState<CraftRecipe | undefined>()
+  const [showPurchaseHistory, setShowPurchaseHistory] = useState(false)
+  const [sortBy, setSortBy] = useState<ShopSortBy>('default')
+  const [showSortMenu, setShowSortMenu] = useState(false)
 
   const itemGroups = activeProfileId
     ? allItemGroups
@@ -2675,6 +2811,32 @@ export default function ShopPage() {
       ? shopItems
       : shopItems.filter((i) => i.groupId === groupFilter)
 
+  const filteredInventory = useMemo(() => {
+    const withItem = inventory
+      .map((entry) => ({ entry, item: shopItems.find((i) => i.id === entry.itemId) as ShopItem | undefined }))
+      .filter((x): x is { entry: typeof inventory[0]; item: ShopItem } => x.item != null)
+    if (groupFilter === 'all') return withItem
+    return withItem.filter((x) => x.item.groupId === groupFilter)
+  }, [inventory, shopItems, groupFilter])
+
+  const sortedItems = useMemo(() => {
+    const list = [...filteredItems]
+    if (sortBy === 'default') return list
+    if (sortBy === 'name') return list.sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+    if (sortBy === 'price') {
+      return list.sort((a, b) => {
+        const costA = (a.cost[CURRENCY_IDS.COINS] ?? 0) + ((a.cost[CURRENCY_IDS.GEMS] ?? 0) * 1000)
+        const costB = (b.cost[CURRENCY_IDS.COINS] ?? 0) + ((b.cost[CURRENCY_IDS.GEMS] ?? 0) * 1000)
+        return costA - costB
+      })
+    }
+    if (sortBy === 'rarity') {
+      const order: ItemRarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary']
+      return list.sort((a, b) => order.indexOf(a.rarity) - order.indexOf(b.rarity))
+    }
+    return list
+  }, [filteredItems, sortBy])
+
   const handleEditRecipe = (recipe: CraftRecipe) => {
     setEditingRecipe(recipe)
     setShowRecipeForm(true)
@@ -2686,14 +2848,13 @@ export default function ShopPage() {
   }
 
   const activeRecipes = recipes.filter((r) => !r.crafted)
-  const craftedRecipes = recipes.filter((r) => r.crafted)
 
   const groupsRowOuterRef = useRef<HTMLDivElement>(null)
   const groupsRowInnerRef = useRef<HTMLDivElement>(null)
   const [visibleGroupCount, setVisibleGroupCount] = useState(0)
 
   useEffect(() => {
-    if (tab !== 'shop') return
+    if (tab !== 'shop' && tab !== 'inventory') return
     const outer = groupsRowOuterRef.current
     const inner = groupsRowInnerRef.current
     if (!outer || !inner || !itemGroups.length) {
@@ -2753,7 +2914,7 @@ export default function ShopPage() {
               {tab === 'shop'
                 ? 'Магазин'
                 : tab === 'crafting'
-                  ? 'Мастерская'
+                  ? 'Фрагменты'
                   : 'Инвентарь'}
             </h1>
             <p className="text-sm text-[var(--fg-muted)]">
@@ -2765,20 +2926,80 @@ export default function ShopPage() {
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            if (tab === 'crafting') {
-              setShowRecipeForm(true)
-            } else {
-              setShowForm(true)
-            }
-          }}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Добавить
-        </button>
+        <div className="flex items-center gap-2">
+          {tab === 'shop' && (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowPurchaseHistory(true)}
+                className="btn-secondary flex items-center gap-1.5 px-3 py-2 text-sm rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)] transition-colors"
+                title="История покупок"
+              >
+                <History className="h-4 w-4" />
+                История
+              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowSortMenu((v) => !v)}
+                  className="btn-secondary flex items-center gap-1.5 px-3 py-2 text-sm rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)] transition-colors"
+                  title="Сортировка"
+                >
+                  <ArrowUpDown className="h-4 w-4" />
+                  Сортировка
+                </button>
+                {showSortMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      aria-hidden
+                      onClick={() => setShowSortMenu(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-1.5 z-20 min-w-[180px] rounded-xl border border-[var(--border)] bg-[var(--surface-overlay)] shadow-lg py-1.5">
+                      {[
+                        { value: 'default' as ShopSortBy, label: 'По умолчанию' },
+                        { value: 'name' as ShopSortBy, label: 'По имени' },
+                        { value: 'price' as ShopSortBy, label: 'По цене' },
+                        { value: 'rarity' as ShopSortBy, label: 'По редкости' },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            setSortBy(opt.value)
+                            setShowSortMenu(false)
+                          }}
+                          className={cn(
+                            'w-full text-left px-3 py-2 text-sm transition-colors',
+                            sortBy === opt.value
+                              ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium'
+                              : 'text-[var(--fg)] hover:bg-[var(--surface)]'
+                          )}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              if (tab === 'crafting') {
+                setShowRecipeForm(true)
+              } else {
+                setShowForm(true)
+              }
+            }}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Добавить
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -2807,7 +3028,7 @@ export default function ShopPage() {
           )}
         >
           <Hammer className="h-4 w-4" />
-          Мастерская
+          Фрагменты
           {recipes.length > 0 && (
             <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
               {recipes.length}
@@ -2835,12 +3056,10 @@ export default function ShopPage() {
       </div>
 
       {/* Content */}
-      {tab === 'shop' && (
-        <>
-          {/* Filter by groups */}
-          <div className="flex items-center gap-2">
-            <div className="flex-1 min-w-0 relative flex gap-1.5 flex-nowrap">
-            {/* Скрытый контейнер для измерения — все группы, чтобы вычислить visibleGroupCount */}
+      {/* Filter by groups (shop + inventory) */}
+      {(tab === 'shop' || tab === 'inventory') && (
+        <div className="flex items-center gap-2">
+          <div className="flex-1 min-w-0 relative flex gap-1.5 flex-nowrap">
             <div
               ref={groupsRowOuterRef}
               className="absolute inset-0 overflow-hidden opacity-0 pointer-events-none"
@@ -2859,91 +3078,93 @@ export default function ShopPage() {
                 ))}
               </div>
             </div>
-            {/* Видимая строка — только полностью помещающиеся группы */}
+            <button
+              type="button"
+              onClick={() => setGroupFilter('all')}
+              className={cn(
+                'shrink-0 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
+                groupFilter === 'all'
+                  ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
+                  : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
+              )}
+            >
+              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              Все предметы
+            </button>
+            {visibleGroups.map((group) => (
               <button
+                key={group.id}
                 type="button"
-                onClick={() => setGroupFilter('all')}
+                onClick={() => setGroupFilter(group.id)}
                 className={cn(
                   'shrink-0 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
-                  groupFilter === 'all'
+                  groupFilter === group.id
                     ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
                     : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
                 )}
               >
-                <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                Все предметы
+                <span className="inline-flex h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: group.color ?? '#22c55e' }} />
+                {group.name}
               </button>
-              {visibleGroups.map((group) => (
-                <button
-                  key={group.id}
-                  type="button"
-                  onClick={() => setGroupFilter(group.id)}
-                  className={cn(
-                    'shrink-0 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
-                    groupFilter === group.id
-                      ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
-                      : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
-                  )}
-                >
-                  <span className="inline-flex h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: group.color ?? '#22c55e' }} />
-                  {group.name}
-                </button>
-              ))}
-            </div>
-            {groupsOverflow && (
-              <div className="relative shrink-0 flex items-center">
-                <button
-                  type="button"
-                  onClick={() => setShowGroupsOverflow((v) => !v)}
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)] active:bg-[var(--surface-elevated)] transition-colors"
-                  title="Остальные группы"
-                >
-                  <ChevronDown className="h-4 w-4" />
-                </button>
-                {showGroupsOverflow && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40 bg-black/20"
-                      onClick={() => setShowGroupsOverflow(false)}
-                      aria-hidden="true"
-                    />
-                    <div className="absolute right-0 top-full mt-1 z-50 min-w-[180px] rounded-xl border border-[var(--border)] bg-[var(--surface)] py-2 shadow-xl overflow-hidden">
-                      {overflowGroups.map((group) => (
-                          <button
-                            key={group.id}
-                            type="button"
-                            onClick={() => {
-                              setGroupFilter(group.id)
-                              setShowGroupsOverflow(false)
-                            }}
-                            className={cn(
-                              'w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm transition-colors',
-                              groupFilter === group.id
-                                ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium'
-                                : 'bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
-                            )}
-                          >
-                            <span className="inline-flex h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: group.color ?? '#22c55e' }} />
-                            {group.name}
-                          </button>
-                        ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => setShowGroupManager(true)}
-              className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
-            >
-              Управлять группами
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
+            ))}
           </div>
+          {groupsOverflow && (
+            <div className="relative shrink-0 flex items-center">
+              <button
+                type="button"
+                onClick={() => setShowGroupsOverflow((v) => !v)}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)] active:bg-[var(--surface-elevated)] transition-colors"
+                title="Остальные группы"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </button>
+              {showGroupsOverflow && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40 bg-black/20"
+                    onClick={() => setShowGroupsOverflow(false)}
+                    aria-hidden="true"
+                  />
+                  <div className="absolute right-0 top-full mt-1 z-50 min-w-[180px] rounded-xl border border-[var(--border)] bg-[var(--surface)] py-2 shadow-xl overflow-hidden">
+                    {overflowGroups.map((group) => (
+                      <button
+                        key={group.id}
+                        type="button"
+                        onClick={() => {
+                          setGroupFilter(group.id)
+                          setShowGroupsOverflow(false)
+                        }}
+                        className={cn(
+                          'w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm transition-colors',
+                          groupFilter === group.id
+                            ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium'
+                            : 'bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
+                        )}
+                      >
+                        <span className="inline-flex h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: group.color ?? '#22c55e' }} />
+                        {group.name}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowGroupManager(true)}
+            className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
+          >
+            Управлять группами
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
+      {tab === 'shop' && (
+        <>
           {/* Shop items grid */}
-          {filteredItems.length === 0 ? (
+          {sortedItems.length === 0 ? (
             <div className="glass-card flex flex-col items-center justify-center rounded-2xl py-16">
               <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-[var(--accent-subtle)] mb-4">
                 <Sparkles className="h-10 w-10 text-[var(--accent)]" />
@@ -2953,7 +3174,7 @@ export default function ShopPage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {filteredItems.map((item) => (
+              {sortedItems.map((item) => (
                 <ShopItemCard key={item.id} item={item} onEdit={() => handleEdit(item)} />
               ))}
             </div>
@@ -2963,20 +3184,24 @@ export default function ShopPage() {
 
       {tab === 'inventory' && (
         <>
-          {inventory.length === 0 ? (
+          {filteredInventory.length === 0 ? (
             <div className="glass-card flex flex-col items-center justify-center rounded-2xl py-16">
               <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-[var(--surface)] mb-4">
                 <Package className="h-10 w-10 text-[var(--fg-muted)]" />
               </div>
-              <p className="font-medium text-[var(--fg)]">Инвентарь пуст</p>
-              <p className="mt-1 text-sm text-[var(--fg-muted)]">Купите что-нибудь в магазине</p>
+              <p className="font-medium text-[var(--fg)]">
+                {inventory.length === 0 ? 'Инвентарь пуст' : 'В этой группе ничего нет'}
+              </p>
+              <p className="mt-1 text-sm text-[var(--fg-muted)]">
+                {inventory.length === 0 ? 'Купите что-нибудь в магазине' : 'Выберите другую группу или «Все предметы»'}
+              </p>
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
-              {inventory.map((entry) => (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filteredInventory.map(({ entry, item }) => (
                 <InventoryItemCard
                   key={entry.itemId}
-                  itemId={entry.itemId}
+                  item={item}
                   quantity={entry.quantity}
                 />
               ))}
@@ -3015,17 +3240,6 @@ export default function ShopPage() {
                   </div>
                 </div>
               )}
-
-              {craftedRecipes.length > 0 && (
-                <div>
-                  <h2 className="text-lg font-semibold text-[var(--fg)] mb-4">Скрафченные</h2>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {craftedRecipes.map((recipe) => (
-                      <RecipeCard key={recipe.id} recipe={recipe} onEdit={() => handleEditRecipe(recipe)} />
-                    ))}
-                  </div>
-                </div>
-              )}
             </>
           )}
         </>
@@ -3037,6 +3251,9 @@ export default function ShopPage() {
 
       {showGroupManager && (
         <ItemGroupManagerModal onClose={() => setShowGroupManager(false)} />
+      )}
+      {showPurchaseHistory && (
+        <PurchaseHistoryModal onClose={() => setShowPurchaseHistory(false)} />
       )}
     </div>
   )

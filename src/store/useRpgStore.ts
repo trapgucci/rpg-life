@@ -20,6 +20,7 @@ import type {
   ShopItem,
   ItemId,
   InventoryEntry,
+  PurchaseHistoryEntry,
   AppSettings,
   CurrencyId,
 } from '../types/domain'
@@ -156,6 +157,8 @@ interface RpgStoreState {
   craftRecipes: CraftRecipe[]
   shopItems: ShopItem[]
   inventory: InventoryEntry[]
+  /** История покупок в магазине (по профилям) */
+  purchaseHistory: PurchaseHistoryEntry[]
   /** Активная скидка в магазине в % (только на монеты), сбрасывается после одной покупки */
   activeShopDiscountPercent: number | null
   settings: AppSettings
@@ -288,6 +291,7 @@ export const useRpgStore = create<RpgStoreState>()(
         craftRecipes: [],
         shopItems: [],
         inventory: [],
+        purchaseHistory: [],
         activeShopDiscountPercent: null,
         settings: { ...DEFAULT_SETTINGS },
         stats: {
@@ -993,7 +997,7 @@ export const useRpgStore = create<RpgStoreState>()(
         deleteShopItem: (id) => set((s) => ({ shopItems: s.shopItems.filter((i) => i.id !== id) })),
 
         purchaseItem: (itemId) => {
-          const { shopItems, deductCurrency, addToInventory, openLootbox, activeShopDiscountPercent } = get()
+          const { shopItems, deductCurrency, addToInventory, openLootbox, activeShopDiscountPercent, activeProfileId } = get()
           const item = shopItems.find((i) => i.id === itemId)
           if (!item) return false
 
@@ -1014,6 +1018,15 @@ export const useRpgStore = create<RpgStoreState>()(
           }
 
           set((s) => ({ activeShopDiscountPercent: null }))
+
+          if (activeProfileId) {
+            set((s) => ({
+              purchaseHistory: [
+                ...s.purchaseHistory,
+                { profileId: activeProfileId, itemId: item.id, itemName: item.name, timestamp: now() },
+              ].slice(-500),
+            }))
+          }
 
           if (item.isLootBox) {
             const loot = openLootbox(itemId)
@@ -1204,6 +1217,7 @@ export const useRpgStore = create<RpgStoreState>()(
         craftRecipes: s.craftRecipes,
         shopItems: s.shopItems,
         inventory: s.inventory,
+        purchaseHistory: s.purchaseHistory,
         activeShopDiscountPercent: s.activeShopDiscountPercent,
         settings: s.settings,
         stats: s.stats,
@@ -1211,6 +1225,7 @@ export const useRpgStore = create<RpgStoreState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return
         if (state.activeShopDiscountPercent === undefined) useRpgStore.setState({ activeShopDiscountPercent: null })
+        if (!state.purchaseHistory) useRpgStore.setState({ purchaseHistory: [] })
         if (!state.taskGroups) useRpgStore.setState({ taskGroups: [] })
         if (!state.itemGroups) useRpgStore.setState({ itemGroups: [] })
         if (!state.tasks) useRpgStore.setState({ tasks: [] })

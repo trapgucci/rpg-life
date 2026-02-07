@@ -369,6 +369,14 @@ export interface InventoryEntry {
   acquiredAt: number
 }
 
+/** Запись в истории покупок магазина */
+export interface PurchaseHistoryEntry {
+  profileId: ProfileId
+  itemId: ItemId
+  itemName: string
+  timestamp: number
+}
+
 /** Currencies (e.g. Gold, Diamonds) */
 export interface Currency {
   id: CurrencyId
