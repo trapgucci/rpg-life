@@ -85,6 +85,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const taskAttrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
   const taskAttrs = taskAttrIds.map((id) => attributes.find((a) => a.id === id)).filter(Boolean)
   const { xp, coins, gems } = getTaskRewardPreview(task)
+  const isCustomXp = task.customXp != null
 
   const canComplete = canCompleteTask(task)
   const deadlineAt = task.deadlineAt ?? null
@@ -667,28 +668,31 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   <div
                     className={cn(
                       "flex items-center gap-3 rounded-xl p-3 border",
-                      task.difficulty === 'easy' && 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800',
-                      task.difficulty === 'medium' && 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800',
-                      task.difficulty === 'hard' && 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800',
-                      task.difficulty === 'veryHard' && 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
+                      isCustomXp && 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800',
+                      !isCustomXp && task.difficulty === 'easy' && 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800',
+                      !isCustomXp && task.difficulty === 'medium' && 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800',
+                      !isCustomXp && task.difficulty === 'hard' && 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800',
+                      !isCustomXp && task.difficulty === 'veryHard' && 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
                     )}
                   >
                     <div
                       className={cn(
                         "flex h-10 w-10 items-center justify-center rounded-lg",
-                        task.difficulty === 'easy' && 'bg-emerald-100 dark:bg-emerald-900/50',
-                        task.difficulty === 'medium' && 'bg-blue-100 dark:bg-blue-900/50',
-                        task.difficulty === 'hard' && 'bg-orange-100 dark:bg-orange-900/50',
-                        task.difficulty === 'veryHard' && 'bg-red-100 dark:bg-red-900/50'
+                        isCustomXp && 'bg-purple-100 dark:bg-purple-900/50',
+                        !isCustomXp && task.difficulty === 'easy' && 'bg-emerald-100 dark:bg-emerald-900/50',
+                        !isCustomXp && task.difficulty === 'medium' && 'bg-blue-100 dark:bg-blue-900/50',
+                        !isCustomXp && task.difficulty === 'hard' && 'bg-orange-100 dark:bg-orange-900/50',
+                        !isCustomXp && task.difficulty === 'veryHard' && 'bg-red-100 dark:bg-red-900/50'
                       )}
                     >
                       <Zap
                         className={cn(
                           "h-5 w-5",
-                          task.difficulty === 'easy' && 'text-emerald-600 dark:text-emerald-400',
-                          task.difficulty === 'medium' && 'text-blue-600 dark:text-blue-400',
-                          task.difficulty === 'hard' && 'text-orange-600 dark:text-orange-400',
-                          task.difficulty === 'veryHard' && 'text-red-600 dark:text-red-400'
+                          isCustomXp && 'text-purple-600 dark:text-purple-400',
+                          !isCustomXp && task.difficulty === 'easy' && 'text-emerald-600 dark:text-emerald-400',
+                          !isCustomXp && task.difficulty === 'medium' && 'text-blue-600 dark:text-blue-400',
+                          !isCustomXp && task.difficulty === 'hard' && 'text-orange-600 dark:text-orange-400',
+                          !isCustomXp && task.difficulty === 'veryHard' && 'text-red-600 dark:text-red-400'
                         )}
                       />
                     </div>
@@ -696,10 +700,11 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                       <p
                         className={cn(
                           "text-xl font-bold",
-                          task.difficulty === 'easy' && 'text-emerald-600 dark:text-emerald-400',
-                          task.difficulty === 'medium' && 'text-blue-600 dark:text-blue-400',
-                          task.difficulty === 'hard' && 'text-orange-600 dark:text-orange-400',
-                          task.difficulty === 'veryHard' && 'text-red-600 dark:text-red-400'
+                          isCustomXp && 'text-purple-600 dark:text-purple-400',
+                          !isCustomXp && task.difficulty === 'easy' && 'text-emerald-600 dark:text-emerald-400',
+                          !isCustomXp && task.difficulty === 'medium' && 'text-blue-600 dark:text-blue-400',
+                          !isCustomXp && task.difficulty === 'hard' && 'text-orange-600 dark:text-orange-400',
+                          !isCustomXp && task.difficulty === 'veryHard' && 'text-red-600 dark:text-red-400'
                         )}
                       >
                         +{xp}

@@ -277,25 +277,37 @@ export default function TaskAttributeSelectModal({
               )}
             </div>
 
-            {/* Summary */}
-            <div className={cn(
-              'mt-2 flex items-center gap-2 rounded-lg px-3 py-2 border',
-              xpColors.bg,
-              xpColors.border
-            )}>
-              <Zap className={cn('h-3.5 w-3.5', xpColors.text)} />
-              <span className={cn('text-sm font-semibold', xpColors.text)}>
-                {effectiveXp} XP
-              </span>
-              <span className={cn('text-[11px]', xpColors.text, 'opacity-70')}>
-                • {difficultyLabel}
-              </span>
-              {selectedAttributeIds.length > 0 && (
-                <span className={cn('text-[11px]', xpColors.text, 'opacity-70')}>
-                  → {selectedAttributeIds.length} {selectedAttributeIds.length === 1 ? 'атрибут' : selectedAttributeIds.length < 5 ? 'атрибута' : 'атрибутов'}
+            {/* Summary - только если есть XP */}
+            {effectiveXp > 0 && (
+              <div className={cn(
+                'mt-2 flex items-center gap-2 rounded-lg px-3 py-2 border',
+                xpColors.bg,
+                xpColors.border
+              )}>
+                <Zap className={cn('h-3.5 w-3.5', xpColors.text)} />
+                <span className={cn('text-sm font-semibold', xpColors.text)}>
+                  {effectiveXp} XP
                 </span>
-              )}
-            </div>
+                <span className={cn('text-[11px]', xpColors.text, 'opacity-70')}>
+                  • {difficultyLabel}
+                </span>
+                {selectedAttributeIds.length > 0 && (
+                  <span className={cn('text-[11px]', xpColors.text, 'opacity-70')}>
+                    → {selectedAttributeIds.length} {selectedAttributeIds.length === 1 ? 'атрибут' : selectedAttributeIds.length < 5 ? 'атрибута' : 'атрибутов'}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Кнопка Готово */}
+            <button
+              type="button"
+              onClick={handleClose}
+              className="mt-3 w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-hover)]"
+            >
+              <Check className="h-4 w-4" />
+              Готово
+            </button>
           </div>
         </div>
         </div>
