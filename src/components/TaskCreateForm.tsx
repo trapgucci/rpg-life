@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { Plus, X, ChevronRight, Calendar, BarChart3, Gift, Hash, Target, Construction, ListPlus, Zap, Coins, Folder, Edit2 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRecurrence, SubtaskItem, TaskDifficulty, AttributeId } from '../types/domain'
+import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
 import { useRpgStore } from '../store/useRpgStore'
 import type { TaskGroupId } from '../types/domain'
 import TaskGroupSelectModal from './TaskGroupSelectModal'
 import TaskAttributeSelectModal from './TaskAttributeSelectModal'
 import TaskRewardsModal from './TaskRewardsModal'
-import SubtaskCreateModal from './SubtaskCreateModal'
+import SubtaskCreateModal, { type SubtaskEditData, type SubtaskFormData } from './SubtaskCreateModal'
 
 const RECURRENCE_OPTIONS: { value: TaskRecurrence; label: string }[] = [
   { value: 'once', label: 'Один раз' },
@@ -45,9 +46,9 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   const [error, setError] = useState<string | null>(null)
   const [description, setDescription] = useState('')
   const [selectedGroupId, setSelectedGroupId] = useState<TaskGroupId | null>(defaultGroupId)
-  const [subtasks, setSubtasks] = useState<{ id: string; title: string; description: string; coinReward: number; xpReward: number }[]>([])
+  const [subtasks, setSubtasks] = useState<(SubtaskFormData & { id: string })[]>([])
   const [showSubtaskModal, setShowSubtaskModal] = useState(false)
-  const [editingSubtask, setEditingSubtask] = useState<{ id: string; title: string; description: string; coinReward: number; xpReward: number } | null>(null)
+  const [editingSubtask, setEditingSubtask] = useState<SubtaskEditData | null>(null)
   const [showRepeat, setShowRepeat] = useState(false)
   const [recurrence, setRecurrence] = useState<TaskRecurrence>('once')
   const [deadlineAt, setDeadlineAt] = useState<string>('')
@@ -70,20 +71,20 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   const [countUnit, setCountUnit] = useState('раз')
   const [reflectionOnCompletion, setReflectionOnCompletion] = useState(false)
 
-  const addSubtask = (sub: { title: string; description: string; coinReward: number; xpReward: number }) => {
+  const addSubtask = (sub: SubtaskFormData) => {
     setSubtasks((prev) => [...prev, { id: crypto.randomUUID(), ...sub }])
   }
 
-  const editSubtask = (sub: { id: string; title: string; description: string; coinReward: number; xpReward: number }) => {
-    setSubtasks((prev) => prev.map((s) => s.id === sub.id ? sub : s))
+  const editSubtask = (sub: SubtaskEditData) => {
+    setSubtasks((prev) => prev.map((s) => s.id === sub.id ? { id: s.id, title: sub.title, description: sub.description, coinReward: sub.coinReward, difficulty: sub.difficulty ?? 'medium', customXp: sub.customXp ?? null } : s))
   }
 
   const removeSubtask = (id: string) => {
     setSubtasks((prev) => prev.filter((s) => s.id !== id))
   }
 
-  const openEditSubtask = (subtask: { id: string; title: string; description: string; coinReward: number; xpReward: number }) => {
-    setEditingSubtask(subtask)
+  const openEditSubtask = (subtask: SubtaskFormData & { id: string }) => {
+    setEditingSubtask({ id: subtask.id, title: subtask.title, description: subtask.description, coinReward: subtask.coinReward, difficulty: subtask.difficulty, customXp: subtask.customXp })
     setShowSubtaskModal(true)
   }
 
@@ -144,7 +145,8 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         description: s.description.trim() || undefined,
         isCompleted: false,
         coinReward: s.coinReward > 0 ? s.coinReward : undefined,
-        xpReward: s.xpReward > 0 ? s.xpReward : undefined,
+        difficulty: s.difficulty ?? 'medium',
+        customXp: s.customXp,
       }))
 
       newTask = {
@@ -277,11 +279,15 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                   className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
                 >
                   <span className="flex-1 truncate text-sm text-[var(--fg)]">{s.title}</span>
-                  {s.xpReward > 0 && (
-                    <span className="inline-flex items-center gap-1 rounded-lg bg-purple-500/10 px-2 py-0.5 text-[10px] font-medium text-purple-500">
-                      <Zap className="h-2.5 w-2.5" />{s.xpReward}
-                    </span>
-                  )}
+                  {(() => {
+                    const diff = s.difficulty ?? 'medium'
+                    const xp = s.customXp ?? settings.taskDifficultyXp?.[diff] ?? TASK_XP_BY_DIFFICULTY[diff]
+                    return xp > 0 ? (
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-purple-500/10 px-2 py-0.5 text-[10px] font-medium text-purple-500">
+                        <Zap className="h-2.5 w-2.5" />{xp}
+                      </span>
+                    ) : null
+                  })()}
                   {s.coinReward > 0 && (
                     <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
                       <Coins className="h-2.5 w-2.5" />{s.coinReward}

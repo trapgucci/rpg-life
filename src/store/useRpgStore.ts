@@ -664,9 +664,11 @@ export const useRpgStore = create<RpgStoreState>()(
           // Award per-subtask rewards only when toggling ON
           if (isNowCompleted) {
             const profile = getActiveProfile()
+            const settings = get().settings
             if (profile) {
               const coinRwd = subtask.coinReward ?? 0
-              const xpRwd = subtask.xpReward ?? 0
+              const diff = subtask.difficulty ?? 'medium'
+              const xpRwd = subtask.customXp ?? settings.taskDifficultyXp?.[diff] ?? TASK_XP_BY_DIFFICULTY[diff] ?? subtask.xpReward ?? 0
               if (coinRwd > 0) get().addCurrency(CURRENCY_IDS.COINS, coinRwd)
               const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
               if (xpRwd > 0 && attrIds.length > 0) {

@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import {
   Check, SkipForward, Pencil, Coins, Zap, Trash2, X,
-  Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder
+  Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder, Edit2
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRpg, TaskDifficulty, TaskRecurrence, AttributeId, SubtaskItem, TaskGroupId } from '../types/domain'
+import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
 import { useRpgStore } from '../store/useRpgStore'
 import TaskGroupSelectModal from './TaskGroupSelectModal'
 import TaskAttributeSelectModal from './TaskAttributeSelectModal'
 import TaskRewardsModal from './TaskRewardsModal'
-import SubtaskCreateModal from './SubtaskCreateModal'
+import SubtaskCreateModal, { type SubtaskEditData, type SubtaskFormData } from './SubtaskCreateModal'
 
 const DIFFICULTY_LABELS: Record<TaskDifficulty, string> = {
   easy: 'Лёгкая',
@@ -68,6 +69,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const [showAttributeModal, setShowAttributeModal] = useState(false)
   const [showRewardsModal, setShowRewardsModal] = useState(false)
   const [showSubtaskModal, setShowSubtaskModal] = useState(false)
+  const [editingSubtask, setEditingSubtask] = useState<SubtaskItem | null>(null)
   const [rewardFeedback, setRewardFeedback] = useState<{ subtaskId: string; coins: number; xp: number } | null>(null)
 
   const profile = profiles.find((p) => p.id === activeProfileId)
@@ -115,19 +117,24 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
     }
   }
 
-  const handleAddSubtask = (sub: { title: string; description: string; coinReward: number; xpReward: number }) => {
-    if (task.kind !== 'nested') return
+  const handleAddSubtask = (sub: SubtaskFormData) => {
     const newSubtask: SubtaskItem = {
       id: crypto.randomUUID(),
       title: sub.title,
       description: sub.description.trim() || undefined,
       isCompleted: false,
       coinReward: sub.coinReward > 0 ? sub.coinReward : undefined,
-      xpReward: sub.xpReward > 0 ? sub.xpReward : undefined,
+      difficulty: sub.difficulty,
+      customXp: sub.customXp,
     }
     updateTask(task.id, (t) => {
-      if (t.kind !== 'nested') return t
-      return { ...t, subtasks: [...t.subtasks, newSubtask] }
+      if (t.kind === 'nested') return { ...t, subtasks: [...t.subtasks, newSubtask] }
+      // Преобразуем checkbox в nested при добавлении первой подзадачи
+      if (t.kind === 'checkbox') {
+        const { kind, ...rest } = t
+        return { ...rest, kind: 'nested' as const, subtasks: [newSubtask] } as TaskRpg
+      }
+      return t
     })
   }
 
@@ -135,12 +142,56 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
     if (task.kind !== 'nested') return
     updateTask(task.id, (t) => {
       if (t.kind !== 'nested') return t
-      return { ...t, subtasks: t.subtasks.filter((s) => s.id !== subtaskId) }
+      const next = t.subtasks.filter((s) => s.id !== subtaskId)
+      // Если подзадач не осталось — преобразуем обратно в checkbox
+      if (next.length === 0) {
+        const { subtasks, kind, ...rest } = t
+        return { ...rest, kind: 'checkbox' as const } as TaskRpg
+      }
+      return { ...t, subtasks: next }
     })
+    if (editingSubtask?.id === subtaskId) {
+      setEditingSubtask(null)
+      setShowSubtaskModal(false)
+    }
+  }
+
+  const handleEditSubtask = (sub: SubtaskEditData) => {
+    if (task.kind !== 'nested') return
+    updateTask(task.id, (t) => {
+      if (t.kind !== 'nested') return t
+      return {
+        ...t,
+        subtasks: t.subtasks.map((s) =>
+          s.id === sub.id
+            ? {
+                ...s,
+                title: sub.title,
+                description: sub.description.trim() || undefined,
+                coinReward: sub.coinReward > 0 ? sub.coinReward : undefined,
+                difficulty: sub.difficulty,
+                customXp: sub.customXp,
+              }
+            : s
+        ),
+      }
+    })
+  }
+
+  const openEditSubtask = (subtask: SubtaskItem) => {
+    setEditingSubtask(subtask)
+    setShowSubtaskModal(true)
+  }
+
+  const closeSubtaskModal = () => {
+    setShowSubtaskModal(false)
+    setEditingSubtask(null)
   }
 
   const editAttrNames = editAttributeIds.map((id) => attributes.find((a) => a.id === id)).filter(Boolean)
   const editEffectiveXp = editCustomXp ?? (settings.taskDifficultyXp?.[editDifficulty] ?? 0)
+  const getSubtaskEffectiveXp = (s: SubtaskItem) =>
+    s.customXp ?? settings.taskDifficultyXp?.[s.difficulty ?? 'medium'] ?? TASK_XP_BY_DIFFICULTY[s.difficulty ?? 'medium'] ?? s.xpReward ?? 0
 
   return (
     <div className="glass-card flex h-full flex-col rounded-2xl p-6 overflow-hidden">
@@ -222,6 +273,63 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
                 </button>
               </div>
+
+              {/* Подзадачи — для nested и checkbox (можно добавить подзадачи и преобразовать в nested) */}
+              {(task.kind === 'nested' || task.kind === 'checkbox') && (
+                <div>
+                  <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">
+                    Подзадачи ({task.kind === 'nested' ? task.subtasks.length : 0})
+                  </label>
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+                    {task.kind === 'nested' && task.subtasks.length > 0 && (
+                      <div className="divide-y divide-[var(--border)] max-h-[200px] overflow-y-auto">
+                        {task.subtasks.map((subtask) => (
+                          <div
+                            key={subtask.id}
+                            className="group flex items-center gap-2 px-3 py-2"
+                          >
+                            <span className="flex-1 truncate text-sm text-[var(--fg)]">{subtask.title}</span>
+                          {getSubtaskEffectiveXp(subtask) > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-lg bg-purple-500/10 px-2 py-0.5 text-[10px] font-medium text-purple-500">
+                              <Zap className="h-2.5 w-2.5" />{getSubtaskEffectiveXp(subtask)}
+                            </span>
+                          )}
+                            {(subtask.coinReward ?? 0) > 0 && (
+                              <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                                <Coins className="h-2.5 w-2.5" />{subtask.coinReward}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => openEditSubtask(subtask)}
+                              className="icon-btn h-6 w-6 shrink-0 p-0 opacity-70 hover:opacity-100"
+                              title="Редактировать"
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSubtask(subtask.id)}
+                              className="icon-btn icon-btn-danger h-6 w-6 shrink-0 p-0 opacity-70 hover:opacity-100"
+                              title="Удалить"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => { setEditingSubtask(null); setShowSubtaskModal(true) }}
+                      className="flex w-full items-center justify-center gap-2 rounded-b-xl border-t border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--accent)] transition-colors hover:bg-[var(--surface-elevated)]"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Добавить подзадачу
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-2">
                 <button
@@ -458,7 +566,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                           onClick={() => {
                             if (!subtask.isCompleted) {
                               const cr = subtask.coinReward ?? 0
-                              const xr = subtask.xpReward ?? 0
+                              const xr = getSubtaskEffectiveXp(subtask)
                               if (cr > 0 || xr > 0) {
                                 setRewardFeedback({ subtaskId: subtask.id, coins: cr, xp: xr })
                                 setTimeout(() => setRewardFeedback(null), 1500)
@@ -482,9 +590,9 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                           {subtask.title}
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          {(subtask.xpReward ?? 0) > 0 && (
+                          {getSubtaskEffectiveXp(subtask) > 0 && (
                             <span className="inline-flex items-center gap-1 rounded-lg bg-purple-500/10 px-2 py-0.5 text-[10px] font-medium text-purple-500">
-                              <Zap className="h-2.5 w-2.5" />{subtask.xpReward}
+                              <Zap className="h-2.5 w-2.5" />{getSubtaskEffectiveXp(subtask)}
                             </span>
                           )}
                           {(subtask.coinReward ?? 0) > 0 && (
@@ -495,8 +603,17 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                         </div>
                         <button
                           type="button"
+                          onClick={() => openEditSubtask(subtask)}
+                          className="icon-btn opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
+                          title="Редактировать"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => handleRemoveSubtask(subtask.id)}
                           className="icon-btn icon-btn-danger opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
+                          title="Удалить"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -523,7 +640,10 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 {/* Add subtask button */}
                 <button
                   type="button"
-                  onClick={() => setShowSubtaskModal(true)}
+                  onClick={() => {
+                    setEditingSubtask(null)
+                    setShowSubtaskModal(true)
+                  }}
                   className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--accent)] transition-colors hover:bg-[var(--accent-subtle)] hover:border-[var(--accent)]"
                 >
                   <Plus className="h-4 w-4" />
@@ -605,8 +725,18 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
       />
       <SubtaskCreateModal
         isOpen={showSubtaskModal}
+        editingSubtask={editingSubtask ? {
+          id: editingSubtask.id,
+          title: editingSubtask.title,
+          description: editingSubtask.description ?? '',
+          coinReward: editingSubtask.coinReward ?? 0,
+          difficulty: editingSubtask.difficulty,
+          customXp: editingSubtask.customXp,
+          xpReward: editingSubtask.xpReward,
+        } : null}
         onAdd={handleAddSubtask}
-        onClose={() => setShowSubtaskModal(false)}
+        onEdit={handleEditSubtask}
+        onClose={closeSubtaskModal}
       />
     </div>
   )
