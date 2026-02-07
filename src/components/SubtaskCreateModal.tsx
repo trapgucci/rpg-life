@@ -1,19 +1,36 @@
 import { useState, useLayoutEffect, useEffect } from 'react'
-import { X, Plus, Zap, Coins } from 'lucide-react'
+import { X, Plus, Save, Zap, Coins } from 'lucide-react'
 import { cn } from '../lib/cn'
 
 interface SubtaskCreateModalProps {
   isOpen: boolean
+  editingSubtask?: { id: string; title: string; description: string; coinReward: number; xpReward: number } | null
   onAdd: (subtask: { title: string; description: string; coinReward: number; xpReward: number }) => void
+  onEdit?: (subtask: { id: string; title: string; description: string; coinReward: number; xpReward: number }) => void
   onClose: () => void
 }
 
-export default function SubtaskCreateModal({ isOpen, onAdd, onClose }: SubtaskCreateModalProps) {
+export default function SubtaskCreateModal({ isOpen, editingSubtask, onAdd, onEdit, onClose }: SubtaskCreateModalProps) {
   const [animatedOpen, setAnimatedOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [coinReward, setCoinReward] = useState(0)
   const [xpReward, setXpReward] = useState(0)
+
+  // Загрузка данных при редактировании
+  useEffect(() => {
+    if (isOpen && editingSubtask) {
+      setTitle(editingSubtask.title)
+      setDescription(editingSubtask.description)
+      setCoinReward(editingSubtask.coinReward)
+      setXpReward(editingSubtask.xpReward)
+    } else if (isOpen && !editingSubtask) {
+      setTitle('')
+      setDescription('')
+      setCoinReward(0)
+      setXpReward(0)
+    }
+  }, [isOpen, editingSubtask])
 
   useLayoutEffect(() => {
     if (isOpen) {
@@ -32,9 +49,21 @@ export default function SubtaskCreateModal({ isOpen, onAdd, onClose }: SubtaskCr
 
   const handleClose = () => setAnimatedOpen(false)
 
-  const handleAdd = () => {
+  const handleSubmit = () => {
     if (!title.trim()) return
-    onAdd({ title: title.trim(), description, coinReward, xpReward })
+
+    if (editingSubtask && onEdit) {
+      onEdit({
+        id: editingSubtask.id,
+        title: title.trim(),
+        description,
+        coinReward,
+        xpReward
+      })
+    } else {
+      onAdd({ title: title.trim(), description, coinReward, xpReward })
+    }
+
     setTitle('')
     setDescription('')
     setCoinReward(0)
@@ -69,7 +98,9 @@ export default function SubtaskCreateModal({ isOpen, onAdd, onClose }: SubtaskCr
           )}
         >
           <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-[var(--border)]">
-            <h2 className="text-lg font-semibold text-[var(--fg)]">Новая подзадача</h2>
+            <h2 className="text-lg font-semibold text-[var(--fg)]">
+              {editingSubtask ? 'Редактировать подзадачу' : 'Новая подзадача'}
+            </h2>
             <button
               type="button"
               onClick={handleClose}
@@ -85,7 +116,7 @@ export default function SubtaskCreateModal({ isOpen, onAdd, onClose }: SubtaskCr
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+                onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                 placeholder="Название подзадачи"
                 className="input w-full"
                 autoFocus
@@ -101,16 +132,16 @@ export default function SubtaskCreateModal({ isOpen, onAdd, onClose }: SubtaskCr
                 className="input w-full resize-none"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
               <div>
                 <label className="flex items-center gap-1 text-xs font-medium text-[var(--fg-muted)] mb-1.5">
                   🪙 Монеты
                 </label>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setCoinReward((v) => Math.max(0, v - 5))}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
                   >
                     −
                   </button>
@@ -119,12 +150,12 @@ export default function SubtaskCreateModal({ isOpen, onAdd, onClose }: SubtaskCr
                     min={0}
                     value={coinReward}
                     onChange={(e) => setCoinReward(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                    className="input flex-1 h-9 text-sm text-center"
+                    className="input flex-1 h-10 text-center"
                   />
                   <button
                     type="button"
                     onClick={() => setCoinReward((v) => v + 5)}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors"
                   >
                     +
                   </button>
@@ -134,11 +165,11 @@ export default function SubtaskCreateModal({ isOpen, onAdd, onClose }: SubtaskCr
                 <label className="flex items-center gap-1 text-xs font-medium text-[var(--fg-muted)] mb-1.5">
                   <Zap className="h-3 w-3 text-purple-500" /> XP
                 </label>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setXpReward((v) => Math.max(0, v - 5))}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
                   >
                     −
                   </button>
@@ -147,12 +178,12 @@ export default function SubtaskCreateModal({ isOpen, onAdd, onClose }: SubtaskCr
                     min={0}
                     value={xpReward}
                     onChange={(e) => setXpReward(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                    className="input flex-1 h-9 text-sm text-center"
+                    className="input flex-1 h-10 text-center"
                   />
                   <button
                     type="button"
                     onClick={() => setXpReward((v) => v + 5)}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors"
                   >
                     +
                   </button>
@@ -166,12 +197,21 @@ export default function SubtaskCreateModal({ isOpen, onAdd, onClose }: SubtaskCr
           <div className="px-5 pb-5 flex gap-2">
             <button
               type="button"
-              onClick={handleAdd}
+              onClick={handleSubmit}
               disabled={!title.trim()}
               className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              <Plus className="h-4 w-4" />
-              Добавить
+              {editingSubtask ? (
+                <>
+                  <Save className="h-4 w-4" />
+                  Сохранить
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4" />
+                  Добавить
+                </>
+              )}
             </button>
             <button
               type="button"

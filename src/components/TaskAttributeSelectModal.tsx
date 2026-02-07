@@ -73,7 +73,7 @@ export default function TaskAttributeSelectModal({
         role="presentation"
         onClick={handleClose}
         className={cn(
-          'fixed inset-0 z-[60] bg-black/50 transition-opacity duration-300',
+          'fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm transition-opacity duration-300',
           animatedOpen ? 'opacity-100' : 'opacity-0'
         )}
       />
@@ -82,27 +82,31 @@ export default function TaskAttributeSelectModal({
         aria-modal="true"
         aria-label="Выбор атрибута и сложности"
         className={cn(
-          'fixed inset-x-0 bottom-0 z-[70] rounded-t-2xl bg-white dark:bg-[var(--surface-overlay)] shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transition-transform duration-300 ease-out flex flex-col',
-          'max-h-[85vh]',
-          animatedOpen ? 'translate-y-0' : 'translate-y-full'
+          'fixed inset-0 z-[90] flex items-center justify-center p-4 pointer-events-none'
         )}
       >
-        <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-[var(--border)] shrink-0">
-          <h2 className="text-lg font-semibold text-[var(--fg)]">Атрибуты и сложность</h2>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="icon-btn h-9 w-9 shrink-0 rounded-full p-0 text-[var(--fg-muted)] hover:text-[var(--fg)]"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="px-4 pb-6 pt-4 overflow-y-auto space-y-6 flex-1">
+        <div
+          className={cn(
+            'pointer-events-auto w-full max-w-md rounded-2xl bg-white dark:bg-[var(--surface-overlay)] shadow-2xl transition-all duration-300 ease-out overflow-hidden flex flex-col max-h-[80vh]',
+            animatedOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4'
+          )}
+        >
+          <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-[var(--border)] shrink-0">
+            <h2 className="text-base font-semibold text-[var(--fg)]">Атрибуты и сложность</h2>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="icon-btn h-8 w-8 shrink-0 rounded-full p-0 text-[var(--fg-muted)] hover:text-[var(--fg)]"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="px-4 pb-4 pt-3 overflow-y-auto space-y-4 flex-1">
           {/* Атрибуты - мультивыбор */}
           <div>
             <h3 className="text-sm font-semibold text-[var(--fg)] mb-1">Атрибуты</h3>
-            <p className="text-xs text-[var(--fg-muted)] mb-3">XP начисляются во все выбранные атрибуты</p>
-            <div className="space-y-2">
+            <p className="text-[11px] text-[var(--fg-muted)] mb-2">XP начисляются во все выбранные атрибуты</p>
+            <div className="space-y-1.5">
               {attributes.map((attr) => {
                 const isSelected = selectedAttributeIds.includes(attr.id)
                 return (
@@ -111,25 +115,25 @@ export default function TaskAttributeSelectModal({
                     type="button"
                     onClick={() => toggleAttribute(attr.id)}
                     className={cn(
-                      'flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all',
+                      'flex w-full items-center gap-2.5 rounded-lg border p-2.5 text-left transition-all',
                       isSelected
                         ? 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-lg shadow-[var(--accent)]/10'
                         : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-elevated)]'
                     )}
                   >
                     <div
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-base"
                       style={{ backgroundColor: `${attr.color}20` }}
                     >
                       {attr.icon}
                     </div>
-                    <div className="flex-1">
-                      <span className="font-medium text-[var(--fg)]">{attr.name}</span>
-                      <span className="ml-2 text-sm text-[var(--fg-muted)]">Ур. {attr.level}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium text-[var(--fg)]">{attr.name}</span>
+                      <span className="ml-1.5 text-xs text-[var(--fg-muted)]">Ур. {attr.level}</span>
                     </div>
                     {isSelected && (
-                      <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-[var(--accent)] text-white">
-                        <Check className="h-4 w-4" />
+                      <div className="flex h-5 w-5 items-center justify-center rounded-lg bg-[var(--accent)] text-white">
+                        <Check className="h-3.5 w-3.5" />
                       </div>
                     )}
                   </button>
@@ -140,8 +144,8 @@ export default function TaskAttributeSelectModal({
 
           {/* Сложность с настройкой XP */}
           <div>
-            <h3 className="text-sm font-semibold text-[var(--fg)] mb-3">Сложность</h3>
-            <div className="grid grid-cols-2 gap-2">
+            <h3 className="text-sm font-semibold text-[var(--fg)] mb-2">Сложность</h3>
+            <div className="grid grid-cols-2 gap-1.5">
               {DIFFICULTY_OPTIONS.map((opt) => {
                 const optXp = settings.taskDifficultyXp?.[opt.value] ?? opt.defaultXp
                 return (
@@ -154,15 +158,15 @@ export default function TaskAttributeSelectModal({
                       onChangeCustomXp?.(null)
                     }}
                     className={cn(
-                      'flex flex-col items-center gap-2 rounded-xl border p-4 transition-all',
+                      'flex flex-col items-center gap-1.5 rounded-lg border p-2.5 transition-all',
                       selectedDifficulty === opt.value
                         ? 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-lg shadow-[var(--accent)]/10'
                         : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-elevated)]'
                     )}
                   >
-                    <span className="text-sm font-semibold text-[var(--fg)]">{opt.label}</span>
-                    <div className="flex items-center gap-1 rounded-lg bg-purple-500/10 px-2.5 py-1 text-xs font-medium text-purple-500">
-                      <Zap className="h-3 w-3" />
+                    <span className="text-xs font-semibold text-[var(--fg)]">{opt.label}</span>
+                    <div className="flex items-center gap-0.5 rounded-lg bg-purple-500/10 px-2 py-0.5 text-[10px] font-medium text-purple-500">
+                      <Zap className="h-2.5 w-2.5" />
                       {optXp} XP
                     </div>
                   </button>
@@ -171,15 +175,15 @@ export default function TaskAttributeSelectModal({
             </div>
 
             {/* Custom XP override */}
-            <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-              <label className="block text-xs font-medium text-[var(--fg-muted)] mb-2">
+            <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+              <label className="block text-[11px] font-medium text-[var(--fg-muted)] mb-1.5">
                 Свой XP (переопределить сложность)
               </label>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => onChangeCustomXp?.(Math.max(0, (customXp ?? difficultyXp) - 10))}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-sm text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
                 >
                   −
                 </button>
@@ -196,12 +200,12 @@ export default function TaskAttributeSelectModal({
                       onChangeCustomXp?.(Math.max(0, parseInt(val, 10) || 0))
                     }
                   }}
-                  className="input flex-1 text-center h-9"
+                  className="input flex-1 text-center h-8 text-sm"
                 />
                 <button
                   type="button"
                   onClick={() => onChangeCustomXp?.((customXp ?? difficultyXp) + 10)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-sm text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors"
                 >
                   +
                 </button>
@@ -210,7 +214,7 @@ export default function TaskAttributeSelectModal({
                 <button
                   type="button"
                   onClick={() => onChangeCustomXp?.(null)}
-                  className="mt-2 text-xs text-[var(--accent)] hover:underline"
+                  className="mt-1.5 text-[10px] text-[var(--accent)] hover:underline"
                 >
                   Сбросить к значению сложности ({difficultyXp} XP)
                 </button>
@@ -218,18 +222,19 @@ export default function TaskAttributeSelectModal({
             </div>
 
             {/* Summary */}
-            <div className="mt-3 flex items-center gap-2 rounded-xl bg-purple-500/10 px-4 py-3">
-              <Zap className="h-4 w-4 text-purple-500" />
+            <div className="mt-2 flex items-center gap-2 rounded-lg bg-purple-500/10 px-3 py-2">
+              <Zap className="h-3.5 w-3.5 text-purple-500" />
               <span className="text-sm font-semibold text-purple-500">
                 {effectiveXp} XP
               </span>
               {selectedAttributeIds.length > 0 && (
-                <span className="text-xs text-purple-400">
+                <span className="text-[11px] text-purple-400">
                   → {selectedAttributeIds.length} {selectedAttributeIds.length === 1 ? 'атрибут' : selectedAttributeIds.length < 5 ? 'атрибута' : 'атрибутов'}
                 </span>
               )}
             </div>
           </div>
+        </div>
         </div>
       </div>
     </>

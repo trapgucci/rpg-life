@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, X, ChevronRight, Calendar, BarChart3, Gift, Hash, Target, Construction, ListPlus, Zap, Coins, Folder } from 'lucide-react'
+import { Plus, X, ChevronRight, Calendar, BarChart3, Gift, Hash, Target, Construction, ListPlus, Zap, Coins, Folder, Edit2 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRecurrence, SubtaskItem, TaskDifficulty, AttributeId } from '../types/domain'
 import { useRpgStore } from '../store/useRpgStore'
@@ -47,6 +47,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   const [selectedGroupId, setSelectedGroupId] = useState<TaskGroupId | null>(defaultGroupId)
   const [subtasks, setSubtasks] = useState<{ id: string; title: string; description: string; coinReward: number; xpReward: number }[]>([])
   const [showSubtaskModal, setShowSubtaskModal] = useState(false)
+  const [editingSubtask, setEditingSubtask] = useState<{ id: string; title: string; description: string; coinReward: number; xpReward: number } | null>(null)
   const [showRepeat, setShowRepeat] = useState(false)
   const [recurrence, setRecurrence] = useState<TaskRecurrence>('once')
   const [deadlineAt, setDeadlineAt] = useState<string>('')
@@ -73,8 +74,22 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
     setSubtasks((prev) => [...prev, { id: crypto.randomUUID(), ...sub }])
   }
 
+  const editSubtask = (sub: { id: string; title: string; description: string; coinReward: number; xpReward: number }) => {
+    setSubtasks((prev) => prev.map((s) => s.id === sub.id ? sub : s))
+  }
+
   const removeSubtask = (id: string) => {
     setSubtasks((prev) => prev.filter((s) => s.id !== id))
+  }
+
+  const openEditSubtask = (subtask: { id: string; title: string; description: string; coinReward: number; xpReward: number }) => {
+    setEditingSubtask(subtask)
+    setShowSubtaskModal(true)
+  }
+
+  const closeSubtaskModal = () => {
+    setShowSubtaskModal(false)
+    setEditingSubtask(null)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -274,8 +289,17 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                   )}
                   <button
                     type="button"
+                    onClick={() => openEditSubtask(s)}
+                    className="icon-btn h-6 w-6 shrink-0 p-0"
+                    title="Редактировать"
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => removeSubtask(s.id)}
                     className="icon-btn icon-btn-danger h-6 w-6 shrink-0 p-0"
+                    title="Удалить"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -603,8 +627,10 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
     />
     <SubtaskCreateModal
       isOpen={showSubtaskModal}
+      editingSubtask={editingSubtask}
       onAdd={addSubtask}
-      onClose={() => setShowSubtaskModal(false)}
+      onEdit={editSubtask}
+      onClose={closeSubtaskModal}
     />
     </>
   )
