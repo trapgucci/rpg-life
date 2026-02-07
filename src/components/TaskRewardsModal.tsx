@@ -50,7 +50,7 @@ export default function TaskRewardsModal({
         role="presentation"
         onClick={handleClose}
         className={cn(
-          'fixed inset-0 z-[60] bg-black/50 transition-opacity duration-300',
+          'fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm transition-opacity duration-300',
           animatedOpen ? 'opacity-100' : 'opacity-0'
         )}
       />
@@ -59,21 +59,26 @@ export default function TaskRewardsModal({
         aria-modal="true"
         aria-label="Настройка вознаграждений"
         className={cn(
-          'fixed bottom-0 left-0 right-0 z-[70] rounded-t-2xl bg-white dark:bg-[var(--surface-overlay)] shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transition-transform duration-300 ease-out max-h-[70vh] overflow-hidden flex flex-col',
-          animatedOpen ? 'translate-y-0' : 'translate-y-full'
+          'fixed inset-0 z-[90] flex items-center justify-center p-4 pointer-events-none'
         )}
       >
-        <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-[var(--border)]">
-          <h2 className="text-lg font-semibold text-[var(--fg)]">Вознаграждения</h2>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="icon-btn h-9 w-9 shrink-0 rounded-full p-0 text-[var(--fg-muted)] hover:text-[var(--fg)]"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="px-4 pb-6 pt-4 overflow-y-auto space-y-6">
+        <div
+          className={cn(
+            'pointer-events-auto w-full max-w-md rounded-2xl bg-white dark:bg-[var(--surface-overlay)] shadow-2xl transition-all duration-300 ease-out overflow-hidden flex flex-col max-h-[80vh]',
+            animatedOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4'
+          )}
+        >
+          <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-[var(--border)]">
+            <h2 className="text-lg font-semibold text-[var(--fg)]">Вознаграждения</h2>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="icon-btn h-9 w-9 shrink-0 rounded-full p-0 text-[var(--fg-muted)] hover:text-[var(--fg)]"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="px-5 pb-5 pt-4 overflow-y-auto space-y-6">
           {/* Деньги */}
           <div>
             <h3 className="text-sm font-semibold text-[var(--fg)] mb-3 flex items-center gap-2">
@@ -187,6 +192,7 @@ export default function TaskRewardsModal({
               )}
             </div>
           </div>
+        </div>
         </div>
       </div>
     </>

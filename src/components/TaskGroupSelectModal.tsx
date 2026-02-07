@@ -50,7 +50,7 @@ export default function TaskGroupSelectModal({
         role="presentation"
         onClick={handleClose}
         className={cn(
-          'fixed inset-0 z-[60] bg-black/50 transition-opacity duration-300',
+          'fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm transition-opacity duration-300',
           animatedOpen ? 'opacity-100' : 'opacity-0'
         )}
       />
@@ -59,39 +59,44 @@ export default function TaskGroupSelectModal({
         aria-modal="true"
         aria-label="Выбор группы задачи"
         className={cn(
-          'fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl bg-white dark:bg-[var(--surface-overlay)] shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transition-transform duration-300 ease-out max-h-[70vh] overflow-hidden flex flex-col',
-          animatedOpen ? 'translate-y-0' : 'translate-y-full'
+          'fixed inset-0 z-[110] flex items-center justify-center p-4 pointer-events-none'
         )}
       >
-        <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-[var(--border)]">
-          <h2 className="text-lg font-semibold text-[var(--fg)]">Выбрать группу</h2>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="icon-btn h-9 w-9 shrink-0 rounded-full p-0 text-[var(--fg-muted)] hover:text-[var(--fg)]"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="px-4 pb-6 pt-4 overflow-y-auto">
-          <div className="space-y-2">
+        <div
+          className={cn(
+            'pointer-events-auto w-full max-w-sm rounded-2xl bg-white dark:bg-[var(--surface-overlay)] shadow-2xl transition-all duration-300 ease-out overflow-hidden flex flex-col max-h-[80vh]',
+            animatedOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4'
+          )}
+        >
+          <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-[var(--border)]">
+            <h2 className="text-lg font-semibold text-[var(--fg)]">Выбрать группу</h2>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="icon-btn h-9 w-9 shrink-0 rounded-full p-0 text-[var(--fg-muted)] hover:text-[var(--fg)]"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="px-5 pb-5 pt-4 overflow-y-auto">
+            <div className="space-y-2">
             {/* Без группы */}
             <button
               type="button"
               onClick={() => handleSelect(null)}
               className={cn(
-                'flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-all',
+                'flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all',
                 selectedGroupId === null
                   ? 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-lg shadow-[var(--accent)]/10'
                   : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-elevated)]'
               )}
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)]">
-                <Folder className="h-5 w-5 text-[var(--fg-muted)]" />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)]">
+                <Folder className="h-4 w-4 text-[var(--fg-muted)]" />
               </div>
-              <span className="flex-1 font-medium text-[var(--fg)]">Без группы</span>
+              <span className="flex-1 text-sm font-medium text-[var(--fg)]">Без группы</span>
               {selectedGroupId === null && (
-                <Check className="h-5 w-5 text-[var(--accent)]" />
+                <Check className="h-4 w-4 text-[var(--accent)] shrink-0" />
               )}
             </button>
 
@@ -102,18 +107,18 @@ export default function TaskGroupSelectModal({
                 type="button"
                 onClick={() => handleSelect(group.id)}
                 className={cn(
-                  'flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-all',
+                  'flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all',
                   selectedGroupId === group.id
                     ? 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-lg shadow-[var(--accent)]/10'
                     : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-elevated)]'
                 )}
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--accent-subtle)]">
-                  <Folder className="h-5 w-5 text-[var(--accent)]" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--accent-subtle)]">
+                  <Folder className="h-4 w-4 text-[var(--accent)]" />
                 </div>
-                <span className="flex-1 font-medium text-[var(--fg)]">{group.name}</span>
+                <span className="flex-1 text-sm font-medium text-[var(--fg)]">{group.name}</span>
                 {selectedGroupId === group.id && (
-                  <Check className="h-5 w-5 text-[var(--accent)]" />
+                  <Check className="h-4 w-4 text-[var(--accent)] shrink-0" />
                 )}
               </button>
             ))}
