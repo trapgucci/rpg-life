@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
-import { X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
 import type { Habit } from '../types/domain'
+import Modal from './Modal'
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 
@@ -105,35 +105,19 @@ export default function HabitCalendarModal({ habit, onClose }: HabitCalendarModa
     })
   }
 
-  const modalContent = (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-      style={{
-        background: 'rgba(0, 0, 0, 0.5)',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
-      }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Календарь привычки"
+  return (
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      size="md"
+      title={`Календарь: ${habit.title}`}
+      showCloseButton
+      closeOnBackdropClick
+      closeOnEscape
+      zIndex={9999}
+      className="max-h-[calc(100vh-2rem)] overflow-y-auto"
     >
-      <div
-        className={cn(
-          'w-full max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl p-6',
-          'border border-[var(--border)] shadow-[var(--shadow-lg)]',
-          'bg-[var(--surface-overlay)] backdrop-blur-[24px] saturate-[180%]'
-        )}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-[var(--fg)] truncate pr-2">
-            Календарь: {habit.title}
-          </h2>
-          <button type="button" onClick={onClose} className="icon-btn shrink-0">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+      <div className="p-6">
 
         {/* Навигация по месяцу и году — в стиле сайта */}
         <div className="flex items-center justify-between gap-3 mb-4 rounded-xl bg-[var(--surface)]/80 p-2 border border-[var(--border)]">
@@ -236,14 +220,6 @@ export default function HabitCalendarModal({ habit, onClose }: HabitCalendarModa
           </span>
         </div>
       </div>
-    </div>
+    </Modal>
   )
-
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
-  }, [])
-
-  return createPortal(modalContent, document.body)
 }

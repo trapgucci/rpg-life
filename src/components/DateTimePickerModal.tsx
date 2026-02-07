@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { X, Calendar, Clock, Trash2, Check } from 'lucide-react'
+import { Calendar, Clock, Trash2, Check } from 'lucide-react'
+import Modal from './Modal'
 
 interface DateTimePickerModalProps {
   isOpen: boolean
@@ -98,38 +99,38 @@ export default function DateTimePickerModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="relative z-10 w-full max-w-md mx-4">
-        <div className="bg-white dark:bg-[var(--surface)] rounded-2xl shadow-2xl border border-[var(--border)] overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--accent-subtle)]">
-                <Calendar className="h-5 w-5 text-[var(--accent)]" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-[var(--fg)]">{title}</h2>
-                <p className="text-xs text-[var(--fg-muted)] mt-0.5">{description}</p>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="icon-btn h-8 w-8 p-0 shrink-0"
-              title="Закрыть"
-            >
-              <X className="h-5 w-5" />
-            </button>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="md"
+      showCloseButton={false}
+      closeOnBackdropClick
+      closeOnEscape
+    >
+      {/* Custom Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--accent-subtle)]">
+            <Calendar className="h-5 w-5 text-[var(--accent)]" />
           </div>
+          <div>
+            <h2 className="text-lg font-bold text-[var(--fg)]">{title}</h2>
+            <p className="text-xs text-[var(--fg-muted)] mt-0.5">{description}</p>
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          className="icon-btn h-8 w-8 p-0 shrink-0"
+          title="Закрыть"
+        >
+          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+      </div>
 
-          {/* Content */}
-          <div className="p-6 space-y-6">
+      {/* Content */}
+      <div className="p-6 space-y-6">
             {/* Quick Select */}
             <div>
               <label className="block text-sm font-semibold text-[var(--fg)] mb-3">
@@ -218,32 +219,30 @@ export default function DateTimePickerModal({
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Footer */}
-          <div className="flex gap-3 px-6 py-4 border-t border-[var(--border)] bg-[var(--surface-elevated)]">
-            {value && (
-              <button
-                type="button"
-                onClick={handleClear}
-                className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] px-4 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10"
-              >
-                <Trash2 className="h-4 w-4" />
-                Удалить
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={!selectedDate}
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Check className="h-4 w-4" />
-              Сохранить
-            </button>
-          </div>
-        </div>
       </div>
-    </div>
+
+      {/* Footer */}
+      <div className="flex gap-3 px-6 py-4 border-t border-[var(--border)] bg-[var(--surface-elevated)]">
+        {value && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] px-4 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10"
+          >
+            <Trash2 className="h-4 w-4" />
+            Удалить
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={!selectedDate}
+          className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Check className="h-4 w-4" />
+          Сохранить
+        </button>
+      </div>
+    </Modal>
   )
 }

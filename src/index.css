@@ -47,6 +47,10 @@
   --gem: #8b5cf6;
   --gem-subtle: rgba(139, 92, 246, 0.15);
   
+  /* Modal z-index */
+  --modal-backdrop-z: 9998;
+  --modal-content-z: 9999;
+
   /* Rarity colors */
   --rarity-common: #9ca3af;
   --rarity-uncommon: #22c55e;
@@ -638,6 +642,47 @@ html.dark,
     -webkit-backdrop-filter: blur(24px) saturate(180%);
     border: 1px solid var(--border);
     box-shadow: var(--shadow-lg);
+  }
+
+  /* Modal animations */
+  @keyframes modal-backdrop-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes modal-content-slide-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(1rem);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  @keyframes modal-backdrop-fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes modal-content-slide-out {
+    from {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.95) translateY(1rem);
+    }
   }
 
   /* Stat cards */
