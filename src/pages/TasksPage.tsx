@@ -108,16 +108,16 @@ export default function TasksPage() {
 
   const countNoGroup = taskCountByGroup.get(null) ?? 0
 
-  // Режим «Новая задача»: форма на всю зелёную область, эффект джинна снизу
+  // Режим «Новая задача»: форма с красивой анимацией появления
   if (showForm) {
     return (
-      <div 
+      <div
         className={cn(
-          "flex h-full min-h-0 flex-col origin-bottom",
-          "transition-all duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
-          formVisible 
-            ? "opacity-100 translate-y-0 scale-y-100" 
-            : "opacity-0 translate-y-full scale-y-95"
+          "flex h-full min-h-0 flex-col",
+          "transition-all duration-500 ease-out",
+          formVisible
+            ? "opacity-100 translate-y-0 scale-100"
+            : "opacity-0 translate-y-8 scale-95"
         )}
       >
         <div className="glass-card mb-4 flex shrink-0 items-center justify-between rounded-2xl px-4 py-3">
