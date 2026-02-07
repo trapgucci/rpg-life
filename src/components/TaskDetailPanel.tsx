@@ -394,22 +394,22 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
             </div>
           ) : (
             <>
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <div className="flex items-center gap-3 mb-2 min-w-0">
                   {task.isCompleted && (
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 text-white shrink-0">
                       <Check className="h-5 w-5" />
                     </div>
                   )}
                   <h2 className={cn(
-                    'text-xl font-bold text-[var(--fg)]',
+                    'text-xl font-bold text-[var(--fg)] break-words min-w-0',
                     task.isCompleted && 'line-through opacity-60'
                   )}>
                     {task.title}
                   </h2>
                 </div>
                 {task.notes && (
-                  <p className="text-[var(--fg-muted)] leading-relaxed">{task.notes}</p>
+                  <p className="text-[var(--fg-muted)] leading-relaxed break-words overflow-hidden">{task.notes}</p>
                 )}
               </div>
               <div className="flex gap-1 shrink-0">
@@ -443,29 +443,23 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
           <>
             {/* Task badges */}
             <div className="flex flex-wrap gap-2 mb-6">
-              <span
-                className="rounded-xl px-3 py-1.5 text-sm font-medium"
-                style={{ backgroundColor: `${diffColor}15`, color: diffColor }}
-              >
-                {DIFFICULTY_LABELS[task.difficulty]}
-              </span>
-              <span className="rounded-xl bg-[var(--surface)] px-3 py-1.5 text-sm font-medium text-[var(--fg-muted)]">
-                <Clock className="h-3.5 w-3.5 inline mr-1" />
-                {RECURRENCE_LABELS[task.recurrence]}
-              </span>
               {taskAttrs.map((a) => a && (
                 <span
                   key={a.id}
-                  className="rounded-xl px-3 py-1.5 text-sm font-medium"
-                  style={{ backgroundColor: `${a.color}15`, color: a.color }}
+                  className="rounded-xl px-3 py-1.5 text-sm font-medium border-2"
+                  style={{ backgroundColor: `${a.color}15`, color: a.color, borderColor: `${a.color}50` }}
                 >
                   {a.icon} {a.name}
                 </span>
               ))}
+              <span className="rounded-xl bg-blue-500/15 px-3 py-1.5 text-sm font-medium text-blue-500 border-2 border-blue-500/50">
+                <Clock className="h-3.5 w-3.5 inline mr-1" />
+                {RECURRENCE_LABELS[task.recurrence]}
+              </span>
               {deadlineAt != null && (
                 <span className={cn(
-                  'rounded-xl px-3 py-1.5 text-sm font-medium',
-                  isPastDeadline ? 'bg-red-500/10 text-red-500' : 'bg-[var(--surface)] text-[var(--fg-muted)]'
+                  'rounded-xl px-3 py-1.5 text-sm font-medium border-2',
+                  isPastDeadline ? 'bg-red-500/10 text-red-500 border-red-500/50' : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)]'
                 )}>
                   <Clock className="h-3.5 w-3.5 inline mr-1" />
                   Дедлайн: {new Date(deadlineAt).toLocaleString('ru-RU')}
@@ -597,7 +591,13 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   <button
                     type="button"
                     onClick={() => incrementCounter(task.id)}
-                    className="flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-200 bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 hover:scale-110 active:scale-95"
+                    disabled={task.current >= task.target}
+                    className={cn(
+                      'flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-200',
+                      task.current >= task.target
+                        ? 'bg-[var(--surface)] text-[var(--fg-muted)]'
+                        : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 hover:scale-110 active:scale-95'
+                    )}
                   >
                     <Plus className="h-6 w-6" />
                   </button>
@@ -796,29 +796,20 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
       {/* Action buttons - fixed at bottom */}
       {!isEditing && (
         <div className="mt-4 flex gap-3 shrink-0">
-          {canComplete && (
+          {!task.isCompleted && (
             <button
               type="button"
               onClick={() => completeTask(task.id)}
+              disabled={!canComplete}
               className={cn(
-                'flex-1 flex items-center justify-center gap-2 rounded-2xl py-4 font-semibold text-white transition-all duration-200',
-                'bg-gradient-to-r from-emerald-500 to-green-600',
-                'shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40',
-                'hover:scale-[1.02] active:scale-[0.98]'
+                'flex-1 flex items-center justify-center gap-2 rounded-2xl py-4 font-semibold transition-all duration-200',
+                canComplete
+                  ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98]'
+                  : 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed opacity-50'
               )}
             >
               <Check className="h-5 w-5" />
               Выполнить
-            </button>
-          )}
-          {canComplete && (
-            <button
-              type="button"
-              onClick={() => skipTask(task.id)}
-              className="btn-secondary flex items-center gap-2"
-            >
-              <SkipForward className="h-4 w-4" />
-              Пропустить
             </button>
           )}
           {task.isCompleted && (

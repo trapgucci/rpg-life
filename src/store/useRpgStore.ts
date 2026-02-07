@@ -553,6 +553,8 @@ export const useRpgStore = create<RpgStoreState>()(
           if (task.isCompleted) return false
           const deadlineAt = task.deadlineAt ?? null
           if (deadlineAt != null && now() > deadlineAt) return false
+          // For counter tasks, can only complete when current >= target
+          if (task.kind === 'counter' && task.current < task.target) return false
           return true
         },
 
@@ -644,16 +646,12 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         incrementCounter: (id) => {
-          const { tasks, completeTask } = get()
+          const { tasks } = get()
           const task = tasks.find((t) => t.id === id)
           if (!task || task.kind !== 'counter' || task.isCompleted) return
-          
-          const newCurrent = task.current + 1
-          if (newCurrent >= task.target) {
-            completeTask(id)
-          } else {
-            get().updateTask(id, (t) => t.kind === 'counter' ? { ...t, current: newCurrent } : t)
-          }
+
+          const newCurrent = Math.min(task.target, task.current + 1)
+          get().updateTask(id, (t) => t.kind === 'counter' ? { ...t, current: newCurrent } : t)
         },
 
         decrementCounter: (id) => {
