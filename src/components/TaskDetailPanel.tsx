@@ -295,20 +295,20 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                           {getSubtaskEffectiveXp(subtask) > 0 && (
                             <span
                               className={cn(
-                                "inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold border",
-                                (subtask.difficulty ?? 'medium') === 'easy' && 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500',
-                                (subtask.difficulty ?? 'medium') === 'medium' && 'bg-blue-500/10 border-blue-500/30 text-blue-500',
-                                (subtask.difficulty ?? 'medium') === 'hard' && 'bg-orange-500/10 border-orange-500/30 text-orange-500',
-                                (subtask.difficulty ?? 'medium') === 'veryHard' && 'bg-red-500/10 border-red-500/30 text-red-500'
+                                "inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold border-2",
+                                (subtask.difficulty ?? 'medium') === 'easy' && 'bg-emerald-500/15 border-emerald-400/50 text-emerald-400',
+                                (subtask.difficulty ?? 'medium') === 'medium' && 'bg-blue-500/15 border-blue-400/50 text-blue-400',
+                                (subtask.difficulty ?? 'medium') === 'hard' && 'bg-orange-500/15 border-orange-400/50 text-orange-400',
+                                (subtask.difficulty ?? 'medium') === 'veryHard' && 'bg-red-500/15 border-red-400/50 text-red-400'
                               )}
                               style={{
                                 boxShadow: (subtask.difficulty ?? 'medium') === 'easy'
-                                  ? '0 0 8px rgba(16, 185, 129, 0.15)'
+                                  ? '0 0 10px rgba(16, 185, 129, 0.25)'
                                   : (subtask.difficulty ?? 'medium') === 'medium'
-                                  ? '0 0 8px rgba(59, 130, 246, 0.15)'
+                                  ? '0 0 10px rgba(59, 130, 246, 0.25)'
                                   : (subtask.difficulty ?? 'medium') === 'hard'
-                                  ? '0 0 8px rgba(249, 115, 22, 0.15)'
-                                  : '0 0 8px rgba(239, 68, 68, 0.15)'
+                                  ? '0 0 10px rgba(251, 146, 60, 0.25)'
+                                  : '0 0 10px rgba(239, 68, 68, 0.25)'
                               }}
                             >
                               <Zap className="h-3.5 w-3.5" />{getSubtaskEffectiveXp(subtask)}
@@ -316,18 +316,18 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                           )}
                             {(subtask.coinReward ?? 0) > 0 && (
                               <span
-                                className="inline-flex items-center gap-1 rounded-lg bg-amber-500/20 px-2 py-1 text-xs font-semibold text-amber-500 border border-amber-500/40"
-                                style={{ boxShadow: '0 0 8px rgba(245, 158, 11, 0.2)' }}
+                                className="inline-flex items-center gap-1 rounded-lg bg-amber-500/15 px-2 py-1 text-xs font-semibold text-amber-400 border-2 border-amber-400/50"
+                                style={{ boxShadow: '0 0 10px rgba(251, 191, 36, 0.25)' }}
                               >
                                 <Coins className="h-3.5 w-3.5" />{subtask.coinReward}
                               </span>
                             )}
                             {(subtask.gemReward ?? 0) > 0 && (
                               <span
-                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-cyan-400 border border-cyan-400/50"
+                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-cyan-300 border-2 border-cyan-400/60"
                                 style={{
-                                  background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.25) 0%, rgba(34, 211, 238, 0.25) 100%)',
-                                  boxShadow: '0 0 10px rgba(6, 182, 212, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.15)',
+                                  background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(34, 211, 238, 0.2) 100%)',
+                                  boxShadow: '0 0 12px rgba(6, 182, 212, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.1)',
                                 }}
                               >
                                 <Gem className="h-3.5 w-3.5" />{subtask.gemReward}
@@ -481,38 +481,38 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 {/* XP reward - цвет зависит от сложности */}
                 <div
                   className={cn(
-                    "flex items-center gap-3 rounded-xl p-3 border",
-                    task.difficulty === 'easy' && 'bg-emerald-500/10 border-emerald-500/30',
-                    task.difficulty === 'medium' && 'bg-blue-500/10 border-blue-500/30',
-                    task.difficulty === 'hard' && 'bg-orange-500/10 border-orange-500/30',
-                    task.difficulty === 'veryHard' && 'bg-red-500/10 border-red-500/30'
+                    "flex items-center gap-3 rounded-xl p-3 border-2",
+                    task.difficulty === 'easy' && 'bg-emerald-500/15 border-emerald-400/50',
+                    task.difficulty === 'medium' && 'bg-blue-500/15 border-blue-400/50',
+                    task.difficulty === 'hard' && 'bg-orange-500/15 border-orange-400/50',
+                    task.difficulty === 'veryHard' && 'bg-red-500/15 border-red-400/50'
                   )}
                   style={{
                     boxShadow: task.difficulty === 'easy'
-                      ? '0 0 10px rgba(16, 185, 129, 0.2)'
+                      ? '0 0 12px rgba(16, 185, 129, 0.3), 0 0 20px rgba(16, 185, 129, 0.1)'
                       : task.difficulty === 'medium'
-                      ? '0 0 10px rgba(59, 130, 246, 0.2)'
+                      ? '0 0 12px rgba(59, 130, 246, 0.3), 0 0 20px rgba(59, 130, 246, 0.1)'
                       : task.difficulty === 'hard'
-                      ? '0 0 10px rgba(249, 115, 22, 0.2)'
-                      : '0 0 10px rgba(239, 68, 68, 0.2)'
+                      ? '0 0 12px rgba(251, 146, 60, 0.3), 0 0 20px rgba(251, 146, 60, 0.1)'
+                      : '0 0 12px rgba(239, 68, 68, 0.3), 0 0 20px rgba(239, 68, 68, 0.1)'
                   }}
                 >
                   <div
                     className={cn(
                       "flex h-10 w-10 items-center justify-center rounded-lg",
-                      task.difficulty === 'easy' && 'bg-emerald-500/20',
-                      task.difficulty === 'medium' && 'bg-blue-500/20',
-                      task.difficulty === 'hard' && 'bg-orange-500/20',
-                      task.difficulty === 'veryHard' && 'bg-red-500/20'
+                      task.difficulty === 'easy' && 'bg-emerald-500/25',
+                      task.difficulty === 'medium' && 'bg-blue-500/25',
+                      task.difficulty === 'hard' && 'bg-orange-500/25',
+                      task.difficulty === 'veryHard' && 'bg-red-500/25'
                     )}
                   >
                     <Zap
                       className={cn(
                         "h-5 w-5",
-                        task.difficulty === 'easy' && 'text-emerald-500',
-                        task.difficulty === 'medium' && 'text-blue-500',
-                        task.difficulty === 'hard' && 'text-orange-500',
-                        task.difficulty === 'veryHard' && 'text-red-500'
+                        task.difficulty === 'easy' && 'text-emerald-400',
+                        task.difficulty === 'medium' && 'text-blue-400',
+                        task.difficulty === 'hard' && 'text-orange-400',
+                        task.difficulty === 'veryHard' && 'text-red-400'
                       )}
                     />
                   </div>
@@ -520,10 +520,10 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                     <p
                       className={cn(
                         "text-xl font-bold",
-                        task.difficulty === 'easy' && 'text-emerald-500',
-                        task.difficulty === 'medium' && 'text-blue-500',
-                        task.difficulty === 'hard' && 'text-orange-500',
-                        task.difficulty === 'veryHard' && 'text-red-500'
+                        task.difficulty === 'easy' && 'text-emerald-400',
+                        task.difficulty === 'medium' && 'text-blue-400',
+                        task.difficulty === 'hard' && 'text-orange-400',
+                        task.difficulty === 'veryHard' && 'text-red-400'
                       )}
                     >
                       +{xp}
@@ -534,14 +534,14 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
 
                 {/* Coins reward */}
                 <div
-                  className="flex items-center gap-3 rounded-xl bg-amber-500/20 p-3 border border-amber-500/40"
-                  style={{ boxShadow: '0 0 10px rgba(245, 158, 11, 0.25)' }}
+                  className="flex items-center gap-3 rounded-xl bg-amber-500/15 p-3 border-2 border-amber-400/50"
+                  style={{ boxShadow: '0 0 12px rgba(251, 191, 36, 0.3), 0 0 20px rgba(251, 191, 36, 0.1)' }}
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/30">
-                    <Coins className="h-5 w-5 text-amber-500" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/25">
+                    <Coins className="h-5 w-5 text-amber-400" />
                   </div>
                   <div>
-                    <p className="text-xl font-bold text-amber-500">+{coins}</p>
+                    <p className="text-xl font-bold text-amber-400">+{coins}</p>
                     <p className="text-xs text-[var(--fg-muted)]">Монет</p>
                   </div>
                 </div>
@@ -549,22 +549,22 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 {/* Gems reward */}
                 {gems > 0 && (
                   <div
-                    className="flex items-center gap-3 rounded-xl p-3 border border-cyan-400/50"
+                    className="flex items-center gap-3 rounded-xl p-3 border-2 border-cyan-400/60"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.25) 0%, rgba(34, 211, 238, 0.25) 100%)',
-                      boxShadow: '0 0 14px rgba(6, 182, 212, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.2)',
+                      background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(34, 211, 238, 0.2) 100%)',
+                      boxShadow: '0 0 16px rgba(6, 182, 212, 0.4), 0 0 24px rgba(34, 211, 238, 0.15), inset 0 2px 4px rgba(255, 255, 255, 0.1)',
                     }}
                   >
                     <div
                       className="flex h-10 w-10 items-center justify-center rounded-lg"
                       style={{
-                        background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.3) 0%, rgba(34, 211, 238, 0.3) 100%)',
+                        background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.35) 0%, rgba(34, 211, 238, 0.35) 100%)',
                       }}
                     >
-                      <Gem className="h-5 w-5 text-cyan-400" />
+                      <Gem className="h-5 w-5 text-cyan-300" />
                     </div>
                     <div>
-                      <p className="text-xl font-bold text-cyan-400">+{gems}</p>
+                      <p className="text-xl font-bold text-cyan-300">+{gems}</p>
                       <p className="text-xs text-[var(--fg-muted)]">Кристаллов</p>
                     </div>
                   </div>
@@ -700,20 +700,20 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                           {getSubtaskEffectiveXp(subtask) > 0 && (
                             <span
                               className={cn(
-                                "inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold border",
-                                (subtask.difficulty ?? 'medium') === 'easy' && 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500',
-                                (subtask.difficulty ?? 'medium') === 'medium' && 'bg-blue-500/10 border-blue-500/30 text-blue-500',
-                                (subtask.difficulty ?? 'medium') === 'hard' && 'bg-orange-500/10 border-orange-500/30 text-orange-500',
-                                (subtask.difficulty ?? 'medium') === 'veryHard' && 'bg-red-500/10 border-red-500/30 text-red-500'
+                                "inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold border-2",
+                                (subtask.difficulty ?? 'medium') === 'easy' && 'bg-emerald-500/15 border-emerald-400/50 text-emerald-400',
+                                (subtask.difficulty ?? 'medium') === 'medium' && 'bg-blue-500/15 border-blue-400/50 text-blue-400',
+                                (subtask.difficulty ?? 'medium') === 'hard' && 'bg-orange-500/15 border-orange-400/50 text-orange-400',
+                                (subtask.difficulty ?? 'medium') === 'veryHard' && 'bg-red-500/15 border-red-400/50 text-red-400'
                               )}
                               style={{
                                 boxShadow: (subtask.difficulty ?? 'medium') === 'easy'
-                                  ? '0 0 8px rgba(16, 185, 129, 0.15)'
+                                  ? '0 0 10px rgba(16, 185, 129, 0.25)'
                                   : (subtask.difficulty ?? 'medium') === 'medium'
-                                  ? '0 0 8px rgba(59, 130, 246, 0.15)'
+                                  ? '0 0 10px rgba(59, 130, 246, 0.25)'
                                   : (subtask.difficulty ?? 'medium') === 'hard'
-                                  ? '0 0 8px rgba(249, 115, 22, 0.15)'
-                                  : '0 0 8px rgba(239, 68, 68, 0.15)'
+                                  ? '0 0 10px rgba(251, 146, 60, 0.25)'
+                                  : '0 0 10px rgba(239, 68, 68, 0.25)'
                               }}
                             >
                               <Zap className="h-3.5 w-3.5" />{getSubtaskEffectiveXp(subtask)}
@@ -721,18 +721,18 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                           )}
                           {(subtask.coinReward ?? 0) > 0 && (
                             <span
-                              className="inline-flex items-center gap-1 rounded-lg bg-amber-500/20 px-2 py-1 text-xs font-semibold text-amber-500 border border-amber-500/40"
-                              style={{ boxShadow: '0 0 8px rgba(245, 158, 11, 0.2)' }}
+                              className="inline-flex items-center gap-1 rounded-lg bg-amber-500/15 px-2 py-1 text-xs font-semibold text-amber-400 border-2 border-amber-400/50"
+                              style={{ boxShadow: '0 0 10px rgba(251, 191, 36, 0.25)' }}
                             >
                               <Coins className="h-3.5 w-3.5" />{subtask.coinReward}
                             </span>
                           )}
                           {(subtask.gemReward ?? 0) > 0 && (
                             <span
-                              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-cyan-400 border border-cyan-400/50"
+                              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-cyan-300 border-2 border-cyan-400/60"
                               style={{
-                                background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.25) 0%, rgba(34, 211, 238, 0.25) 100%)',
-                                boxShadow: '0 0 10px rgba(6, 182, 212, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.15)',
+                                background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(34, 211, 238, 0.2) 100%)',
+                                boxShadow: '0 0 12px rgba(6, 182, 212, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.1)',
                               }}
                             >
                               <Gem className="h-3.5 w-3.5" />{subtask.gemReward}
