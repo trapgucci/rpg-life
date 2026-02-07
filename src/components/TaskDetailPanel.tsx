@@ -342,7 +342,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   }
 
   const editAttrNames = editAttributeIds.map((id) => attributes.find((a) => a.id === id)).filter(Boolean)
-  const editEffectiveXp = editCustomXp ?? (settings.taskDifficultyXp?.[editDifficulty] ?? 0)
+  const editEffectiveXp = editCustomXp ?? (settings.taskDifficultyXp?.[editDifficulty] ?? TASK_XP_BY_DIFFICULTY[editDifficulty])
   const getSubtaskEffectiveXp = (s: SubtaskItem) =>
     s.customXp ?? settings.taskDifficultyXp?.[s.difficulty ?? 'medium'] ?? TASK_XP_BY_DIFFICULTY[s.difficulty ?? 'medium'] ?? s.xpReward ?? 0
 
@@ -391,22 +391,60 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 <button
                   type="button"
                   onClick={() => setShowAttributeModal(true)}
-                  className="flex w-full items-center gap-3 rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] px-4 py-2 text-left transition-colors hover:bg-[var(--surface-elevated)]"
+                  className="group/attr flex w-full items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-left transition-all hover:border-[var(--accent)]/40 hover:shadow-sm"
                 >
-                  <BarChart3 className="h-4 w-4 text-[var(--accent)]" />
-                  <div className="flex-1">
-                    <p className="text-sm">
-                      {editAttrNames.length > 0
-                        ? editAttrNames.map((a) => `${a!.icon} ${a!.name}`).join(', ')
-                        : 'Без атрибута'}
-                    </p>
-                    {editAttrNames.length > 0 && (
-                      <p className="text-xs text-[var(--fg-muted)]">
-                        {editEffectiveXp} XP
-                      </p>
-                    )}
+                  <div className={cn(
+                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-300',
+                    editAttrNames.length > 0
+                      ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
+                      : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)]'
+                  )}>
+                    <BarChart3 className="h-4.5 w-4.5" />
                   </div>
-                  <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {editAttrNames.length > 0 ? (
+                        <>
+                          {editAttrNames.map((a) => (
+                            <span
+                              key={a!.id}
+                              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold border shadow-sm"
+                              style={{
+                                backgroundColor: `${a!.color}12`,
+                                color: a!.color,
+                                borderColor: `${a!.color}30`,
+                                boxShadow: `0 1px 3px ${a!.color}10`,
+                              }}
+                            >
+                              <span className="text-sm">{a!.icon}</span>
+                              {a!.name}
+                            </span>
+                          ))}
+                          <span className="text-[var(--fg-muted)] text-xs">·</span>
+                          <span
+                            className={cn(
+                              'inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold border',
+                              editCustomXp != null
+                                ? 'bg-purple-500/10 text-purple-500 border-purple-500/30'
+                                : editDifficulty === 'easy'
+                                ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                : editDifficulty === 'medium'
+                                ? 'bg-blue-500/10 text-blue-500 border-blue-500/30'
+                                : editDifficulty === 'hard'
+                                ? 'bg-orange-500/10 text-orange-500 border-orange-500/30'
+                                : 'bg-red-500/10 text-red-500 border-red-500/30'
+                            )}
+                          >
+                            <Zap className="h-3 w-3" />
+                            {editEffectiveXp} XP
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-sm text-[var(--fg-muted)]">Не выбрано</span>
+                      )}
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-[var(--fg-muted)] transition-transform duration-200 group-hover/attr:translate-x-0.5" />
                 </button>
               </div>
 
@@ -416,15 +454,32 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 <button
                   type="button"
                   onClick={() => setShowRewardsModal(true)}
-                  className="flex w-full items-center gap-3 rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] px-4 py-2 text-left transition-colors hover:bg-[var(--surface-elevated)]"
+                  className="flex w-full items-center gap-3 rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] px-4 py-2.5 text-left transition-colors hover:bg-[var(--surface-elevated)]"
                 >
                   <Gift className="h-4 w-4 text-[var(--accent)]" />
-                  <span className="flex-1 text-sm">
-                    {editCoinReward > 0 && `🪙 ${editCoinReward}`}
-                    {editCoinReward > 0 && editGemReward > 0 && ' • '}
-                    {editGemReward > 0 && `💎 ${editGemReward}`}
-                    {editCoinReward === 0 && editGemReward === 0 && 'Не назначено'}
-                  </span>
+                  <div className="flex-1">
+                    {(editCoinReward > 0 || editGemReward > 0) ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-50 to-cyan-50 dark:from-amber-950/30 dark:to-cyan-950/30 px-2.5 py-1 text-xs font-semibold border border-amber-200 dark:border-amber-800">
+                        {editCoinReward > 0 && (
+                          <>
+                            <Coins className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                            <span className="text-amber-600 dark:text-amber-400">{editCoinReward}</span>
+                          </>
+                        )}
+                        {editCoinReward > 0 && editGemReward > 0 && (
+                          <span className="text-[var(--fg-muted)]">•</span>
+                        )}
+                        {editGemReward > 0 && (
+                          <>
+                            <Gem className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" strokeWidth={2.5} />
+                            <span className="text-cyan-600 dark:text-cyan-400">{editGemReward}</span>
+                          </>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-[var(--fg-muted)]">Не назначено</span>
+                    )}
+                  </div>
                   <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
                 </button>
               </div>

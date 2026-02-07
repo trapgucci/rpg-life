@@ -1,7 +1,6 @@
-import { Coins, Package, Info } from 'lucide-react'
-// import { cn } from '../lib/cn'
+import { Coins, Gem, Package, Info, Minus, Plus } from 'lucide-react'
+import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
-// import { CURRENCY_IDS } from '../types/domain'
 import Modal from './Modal'
 
 interface TaskRewardsModalProps {
@@ -34,70 +33,128 @@ export default function TaskRewardsModal({
       closeOnBackdropClick
       closeOnEscape
     >
-      <div className="px-4 pb-4 pt-3 overflow-y-auto space-y-4">
-        {/* Деньги */}
+      <div className="px-4 pb-4 pt-3 overflow-y-auto space-y-5">
+        {/* Валюта */}
         <div>
-          <h3 className="text-sm font-semibold text-[var(--fg)] mb-2 flex items-center gap-2">
-            <Coins className="h-4 w-4 text-amber-500" />
-            Деньги
+          <h3 className="text-sm font-semibold text-[var(--fg)] mb-3 flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/15">
+              <Coins className="h-3.5 w-3.5 text-amber-500" />
+            </div>
+            Валюта
           </h3>
           <div className="space-y-3">
             {/* Монеты */}
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
-              <label className="block text-xs font-medium text-[var(--fg-muted)] mb-2">
-                🪙 Монеты
-              </label>
+            <div className={cn(
+              'rounded-xl border p-3.5 transition-all',
+              coinReward > 0
+                ? 'border-amber-400/40 bg-gradient-to-r from-amber-500/5 to-amber-400/10'
+                : 'border-[var(--border)] bg-[var(--surface)]'
+            )}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className={cn(
+                  'flex h-8 w-8 items-center justify-center rounded-xl transition-all',
+                  coinReward > 0
+                    ? 'bg-amber-500/20'
+                    : 'bg-[var(--surface-elevated)]'
+                )}>
+                  <Coins className={cn(
+                    'h-4 w-4 transition-colors',
+                    coinReward > 0 ? 'text-amber-500' : 'text-[var(--fg-muted)]'
+                  )} />
+                </div>
+                <div className="flex-1">
+                  <span className="text-sm font-semibold text-[var(--fg)]">Монеты</span>
+                </div>
+                {coinReward > 0 && (
+                  <span className="text-xs font-bold text-amber-500 bg-amber-500/10 rounded-md px-2 py-0.5">
+                    +{coinReward}
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => onUpdateCoins(Math.max(0, coinReward - 10))}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
+                  className={cn(
+                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all active:scale-90',
+                    coinReward > 0
+                      ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20'
+                      : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)] hover:bg-[var(--surface-overlay)]'
+                  )}
                 >
-                  −
+                  <Minus className="h-4 w-4" />
                 </button>
                 <input
                   type="number"
                   min={0}
                   value={coinReward}
                   onChange={(e) => onUpdateCoins(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                  className="input flex-1 text-center h-10"
+                  className="input flex-1 text-center h-10 font-semibold"
                 />
                 <button
                   type="button"
                   onClick={() => onUpdateCoins(coinReward + 10)}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-md shadow-amber-500/25 hover:bg-amber-600 transition-all active:scale-90"
                 >
-                  +
+                  <Plus className="h-4 w-4" />
                 </button>
               </div>
             </div>
 
-            {/* Гемы */}
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
-              <label className="block text-xs font-medium text-[var(--fg-muted)] mb-2">
-                💎 Кристаллы
-              </label>
+            {/* Кристаллы */}
+            <div className={cn(
+              'rounded-xl border p-3.5 transition-all',
+              gemReward > 0
+                ? 'border-cyan-400/40 bg-gradient-to-r from-cyan-500/5 to-cyan-400/10'
+                : 'border-[var(--border)] bg-[var(--surface)]'
+            )}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className={cn(
+                  'flex h-8 w-8 items-center justify-center rounded-xl transition-all',
+                  gemReward > 0
+                    ? 'bg-cyan-500/20'
+                    : 'bg-[var(--surface-elevated)]'
+                )}>
+                  <Gem className={cn(
+                    'h-4 w-4 transition-colors',
+                    gemReward > 0 ? 'text-cyan-500' : 'text-[var(--fg-muted)]'
+                  )} strokeWidth={2.5} />
+                </div>
+                <div className="flex-1">
+                  <span className="text-sm font-semibold text-[var(--fg)]">Кристаллы</span>
+                </div>
+                {gemReward > 0 && (
+                  <span className="text-xs font-bold text-cyan-500 bg-cyan-500/10 rounded-md px-2 py-0.5">
+                    +{gemReward}
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => onUpdateGems(Math.max(0, gemReward - 1))}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
+                  className={cn(
+                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all active:scale-90',
+                    gemReward > 0
+                      ? 'bg-cyan-500/10 text-cyan-600 hover:bg-cyan-500/20'
+                      : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)] hover:bg-[var(--surface-overlay)]'
+                  )}
                 >
-                  −
+                  <Minus className="h-4 w-4" />
                 </button>
                 <input
                   type="number"
                   min={0}
                   value={gemReward}
                   onChange={(e) => onUpdateGems(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                  className="input flex-1 text-center h-10"
+                  className="input flex-1 text-center h-10 font-semibold"
                 />
                 <button
                   type="button"
                   onClick={() => onUpdateGems(gemReward + 1)}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500 text-white shadow-md shadow-cyan-500/25 hover:bg-cyan-600 transition-all active:scale-90"
                 >
-                  +
+                  <Plus className="h-4 w-4" />
                 </button>
               </div>
             </div>
