@@ -107,7 +107,12 @@ export interface SubtaskItem {
   isCompleted: boolean
   completedAt?: number
   coinReward?: number
+  /** @deprecated Prefer difficulty + customXp. XP за подзадачу, если не заданы difficulty/customXp */
   xpReward?: number
+  /** Сложность подзадачи (Легко / Средне / Сложно / Импосибл) */
+  difficulty?: TaskDifficulty
+  /** Свой XP — переопределяет XP по сложности */
+  customXp?: number | null
 }
 
 export interface NestedTask extends TaskBase {

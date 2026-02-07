@@ -50,7 +50,7 @@ export default function TaskGroupSelectModal({
         role="presentation"
         onClick={handleClose}
         className={cn(
-          'fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm transition-opacity duration-300',
+          'fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm transition-opacity duration-300',
           animatedOpen ? 'opacity-100' : 'opacity-0'
         )}
       />
@@ -59,27 +59,27 @@ export default function TaskGroupSelectModal({
         aria-modal="true"
         aria-label="Выбор группы задачи"
         className={cn(
-          'fixed inset-0 z-[110] flex items-center justify-center p-4 pointer-events-none'
+          'fixed inset-0 z-[90] flex items-center justify-center p-4 pointer-events-none'
         )}
       >
         <div
           className={cn(
-            'pointer-events-auto w-full max-w-sm rounded-2xl bg-white dark:bg-[var(--surface-overlay)] shadow-2xl transition-all duration-300 ease-out overflow-hidden flex flex-col max-h-[80vh]',
+            'pointer-events-auto w-full max-w-sm rounded-2xl bg-white dark:bg-[var(--surface-overlay)] shadow-2xl transition-all duration-300 ease-out overflow-hidden flex flex-col max-h-[70vh]',
             animatedOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4'
           )}
         >
-          <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-[var(--border)]">
-            <h2 className="text-lg font-semibold text-[var(--fg)]">Выбрать группу</h2>
-            <button
-              type="button"
-              onClick={handleClose}
-              className="icon-btn h-9 w-9 shrink-0 rounded-full p-0 text-[var(--fg-muted)] hover:text-[var(--fg)]"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-          <div className="px-5 pb-5 pt-4 overflow-y-auto">
-            <div className="space-y-2">
+        <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-[var(--border)] shrink-0">
+          <h2 className="text-base font-semibold text-[var(--fg)]">Выбрать группу</h2>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="icon-btn h-8 w-8 shrink-0 rounded-full p-0 text-[var(--fg-muted)] hover:text-[var(--fg)]"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="px-4 pb-4 pt-3 overflow-y-auto">
+          <div className="space-y-2">
             {/* Без группы */}
             <button
               type="button"
@@ -123,6 +123,7 @@ export default function TaskGroupSelectModal({
               </button>
             ))}
           </div>
+        </div>
         </div>
       </div>
     </>
