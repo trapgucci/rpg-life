@@ -497,7 +497,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                         <button
                           type="button"
                           onClick={() => setTargetQuantity((n) => Math.max(1, n - 1))}
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)] text-lg font-semibold"
                         >
                           −
                         </button>
@@ -506,12 +506,12 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                           min={1}
                           value={targetQuantity}
                           onChange={(e) => setTargetQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                          className="input flex-1 text-center h-9"
+                          className="input w-20 text-center h-9"
                         />
                         <button
                           type="button"
                           onClick={() => setTargetQuantity((n) => n + 1)}
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors text-lg font-semibold"
                         >
                           +
                         </button>

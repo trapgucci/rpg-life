@@ -41,6 +41,15 @@ export default function DateTimePickerModal({
 
   const handleSave = () => {
     if (selectedDate) {
+      const selectedDateTime = new Date(`${selectedDate}T${selectedTime}`)
+      const now = new Date()
+
+      // Проверяем, что выбранная дата не в прошлом
+      if (selectedDateTime < now) {
+        alert('Нельзя установить дедлайн в прошлом')
+        return
+      }
+
       onChange(`${selectedDate}T${selectedTime}`)
     }
     onClose()
@@ -156,6 +165,7 @@ export default function DateTimePickerModal({
                 <input
                   type="date"
                   value={selectedDate}
+                  min={new Date().toISOString().split('T')[0]}
                   onChange={(e) => setSelectedDate(e.target.value)}
                   className="input w-full pl-14 pr-4 h-14 text-base font-medium shadow-sm hover:shadow-md focus:shadow-lg transition-shadow"
                 />

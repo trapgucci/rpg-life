@@ -64,7 +64,7 @@ export default function TaskGroupSelectModal({
       >
         <div
           className={cn(
-            'pointer-events-auto w-full max-w-sm rounded-2xl bg-white dark:bg-[var(--surface-overlay)] shadow-2xl transition-all duration-300 ease-out overflow-hidden flex flex-col max-h-[70vh]',
+            'pointer-events-auto w-full max-w-sm rounded-2xl bg-white dark:bg-[var(--surface-overlay)] shadow-2xl transition-all duration-300 ease-out overflow-hidden flex flex-col max-h-[65vh]',
             animatedOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4'
           )}
         >

@@ -11,6 +11,53 @@ const DIFFICULTY_OPTIONS: { value: TaskDifficulty; label: string; defaultXp: num
   { value: 'veryHard', label: 'Импосибл', defaultXp: 300 },
 ]
 
+// Функция для получения цветов на основе XP (как на карточках)
+const getXpColorClasses = (xp: number, isCustom: boolean = false) => {
+  if (isCustom) {
+    return {
+      bg: 'bg-purple-500/10',
+      text: 'text-purple-500',
+      border: 'border-purple-500/30',
+    }
+  }
+
+  if (xp >= 300) {
+    return {
+      bg: 'bg-red-500/10',
+      text: 'text-red-500',
+      border: 'border-red-500/30',
+    }
+  }
+  if (xp >= 100) {
+    return {
+      bg: 'bg-orange-500/10',
+      text: 'text-orange-500',
+      border: 'border-orange-500/30',
+    }
+  }
+  if (xp >= 30) {
+    return {
+      bg: 'bg-blue-500/10',
+      text: 'text-blue-500',
+      border: 'border-blue-500/30',
+    }
+  }
+  return {
+    bg: 'bg-emerald-500/10',
+    text: 'text-emerald-500',
+    border: 'border-emerald-500/30',
+  }
+}
+
+// Функция для получения названия сложности
+const getDifficultyLabel = (xp: number, isCustom: boolean = false) => {
+  if (isCustom) return 'Индивидуальный'
+  if (xp >= 300) return 'Импосибл'
+  if (xp >= 100) return 'Сложно'
+  if (xp >= 30) return 'Средне'
+  return 'Легко'
+}
+
 interface TaskAttributeSelectModalProps {
   isOpen: boolean
   selectedAttributeIds: AttributeId[]
@@ -39,6 +86,9 @@ export default function TaskAttributeSelectModal({
 
   const difficultyXp = settings.taskDifficultyXp?.[selectedDifficulty] ?? 0
   const effectiveXp = customXp ?? difficultyXp
+  const isCustomXp = customXp != null
+  const xpColors = getXpColorClasses(effectiveXp, isCustomXp)
+  const difficultyLabel = getDifficultyLabel(effectiveXp, isCustomXp)
 
   useLayoutEffect(() => {
     if (isOpen) {
@@ -148,6 +198,7 @@ export default function TaskAttributeSelectModal({
             <div className="grid grid-cols-2 gap-1.5">
               {DIFFICULTY_OPTIONS.map((opt) => {
                 const optXp = settings.taskDifficultyXp?.[opt.value] ?? opt.defaultXp
+                const optColors = getXpColorClasses(optXp, false)
                 return (
                   <button
                     key={opt.value}
@@ -159,13 +210,18 @@ export default function TaskAttributeSelectModal({
                     }}
                     className={cn(
                       'flex flex-col items-center gap-1.5 rounded-lg border p-2.5 transition-all',
-                      selectedDifficulty === opt.value
+                      selectedDifficulty === opt.value && !isCustomXp
                         ? 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-lg shadow-[var(--accent)]/10'
                         : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-elevated)]'
                     )}
                   >
                     <span className="text-xs font-semibold text-[var(--fg)]">{opt.label}</span>
-                    <div className="flex items-center gap-0.5 rounded-lg bg-purple-500/10 px-2 py-0.5 text-[10px] font-medium text-purple-500">
+                    <div className={cn(
+                      'flex items-center gap-0.5 rounded-lg px-2 py-0.5 text-[10px] font-semibold border',
+                      optColors.bg,
+                      optColors.text,
+                      optColors.border
+                    )}>
                       <Zap className="h-2.5 w-2.5" />
                       {optXp} XP
                     </div>
@@ -222,13 +278,20 @@ export default function TaskAttributeSelectModal({
             </div>
 
             {/* Summary */}
-            <div className="mt-2 flex items-center gap-2 rounded-lg bg-purple-500/10 px-3 py-2">
-              <Zap className="h-3.5 w-3.5 text-purple-500" />
-              <span className="text-sm font-semibold text-purple-500">
+            <div className={cn(
+              'mt-2 flex items-center gap-2 rounded-lg px-3 py-2 border',
+              xpColors.bg,
+              xpColors.border
+            )}>
+              <Zap className={cn('h-3.5 w-3.5', xpColors.text)} />
+              <span className={cn('text-sm font-semibold', xpColors.text)}>
                 {effectiveXp} XP
               </span>
+              <span className={cn('text-[11px]', xpColors.text, 'opacity-70')}>
+                • {difficultyLabel}
+              </span>
               {selectedAttributeIds.length > 0 && (
-                <span className="text-[11px] text-purple-400">
+                <span className={cn('text-[11px]', xpColors.text, 'opacity-70')}>
                   → {selectedAttributeIds.length} {selectedAttributeIds.length === 1 ? 'атрибут' : selectedAttributeIds.length < 5 ? 'атрибута' : 'атрибутов'}
                 </span>
               )}
