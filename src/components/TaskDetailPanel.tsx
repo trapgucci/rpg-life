@@ -811,15 +811,10 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   <button
                     type="button"
                     onClick={() => { setEditingSubtask(null); setShowSubtaskModal(true) }}
-                    className={cn(
-                      'flex w-full items-center gap-3 rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] px-4 py-3 text-left transition-colors',
-                      'hover:bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]'
-                    )}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--accent)] transition-colors hover:bg-[var(--accent-subtle)] hover:border-[var(--accent)]"
                   >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-2 border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]">
-                      <Plus className="h-4 w-4" />
-                    </div>
-                    <span className="text-sm font-semibold text-[var(--accent)]">Добавить подзадачу</span>
+                    <Plus className="h-4 w-4" />
+                    Добавить подзадачу
                   </button>
                 </div>
               )}
@@ -1282,27 +1277,59 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                           {subtask.title}
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          {getSubtaskEffectiveXp(subtask) > 0 && (
-                            <span
-                              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold border-2 bg-purple-500/10 border-purple-500/30 text-purple-500"
-                            >
-                              <Zap className="h-3.5 w-3.5" />{getSubtaskEffectiveXp(subtask)} XP
+                          {((subtask.coinReward ?? 0) > 0 || (subtask.gemReward ?? 0) > 0) && (
+                            <span className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-50 to-cyan-50 dark:from-amber-950/30 dark:to-cyan-950/30 px-2 py-1 text-xs font-semibold border border-amber-200 dark:border-amber-800">
+                              {(subtask.coinReward ?? 0) > 0 && (
+                                <>
+                                  <Coins className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                                  <span className="text-amber-600 dark:text-amber-400">{subtask.coinReward}</span>
+                                </>
+                              )}
+                              {(subtask.coinReward ?? 0) > 0 && (subtask.gemReward ?? 0) > 0 && (
+                                <span className="text-[var(--fg-muted)]">•</span>
+                              )}
+                              {(subtask.gemReward ?? 0) > 0 && (
+                                <>
+                                  <Gem className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" strokeWidth={2.5} />
+                                  <span className="text-cyan-600 dark:text-cyan-400">{subtask.gemReward}</span>
+                                </>
+                              )}
                             </span>
                           )}
-                          {(subtask.coinReward ?? 0) > 0 && (
-                            <span
-                              className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-500 border-2 border-amber-500/30"
-                            >
-                              <Coins className="h-3.5 w-3.5" />{subtask.coinReward}
-                            </span>
-                          )}
-                          {(subtask.gemReward ?? 0) > 0 && (
-                            <span
-                              className="inline-flex items-center gap-1 rounded-lg bg-cyan-500/10 px-2 py-1 text-xs font-semibold text-cyan-500 border-2 border-cyan-500/30"
-                            >
-                              <Gem className="h-3.5 w-3.5" />{subtask.gemReward}
-                            </span>
-                          )}
+                          {(() => {
+                            const subXpVal = getSubtaskEffectiveXp(subtask)
+                            const subDiff = subtask.difficulty ?? 'medium'
+                            if (subXpVal <= 0) return null
+                            return (
+                              <span
+                                className={cn(
+                                  'inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold border',
+                                  subtask.customXp != null
+                                    ? 'bg-purple-500/10 text-purple-500 border-purple-500/30'
+                                    : subDiff === 'easy'
+                                    ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                    : subDiff === 'medium'
+                                    ? 'bg-blue-500/10 text-blue-500 border-blue-500/30'
+                                    : subDiff === 'hard'
+                                    ? 'bg-orange-500/10 text-orange-500 border-orange-500/30'
+                                    : 'bg-red-500/10 text-red-500 border-red-500/30'
+                                )}
+                                style={{
+                                  boxShadow: subtask.customXp != null
+                                    ? '0 0 8px rgba(168, 85, 247, 0.2)'
+                                    : subDiff === 'easy'
+                                    ? '0 0 8px rgba(16, 185, 129, 0.2)'
+                                    : subDiff === 'medium'
+                                    ? '0 0 8px rgba(59, 130, 246, 0.2)'
+                                    : subDiff === 'hard'
+                                    ? '0 0 8px rgba(249, 115, 22, 0.2)'
+                                    : '0 0 8px rgba(239, 68, 68, 0.2)'
+                                }}
+                              >
+                                <Zap className="h-3.5 w-3.5" />{subXpVal} XP
+                              </span>
+                            )
+                          })()}
                         </div>
                         {!task.isCompleted && (
                           <>
