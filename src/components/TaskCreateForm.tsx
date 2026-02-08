@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Plus, X, ChevronRight, Calendar, Clock, BarChart3, Gift, Target, Construction, ListPlus, Zap, Coins, Gem, Folder, Edit2 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRecurrence, SubtaskItem, TaskDifficulty, AttributeId } from '../types/domain'
@@ -64,6 +64,13 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   const [targetQuantity, setTargetQuantity] = useState(2)
   const [countUnit, setCountUnit] = useState('раз')
   const [reflectionOnCompletion, setReflectionOnCompletion] = useState(false)
+
+  const counterSectionRef = useRef<HTMLDivElement>(null)
+  const scrollToCounterSection = () => {
+    setTimeout(() => {
+      counterSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }, 150)
+  }
 
   const addSubtask = (sub: SubtaskFormData) => {
     setSubtasks((prev) => [...prev, { id: crypto.randomUUID(), ...sub }])
@@ -510,7 +517,12 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
             {/* Toggle header */}
             <button
               type="button"
-              onClick={() => setCountingTaskEnabled((v) => !v)}
+              onClick={() => {
+                setCountingTaskEnabled((v) => {
+                  if (!v) scrollToCounterSection()
+                  return !v
+                })
+              }}
               className={cn(
                 'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors',
                 'hover:bg-[var(--surface-elevated)]'
@@ -520,7 +532,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                 className={cn(
                   'flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-300',
                   countingTaskEnabled
-                    ? 'bg-orange-500/15 text-orange-500'
+                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
                     : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)]'
                 )}
               >
@@ -538,11 +550,14 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                 aria-checked={countingTaskEnabled}
                 onClick={(e) => {
                   e.stopPropagation()
-                  setCountingTaskEnabled((v) => !v)
+                  setCountingTaskEnabled((v) => {
+                    if (!v) scrollToCounterSection()
+                    return !v
+                  })
                 }}
                 className={cn(
                   'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-300',
-                  countingTaskEnabled ? 'bg-orange-500' : 'bg-[var(--border)]'
+                  countingTaskEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
                 )}
               >
                 <span
@@ -556,6 +571,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
 
             {/* Counter settings panel */}
             <div
+              ref={counterSectionRef}
               className={cn(
                 'overflow-hidden transition-all duration-400 ease-out',
                 countingTaskEnabled ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
@@ -584,8 +600,8 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                       />
                       <defs>
                         <linearGradient id="counterGradientCreate" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" stopColor="#f97316" />
-                          <stop offset="100%" stopColor="#fb923c" />
+                          <stop offset="0%" style={{ stopColor: 'var(--accent)' }} />
+                          <stop offset="100%" style={{ stopColor: 'var(--accent)', stopOpacity: 0.7 }} />
                         </linearGradient>
                       </defs>
                     </svg>
@@ -620,7 +636,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                         onChange={(e) => setTargetQuantity(Math.max(2, parseInt(e.target.value, 10)))}
                         className="target-slider w-full"
                       />
-                      <div className="relative mt-1 h-4">
+                      <div className="relative mt-1 h-4" style={{ padding: '0 11px' }}>
                         {[5, 10, 25, 50, 100].map((val) => (
                           <button
                             key={val}
@@ -629,7 +645,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                             className={cn(
                               'absolute text-[10px] font-medium transition-all duration-200 -translate-x-1/2',
                               targetQuantity === val
-                                ? 'text-orange-500 font-bold'
+                                ? 'text-[var(--accent)] font-bold'
                                 : 'text-[var(--fg-muted)] hover:text-[var(--fg-secondary)]'
                             )}
                             style={{ left: `${((val - 2) / (100 - 2)) * 100}%` }}
@@ -642,7 +658,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                     <button
                       type="button"
                       onClick={() => setTargetQuantity((n) => n + 1)}
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white shadow-lg shadow-orange-500/30 hover:bg-orange-600 hover:shadow-orange-500/40 transition-all duration-200 active:scale-90 text-lg font-medium"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)] text-white shadow-lg hover:brightness-110 transition-all duration-200 active:scale-90 text-lg font-medium"
                     >
                       +
                     </button>
@@ -675,7 +691,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                         className={cn(
                           'flex-1 rounded-lg py-1.5 text-xs font-medium transition-all duration-200 active:scale-95',
                           countUnit === unit.label
-                            ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/30'
+                            ? 'bg-[var(--accent)] text-white shadow-sm'
                             : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)] hover:bg-[var(--surface-overlay)] hover:text-[var(--fg-secondary)] border border-[var(--border)]'
                         )}
                       >

@@ -553,7 +553,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                         className={cn(
                           'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all duration-300',
                           editCounterEnabled
-                            ? 'bg-orange-500/15 text-orange-500'
+                            ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
                             : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)]'
                         )}
                       >
@@ -574,7 +574,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                         }}
                         className={cn(
                           'relative h-6 w-11 shrink-0 rounded-full transition-colors duration-300 cursor-pointer',
-                          editCounterEnabled ? 'bg-orange-500' : 'bg-[var(--border)]'
+                          editCounterEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
                         )}
                       >
                         <span
@@ -617,8 +617,8 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                               />
                               <defs>
                                 <linearGradient id="counterGradientEdit" x1="0%" y1="0%" x2="100%" y2="0%">
-                                  <stop offset="0%" stopColor="#f97316" />
-                                  <stop offset="100%" stopColor="#fb923c" />
+                                  <stop offset="0%" style={{ stopColor: 'var(--accent)' }} />
+                                  <stop offset="100%" style={{ stopColor: 'var(--accent)', stopOpacity: 0.7 }} />
                                 </linearGradient>
                               </defs>
                             </svg>
@@ -652,7 +652,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                                 onChange={(e) => setEditTarget(Math.max(2, parseInt(e.target.value, 10)))}
                                 className="target-slider w-full"
                               />
-                              <div className="relative mt-0.5 h-4">
+                              <div className="relative mt-0.5 h-4" style={{ padding: '0 11px' }}>
                                 {[5, 10, 25, 50, 100].map((val) => (
                                   <button
                                     key={val}
@@ -661,7 +661,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                                     className={cn(
                                       'absolute text-[9px] font-medium transition-all duration-200 -translate-x-1/2',
                                       editTarget === val
-                                        ? 'text-orange-500 font-bold'
+                                        ? 'text-[var(--accent)] font-bold'
                                         : 'text-[var(--fg-muted)] hover:text-[var(--fg-secondary)]'
                                     )}
                                     style={{ left: `${((val - 2) / (100 - 2)) * 100}%` }}
@@ -674,7 +674,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                             <button
                               type="button"
                               onClick={() => setEditTarget((n) => n + 1)}
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-500 text-white shadow-md shadow-orange-500/30 hover:bg-orange-600 transition-all duration-200 active:scale-90 text-base font-medium"
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)] text-white shadow-md hover:brightness-110 transition-all duration-200 active:scale-90 text-base font-medium"
                             >
                               +
                             </button>
@@ -707,7 +707,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                                 className={cn(
                                   'flex-1 rounded-lg py-1.5 text-[11px] font-medium transition-all duration-200 active:scale-95',
                                   editCountUnit === unit.label
-                                    ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/30'
+                                    ? 'bg-[var(--accent)] text-white shadow-sm'
                                     : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)] hover:bg-[var(--surface-overlay)] hover:text-[var(--fg-secondary)] border border-[var(--border)]'
                                 )}
                               >

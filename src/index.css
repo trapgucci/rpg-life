@@ -823,8 +823,8 @@ html.dark,
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
-  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+  background: var(--accent);
+  box-shadow: 0 2px 8px var(--accent-glow);
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   border: 3px solid white;
@@ -832,7 +832,7 @@ html.dark,
 
 .target-slider::-webkit-slider-thumb:hover {
   transform: scale(1.15);
-  box-shadow: 0 3px 12px rgba(249, 115, 22, 0.5);
+  box-shadow: 0 3px 12px var(--accent-glow);
 }
 
 .target-slider::-webkit-slider-thumb:active {
@@ -843,8 +843,8 @@ html.dark,
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
-  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+  background: var(--accent);
+  box-shadow: 0 2px 8px var(--accent-glow);
   cursor: pointer;
   border: 3px solid white;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -852,7 +852,7 @@ html.dark,
 
 .target-slider::-moz-range-thumb:hover {
   transform: scale(1.15);
-  box-shadow: 0 3px 12px rgba(249, 115, 22, 0.5);
+  box-shadow: 0 3px 12px var(--accent-glow);
 }
 
 .target-slider::-moz-range-track {

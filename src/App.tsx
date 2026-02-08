@@ -24,8 +24,16 @@ function App() {
     
     // Apply accent color
     const accent = ACCENT_COLORS[settings.accentColor]
-    root.style.setProperty('--accent', isDark ? accent.dark : accent.light)
-    root.style.setProperty('--accent-hover', isDark ? accent.dark : accent.light)
+    const accentHex = isDark ? accent.dark : accent.light
+    root.style.setProperty('--accent', accentHex)
+    root.style.setProperty('--accent-hover', accentHex)
+
+    // Dynamic accent variants (subtle bg + glow for shadows)
+    const r = parseInt(accentHex.slice(1, 3), 16)
+    const g = parseInt(accentHex.slice(3, 5), 16)
+    const b = parseInt(accentHex.slice(5, 7), 16)
+    root.style.setProperty('--accent-subtle', `rgba(${r},${g},${b},${isDark ? 0.15 : 0.1})`)
+    root.style.setProperty('--accent-glow', `rgba(${r},${g},${b},${isDark ? 0.3 : 0.4})`)
   }, [settings.theme, settings.accentColor])
 
   useEffect(() => {
