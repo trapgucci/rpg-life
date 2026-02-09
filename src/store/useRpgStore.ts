@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
+import { isSameDay, getStartOfWeek, getStartOfMonth, getStartOfYear } from '../lib/dateUtils'
 import type {
   TaskRpg,
   TaskId,
@@ -217,6 +218,7 @@ interface RpgStoreState {
   canCompleteTask: (task: TaskRpg) => boolean
   skipTask: (id: TaskId) => void
   abandonTask: (id: TaskId) => void
+  resetRecurringTasks: () => void
   incrementCounter: (id: TaskId) => void
   decrementCounter: (id: TaskId) => void
   toggleSubtask: (taskId: TaskId, subtaskId: string) => void
@@ -623,6 +625,21 @@ export const useRpgStore = create<RpgStoreState>()(
             return
           }
 
+          // Recurring tasks (daily/weekly/monthly/yearly): сохраняем lastCompletedAt
+          if (task.recurrence === 'daily' || task.recurrence === 'weekly' ||
+              task.recurrence === 'monthly' || task.recurrence === 'yearly') {
+            updateTask(id, (t) => ({
+              ...t,
+              isCompleted: true,
+              completedAt: now(),
+              lastCompletedAt: now()
+            }))
+            updateStats((s) => ({ totalTasksCompleted: s.totalTasksCompleted + 1 }))
+            tryRandomFragmentDrop()
+            checkAchievements()
+            return
+          }
+
           // Mark completed
           updateTask(id, (t) => {
             if (t.kind === 'checkbox') return { ...t, isCompleted: true, completedAt: now() }
@@ -649,6 +666,60 @@ export const useRpgStore = create<RpgStoreState>()(
           const { updateTask } = get()
           // No penalty - just archive the task
           updateTask(id, (t) => ({ ...t, archived: true, updatedAt: now() }))
+        },
+
+        resetRecurringTasks: () => {
+          const { tasks, updateTask } = get()
+          const nowTime = now()
+
+          tasks.forEach(task => {
+            if (!task.lastCompletedAt || !task.isCompleted) return
+
+            const shouldReset = (() => {
+              switch (task.recurrence) {
+                case 'daily':
+                  // Сбросить если не сегодня
+                  return !isSameDay(task.lastCompletedAt, nowTime)
+
+                case 'weekly': {
+                  // Сбросить если новая неделя
+                  const lastWeek = getStartOfWeek(task.lastCompletedAt)
+                  const currentWeek = getStartOfWeek(nowTime)
+                  return lastWeek !== currentWeek
+                }
+
+                case 'monthly': {
+                  // Сбросить если новый месяц
+                  const lastMonth = getStartOfMonth(task.lastCompletedAt)
+                  const currentMonth = getStartOfMonth(nowTime)
+                  return lastMonth !== currentMonth
+                }
+
+                case 'yearly': {
+                  // Сбросить если новый год
+                  const lastYear = getStartOfYear(task.lastCompletedAt)
+                  const currentYear = getStartOfYear(nowTime)
+                  return lastYear !== currentYear
+                }
+
+                default:
+                  return false
+              }
+            })()
+
+            if (shouldReset) {
+              updateTask(task.id, t => ({
+                ...t,
+                isCompleted: false,
+                completedAt: undefined,
+                lastCompletedAt: undefined,
+                ...(t.kind === 'counter' ? { current: 0 } : {}),
+                ...(t.kind === 'nested' ? {
+                  subtasks: t.subtasks.map(s => ({ ...s, isCompleted: false }))
+                } : {})
+              }))
+            }
+          })
         },
 
         incrementCounter: (id) => {

@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  Check, SkipForward, Pencil, Coins, Zap, Trash2, X,
-  Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder, Edit2, Gem, Target, Hash, ListChecks
+  Check, SkipForward, Pencil, Trash2, X,
+  Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder, Edit2, Target, Hash, ListChecks, Flag, Coins, Gem, Zap
 } from 'lucide-react'
 import { cn } from '../lib/cn'
-import type { TaskRpg, TaskDifficulty, TaskRecurrence, AttributeId, SubtaskItem, TaskGroupId } from '../types/domain'
+import type { TaskRpg, TaskDifficulty, TaskRecurrence, AttributeId, SubtaskItem, TaskGroupId, TaskPriority } from '../types/domain'
 import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
 import { useRpgStore } from '../store/useRpgStore'
 import TaskGroupSelectModal from './TaskGroupSelectModal'
@@ -14,6 +14,7 @@ import SubtaskCreateModal, { type SubtaskEditData, type SubtaskFormData } from '
 import RecurrenceSelectModal from './RecurrenceSelectModal'
 import DateTimePickerModal from './DateTimePickerModal'
 import ConfirmModal from './ConfirmModal'
+import RewardBadge from './RewardBadge'
 
 const DIFFICULTY_LABELS: Record<TaskDifficulty, string> = {
   easy: 'Лёгкая',
@@ -38,6 +39,20 @@ const RECURRENCE_LABELS: Record<TaskRecurrence, string> = {
   instant: 'Инстант (можно выполнять снова)',
   custom: 'Кастомный',
 }
+
+const PRIORITY_COLORS = {
+  none: {},
+  low: { bg: 'bg-emerald-500/10', text: 'text-emerald-500', border: 'border-emerald-500/30' },
+  medium: { bg: 'bg-yellow-500/10', text: 'text-yellow-500', border: 'border-yellow-500/30' },
+  high: { bg: 'bg-red-500/10', text: 'text-red-500', border: 'border-red-500/30' },
+} as const
+
+const PRIORITY_LABELS = {
+  none: 'Без приоритета',
+  low: 'Низкий',
+  medium: 'Средний',
+  high: 'Высокий',
+} as const
 
 interface TaskDetailPanelProps {
   task: TaskRpg
@@ -65,6 +80,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
     task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
   )
   const [editDifficulty, setEditDifficulty] = useState<TaskDifficulty>(task.difficulty)
+  const [editPriority, setEditPriority] = useState<TaskPriority>(task.priority ?? 'none')
   const [editCustomXp, setEditCustomXp] = useState<number | null>(task.customXp ?? null)
   const [editCoinReward, setEditCoinReward] = useState(task.coinReward)
   const [editGemReward, setEditGemReward] = useState(task.gemReward ?? 0)
@@ -138,6 +154,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
         attributeIds: editAttributeIds,
         customXp: editCustomXp,
         difficulty: editDifficulty,
+        priority: editPriority,
         coinReward: editCoinReward,
         gemReward: editGemReward,
         recurrence: editRecurrence,
@@ -192,6 +209,12 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const confirmDelete = () => {
     setShowDeleteConfirm(false)
     deleteTask(task.id)
+    onDeselect?.()
+  }
+
+  const handleComplete = () => {
+    if (!canComplete) return
+    completeTask(task.id)
     onDeselect?.()
   }
 
@@ -314,6 +337,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
           editGroupId !== (prev.groupId ?? null) ||
           JSON.stringify(editAttributeIds) !== JSON.stringify(prevAttrIds) ||
           editDifficulty !== prev.difficulty ||
+          editPriority !== (prev.priority ?? 'none') ||
           editCustomXp !== (prev.customXp ?? null) ||
           editCoinReward !== prev.coinReward ||
           editGemReward !== (prev.gemReward ?? 0) ||
@@ -476,29 +500,46 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   <Gift className="h-4 w-4 text-[var(--accent)]" />
                   <div className="flex-1">
                     {(editCoinReward > 0 || editGemReward > 0) ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-50 to-cyan-50 dark:from-amber-950/30 dark:to-cyan-950/30 px-2.5 py-1 text-xs font-semibold border border-amber-200 dark:border-amber-800">
-                        {editCoinReward > 0 && (
-                          <>
-                            <Coins className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                            <span className="text-amber-600 dark:text-amber-400">{editCoinReward}</span>
-                          </>
-                        )}
-                        {editCoinReward > 0 && editGemReward > 0 && (
-                          <span className="text-[var(--fg-muted)]">•</span>
-                        )}
-                        {editGemReward > 0 && (
-                          <>
-                            <Gem className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" strokeWidth={2.5} />
-                            <span className="text-cyan-600 dark:text-cyan-400">{editGemReward}</span>
-                          </>
-                        )}
-                      </span>
+                      <RewardBadge coins={editCoinReward} gems={editGemReward} />
                     ) : (
                       <span className="text-sm text-[var(--fg-muted)]">Не назначено</span>
                     )}
                   </div>
                   <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
                 </button>
+              </div>
+
+              {/* Приоритет */}
+              <div>
+                <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Приоритет</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {(['none', 'low', 'medium', 'high'] as const).map((p) => {
+                    const priorityStyle = PRIORITY_COLORS[p]
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setEditPriority(p)}
+                        className={cn(
+                          'flex flex-col items-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all',
+                          editPriority === p
+                            ? cn(
+                                'border-2',
+                                p === 'none' && 'bg-gray-500/10 text-gray-500 border-gray-500',
+                                p === 'low' && 'bg-emerald-500/10 text-emerald-500 border-emerald-500',
+                                p === 'medium' && 'bg-yellow-500/10 text-yellow-500 border-yellow-500',
+                                p === 'high' && 'bg-red-500/10 text-red-500 border-red-500'
+                              )
+                            : 'border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:border-[var(--accent)]/30'
+                        )}
+                      >
+                        {p !== 'none' && <Flag className="h-4 w-4" />}
+                        {p === 'none' && <X className="h-4 w-4" />}
+                        <span className="text-xs">{PRIORITY_LABELS[p]}</span>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
 
               {/* Правило повтора */}
@@ -1407,7 +1448,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
           {!task.isCompleted && (
             <button
               type="button"
-              onClick={() => completeTask(task.id)}
+              onClick={handleComplete}
               disabled={!canComplete}
               className={cn(
                 'flex-1 flex items-center justify-center gap-2 rounded-2xl py-4 font-semibold transition-all duration-200',

@@ -1,10 +1,11 @@
 import { useState, useRef } from 'react'
-import { Plus, X, ChevronRight, Calendar, Clock, BarChart3, Gift, Target, Construction, ListPlus, Zap, Coins, Gem, Folder, Edit2 } from 'lucide-react'
+import { Plus, X, ChevronRight, Calendar, Clock, BarChart3, Gift, Target, Construction, ListPlus, Flag, Folder, Edit2, Coins, Gem, Zap } from 'lucide-react'
 import { cn } from '../lib/cn'
-import type { TaskRecurrence, SubtaskItem, TaskDifficulty, AttributeId } from '../types/domain'
+import type { TaskRecurrence, SubtaskItem, TaskDifficulty, AttributeId, TaskPriority } from '../types/domain'
 import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
 import { useRpgStore } from '../store/useRpgStore'
 import type { TaskGroupId } from '../types/domain'
+import RewardBadge from './RewardBadge'
 import TaskGroupSelectModal from './TaskGroupSelectModal'
 import TaskAttributeSelectModal from './TaskAttributeSelectModal'
 import TaskRewardsModal from './TaskRewardsModal'
@@ -50,6 +51,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   // Атрибуты и сложность
   const [selectedAttributeIds, setSelectedAttributeIds] = useState<AttributeId[]>([])
   const [difficulty, setDifficulty] = useState<TaskDifficulty>('medium')
+  const [priority, setPriority] = useState<TaskPriority>('none')
   const [customXp, setCustomXp] = useState<number | null>(null)
   const [showAttributeModal, setShowAttributeModal] = useState(false)
 
@@ -127,6 +129,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         notes: description.trim() || undefined,
         kind: 'counter' as const,
         difficulty,
+        priority,
         attributeIds: selectedAttributeIds,
         customXp,
         dueAt: null,
@@ -158,6 +161,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         notes: description.trim() || undefined,
         kind: 'nested' as const,
         difficulty,
+        priority,
         attributeIds: selectedAttributeIds,
         customXp,
         dueAt: null,
@@ -176,6 +180,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         notes: description.trim() || undefined,
         kind: 'checkbox' as const,
         difficulty,
+        priority,
         attributeIds: selectedAttributeIds,
         customXp,
         dueAt: null,
@@ -195,6 +200,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       setSelectedGroupId(defaultGroupId)
       setSelectedAttributeIds([])
       setDifficulty('medium')
+      setPriority('none')
       setCustomXp(null)
       setCoinReward(10)
       setGemReward(0)
