@@ -115,7 +115,7 @@ export default function TaskCard({ task, selected, onSelect }: TaskCardProps) {
         ? 1
         : 0
 
-  // Вычисляем дни до дедлайна
+  // Вычисляем время до дедлайна
   const getDeadlineInfo = () => {
     if (!task.deadlineAt) return null
 
@@ -123,11 +123,14 @@ export default function TaskCard({ task, selected, onSelect }: TaskCardProps) {
     const deadline = new Date(task.deadlineAt)
     const diffTime = deadline.getTime() - now.getTime()
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60))
 
-    if (diffDays < 0) {
-      return { text: 'Просрочено', color: 'text-gray-500', bg: 'bg-gray-500/10', border: 'border-gray-500/30' }
-    } else if (diffDays < 1) {
-      return { text: '<1д', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30' }
+    if (diffTime <= 0) {
+      return { text: 'Просрочено', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30' }
+    } else if (diffHours < 1) {
+      return { text: '<1ч', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30' }
+    } else if (diffHours < 24) {
+      return { text: `${diffHours}ч`, color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30' }
     } else if (diffDays <= 3) {
       return { text: `${diffDays}д`, color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/30' }
     } else if (diffDays <= 7) {

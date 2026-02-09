@@ -69,9 +69,12 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const [editCoinReward, setEditCoinReward] = useState(task.coinReward)
   const [editGemReward, setEditGemReward] = useState(task.gemReward ?? 0)
   const [editRecurrence, setEditRecurrence] = useState<TaskRecurrence>(task.recurrence)
-  const [editDeadlineAt, setEditDeadlineAt] = useState<string>(
-    task.deadlineAt ? new Date(task.deadlineAt).toISOString().slice(0, 16) : ''
-  )
+  const [editDeadlineAt, setEditDeadlineAt] = useState<string>(() => {
+    if (!task.deadlineAt) return ''
+    const d = new Date(task.deadlineAt)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  })
   const [showGroupModal, setShowGroupModal] = useState(false)
   const [showAttributeModal, setShowAttributeModal] = useState(false)
   const [showRewardsModal, setShowRewardsModal] = useState(false)
@@ -278,7 +281,12 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
     setEditCoinReward(t.coinReward)
     setEditGemReward(t.gemReward ?? 0)
     setEditRecurrence(t.recurrence)
-    setEditDeadlineAt(t.deadlineAt ? new Date(t.deadlineAt).toISOString().slice(0, 16) : '')
+    setEditDeadlineAt(() => {
+      if (!t.deadlineAt) return ''
+      const d = new Date(t.deadlineAt)
+      const pad = (n: number) => String(n).padStart(2, '0')
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+    })
     setEditCounterEnabled(t.kind === 'counter')
     setEditTarget(t.kind === 'counter' ? t.target : 2)
     setEditCountUnit(t.kind === 'counter' ? (t.countUnit ?? 'раз') : 'раз')
@@ -916,7 +924,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
         {!isEditing && (
           <>
             {/* Task badges */}
-            <div className="flex flex-wrap gap-2 mb-6">
+            <div className="flex flex-wrap items-center gap-2 mb-6">
               {taskAttrs.map((a) => a && (
                 <span
                   key={a.id}
@@ -926,6 +934,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   {a.icon} {a.name}
                 </span>
               ))}
+              <span className="text-[var(--fg-muted)] text-lg leading-none select-none">·</span>
               <span
                 className="rounded-xl px-3 py-1.5 text-sm font-medium border-2"
                 style={{
@@ -937,6 +946,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 <Zap className="h-3.5 w-3.5 inline mr-1" />
                 {DIFFICULTY_LABELS[task.difficulty]}
               </span>
+              <span className="text-[var(--fg-muted)] text-lg leading-none select-none">·</span>
               <span className="rounded-xl bg-blue-500/15 px-3 py-1.5 text-sm font-medium text-blue-500 border-2 border-blue-500/50">
                 <Clock className="h-3.5 w-3.5 inline mr-1" />
                 {RECURRENCE_LABELS[task.recurrence]}
@@ -949,7 +959,36 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
               const deadline = new Date(deadlineAt)
               const diffTime = deadline.getTime() - now.getTime()
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-              const diffHours = Math.ceil(diffTime / (1000 * 60 * 60))
+              const diffHours = Math.floor(diffTime / (1000 * 60 * 60))
+              const diffMinutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60))
+
+              // Склонение часов
+              const pluralHours = (n: number) => {
+                const abs = Math.abs(n) % 100
+                const n1 = abs % 10
+                if (abs > 10 && abs < 20) return 'часов'
+                if (n1 > 1 && n1 < 5) return 'часа'
+                if (n1 === 1) return 'час'
+                return 'часов'
+              }
+              // Склонение минут
+              const pluralMinutes = (n: number) => {
+                const abs = Math.abs(n) % 100
+                const n1 = abs % 10
+                if (abs > 10 && abs < 20) return 'минут'
+                if (n1 > 1 && n1 < 5) return 'минуты'
+                if (n1 === 1) return 'минута'
+                return 'минут'
+              }
+              // Склонение дней
+              const pluralDays = (n: number) => {
+                const abs = Math.abs(n) % 100
+                const n1 = abs % 10
+                if (abs > 10 && abs < 20) return 'дней'
+                if (n1 > 1 && n1 < 5) return 'дня'
+                if (n1 === 1) return 'день'
+                return 'дней'
+              }
 
               let color = 'green'
               let bgColor = 'bg-green-500/15'
@@ -958,36 +997,46 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
               let timeText = ''
               let urgencyLabel = 'В пределах графика'
 
-              if (diffDays < 0) {
-                color = 'gray'
-                bgColor = 'bg-gray-500/15'
-                borderColor = 'border-gray-400/50'
-                textColor = 'text-gray-400'
-                timeText = 'Просрочено'
-                urgencyLabel = 'Дедлайн истек'
-              } else if (diffDays < 1) {
+              if (diffTime <= 0) {
                 color = 'red'
                 bgColor = 'bg-red-500/15'
                 borderColor = 'border-red-400/50'
                 textColor = 'text-red-400'
-                timeText = diffHours > 1 ? `Осталось ${diffHours} ч` : 'Меньше часа'
+                timeText = 'Задача просрочена'
+                urgencyLabel = 'Просрочено'
+              } else if (diffHours < 1) {
+                color = 'red'
+                bgColor = 'bg-red-500/15'
+                borderColor = 'border-red-400/50'
+                textColor = 'text-red-400'
+                timeText = diffMinutes > 0 ? `Осталось ${diffMinutes} ${pluralMinutes(diffMinutes)}` : 'Меньше минуты'
+                urgencyLabel = 'Срочно'
+              } else if (diffHours < 24) {
+                color = 'red'
+                bgColor = 'bg-red-500/15'
+                borderColor = 'border-red-400/50'
+                textColor = 'text-red-400'
+                timeText = `Остался ${diffHours} ${pluralHours(diffHours)}`
+                if (diffMinutes > 0) timeText += ` ${diffMinutes} ${pluralMinutes(diffMinutes)}`
                 urgencyLabel = 'Срочно'
               } else if (diffDays <= 3) {
                 color = 'orange'
                 bgColor = 'bg-orange-500/15'
                 borderColor = 'border-orange-400/50'
                 textColor = 'text-orange-400'
-                timeText = `Осталось ${diffDays} ${diffDays === 1 ? 'день' : 'дня'}`
+                const remainingHours = diffHours % 24
+                timeText = `Остался ${diffDays} ${pluralDays(diffDays)}`
+                if (remainingHours > 0) timeText += ` ${remainingHours} ${pluralHours(remainingHours)}`
                 urgencyLabel = 'Скоро'
               } else if (diffDays <= 7) {
                 color = 'yellow'
                 bgColor = 'bg-yellow-500/15'
                 borderColor = 'border-yellow-400/50'
                 textColor = 'text-yellow-400'
-                timeText = `Осталось ${diffDays} ${diffDays > 4 ? 'дней' : 'дня'}`
+                timeText = `Осталось ${diffDays} ${pluralDays(diffDays)}`
                 urgencyLabel = 'Умеренно'
               } else {
-                timeText = `Осталось ${diffDays} дней`
+                timeText = `Осталось ${diffDays} ${pluralDays(diffDays)}`
               }
 
               return (

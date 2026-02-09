@@ -32,7 +32,8 @@ export default function DateTimePickerModal({
         // Default to tomorrow
         const tomorrow = new Date()
         tomorrow.setDate(tomorrow.getDate() + 1)
-        setSelectedDate(tomorrow.toISOString().split('T')[0])
+        const pad = (n: number) => String(n).padStart(2, '0')
+        setSelectedDate(`${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`)
         setSelectedTime('23:59')
       }
     }
@@ -95,7 +96,8 @@ export default function DateTimePickerModal({
   const handleQuickSelect = (getDays: () => number) => {
     const date = new Date()
     date.setDate(date.getDate() + getDays())
-    setSelectedDate(date.toISOString().split('T')[0])
+    const pad = (n: number) => String(n).padStart(2, '0')
+    setSelectedDate(`${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`)
   }
 
   return (
@@ -166,7 +168,7 @@ export default function DateTimePickerModal({
                 <input
                   type="date"
                   value={selectedDate}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={(() => { const d = new Date(); const p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}` })()}
                   onChange={(e) => setSelectedDate(e.target.value)}
                   className="input w-full pl-14 pr-4 h-14 text-base font-medium shadow-sm hover:shadow-md focus:shadow-lg transition-shadow"
                 />
