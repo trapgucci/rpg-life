@@ -552,27 +552,19 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                     <button
                       type="button"
                       onClick={() => setEditCounterEnabled((v) => !v)}
-                      className={cn(
-                        'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors',
-                        'hover:bg-[var(--surface-elevated)]'
-                      )}
+                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-[var(--surface-elevated)]"
                     >
-                      <div
-                        className={cn(
-                          'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all duration-300',
-                          editCounterEnabled
-                            ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
-                            : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)]'
-                        )}
-                      >
-                        <Target className="h-4 w-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-[var(--fg)]">Задача со счетчиком</p>
-                        <p className="mt-0.5 text-[11px] text-[var(--fg-muted)]">
-                          Установите целевое количество и единицы измерения
-                        </p>
-                      </div>
+                      <span className="flex items-center gap-3">
+                        <Target className="h-5 w-5 text-[var(--accent)]" />
+                        <div>
+                          <p className="font-semibold text-[var(--fg)]">Счётчик</p>
+                          <p className="text-xs text-[var(--fg-muted)] mt-0.5">
+                            {editCounterEnabled
+                              ? `${editTarget} ${editCountUnit}`
+                              : 'Выключен'}
+                          </p>
+                        </div>
+                      </span>
                       <div
                         role="switch"
                         aria-checked={editCounterEnabled}
@@ -598,131 +590,89 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                     <div
                       className={cn(
                         'overflow-hidden transition-all duration-400 ease-out',
-                        editCounterEnabled ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
+                        editCounterEnabled ? 'max-h-[400px] opacity-100' : 'max-h-0 opacity-0'
                       )}
                     >
-                      <div className="border-t border-[var(--border)] p-4 space-y-5">
-                        {/* Circular progress preview */}
-                        <div className="flex justify-center">
-                          <div className="relative">
-                            <svg width="100" height="100" viewBox="0 0 100 100" className="transform -rotate-90">
-                              <circle
-                                cx="50" cy="50" r="42"
-                                fill="none"
-                                stroke="var(--border)"
-                                strokeWidth="7"
-                                strokeLinecap="round"
-                              />
-                              <circle
-                                cx="50" cy="50" r="42"
-                                fill="none"
-                                stroke="url(#counterGradientEdit)"
-                                strokeWidth="7"
-                                strokeLinecap="round"
-                                strokeDasharray={`${2 * Math.PI * 42}`}
-                                strokeDashoffset="0"
-                                className="transition-all duration-500 ease-out"
-                              />
-                              <defs>
-                                <linearGradient id="counterGradientEdit" x1="0%" y1="0%" x2="100%" y2="0%">
-                                  <stop offset="0%" style={{ stopColor: 'var(--accent)' }} />
-                                  <stop offset="100%" style={{ stopColor: 'var(--accent)', stopOpacity: 0.7 }} />
-                                </linearGradient>
-                              </defs>
-                            </svg>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center">
-                              <span className="text-xl font-bold text-[var(--fg)]">{editTarget}</span>
-                              <span className="text-[10px] text-[var(--fg-muted)]">{editCountUnit}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Target quantity with slider */}
+                      <div className="border-t border-[var(--border)] px-4 py-3 space-y-3">
+                        {/* Target quantity */}
                         <div>
                           <div className="flex items-center justify-between mb-1.5">
-                            <label className="text-xs font-semibold text-[var(--fg-secondary)]">Целевое количество</label>
-                            <span className="text-[10px] text-[var(--fg-muted)]">Мин. 2</span>
+                            <label className="text-xs font-medium text-[var(--fg-muted)]">Количество</label>
                           </div>
+                          {/* Slider row — кнопки и полоска на одной линии */}
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
                               onClick={() => setEditTarget((n) => Math.max(2, n - 1))}
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] transition-all duration-200 active:scale-90 text-base font-medium"
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] transition-all active:scale-90 text-sm font-medium"
                             >
                               −
                             </button>
-                            <div className="flex-1 relative">
-                              <input
-                                type="range"
-                                min={2}
-                                max={100}
-                                value={Math.min(editTarget, 100)}
-                                onChange={(e) => setEditTarget(Math.max(2, parseInt(e.target.value, 10)))}
-                                className="target-slider w-full"
-                              />
-                              <div className="relative mt-0.5 h-4" style={{ padding: '0 11px' }}>
-                                {[5, 10, 25, 50, 100].map((val) => (
-                                  <button
-                                    key={val}
-                                    type="button"
-                                    onClick={() => setEditTarget(val)}
-                                    className={cn(
-                                      'absolute text-[9px] font-medium transition-all duration-200 -translate-x-1/2',
-                                      editTarget === val
-                                        ? 'text-[var(--accent)] font-bold'
-                                        : 'text-[var(--fg-muted)] hover:text-[var(--fg-secondary)]'
-                                    )}
-                                    style={{ left: `${((val - 2) / (100 - 2)) * 100}%` }}
-                                  >
-                                    {val}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
+                            <input
+                              type="range"
+                              min={2}
+                              max={100}
+                              value={Math.min(editTarget, 100)}
+                              onChange={(e) => setEditTarget(Math.max(2, parseInt(e.target.value, 10)))}
+                              className="target-slider flex-1"
+                            />
                             <button
                               type="button"
                               onClick={() => setEditTarget((n) => n + 1)}
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)] text-white shadow-md hover:brightness-110 transition-all duration-200 active:scale-90 text-base font-medium"
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)] text-white hover:brightness-110 transition-all active:scale-90 text-sm font-medium"
                             >
                               +
                             </button>
+                          </div>
+                          {/* Marks — цифры под слайдером */}
+                          <div className="relative h-4 mt-1" style={{ marginLeft: 40, marginRight: 40 }}>
+                            {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((val) => (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => setEditTarget(val)}
+                                className={cn(
+                                  'absolute top-0 text-[8px] leading-none font-medium transition-colors -translate-x-1/2',
+                                  editTarget === val
+                                    ? 'text-[var(--accent)] font-bold'
+                                    : 'text-[var(--fg-muted)] hover:text-[var(--fg-secondary)]'
+                                )}
+                                style={{ left: `${((val - 2) / (100 - 2)) * 100}%` }}
+                              >
+                                {val}
+                              </button>
+                            ))}
                           </div>
                         </div>
 
                         {/* Unit of measurement */}
                         <div>
-                          <label className="block text-xs font-semibold text-[var(--fg-secondary)] mb-1.5">Единица измерения</label>
+                          <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Единица</label>
+                          <div className="flex gap-1.5">
+                            {['раз', 'мин', 'км', 'стр', 'шт'].map((unit) => (
+                              <button
+                                key={unit}
+                                type="button"
+                                onClick={() => setEditCountUnit(unit)}
+                                className={cn(
+                                  'flex-1 rounded-lg py-1.5 text-[11px] font-medium transition-all active:scale-95',
+                                  editCountUnit === unit
+                                    ? 'bg-[var(--accent)] text-white shadow-sm'
+                                    : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)] hover:text-[var(--fg-secondary)] border border-[var(--border)]'
+                                )}
+                              >
+                                {unit}
+                              </button>
+                            ))}
+                          </div>
                           <input
                             type="text"
                             value={editCountUnit}
                             onChange={(e) => e.target.value.length <= 8 && setEditCountUnit(e.target.value)}
                             maxLength={8}
-                            placeholder="раз"
-                            className="input w-full h-9 text-sm mb-2"
+                            placeholder="своя единица…"
+                            className="input w-full h-8 text-xs mt-1.5"
                           />
-                          <div className="flex gap-1.5">
-                            {[
-                              { label: 'раз' },
-                              { label: 'мин' },
-                              { label: 'км' },
-                              { label: 'стр' },
-                              { label: 'шт' },
-                            ].map((unit) => (
-                              <button
-                                key={unit.label}
-                                type="button"
-                                onClick={() => setEditCountUnit(unit.label)}
-                                className={cn(
-                                  'flex-1 rounded-lg py-1.5 text-[11px] font-medium transition-all duration-200 active:scale-95',
-                                  editCountUnit === unit.label
-                                    ? 'bg-[var(--accent)] text-white shadow-sm'
-                                    : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)] hover:bg-[var(--surface-overlay)] hover:text-[var(--fg-secondary)] border border-[var(--border)]'
-                                )}
-                              >
-                                {unit.label}
-                              </button>
-                            ))}
-                          </div>
                         </div>
                       </div>
                     </div>

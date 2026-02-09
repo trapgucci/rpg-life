@@ -523,29 +523,20 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                   return !v
                 })
               }}
-              className={cn(
-                'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors',
-                'hover:bg-[var(--surface-elevated)]'
-              )}
+              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-[var(--surface-elevated)]"
             >
+              <span className="flex items-center gap-3">
+                <Target className="h-5 w-5 text-[var(--accent)]" />
+                <div>
+                  <p className="font-semibold text-[var(--fg)]">Счётчик</p>
+                  <p className="text-xs text-[var(--fg-muted)] mt-0.5">
+                    {countingTaskEnabled
+                      ? `${targetQuantity} ${countUnit}`
+                      : 'Выключен'}
+                  </p>
+                </div>
+              </span>
               <div
-                className={cn(
-                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-300',
-                  countingTaskEnabled
-                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
-                    : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)]'
-                )}
-              >
-                <Target className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-[var(--fg)]">Задача со счетчиком</p>
-                <p className="mt-0.5 text-xs text-[var(--fg-muted)]">
-                  Установите целевое количество и единицы измерения
-                </p>
-              </div>
-              <button
-                type="button"
                 role="switch"
                 aria-checked={countingTaskEnabled}
                 onClick={(e) => {
@@ -556,17 +547,17 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                   })
                 }}
                 className={cn(
-                  'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-300',
+                  'relative h-6 w-11 shrink-0 rounded-full transition-colors duration-300 cursor-pointer',
                   countingTaskEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
                 )}
               >
                 <span
                   className={cn(
-                    'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300',
-                    countingTaskEnabled ? 'right-1 left-auto' : 'left-1 right-auto'
+                    'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300',
+                    countingTaskEnabled ? 'right-0.5 left-auto' : 'left-0.5 right-auto'
                   )}
                 />
-              </button>
+              </div>
             </button>
 
             {/* Counter settings panel */}
@@ -574,131 +565,89 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
               ref={counterSectionRef}
               className={cn(
                 'overflow-hidden transition-all duration-400 ease-out',
-                countingTaskEnabled ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
+                countingTaskEnabled ? 'max-h-[400px] opacity-100' : 'max-h-0 opacity-0'
               )}
             >
-              <div className="border-t border-[var(--border)] p-5 space-y-6">
-                {/* Circular progress preview */}
-                <div className="flex justify-center">
-                  <div className="relative">
-                    <svg width="120" height="120" viewBox="0 0 120 120" className="transform -rotate-90">
-                      <circle
-                        cx="60" cy="60" r="52"
-                        fill="none"
-                        stroke="var(--border)"
-                        strokeWidth="8"
-                        strokeLinecap="round"
-                      />
-                      <circle
-                        cx="60" cy="60" r="52"
-                        fill="none"
-                        stroke="url(#counterGradientCreate)"
-                        strokeWidth="8"
-                        strokeLinecap="round"
-                        strokeDasharray={`${2 * Math.PI * 52}`}
-                        strokeDashoffset="0"
-                      />
-                      <defs>
-                        <linearGradient id="counterGradientCreate" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" style={{ stopColor: 'var(--accent)' }} />
-                          <stop offset="100%" style={{ stopColor: 'var(--accent)', stopOpacity: 0.7 }} />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-2xl font-bold text-[var(--fg)]">{targetQuantity}</span>
-                      <span className="text-[11px] text-[var(--fg-muted)]">{countUnit}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Target quantity with slider */}
+              <div className="border-t border-[var(--border)] px-4 py-3 space-y-3">
+                {/* Target quantity */}
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-semibold text-[var(--fg-secondary)]">Целевое количество</label>
-                    <span className="text-[10px] text-[var(--fg-muted)]">Мин. 2</span>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-medium text-[var(--fg-muted)]">Количество</label>
                   </div>
-
-                  <div className="flex items-center gap-3">
+                  {/* Slider row — кнопки и полоска на одной линии */}
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setTargetQuantity((n) => Math.max(2, n - 1))}
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] hover:border-[var(--border-strong)] transition-all duration-200 active:scale-90 text-lg font-medium"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] transition-all active:scale-90 text-sm font-medium"
                     >
                       −
                     </button>
-                    <div className="flex-1 relative">
-                      <input
-                        type="range"
-                        min={2}
-                        max={100}
-                        value={Math.min(targetQuantity, 100)}
-                        onChange={(e) => setTargetQuantity(Math.max(2, parseInt(e.target.value, 10)))}
-                        className="target-slider w-full"
-                      />
-                      <div className="relative mt-1 h-4" style={{ padding: '0 11px' }}>
-                        {[5, 10, 25, 50, 100].map((val) => (
-                          <button
-                            key={val}
-                            type="button"
-                            onClick={() => setTargetQuantity(val)}
-                            className={cn(
-                              'absolute text-[10px] font-medium transition-all duration-200 -translate-x-1/2',
-                              targetQuantity === val
-                                ? 'text-[var(--accent)] font-bold'
-                                : 'text-[var(--fg-muted)] hover:text-[var(--fg-secondary)]'
-                            )}
-                            style={{ left: `${((val - 2) / (100 - 2)) * 100}%` }}
-                          >
-                            {val}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                    <input
+                      type="range"
+                      min={2}
+                      max={100}
+                      value={Math.min(targetQuantity, 100)}
+                      onChange={(e) => setTargetQuantity(Math.max(2, parseInt(e.target.value, 10)))}
+                      className="target-slider flex-1"
+                    />
                     <button
                       type="button"
                       onClick={() => setTargetQuantity((n) => n + 1)}
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)] text-white shadow-lg hover:brightness-110 transition-all duration-200 active:scale-90 text-lg font-medium"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)] text-white hover:brightness-110 transition-all active:scale-90 text-sm font-medium"
                     >
                       +
                     </button>
+                  </div>
+                  {/* Marks — цифры под слайдером */}
+                  <div className="relative h-4 mt-1" style={{ marginLeft: 40, marginRight: 40 }}>
+                    {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((val) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setTargetQuantity(val)}
+                        className={cn(
+                          'absolute top-0 text-[8px] leading-none font-medium transition-colors -translate-x-1/2',
+                          targetQuantity === val
+                            ? 'text-[var(--accent)] font-bold'
+                            : 'text-[var(--fg-muted)] hover:text-[var(--fg-secondary)]'
+                        )}
+                        style={{ left: `${((val - 2) / (100 - 2)) * 100}%` }}
+                      >
+                        {val}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
                 {/* Unit of measurement */}
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--fg-secondary)] mb-2">Единица измерения</label>
+                  <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Единица</label>
+                  <div className="flex gap-1.5">
+                    {['раз', 'мин', 'км', 'стр', 'шт'].map((unit) => (
+                      <button
+                        key={unit}
+                        type="button"
+                        onClick={() => setCountUnit(unit)}
+                        className={cn(
+                          'flex-1 rounded-lg py-1.5 text-[11px] font-medium transition-all active:scale-95',
+                          countUnit === unit
+                            ? 'bg-[var(--accent)] text-white shadow-sm'
+                            : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)] hover:text-[var(--fg-secondary)] border border-[var(--border)]'
+                        )}
+                      >
+                        {unit}
+                      </button>
+                    ))}
+                  </div>
                   <input
                     type="text"
                     value={countUnit}
                     onChange={(e) => e.target.value.length <= 8 && setCountUnit(e.target.value)}
                     maxLength={8}
-                    placeholder="раз"
-                    className="input w-full h-10 text-sm mb-2"
+                    placeholder="своя единица…"
+                    className="input w-full h-8 text-xs mt-1.5"
                   />
-                  <div className="flex gap-1.5">
-                    {[
-                      { label: 'раз', color: 'orange' },
-                      { label: 'мин', color: 'blue' },
-                      { label: 'км', color: 'green' },
-                      { label: 'стр', color: 'purple' },
-                      { label: 'шт', color: 'amber' },
-                    ].map((unit) => (
-                      <button
-                        key={unit.label}
-                        type="button"
-                        onClick={() => setCountUnit(unit.label)}
-                        className={cn(
-                          'flex-1 rounded-lg py-1.5 text-xs font-medium transition-all duration-200 active:scale-95',
-                          countUnit === unit.label
-                            ? 'bg-[var(--accent)] text-white shadow-sm'
-                            : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)] hover:bg-[var(--surface-overlay)] hover:text-[var(--fg-secondary)] border border-[var(--border)]'
-                        )}
-                      >
-                        {unit.label}
-                      </button>
-                    ))}
-                  </div>
                 </div>
               </div>
             </div>
