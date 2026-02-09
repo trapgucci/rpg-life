@@ -609,11 +609,15 @@ export const useRpgStore = create<RpgStoreState>()(
             tryRandomFragmentDrop()
             checkAchievements()
             // Сбрасываем задачу: isCompleted = false
-            // Подзадачи НЕ сбрасываются — их награды уже выданы при toggle
+            // Подзадачи также сбрасываются для возможности повторного выполнения
             updateTask(id, (t) => {
               if (t.kind === 'checkbox') return { ...t, isCompleted: false, completedAt: undefined }
               if (t.kind === 'counter') return { ...t, isCompleted: false, current: 0, completedAt: undefined }
-              if (t.kind === 'nested') return { ...t, isCompleted: false, completedAt: undefined }
+              if (t.kind === 'nested') {
+                // Сбрасываем все подзадачи
+                const resetSubtasks = t.subtasks.map(s => ({ ...s, isCompleted: false }))
+                return { ...t, isCompleted: false, completedAt: undefined, subtasks: resetSubtasks }
+              }
               return t
             })
             return

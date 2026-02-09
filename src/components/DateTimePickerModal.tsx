@@ -21,9 +21,11 @@ export default function DateTimePickerModal({
 }: DateTimePickerModalProps) {
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [selectedTime, setSelectedTime] = useState<string>('23:59')
+  const [errorMessage, setErrorMessage] = useState<string>('')
 
   useEffect(() => {
     if (isOpen) {
+      setErrorMessage('')
       if (value) {
         const [date, time] = value.split('T')
         setSelectedDate(date || '')
@@ -48,12 +50,13 @@ export default function DateTimePickerModal({
 
       // Проверяем, что выбранная дата не в прошлом
       if (selectedDateTime < now) {
-        alert('Нельзя установить дедлайн в прошлом')
+        setErrorMessage('Нельзя установить дедлайн в прошлом')
         return
       }
 
       onChange(`${selectedDate}T${selectedTime}`)
     }
+    setErrorMessage('')
     onClose()
   }
 
@@ -196,8 +199,29 @@ export default function DateTimePickerModal({
               </div>
             </div>
 
+            {/* Error message */}
+            {errorMessage && (
+              <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border-2 border-red-500/50 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-500/20">
+                    <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-red-600 dark:text-red-400">
+                      Ошибка
+                    </p>
+                    <p className="text-sm text-red-600 dark:text-red-400 mt-0.5">
+                      {errorMessage}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Preview */}
-            {selectedDate && (
+            {selectedDate && !errorMessage && (
               <div className="relative overflow-hidden rounded-2xl border-2 border-[var(--accent)]/30 bg-gradient-to-br from-[var(--accent)]/5 via-[var(--accent)]/10 to-[var(--accent)]/5 p-4 shadow-lg">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-[var(--accent)]/20 to-transparent rounded-full blur-2xl -translate-y-8 translate-x-8" />
                 <div className="relative flex items-start gap-4">

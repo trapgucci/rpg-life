@@ -62,6 +62,10 @@ export default function TaskCard({ task, selected, onSelect }: TaskCardProps) {
     const diffHours = Math.floor(diffTime / (1000 * 60 * 60))
 
     if (diffTime <= 0) {
+      // Для инстант-задач с истекшим дедлайном показываем "Архив" (серый), а не "Просрочено" (красный)
+      if (task.recurrence === 'instant') {
+        return { text: 'Архив', color: 'text-gray-500', bg: 'bg-gray-500/10', border: 'border-gray-500/30' }
+      }
       return { text: 'Просрочено', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30' }
     } else if (diffHours < 1) {
       return { text: '<1ч', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30' }

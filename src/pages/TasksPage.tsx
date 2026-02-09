@@ -10,6 +10,8 @@ import type { TaskRpg, TaskGroupId } from '../types/domain'
 
 /** Специальный id для «Без группы» */
 const NO_GROUP_ID: TaskGroupId | null = null
+/** Специальный id для «Все группы» */
+const ALL_GROUPS_ID = '__all_groups__' as TaskGroupId
 
 /** Типы фильтров для вкладок */
 type TaskFilter = 'active' | 'completed' | 'canceled'
@@ -51,7 +53,7 @@ export default function TasksPage() {
     [taskGroupsRaw, activeProfileId]
   )
 
-  const [selectedGroupId, setSelectedGroupId] = useState<TaskGroupId | null>(NO_GROUP_ID)
+  const [selectedGroupId, setSelectedGroupId] = useState<TaskGroupId | null>(ALL_GROUPS_ID)
   const [selectedId, setSelectedId] = useState<TaskRpg['id'] | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [formVisible, setFormVisible] = useState(false)
@@ -112,6 +114,7 @@ export default function TasksPage() {
       }
 
       const g = t.groupId ?? null
+      if (selectedGroupId === ALL_GROUPS_ID) return true
       if (selectedGroupId === NO_GROUP_ID) return g === null
       return g === selectedGroupId
     })
@@ -194,14 +197,30 @@ export default function TasksPage() {
   const taskCountByGroup = useMemo(() => {
     const map = new Map<TaskGroupId | null, number>()
     if (!activeProfileId) return map
+    const now = Date.now()
     tasks
-      .filter((t) => t.profileId === activeProfileId && !t.archived)
+      .filter((t) => {
+        if (t.profileId !== activeProfileId || t.archived) return false
+
+        // Применяем тот же фильтр, что и для отображения задач
+        if (taskFilter === 'active') {
+          if (t.isCompleted) return false
+          if (t.deadlineAt && now > t.deadlineAt) return false
+        } else if (taskFilter === 'completed') {
+          if (!t.isCompleted) return false
+        } else if (taskFilter === 'canceled') {
+          if (t.isCompleted) return false
+          if (!t.deadlineAt || now <= t.deadlineAt) return false
+        }
+
+        return true
+      })
       .forEach((t) => {
         const g = t.groupId ?? null
         map.set(g, (map.get(g) ?? 0) + 1)
       })
     return map
-  }, [tasks, activeProfileId])
+  }, [tasks, activeProfileId, taskFilter])
 
   const countNoGroup = taskCountByGroup.get(null) ?? 0
 
@@ -242,7 +261,7 @@ export default function TasksPage() {
 
   return (
     <div className="flex h-full min-h-0 gap-4">
-      <div className="flex w-[400px] shrink-0 flex-col gap-4">
+      <div className="flex w-full md:w-[400px] md:shrink-0 flex-col gap-4">
         {/* Header */}
         <div className="glass-card rounded-2xl p-4">
           <div className="flex items-center justify-between">
@@ -340,6 +359,24 @@ export default function TasksPage() {
                 <FolderOpen className="h-4 w-4 shrink-0 opacity-70" />
                 <span className="flex-1 truncate">Без группы</span>
                 <span className="text-xs text-[var(--fg-muted)]">{countNoGroup}</span>
+              </button>
+
+              {/* Все группы */}
+              <button
+                type="button"
+                onClick={() => setSelectedGroupId(ALL_GROUPS_ID)}
+                className={cn(
+                  'flex items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-all',
+                  selectedGroupId === ALL_GROUPS_ID
+                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium'
+                    : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
+                )}
+              >
+                <FolderOpen className="h-4 w-4 shrink-0 opacity-70" />
+                <span className="flex-1 truncate">Все группы</span>
+                <span className="text-xs text-[var(--fg-muted)]">
+                  {Array.from(taskCountByGroup.values()).reduce((a, b) => a + b, 0)}
+                </span>
               </button>
 
               {/* Пользовательские группы */}

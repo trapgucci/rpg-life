@@ -85,6 +85,8 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const [rewardFeedback, setRewardFeedback] = useState<{ subtaskId: string; coins: number; xp: number } | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false)
+  const [showDeleteSubtaskConfirm, setShowDeleteSubtaskConfirm] = useState(false)
+  const [subtaskToDelete, setSubtaskToDelete] = useState<string | null>(null)
   // Stores the new task that triggered the unsaved changes prompt
   const pendingTaskRef = useRef<TaskRpg | null>(null)
 
@@ -216,10 +218,15 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   }
 
   const handleRemoveSubtask = (subtaskId: string) => {
-    if (task.kind !== 'nested') return
+    setSubtaskToDelete(subtaskId)
+    setShowDeleteSubtaskConfirm(true)
+  }
+
+  const confirmDeleteSubtask = () => {
+    if (!subtaskToDelete || task.kind !== 'nested') return
     updateTask(task.id, (t) => {
       if (t.kind !== 'nested') return t
-      const next = t.subtasks.filter((s) => s.id !== subtaskId)
+      const next = t.subtasks.filter((s) => s.id !== subtaskToDelete)
       // Если подзадач не осталось — преобразуем обратно в checkbox
       if (next.length === 0) {
         const { subtasks, kind, ...rest } = t
@@ -227,10 +234,12 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
       }
       return { ...t, subtasks: next }
     })
-    if (editingSubtask?.id === subtaskId) {
+    if (editingSubtask?.id === subtaskToDelete) {
       setEditingSubtask(null)
       setShowSubtaskModal(false)
     }
+    setShowDeleteSubtaskConfirm(false)
+    setSubtaskToDelete(null)
   }
 
   const handleEditSubtask = (sub: SubtaskEditData) => {
@@ -1110,16 +1119,18 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   </div>
                 )}
 
-                {/* Coins reward */}
-                <div className="flex items-center gap-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 p-3 border border-amber-200 dark:border-amber-800">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50">
-                    <Coins className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                {/* Coins reward - только если больше 0 */}
+                {coins > 0 && (
+                  <div className="flex items-center gap-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 p-3 border border-amber-200 dark:border-amber-800">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50">
+                      <Coins className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div>
+                      <p className="text-xl font-bold text-amber-600 dark:text-amber-400">+{coins}</p>
+                      <p className="text-xs text-[var(--fg-muted)]">Монет</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xl font-bold text-amber-600 dark:text-amber-400">+{coins}</p>
-                    <p className="text-xs text-[var(--fg-muted)]">Монет</p>
-                  </div>
-                </div>
+                )}
 
                 {/* Gems reward */}
                 {gems > 0 && (
@@ -1496,6 +1507,19 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
         confirmText="Сохранить"
         cancelText="Не сохранять"
         variant="save"
+      />
+      <ConfirmModal
+        isOpen={showDeleteSubtaskConfirm}
+        onConfirm={confirmDeleteSubtask}
+        onCancel={() => {
+          setShowDeleteSubtaskConfirm(false)
+          setSubtaskToDelete(null)
+        }}
+        title="Удалить подзадачу?"
+        message="Подзадача будет удалена безвозвратно."
+        confirmText="Удалить"
+        cancelText="Отмена"
+        variant="danger"
       />
     </div>
   )
