@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { cn } from '../lib/cn'
-import { CheckSquare, Plus, Sparkles, Target, FolderOpen, Pencil, Trash2, X, Clock } from 'lucide-react'
+import { CheckSquare, Plus, Sparkles, Target, FolderOpen, Pencil, Trash2, X, Clock, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import TaskCreateForm from '../components/TaskCreateForm'
 import TaskCard from '../components/TaskCard'
 import TaskDetailPanel from '../components/TaskDetailPanel'
@@ -13,6 +13,25 @@ const NO_GROUP_ID: TaskGroupId | null = null
 
 /** Типы фильтров для вкладок */
 type TaskFilter = 'active' | 'completed' | 'canceled'
+
+/** Поля сортировки */
+type SortField = 'date' | 'deadline' | 'priority' | 'reward' | 'difficulty'
+type SortDirection = 'asc' | 'desc'
+
+const SORT_LABELS: Record<SortField, string> = {
+  date: 'Дата',
+  deadline: 'Дедлайн',
+  priority: 'Приоритет',
+  reward: 'Награда',
+  difficulty: 'Сложность',
+}
+
+const DIFFICULTY_ORDER: Record<string, number> = {
+  easy: 1,
+  medium: 2,
+  hard: 3,
+  veryHard: 4,
+}
 
 export default function TasksPage() {
   const tasks = useRpgStore((s) => s.tasks)
@@ -37,6 +56,11 @@ export default function TasksPage() {
   const [showForm, setShowForm] = useState(false)
   const [formVisible, setFormVisible] = useState(false)
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('active')
+  const [sortField, setSortField] = useState<SortField>('date')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [showSortMenu, setShowSortMenu] = useState(false)
+  const sortMenuRef = useRef<HTMLDivElement>(null)
+  const getTaskRewardPreview = useRpgStore((s) => s.getTaskRewardPreview)
 
   useEffect(() => {
     if (showForm) {
@@ -47,6 +71,19 @@ export default function TasksPage() {
       setFormVisible(false)
     }
   }, [showForm])
+
+  // Close sort menu on outside click
+  useEffect(() => {
+    if (!showSortMenu) return
+    const handler = (e: MouseEvent) => {
+      if (sortMenuRef.current && !sortMenuRef.current.contains(e.target as Node)) {
+        setShowSortMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showSortMenu])
+
   const [newGroupName, setNewGroupName] = useState('')
   const [addingGroup, setAddingGroup] = useState(false)
   const [editingGroupId, setEditingGroupId] = useState<TaskGroupId | null>(null)
@@ -85,12 +122,44 @@ export default function TasksPage() {
     () =>
       [...filteredTasks].sort((a, b) => {
         if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1
-        return b.updatedAt - a.updatedAt
+
+        const dir = sortDirection === 'asc' ? 1 : -1
+        switch (sortField) {
+          case 'date':
+            return (b.updatedAt - a.updatedAt) * dir
+          case 'deadline': {
+            const aD = a.deadlineAt ?? Infinity
+            const bD = b.deadlineAt ?? Infinity
+            return (aD - bD) * dir
+          }
+          case 'priority': {
+            // priority = difficulty for now
+            const aP = DIFFICULTY_ORDER[a.difficulty] ?? 0
+            const bP = DIFFICULTY_ORDER[b.difficulty] ?? 0
+            return (aP - bP) * dir
+          }
+          case 'reward': {
+            const aR = getTaskRewardPreview(a)
+            const bR = getTaskRewardPreview(b)
+            const aTot = aR.coins + aR.gems + aR.xp
+            const bTot = bR.coins + bR.gems + bR.xp
+            return (aTot - bTot) * dir
+          }
+          case 'difficulty': {
+            const aD2 = DIFFICULTY_ORDER[a.difficulty] ?? 0
+            const bD2 = DIFFICULTY_ORDER[b.difficulty] ?? 0
+            return (aD2 - bD2) * dir
+          }
+          default:
+            return b.updatedAt - a.updatedAt
+        }
       }),
-    [filteredTasks]
+    [filteredTasks, sortField, sortDirection, getTaskRewardPreview]
   )
 
-  const selectedTask = selectedId ? filteredTasks.find((t) => t.id === selectedId) : null
+  // Bug fix: look up selectedTask in ALL tasks (not just filteredTasks)
+  // so switching filter/group doesn't lose the selected task panel
+  const selectedTask = selectedId ? tasks.find((t) => t.id === selectedId) ?? null : null
 
   const handleAddGroup = () => {
     const name = newGroupName.trim()
@@ -186,14 +255,71 @@ export default function TasksPage() {
                 <p className="text-xs text-[var(--fg-muted)]">{filteredTasks.length} в выбранной группе</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowForm(true)}
-              className="btn-primary flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Новая
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Sort button */}
+              <div className="relative" ref={sortMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowSortMenu((v) => !v)}
+                  className={cn(
+                    'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
+                    'border border-[var(--border)] text-[var(--fg-muted)]',
+                    'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
+                    showSortMenu && 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-subtle)]'
+                  )}
+                  title="Сортировка"
+                >
+                  <ArrowUpDown className="h-4 w-4" />
+                </button>
+
+                {showSortMenu && (
+                  <div className="absolute right-0 top-11 z-50 w-52 rounded-xl border border-[var(--border)] bg-[var(--surface-overlay)] shadow-lg backdrop-blur-xl overflow-hidden">
+                    <div className="px-3 py-2 text-xs font-medium text-[var(--fg-muted)] border-b border-[var(--border)]">
+                      Сортировка
+                    </div>
+                    {(Object.keys(SORT_LABELS) as SortField[]).map((field) => {
+                      const isActive = sortField === field
+                      return (
+                        <button
+                          key={field}
+                          type="button"
+                          onClick={() => {
+                            if (isActive) {
+                              setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))
+                            } else {
+                              setSortField(field)
+                              setSortDirection('desc')
+                            }
+                          }}
+                          className={cn(
+                            'flex w-full items-center justify-between px-3 py-2 text-sm transition-colors',
+                            isActive
+                              ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium'
+                              : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
+                          )}
+                        >
+                          <span>{SORT_LABELS[field]}</span>
+                          {isActive && (
+                            sortDirection === 'asc'
+                              ? <ArrowUp className="h-3.5 w-3.5" />
+                              : <ArrowDown className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowForm(true)}
+                className="btn-primary flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Новая
+              </button>
+            </div>
           </div>
 
           {/* Группы */}

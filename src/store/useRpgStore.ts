@@ -552,7 +552,8 @@ export const useRpgStore = create<RpgStoreState>()(
         canCompleteTask: (task) => {
           if (task.isCompleted) return false
           const deadlineAt = task.deadlineAt ?? null
-          if (deadlineAt != null && now() > deadlineAt) return false
+          // Instant tasks ignore deadline — they're meant to be repeatable forever
+          if (task.recurrence !== 'instant' && deadlineAt != null && now() > deadlineAt) return false
           // For counter tasks, can only complete when current >= target
           if (task.kind === 'counter' && task.current < task.target) return false
           return true
@@ -607,11 +608,12 @@ export const useRpgStore = create<RpgStoreState>()(
             updateStats((s) => ({ totalTasksCompleted: s.totalTasksCompleted + 1 }))
             tryRandomFragmentDrop()
             checkAchievements()
-            // Сбрасываем задачу: isCompleted = false, подзадачи сбрасываем
+            // Сбрасываем задачу: isCompleted = false
+            // Подзадачи НЕ сбрасываются — их награды уже выданы при toggle
             updateTask(id, (t) => {
               if (t.kind === 'checkbox') return { ...t, isCompleted: false, completedAt: undefined }
               if (t.kind === 'counter') return { ...t, isCompleted: false, current: 0, completedAt: undefined }
-              if (t.kind === 'nested') return { ...t, isCompleted: false, subtasks: t.subtasks.map((s) => ({ ...s, isCompleted: false, completedAt: undefined })), completedAt: undefined }
+              if (t.kind === 'nested') return { ...t, isCompleted: false, completedAt: undefined }
               return t
             })
             return
@@ -674,23 +676,36 @@ export const useRpgStore = create<RpgStoreState>()(
           const wasCompleted = subtask.isCompleted
           const isNowCompleted = !wasCompleted
 
-          // Award per-subtask rewards only when toggling ON
-          if (isNowCompleted) {
-            const profile = getActiveProfile()
-            const settings = get().settings
-            if (profile) {
-              const coinRwd = subtask.coinReward ?? 0
-              const gemRwd = subtask.gemReward ?? 0
-              const diff = subtask.difficulty ?? 'medium'
-              const xpRwd = subtask.customXp ?? settings.taskDifficultyXp?.[diff] ?? TASK_XP_BY_DIFFICULTY[diff] ?? subtask.xpReward ?? 0
+          const profile = getActiveProfile()
+          const settings = get().settings
+          if (profile) {
+            const coinRwd = subtask.coinReward ?? 0
+            const gemRwd = subtask.gemReward ?? 0
+            const diff = subtask.difficulty ?? 'medium'
+            const xpRwd = subtask.customXp ?? settings.taskDifficultyXp?.[diff] ?? TASK_XP_BY_DIFFICULTY[diff] ?? subtask.xpReward ?? 0
+            const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
+
+            if (isNowCompleted) {
+              // Award per-subtask rewards when toggling ON
               if (coinRwd > 0) get().addCurrency(CURRENCY_IDS.COINS, coinRwd)
               if (gemRwd > 0) get().addCurrency(CURRENCY_IDS.GEMS, gemRwd)
-              const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
               if (xpRwd > 0 && attrIds.length > 0) {
                 let currentAttrs = profile.attributes
                 for (const attrId of attrIds) {
                   const tempProfile = { ...profile, attributes: currentAttrs }
                   currentAttrs = addXpToAttribute(tempProfile, attrId, xpRwd)
+                }
+                updateProfile(profile.id, (p) => ({ ...p, attributes: currentAttrs }))
+              }
+            } else {
+              // Revoke per-subtask rewards when toggling OFF
+              if (coinRwd > 0) get().deductCurrency(CURRENCY_IDS.COINS, coinRwd)
+              if (gemRwd > 0) get().deductCurrency(CURRENCY_IDS.GEMS, gemRwd)
+              if (xpRwd > 0 && attrIds.length > 0) {
+                let currentAttrs = profile.attributes
+                for (const attrId of attrIds) {
+                  const tempProfile = { ...profile, attributes: currentAttrs }
+                  currentAttrs = deductXpFromAttribute(tempProfile, attrId, xpRwd)
                 }
                 updateProfile(profile.id, (p) => ({ ...p, attributes: currentAttrs }))
               }

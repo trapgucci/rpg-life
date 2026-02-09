@@ -3,71 +3,7 @@ import { cn } from '../lib/cn'
 import type { TaskRpg } from '../types/domain'
 import { useRpgStore } from '../store/useRpgStore'
 
-// CSS для анимаций
-const glowStyles = `
-@keyframes glow-pulse-coin {
-  0%, 100% {
-    box-shadow: 0 0 8px rgba(245, 158, 11, 0.15);
-  }
-  50% {
-    box-shadow: 0 0 16px rgba(245, 158, 11, 0.35), 0 0 24px rgba(245, 158, 11, 0.15);
-  }
-}
-
-@keyframes glow-pulse-xp-easy {
-  0%, 100% {
-    box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
-  }
-  50% {
-    box-shadow: 0 0 18px rgba(16, 185, 129, 0.4), 0 0 26px rgba(16, 185, 129, 0.2);
-  }
-}
-
-@keyframes glow-pulse-xp-medium {
-  0%, 100% {
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
-  }
-  50% {
-    box-shadow: 0 0 18px rgba(59, 130, 246, 0.4), 0 0 26px rgba(59, 130, 246, 0.2);
-  }
-}
-
-@keyframes glow-pulse-xp-hard {
-  0%, 100% {
-    box-shadow: 0 0 10px rgba(249, 115, 22, 0.2);
-  }
-  50% {
-    box-shadow: 0 0 18px rgba(249, 115, 22, 0.4), 0 0 26px rgba(249, 115, 22, 0.2);
-  }
-}
-
-@keyframes glow-pulse-xp-veryhard {
-  0%, 100% {
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
-  }
-  50% {
-    box-shadow: 0 0 18px rgba(239, 68, 68, 0.4), 0 0 26px rgba(239, 68, 68, 0.2);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-@keyframes gem-glow {
-  0%, 100% {
-    box-shadow: 0 0 10px rgba(6, 182, 212, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.1);
-  }
-  50% {
-    box-shadow: 0 0 16px rgba(6, 182, 212, 0.35), 0 0 24px rgba(34, 211, 238, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.15);
-  }
-}
-`
+// Glow keyframes moved to index.css (global, not per-card)
 
 const KIND_ICON = {
   checkbox: CheckSquare,
@@ -143,8 +79,6 @@ export default function TaskCard({ task, selected, onSelect }: TaskCardProps) {
   const deadlineInfo = getDeadlineInfo()
 
   return (
-    <>
-      <style>{glowStyles}</style>
       <button
         type="button"
         onClick={onSelect}
@@ -294,6 +228,5 @@ export default function TaskCard({ task, selected, onSelect }: TaskCardProps) {
         </div>
       </div>
     </button>
-    </>
   )
 }
