@@ -383,9 +383,17 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   }
 
   const editAttrNames = editAttributeIds.map((id) => attributes.find((a) => a.id === id)).filter(Boolean)
-  const editEffectiveXp = editCustomXp ?? (settings.taskDifficultyXp?.[editDifficulty] ?? TASK_XP_BY_DIFFICULTY[editDifficulty])
-  const getSubtaskEffectiveXp = (s: SubtaskItem) =>
-    s.customXp ?? settings.taskDifficultyXp?.[s.difficulty ?? 'medium'] ?? TASK_XP_BY_DIFFICULTY[s.difficulty ?? 'medium'] ?? s.xpReward ?? 0
+  // XP отображается только если выбраны атрибуты
+  const editEffectiveXp = editAttributeIds.length > 0
+    ? (editCustomXp ?? (settings.taskDifficultyXp?.[editDifficulty] ?? TASK_XP_BY_DIFFICULTY[editDifficulty]))
+    : 0
+  // Для подзадач XP также зависит от атрибутов родительской задачи
+  const getSubtaskEffectiveXp = (s: SubtaskItem) => {
+    const parentAttrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
+    return parentAttrIds.length > 0
+      ? (s.customXp ?? settings.taskDifficultyXp?.[s.difficulty ?? 'medium'] ?? TASK_XP_BY_DIFFICULTY[s.difficulty ?? 'medium'] ?? s.xpReward ?? 0)
+      : 0
+  }
 
   return (
     <div className="glass-card flex h-full flex-col rounded-2xl p-6 overflow-hidden">
@@ -934,18 +942,23 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   {a.icon} {a.name}
                 </span>
               ))}
-              {taskAttrs.length > 0 && <span className="text-[var(--fg-muted)] text-lg leading-none select-none">·</span>}
-              <span
-                className="rounded-xl px-3 py-1.5 text-sm font-medium border-2"
-                style={{
-                  backgroundColor: `${diffColor}15`,
-                  color: diffColor,
-                  borderColor: `${diffColor}50`,
-                }}
-              >
-                <Zap className="h-3.5 w-3.5 inline mr-1" />
-                {DIFFICULTY_LABELS[task.difficulty]}
-              </span>
+              {/* Сложность показывается только если есть атрибуты */}
+              {taskAttrs.length > 0 && (
+                <>
+                  <span className="text-[var(--fg-muted)] text-lg leading-none select-none">·</span>
+                  <span
+                    className="rounded-xl px-3 py-1.5 text-sm font-medium border-2"
+                    style={{
+                      backgroundColor: `${diffColor}15`,
+                      color: diffColor,
+                      borderColor: `${diffColor}50`,
+                    }}
+                  >
+                    <Zap className="h-3.5 w-3.5 inline mr-1" />
+                    {DIFFICULTY_LABELS[task.difficulty]}
+                  </span>
+                </>
+              )}
               {task.recurrence !== 'once' && (
                 <>
                   <span className="text-[var(--fg-muted)] text-lg leading-none select-none">·</span>

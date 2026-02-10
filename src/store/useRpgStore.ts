@@ -559,7 +559,10 @@ export const useRpgStore = create<RpgStoreState>()(
 
         getTaskRewardPreview: (task) => {
           const { settings } = get()
-          const xp = task.customXp ?? settings.taskDifficultyXp?.[task.difficulty] ?? TASK_XP_BY_DIFFICULTY[task.difficulty]
+          // Если атрибуты не выбраны, XP = 0
+          const xp = task.attributeIds.length > 0
+            ? (task.customXp ?? settings.taskDifficultyXp?.[task.difficulty] ?? TASK_XP_BY_DIFFICULTY[task.difficulty])
+            : 0
           const coins = task.coinReward
           const gems = task.gemReward ?? 0
           return { xp, coins, gems }
@@ -587,12 +590,15 @@ export const useRpgStore = create<RpgStoreState>()(
           if (!task || !profile) return
           if (!canCompleteTask(task)) return
 
-          const xpGain = task.customXp ?? settings.taskDifficultyXp?.[task.difficulty] ?? TASK_XP_BY_DIFFICULTY[task.difficulty]
+          // Add XP to all selected attributes
+          const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
+          // XP начисляется только если есть атрибуты
+          const xpGain = attrIds.length > 0
+            ? (task.customXp ?? settings.taskDifficultyXp?.[task.difficulty] ?? TASK_XP_BY_DIFFICULTY[task.difficulty])
+            : 0
           const coinGain = task.coinReward
           const gemGain = task.gemReward ?? 0
 
-          // Add XP to all selected attributes
-          const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
           if (attrIds.length > 0 && xpGain > 0) {
             let currentAttrs = profile.attributes
             for (const attrId of attrIds) {
@@ -777,8 +783,11 @@ export const useRpgStore = create<RpgStoreState>()(
             const coinRwd = subtask.coinReward ?? 0
             const gemRwd = subtask.gemReward ?? 0
             const diff = subtask.difficulty ?? 'medium'
-            const xpRwd = subtask.customXp ?? settings.taskDifficultyXp?.[diff] ?? TASK_XP_BY_DIFFICULTY[diff] ?? subtask.xpReward ?? 0
             const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
+            // XP начисляется только если у родительской задачи есть атрибуты
+            const xpRwd = attrIds.length > 0
+              ? (subtask.customXp ?? settings.taskDifficultyXp?.[diff] ?? TASK_XP_BY_DIFFICULTY[diff] ?? subtask.xpReward ?? 0)
+              : 0
 
             if (isNowCompleted) {
               // Award per-subtask rewards when toggling ON

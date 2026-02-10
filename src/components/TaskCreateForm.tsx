@@ -50,7 +50,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
 
   // Атрибуты и сложность
   const [selectedAttributeIds, setSelectedAttributeIds] = useState<AttributeId[]>([])
-  const [difficulty, setDifficulty] = useState<TaskDifficulty>('medium')
+  const [difficulty, setDifficulty] = useState<TaskDifficulty | null>(null)
   const [priority, setPriority] = useState<TaskPriority>('none')
   const [customXp, setCustomXp] = useState<number | null>(null)
   const [showAttributeModal, setShowAttributeModal] = useState(false)
@@ -110,6 +110,9 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       return
     }
 
+    // Если атрибуты не выбраны, сложность все равно нужна (для базовой структуры задачи), но XP начисляться не будет
+    const finalDifficulty = difficulty ?? 'medium'
+
     let deadlineMs: number | null = null
     if (deadlineAt) {
       const ms = new Date(deadlineAt).getTime()
@@ -128,10 +131,10 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         title: title.trim(),
         notes: description.trim() || undefined,
         kind: 'counter' as const,
-        difficulty,
+        difficulty: finalDifficulty,
         priority,
         attributeIds: selectedAttributeIds,
-        customXp,
+        customXp: selectedAttributeIds.length > 0 ? customXp : null,
         dueAt: null,
         deadlineAt: deadlineMs,
         archived: false,
@@ -160,10 +163,10 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         title: title.trim(),
         notes: description.trim() || undefined,
         kind: 'nested' as const,
-        difficulty,
+        difficulty: finalDifficulty,
         priority,
         attributeIds: selectedAttributeIds,
-        customXp,
+        customXp: selectedAttributeIds.length > 0 ? customXp : null,
         dueAt: null,
         deadlineAt: deadlineMs,
         archived: false,
@@ -179,10 +182,10 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         title: title.trim(),
         notes: description.trim() || undefined,
         kind: 'checkbox' as const,
-        difficulty,
+        difficulty: finalDifficulty,
         priority,
         attributeIds: selectedAttributeIds,
-        customXp,
+        customXp: selectedAttributeIds.length > 0 ? customXp : null,
         dueAt: null,
         deadlineAt: deadlineMs,
         archived: false,
@@ -199,7 +202,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       setDescription('')
       setSelectedGroupId(defaultGroupId)
       setSelectedAttributeIds([])
-      setDifficulty('medium')
+      setDifficulty(null)
       setPriority('none')
       setCustomXp(null)
       setCoinReward(10)
@@ -221,7 +224,8 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
 
   const attributes = getAttributes()
   const selectedAttrs = selectedAttributeIds.map((id) => attributes.find((a) => a.id === id)).filter(Boolean)
-  const difficultyXp = customXp ?? (settings.taskDifficultyXp?.[difficulty] ?? TASK_XP_BY_DIFFICULTY[difficulty])
+  const effectiveDifficulty = difficulty ?? 'medium'
+  const difficultyXp = selectedAttributeIds.length > 0 ? (customXp ?? (settings.taskDifficultyXp?.[effectiveDifficulty] ?? TASK_XP_BY_DIFFICULTY[effectiveDifficulty])) : 0
 
   return (
     <>
@@ -478,21 +482,23 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                           {a!.icon} {a!.name}
                         </span>
                       ))}
-                      <span className={cn(
-                        'inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-semibold border',
-                        customXp != null
-                          ? 'bg-purple-500/10 text-purple-500 border-purple-500/30'
-                          : difficulty === 'easy'
-                          ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
-                          : difficulty === 'medium'
-                          ? 'bg-blue-500/10 text-blue-500 border-blue-500/30'
-                          : difficulty === 'hard'
-                          ? 'bg-orange-500/10 text-orange-500 border-orange-500/30'
-                          : 'bg-red-500/10 text-red-500 border-red-500/30'
-                      )}>
-                        <Zap className="h-3 w-3" />
-                        {difficultyXp} XP
-                      </span>
+                      {difficultyXp > 0 && (
+                        <span className={cn(
+                          'inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-semibold border',
+                          customXp != null
+                            ? 'bg-purple-500/10 text-purple-500 border-purple-500/30'
+                            : effectiveDifficulty === 'easy'
+                            ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                            : effectiveDifficulty === 'medium'
+                            ? 'bg-blue-500/10 text-blue-500 border-blue-500/30'
+                            : effectiveDifficulty === 'hard'
+                            ? 'bg-orange-500/10 text-orange-500 border-orange-500/30'
+                            : 'bg-red-500/10 text-red-500 border-red-500/30'
+                        )}>
+                          <Zap className="h-3 w-3" />
+                          {difficultyXp} XP
+                        </span>
+                      )}
                     </div>
                   ) : (
                     <p className="text-xs text-[var(--fg-muted)] mt-0.5">Не выбрано</p>
@@ -755,7 +761,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
     <TaskAttributeSelectModal
       isOpen={showAttributeModal}
       selectedAttributeIds={selectedAttributeIds}
-      selectedDifficulty={difficulty}
+      selectedDifficulty={difficulty ?? 'medium'}
       customXp={customXp}
       onSelectAttributes={setSelectedAttributeIds}
       onSelectDifficulty={setDifficulty}
