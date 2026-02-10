@@ -50,6 +50,7 @@ export default function TasksPage() {
   const addTaskGroup = useRpgStore((s) => s.addTaskGroup)
   const updateTaskGroup = useRpgStore((s) => s.updateTaskGroup)
   const deleteTaskGroup = useRpgStore((s) => s.deleteTaskGroup)
+  const reorderTaskGroups = useRpgStore((s) => s.reorderTaskGroups)
   const resetRecurringTasks = useRpgStore((s) => s.resetRecurringTasks)
   const getTaskRewardPreview = useRpgStore((s) => s.getTaskRewardPreview)
 
@@ -140,6 +141,8 @@ export default function TasksPage() {
   const [editingGroupId, setEditingGroupId] = useState<TaskGroupId | null>(null)
   const [editingGroupName, setEditingGroupName] = useState('')
   const [deletingGroupId, setDeletingGroupId] = useState<TaskGroupId | null>(null)
+  const [draggedGroupId, setDraggedGroupId] = useState<TaskGroupId | null>(null)
+  const [dragOverGroupId, setDragOverGroupId] = useState<TaskGroupId | null>(null)
 
   const filteredTasks = useMemo(() => {
     if (!activeProfileId) return []
@@ -293,6 +296,44 @@ export default function TasksPage() {
 
   const countNoGroup = taskCountByGroup.get(null) ?? 0
 
+  const handleDragStart = (groupId: TaskGroupId) => {
+    setDraggedGroupId(groupId)
+  }
+
+  const handleDragOver = (e: React.DragEvent, groupId: TaskGroupId) => {
+    e.preventDefault()
+    if (draggedGroupId && draggedGroupId !== groupId) {
+      setDragOverGroupId(groupId)
+    }
+  }
+
+  const handleDragLeave = () => {
+    setDragOverGroupId(null)
+  }
+
+  const handleDrop = (e: React.DragEvent, targetGroupId: TaskGroupId) => {
+    e.preventDefault()
+    if (!draggedGroupId || draggedGroupId === targetGroupId) return
+
+    const draggedIndex = taskGroups.findIndex(g => g.id === draggedGroupId)
+    const targetIndex = taskGroups.findIndex(g => g.id === targetGroupId)
+
+    if (draggedIndex === -1 || targetIndex === -1) return
+
+    const newGroups = [...taskGroups]
+    const [removed] = newGroups.splice(draggedIndex, 1)
+    newGroups.splice(targetIndex, 0, removed)
+
+    reorderTaskGroups(newGroups.map(g => g.id))
+    setDraggedGroupId(null)
+    setDragOverGroupId(null)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedGroupId(null)
+    setDragOverGroupId(null)
+  }
+
   // Режим «Новая задача»: форма с красивой анимацией появления
   if (showForm) {
     return (
@@ -340,7 +381,12 @@ export default function TasksPage() {
               </div>
               <div>
                 <h1 className="text-lg font-bold text-[var(--fg)]">Задачи</h1>
-                <p className="text-xs text-[var(--fg-muted)]">{filteredTasks.length} в выбранной группе</p>
+                <p className="text-xs text-[var(--fg-muted)]">
+                  {taskFilter === 'all' && 'Все задачи'}
+                  {taskFilter === 'active' && 'Активные'}
+                  {taskFilter === 'completed' && 'Выполненные'}
+                  {taskFilter === 'canceled' && 'Отмененные'}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -536,11 +582,20 @@ export default function TasksPage() {
                 {taskGroups.map((group) => (
                   <div
                     key={group.id}
+                    draggable={editingGroupId !== group.id}
+                    onDragStart={() => handleDragStart(group.id)}
+                    onDragOver={(e) => handleDragOver(e, group.id)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, group.id)}
+                    onDragEnd={handleDragEnd}
                     className={cn(
                       'group flex items-center gap-2 text-left text-sm transition-all',
                       selectedGroupId === group.id
                         ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium'
-                        : 'text-[var(--fg-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--fg)]'
+                        : 'text-[var(--fg-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--fg)]',
+                      draggedGroupId === group.id && 'opacity-50',
+                      dragOverGroupId === group.id && 'border-t-2 border-[var(--accent)]',
+                      editingGroupId !== group.id && 'cursor-move'
                     )}
                   >
                     {editingGroupId === group.id ? (

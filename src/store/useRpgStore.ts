@@ -201,6 +201,7 @@ interface RpgStoreState {
   addTaskGroup: (name: string) => TaskGroup
   updateTaskGroup: (id: TaskGroupId, updater: (g: TaskGroup) => TaskGroup) => void
   deleteTaskGroup: (id: TaskGroupId) => void
+  reorderTaskGroups: (orderedIds: TaskGroupId[]) => void
 
   // Item group actions (shop)
   getItemGroups: () => ItemGroup[]
@@ -437,6 +438,24 @@ export const useRpgStore = create<RpgStoreState>()(
           }))
         },
 
+        reorderTaskGroups: (orderedIds) => {
+          const { taskGroups, activeProfileId } = get()
+          if (!activeProfileId) return
+          const idSet = new Set(orderedIds)
+          const reordered = orderedIds
+            .map((id, index) => {
+              const g = taskGroups.find((g) => g.id === id && g.profileId === activeProfileId)
+              return g ? { ...g, sortOrder: index, updatedAt: now() } : null
+            })
+            .filter((g): g is TaskGroup => g != null)
+          const rest = taskGroups.filter((g) => g.profileId === activeProfileId && !idSet.has(g.id))
+          const maxSo = reordered.length - 1
+          rest.forEach((g, i) => reordered.push({ ...g, sortOrder: maxSo + 1 + i, updatedAt: now() }))
+          set((s) => ({
+            taskGroups: s.taskGroups.filter((g) => g.profileId !== activeProfileId).concat(reordered),
+          }))
+        },
+
         // ─── Item groups (shop) ─────────────────────────────────────────────
         getItemGroups: () => {
           const { itemGroups, activeProfileId } = get()
@@ -607,17 +626,59 @@ export const useRpgStore = create<RpgStoreState>()(
 
           // Instant recurrence: после выполнения награды выданы — задача остаётся, можно выполнить снова
           if (task.recurrence === 'instant') {
+            // Для nested-задач с подзадачами: сбрасываем подзадачи БЕЗ выдачи награды за основную задачу
+            // (награды за подзадачи уже были получены при их выполнении)
+            if (task.kind === 'nested' && task.subtasks.length > 0) {
+              // Забираем обратно награды за все выполненные подзадачи
+              const completedSubtasks = task.subtasks.filter(s => s.isCompleted)
+              if (completedSubtasks.length > 0) {
+                const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
+
+                completedSubtasks.forEach(subtask => {
+                  const coinRwd = subtask.coinReward ?? 0
+                  const gemRwd = subtask.gemReward ?? 0
+                  const diff = subtask.difficulty ?? 'medium'
+                  const xpRwd = subtask.customXp ?? settings.taskDifficultyXp?.[diff] ?? TASK_XP_BY_DIFFICULTY[diff] ?? subtask.xpReward ?? 0
+
+                  // Забираем награды
+                  if (coinRwd > 0) get().deductCurrency(CURRENCY_IDS.COINS, coinRwd)
+                  if (gemRwd > 0) get().deductCurrency(CURRENCY_IDS.GEMS, gemRwd)
+                  if (xpRwd > 0 && attrIds.length > 0 && profile) {
+                    let currentAttrs = profile.attributes
+                    for (const attrId of attrIds) {
+                      const tempProfile = { ...profile, attributes: currentAttrs }
+                      currentAttrs = deductXpFromAttribute(tempProfile, attrId, xpRwd)
+                    }
+                    updateProfile(profile.id, (p) => ({ ...p, attributes: currentAttrs }))
+                  }
+                })
+              }
+
+              // Сбрасываем все подзадачи
+              updateTask(id, (t) => {
+                if (t.kind === 'nested') {
+                  const resetSubtasks = t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
+                  return { ...t, isCompleted: false, completedAt: undefined, subtasks: resetSubtasks }
+                }
+                return t
+              })
+
+              updateStats((s) => ({ totalTasksCompleted: s.totalTasksCompleted + 1 }))
+              tryRandomFragmentDrop()
+              checkAchievements()
+              return
+            }
+
+            // Для остальных типов задач (checkbox, counter, nested без подзадач) — стандартная логика
             updateStats((s) => ({ totalTasksCompleted: s.totalTasksCompleted + 1 }))
             tryRandomFragmentDrop()
             checkAchievements()
             // Сбрасываем задачу: isCompleted = false
-            // Подзадачи также сбрасываются для возможности повторного выполнения
             updateTask(id, (t) => {
               if (t.kind === 'checkbox') return { ...t, isCompleted: false, completedAt: undefined }
               if (t.kind === 'counter') return { ...t, isCompleted: false, current: 0, completedAt: undefined }
               if (t.kind === 'nested') {
-                // Сбрасываем все подзадачи
-                const resetSubtasks = t.subtasks.map(s => ({ ...s, isCompleted: false }))
+                const resetSubtasks = t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
                 return { ...t, isCompleted: false, completedAt: undefined, subtasks: resetSubtasks }
               }
               return t

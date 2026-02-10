@@ -1,4 +1,5 @@
-import { Folder, Check } from 'lucide-react'
+import { useState } from 'react'
+import { Folder, Check, Plus, X } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
 import type { TaskGroupId } from '../types/domain'
@@ -18,11 +19,24 @@ export default function TaskGroupSelectModal({
   onClose,
 }: TaskGroupSelectModalProps) {
   const getTaskGroups = useRpgStore((s) => s.getTaskGroups)
+  const addTaskGroup = useRpgStore((s) => s.addTaskGroup)
   const groups = getTaskGroups()
+
+  const [showAddGroup, setShowAddGroup] = useState(false)
+  const [newGroupName, setNewGroupName] = useState('')
 
   const handleSelect = (groupId: TaskGroupId | null) => {
     onSelect(groupId)
     onClose()
+  }
+
+  const handleAddGroup = () => {
+    const name = newGroupName.trim()
+    if (!name) return
+    const group = addTaskGroup(name)
+    setNewGroupName('')
+    setShowAddGroup(false)
+    handleSelect(group.id)
   }
 
   return (
@@ -79,6 +93,55 @@ export default function TaskGroupSelectModal({
               )}
             </button>
           ))}
+
+          {/* Добавить группу */}
+          {showAddGroup ? (
+            <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
+              <input
+                type="text"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAddGroup()
+                  if (e.key === 'Escape') {
+                    setShowAddGroup(false)
+                    setNewGroupName('')
+                  }
+                }}
+                placeholder="Название группы"
+                className="input flex-1 text-sm"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={handleAddGroup}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)] text-white hover:brightness-110 transition-all"
+              >
+                <Check className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddGroup(false)
+                  setNewGroupName('')
+                }}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] transition-all"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowAddGroup(true)}
+              className="flex w-full items-center gap-3 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] p-3 text-left transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)]"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-[var(--accent)] text-[var(--accent)]">
+                <Plus className="h-4 w-4" />
+              </div>
+              <span className="flex-1 text-sm font-medium text-[var(--fg)]">Добавить группу</span>
+            </button>
+          )}
         </div>
       </div>
     </Modal>
