@@ -67,7 +67,6 @@ export default function TasksPage() {
   const [selectedGroupId, setSelectedGroupId] = useState<TaskGroupId | null>(ALL_GROUPS_ID)
   const [selectedId, setSelectedId] = useState<TaskRpg['id'] | null>(null)
   const [showForm, setShowForm] = useState(false)
-  const [formVisible, setFormVisible] = useState(false)
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('active')
   const [sortField, setSortField] = useState<SortField>('date')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
@@ -84,16 +83,6 @@ export default function TasksPage() {
   useEffect(() => {
     resetRecurringTasks()
   }, [resetRecurringTasks])
-
-  useEffect(() => {
-    if (showForm) {
-      // Небольшая задержка для запуска анимации
-      const timeout = setTimeout(() => setFormVisible(true), 20)
-      return () => clearTimeout(timeout)
-    } else {
-      setFormVisible(false)
-    }
-  }, [showForm])
 
   // Close sort menu on outside click
   useEffect(() => {
@@ -328,41 +317,6 @@ export default function TasksPage() {
   const handleDragEnd = () => {
     setDraggedGroupId(null)
     setDragOverGroupId(null)
-  }
-
-  // Режим «Новая задача»: форма с красивой анимацией появления
-  if (showForm) {
-    return (
-      <div
-        className={cn(
-          "flex h-full min-h-0 flex-col",
-          "transition-all duration-500 ease-out",
-          formVisible
-            ? "opacity-100 translate-y-0 scale-100"
-            : "opacity-0 translate-y-8 scale-95"
-        )}
-      >
-        <div className="glass-card mb-4 flex shrink-0 items-center justify-between rounded-2xl px-4 py-3">
-          <h2 className="text-lg font-semibold text-[var(--fg)]">Новая задача</h2>
-          <button
-            type="button"
-            onClick={() => setShowForm(false)}
-            className="icon-btn h-9 w-9 shrink-0 rounded-full p-0 text-[var(--fg-muted)] hover:text-[var(--fg)]"
-            title="Закрыть"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto pb-4">
-          <div className="glass-card min-h-0 rounded-2xl p-4">
-            <TaskCreateForm
-              defaultGroupId={selectedGroupId === NO_GROUP_ID ? null : selectedGroupId}
-              onCreated={() => setShowForm(false)}
-            />
-          </div>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -797,7 +751,27 @@ export default function TasksPage() {
       </div>
 
       <div className="min-w-0 flex-1">
-        {selectedTask ? (
+        {showForm ? (
+          <div className="glass-card flex h-full flex-col rounded-2xl p-6 overflow-hidden">
+            <div className="flex shrink-0 items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-[var(--fg)]">Новая задача</h2>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="icon-btn h-9 w-9 shrink-0 rounded-full p-0 text-[var(--fg-muted)] hover:text-[var(--fg)]"
+                title="Закрыть"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <TaskCreateForm
+                defaultGroupId={selectedGroupId === NO_GROUP_ID ? null : selectedGroupId}
+                onCreated={() => setShowForm(false)}
+              />
+            </div>
+          </div>
+        ) : selectedTask ? (
           <TaskDetailPanel task={selectedTask} onDeselect={() => setSelectedId(null)} />
         ) : (
           <div className="glass-card flex h-full flex-col items-center justify-center rounded-2xl">
