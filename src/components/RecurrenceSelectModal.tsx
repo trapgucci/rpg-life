@@ -44,7 +44,7 @@ const RECURRENCE_OPTIONS: RecurrenceOption[] = [
   {
     value: 'instant',
     label: 'Инстант',
-    description: 'Можно выполнять снова сразу после получения награды',
+    description: 'Выполнять снова сразу после получения награды',
     icon: <Zap className="h-5 w-5" />,
   },
 ]

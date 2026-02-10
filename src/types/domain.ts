@@ -22,6 +22,9 @@ export const TASK_XP_BY_DIFFICULTY = {
 
 export type TaskDifficulty = keyof typeof TASK_XP_BY_DIFFICULTY
 
+/** Task priority levels (independent from difficulty) */
+export type TaskPriority = 'none' | 'low' | 'medium' | 'high'
+
 /** Task types: Checkbox (simple), Counter (progress), Nested (subtasks) */
 export type TaskKindRpg = 'checkbox' | 'counter' | 'nested'
 
@@ -66,6 +69,8 @@ export interface TaskBase {
   updatedAt: number
   kind: TaskKindRpg
   difficulty: TaskDifficulty
+  /** Приоритет задачи (независимо от сложности) */
+  priority?: TaskPriority
   /** @deprecated Use attributeIds instead */
   attributeId?: AttributeId | null
   /** Multiple attributes that receive XP on task completion */
@@ -78,6 +83,8 @@ export interface TaskBase {
   archived?: boolean
   recurrence: TaskRecurrence
   recurrenceIntervalDays?: number
+  /** Timestamp последнего завершения (для recurring задач) */
+  lastCompletedAt?: number
   coinReward: number
   gemReward: number
 }

@@ -271,7 +271,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
             <Folder className="h-5 w-5 text-[var(--accent)]" />
           </div>
           <span className="flex-1 text-sm font-semibold text-[var(--fg)]">
-            {selectedGroupId ? getTaskGroups().find((g) => g.id === selectedGroupId)?.name : 'Без группы'}
+            {selectedGroupId ? getTaskGroups().find((g) => g.id === selectedGroupId)?.name ?? 'Без группы' : 'Без группы'}
           </span>
           <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
         </button>
@@ -377,7 +377,40 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         </div>
       )}
 
-      {/* 4. Правило повтора */}
+      {/* 4. Приоритет */}
+      <div>
+        <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Приоритет</label>
+        <div className="grid grid-cols-4 gap-2">
+          {(['none', 'low', 'medium', 'high'] as const).map((p) => {
+            const labels = { none: 'Без приоритета', low: 'Низкий', medium: 'Средний', high: 'Высокий' }
+            return (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPriority(p)}
+                className={cn(
+                  'flex flex-col items-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all',
+                  priority === p
+                    ? cn(
+                        'border-2',
+                        p === 'none' && 'bg-gray-500/10 text-gray-500 border-gray-500',
+                        p === 'low' && 'bg-emerald-500/10 text-emerald-500 border-emerald-500',
+                        p === 'medium' && 'bg-yellow-500/10 text-yellow-500 border-yellow-500',
+                        p === 'high' && 'bg-red-500/10 text-red-500 border-red-500'
+                      )
+                    : 'border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:border-[var(--accent)]/30'
+                )}
+              >
+                {p !== 'none' && <Flag className="h-4 w-4" />}
+                {p === 'none' && <X className="h-4 w-4" />}
+                <span className="text-xs">{labels[p]}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* 5. Правило повтора */}
       <div>
         <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Правило повтора</label>
         <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
@@ -428,7 +461,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         </div>
       </div>
 
-      {/* 5. Система вознаграждения */}
+      {/* 6. Система вознаграждения */}
       <div>
         <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Система вознаграждения</label>
         <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
@@ -515,7 +548,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         </div>
       </div>
 
-      {/* 6. Целевые показатели */}
+      {/* 7. Целевые показатели */}
       {subtasks.length === 0 && (
         <div>
           <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Целевые показатели</label>
@@ -661,7 +694,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         </div>
       )}
 
-      {/* 7. Настройки завершения */}
+      {/* 8. Настройки завершения */}
       <div>
         <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Настройки завершения</label>
         <div className="rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] overflow-hidden">

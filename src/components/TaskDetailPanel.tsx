@@ -36,7 +36,7 @@ const RECURRENCE_LABELS: Record<TaskRecurrence, string> = {
   weekly: 'Еженедельно',
   monthly: 'Ежемесячно',
   yearly: 'Ежегодно',
-  instant: 'Инстант (можно выполнять снова)',
+  instant: 'Инстант',
   custom: 'Кастомный',
 }
 
@@ -934,7 +934,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   {a.icon} {a.name}
                 </span>
               ))}
-              <span className="text-[var(--fg-muted)] text-lg leading-none select-none">·</span>
+              {taskAttrs.length > 0 && <span className="text-[var(--fg-muted)] text-lg leading-none select-none">·</span>}
               <span
                 className="rounded-xl px-3 py-1.5 text-sm font-medium border-2"
                 style={{
@@ -946,11 +946,31 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 <Zap className="h-3.5 w-3.5 inline mr-1" />
                 {DIFFICULTY_LABELS[task.difficulty]}
               </span>
-              <span className="text-[var(--fg-muted)] text-lg leading-none select-none">·</span>
-              <span className="rounded-xl bg-blue-500/15 px-3 py-1.5 text-sm font-medium text-blue-500 border-2 border-blue-500/50">
-                <Clock className="h-3.5 w-3.5 inline mr-1" />
-                {RECURRENCE_LABELS[task.recurrence]}
-              </span>
+              {task.recurrence !== 'once' && (
+                <>
+                  <span className="text-[var(--fg-muted)] text-lg leading-none select-none">·</span>
+                  <span className="rounded-xl bg-blue-500/15 px-3 py-1.5 text-sm font-medium text-blue-500 border-2 border-blue-500/50">
+                    <Clock className="h-3.5 w-3.5 inline mr-1" />
+                    {RECURRENCE_LABELS[task.recurrence]}
+                  </span>
+                </>
+              )}
+              {task.priority && task.priority !== 'none' && (
+                <>
+                  <span className="text-[var(--fg-muted)] text-lg leading-none select-none">·</span>
+                  <span
+                    className={cn(
+                      'rounded-xl px-3 py-1.5 text-sm font-medium border-2',
+                      PRIORITY_COLORS[task.priority].bg,
+                      PRIORITY_COLORS[task.priority].text,
+                      PRIORITY_COLORS[task.priority].border
+                    )}
+                  >
+                    <Flag className="h-3.5 w-3.5 inline mr-1" fill="currentColor" />
+                    {PRIORITY_LABELS[task.priority]}
+                  </span>
+                </>
+              )}
             </div>
 
             {/* Deadline card (expanded info block) */}

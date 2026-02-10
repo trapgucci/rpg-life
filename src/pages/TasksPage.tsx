@@ -367,7 +367,7 @@ export default function TasksPage() {
 
   return (
     <div className="flex h-full min-h-0 gap-4">
-      <div className="flex w-full md:w-[400px] md:shrink-0 flex-col gap-4">
+      <div className="flex w-full md:basis-[42%] md:max-w-[560px] md:min-w-[420px] md:shrink-0 flex-col gap-4">
         {/* Header */}
         <div className="glass-card rounded-2xl p-4">
           <div className="flex items-center justify-between">

@@ -7,7 +7,22 @@
       "Bash(git add:*)",
       "Bash(git cherry-pick:*)",
       "Bash(git commit:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(node -e:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run:*)",
+      "Bash(npx eslint:*)",
+      "Bash(echo:*)",
+      "Bash(timeout:*)",
+      "Bash(npx vite:*)",
+      "Bash(ls -la \"c:\\\\Users\\\\Jahseh\\\\Desktop\\\\rpg-life\\\\src\\\\components\"\" | grep -E \"Subtask)",
+      "Bash(Task)",
+      "Bash(Modal)",
+      "Bash(Reward \")",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(npm install:*)",
+      "Bash(ping:*)"
     ]
   }
 }
