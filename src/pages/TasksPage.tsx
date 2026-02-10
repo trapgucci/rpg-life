@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { cn } from '../lib/cn'
-import { CheckSquare, Plus, Sparkles, Target, FolderOpen, Pencil, Trash2, X, Clock, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { CheckSquare, Plus, Sparkles, Target, Folder, Pencil, Trash2, X, Clock, ArrowUpDown, ArrowUp, ArrowDown, Search, ChevronDown, List } from 'lucide-react'
 import TaskCreateForm from '../components/TaskCreateForm'
 import TaskCard from '../components/TaskCard'
 import TaskDetailPanel from '../components/TaskDetailPanel'
@@ -14,7 +15,7 @@ const NO_GROUP_ID: TaskGroupId | null = null
 const ALL_GROUPS_ID = '__all_groups__' as TaskGroupId
 
 /** Типы фильтров для вкладок */
-type TaskFilter = 'active' | 'completed' | 'canceled'
+type TaskFilter = 'all' | 'active' | 'completed' | 'canceled'
 
 /** Поля сортировки */
 type SortField = 'date' | 'deadline' | 'priority' | 'reward' | 'difficulty'
@@ -35,6 +36,13 @@ const DIFFICULTY_ORDER: Record<string, number> = {
   veryHard: 4,
 }
 
+const PRIORITY_ORDER: Record<string, number> = {
+  none: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+}
+
 export default function TasksPage() {
   const tasks = useRpgStore((s) => s.tasks)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
@@ -42,6 +50,8 @@ export default function TasksPage() {
   const addTaskGroup = useRpgStore((s) => s.addTaskGroup)
   const updateTaskGroup = useRpgStore((s) => s.updateTaskGroup)
   const deleteTaskGroup = useRpgStore((s) => s.deleteTaskGroup)
+  const resetRecurringTasks = useRpgStore((s) => s.resetRecurringTasks)
+  const getTaskRewardPreview = useRpgStore((s) => s.getTaskRewardPreview)
 
   const taskGroups = useMemo(
     () =>
@@ -61,8 +71,18 @@ export default function TasksPage() {
   const [sortField, setSortField] = useState<SortField>('date')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [showSortMenu, setShowSortMenu] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showSearch, setShowSearch] = useState(false)
+  const [showGroupSelector, setShowGroupSelector] = useState(false)
   const sortMenuRef = useRef<HTMLDivElement>(null)
-  const getTaskRewardPreview = useRpgStore((s) => s.getTaskRewardPreview)
+  const groupSelectorRef = useRef<HTMLDivElement>(null)
+  const groupButtonRef = useRef<HTMLButtonElement>(null)
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
+
+  // Сброс recurring задач при монтировании
+  useEffect(() => {
+    resetRecurringTasks()
+  }, [resetRecurringTasks])
 
   useEffect(() => {
     if (showForm) {
@@ -86,6 +106,35 @@ export default function TasksPage() {
     return () => document.removeEventListener('mousedown', handler)
   }, [showSortMenu])
 
+  // Update dropdown position when opening
+  useEffect(() => {
+    if (showGroupSelector && groupButtonRef.current) {
+      const rect = groupButtonRef.current.getBoundingClientRect()
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      })
+    }
+  }, [showGroupSelector])
+
+  // Close group selector on outside click
+  useEffect(() => {
+    if (!showGroupSelector) return
+    const handler = (e: MouseEvent) => {
+      if (
+        groupSelectorRef.current &&
+        !groupSelectorRef.current.contains(e.target as Node) &&
+        groupButtonRef.current &&
+        !groupButtonRef.current.contains(e.target as Node)
+      ) {
+        setShowGroupSelector(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showGroupSelector])
+
   const [newGroupName, setNewGroupName] = useState('')
   const [addingGroup, setAddingGroup] = useState(false)
   const [editingGroupId, setEditingGroupId] = useState<TaskGroupId | null>(null)
@@ -95,12 +144,14 @@ export default function TasksPage() {
   const filteredTasks = useMemo(() => {
     if (!activeProfileId) return []
     const now = Date.now()
-    const list = tasks.filter((t) => {
+    let list = tasks.filter((t) => {
       if (t.profileId !== activeProfileId) return false
       if (t.archived) return false
 
       // Фильтр по статусу
-      if (taskFilter === 'active') {
+      if (taskFilter === 'all') {
+        // Все задачи - пропускаем фильтрацию по статусу
+      } else if (taskFilter === 'active') {
         // Активные: не выполнены и не просрочены
         if (t.isCompleted) return false
         if (t.deadlineAt && now > t.deadlineAt) return false
@@ -118,8 +169,15 @@ export default function TasksPage() {
       if (selectedGroupId === NO_GROUP_ID) return g === null
       return g === selectedGroupId
     })
+
+    // Поиск по названию
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      list = list.filter(t => t.title.toLowerCase().includes(query))
+    }
+
     return list
-  }, [tasks, activeProfileId, selectedGroupId, taskFilter])
+  }, [tasks, activeProfileId, selectedGroupId, taskFilter, searchQuery])
 
   const sortedTasks = useMemo(
     () =>
@@ -136,9 +194,9 @@ export default function TasksPage() {
             return (aD - bD) * dir
           }
           case 'priority': {
-            // priority = difficulty for now
-            const aP = DIFFICULTY_ORDER[a.difficulty] ?? 0
-            const bP = DIFFICULTY_ORDER[b.difficulty] ?? 0
+            // Use actual priority field
+            const aP = PRIORITY_ORDER[a.priority ?? 'none'] ?? 0
+            const bP = PRIORITY_ORDER[b.priority ?? 'none'] ?? 0
             return (aP - bP) * dir
           }
           case 'reward': {
@@ -158,6 +216,15 @@ export default function TasksPage() {
         }
       }),
     [filteredTasks, sortField, sortDirection, getTaskRewardPreview]
+  )
+
+  // Предвычисление наград для оптимизации
+  const tasksWithRewards = useMemo(
+    () => sortedTasks.map(task => ({
+      task,
+      rewards: getTaskRewardPreview(task)
+    })),
+    [sortedTasks, getTaskRewardPreview]
   )
 
   // Bug fix: look up selectedTask in ALL tasks (not just filteredTasks)
@@ -203,7 +270,9 @@ export default function TasksPage() {
         if (t.profileId !== activeProfileId || t.archived) return false
 
         // Применяем тот же фильтр, что и для отображения задач
-        if (taskFilter === 'active') {
+        if (taskFilter === 'all') {
+          // Все задачи - пропускаем фильтрацию по статусу
+        } else if (taskFilter === 'active') {
           if (t.isCompleted) return false
           if (t.deadlineAt && now > t.deadlineAt) return false
         } else if (taskFilter === 'completed') {
@@ -330,6 +399,21 @@ export default function TasksPage() {
                 )}
               </div>
 
+              {/* Search button */}
+              <button
+                type="button"
+                onClick={() => setShowSearch(!showSearch)}
+                className={cn(
+                  'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
+                  'border border-[var(--border)] text-[var(--fg-muted)]',
+                  'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
+                  showSearch && 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-subtle)]'
+                )}
+                title="Поиск"
+              >
+                <Search className="h-4 w-4" />
+              </button>
+
               <button
                 type="button"
                 onClick={() => setShowForm(true)}
@@ -341,157 +425,261 @@ export default function TasksPage() {
             </div>
           </div>
 
-          {/* Группы */}
+          {/* Search input */}
+          {showSearch && (
+            <div className="glass-card rounded-2xl p-3 mt-4 mb-4">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Поиск по названию..."
+                className="input w-full"
+                autoFocus
+              />
+            </div>
+          )}
+
+          {/* Компактный селектор групп */}
           <div className="mt-4">
-            <p className="mb-2 text-xs font-medium text-[var(--fg-muted)]">Группы</p>
-            <div className="flex flex-col gap-1 max-h-[160px] overflow-y-auto pr-1">
-              {/* Без группы */}
-              <button
-                type="button"
-                onClick={() => setSelectedGroupId(NO_GROUP_ID)}
-                className={cn(
-                  'flex items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-all',
-                  selectedGroupId === NO_GROUP_ID
-                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium'
-                    : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
-                )}
-              >
-                <FolderOpen className="h-4 w-4 shrink-0 opacity-70" />
-                <span className="flex-1 truncate">Без группы</span>
-                <span className="text-xs text-[var(--fg-muted)]">{countNoGroup}</span>
-              </button>
+            <p className="mb-2 text-xs font-medium text-[var(--fg-muted)]">Группа</p>
+            <button
+              ref={groupButtonRef}
+              type="button"
+              onClick={() => setShowGroupSelector(!showGroupSelector)}
+              className={cn(
+                'flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-all',
+                'border border-[var(--border)]',
+                showGroupSelector
+                  ? 'border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]'
+                  : 'text-[var(--fg-secondary)] hover:border-[var(--border-accent)] hover:bg-[var(--surface)]'
+              )}
+            >
+              <Folder className="h-4 w-4 shrink-0" />
+              <span className="flex-1 truncate">
+                {selectedGroupId === ALL_GROUPS_ID
+                  ? 'Все группы'
+                  : selectedGroupId === NO_GROUP_ID
+                  ? 'Без группы'
+                  : taskGroups.find((g) => g.id === selectedGroupId)?.name ?? 'Группа'}
+              </span>
+              <span className="text-xs text-[var(--fg-muted)] mr-1">
+                {selectedGroupId === ALL_GROUPS_ID
+                  ? Array.from(taskCountByGroup.values()).reduce((a, b) => a + b, 0)
+                  : selectedGroupId === NO_GROUP_ID
+                  ? countNoGroup
+                  : taskCountByGroup.get(selectedGroupId) ?? 0}
+              </span>
+              <ChevronDown className={cn(
+                'h-4 w-4 shrink-0 transition-transform',
+                showGroupSelector && 'rotate-180'
+              )} />
+            </button>
+          </div>
 
-              {/* Все группы */}
-              <button
-                type="button"
-                onClick={() => setSelectedGroupId(ALL_GROUPS_ID)}
-                className={cn(
-                  'flex items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-all',
-                  selectedGroupId === ALL_GROUPS_ID
-                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium'
-                    : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
-                )}
-              >
-                <FolderOpen className="h-4 w-4 shrink-0 opacity-70" />
-                <span className="flex-1 truncate">Все группы</span>
-                <span className="text-xs text-[var(--fg-muted)]">
-                  {Array.from(taskCountByGroup.values()).reduce((a, b) => a + b, 0)}
-                </span>
-              </button>
-
-              {/* Пользовательские группы */}
-              {taskGroups.map((group) => (
-                <div
-                  key={group.id}
+          {/* Выпадающий список групп (через портал) */}
+          {showGroupSelector && createPortal(
+            <div
+              ref={groupSelectorRef}
+              className="fixed z-[100] rounded-xl border border-[var(--border)] bg-[var(--surface-overlay)] shadow-xl backdrop-blur-xl overflow-hidden max-h-[320px] overflow-y-auto"
+              style={{
+                top: `${dropdownPosition.top}px`,
+                left: `${dropdownPosition.left}px`,
+                width: `${dropdownPosition.width}px`,
+              }}
+            >
+                {/* Без группы */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedGroupId(NO_GROUP_ID)
+                    setShowGroupSelector(false)
+                  }}
                   className={cn(
-                    'group flex items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-all',
-                    selectedGroupId === group.id
+                    'flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm transition-all',
+                    selectedGroupId === NO_GROUP_ID
                       ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium'
-                      : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
+                      : 'text-[var(--fg-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--fg)]'
                   )}
                 >
-                  {editingGroupId === group.id ? (
-                    <>
-                      <input
-                        type="text"
-                        value={editingGroupName}
-                        onChange={(e) => setEditingGroupName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleSaveGroupEdit(group.id)
-                          if (e.key === 'Escape') setEditingGroupId(null)
-                        }}
-                        className="input flex-1 py-1.5 text-sm"
-                        autoFocus
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleSaveGroupEdit(group.id)}
-                        className="icon-btn h-8 w-8 p-0 text-[var(--accent)]"
-                      >
-                        <CheckSquare className="h-4 w-4" />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedGroupId(group.id)}
-                        className="flex flex-1 items-center gap-2 min-w-0"
-                      >
-                        <FolderOpen className="h-4 w-4 shrink-0 opacity-70" />
-                        <span className="truncate">{group.name}</span>
-                        <span className="text-xs text-[var(--fg-muted)] shrink-0">
-                          {taskCountByGroup.get(group.id) ?? 0}
-                        </span>
-                      </button>
-                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Folder className="h-4 w-4 shrink-0" />
+                  <span className="flex-1 truncate">Без группы</span>
+                  <span className="text-xs text-[var(--fg-muted)]">{countNoGroup}</span>
+                </button>
+
+                {/* Все группы */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedGroupId(ALL_GROUPS_ID)
+                    setShowGroupSelector(false)
+                  }}
+                  className={cn(
+                    'flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm transition-all',
+                    selectedGroupId === ALL_GROUPS_ID
+                      ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium'
+                      : 'text-[var(--fg-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--fg)]'
+                  )}
+                >
+                  <Folder className="h-4 w-4 shrink-0" />
+                  <span className="flex-1 truncate">Все группы</span>
+                  <span className="text-xs text-[var(--fg-muted)]">
+                    {Array.from(taskCountByGroup.values()).reduce((a, b) => a + b, 0)}
+                  </span>
+                </button>
+
+                {/* Разделитель */}
+                {taskGroups.length > 0 && (
+                  <div className="h-px bg-[var(--border)] my-1" />
+                )}
+
+                {/* Пользовательские группы */}
+                {taskGroups.map((group) => (
+                  <div
+                    key={group.id}
+                    className={cn(
+                      'group flex items-center gap-2 text-left text-sm transition-all',
+                      selectedGroupId === group.id
+                        ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium'
+                        : 'text-[var(--fg-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--fg)]'
+                    )}
+                  >
+                    {editingGroupId === group.id ? (
+                      <div className="flex w-full items-center gap-2 px-3 py-2">
+                        <input
+                          type="text"
+                          value={editingGroupName}
+                          onChange={(e) => setEditingGroupName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveGroupEdit(group.id)
+                            if (e.key === 'Escape') setEditingGroupId(null)
+                          }}
+                          className="input flex-1 py-1.5 text-sm"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleSaveGroupEdit(group.id)}
+                          className="icon-btn h-8 w-8 p-0 text-[var(--accent)]"
+                        >
+                          <CheckSquare className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
                         <button
                           type="button"
                           onClick={() => {
-                            setEditingGroupId(group.id)
-                            setEditingGroupName(group.name)
+                            setSelectedGroupId(group.id)
+                            setShowGroupSelector(false)
                           }}
-                          className="icon-btn h-7 w-7 p-0"
+                          className="flex flex-1 items-center gap-2 px-3 py-2.5 min-w-0"
                         >
-                          <Pencil className="h-3.5 w-3.5" />
+                          <Folder className="h-4 w-4 shrink-0" />
+                          <span className="truncate">{group.name}</span>
+                          <span className="text-xs text-[var(--fg-muted)] shrink-0">
+                            {taskCountByGroup.get(group.id) ?? 0}
+                          </span>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteGroup(group.id)}
-                          className="icon-btn icon-btn-danger h-7 w-7 p-0"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
+                        <div className="flex gap-0.5 pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditingGroupId(group.id)
+                              setEditingGroupName(group.name)
+                            }}
+                            className="icon-btn h-7 w-7 p-0"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteGroup(group.id)
+                              setShowGroupSelector(false)
+                            }}
+                            className="icon-btn icon-btn-danger h-7 w-7 p-0"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
 
-              {/* Добавить группу */}
-              {addingGroup ? (
-                <div className="flex items-center gap-2 rounded-xl bg-[var(--surface)] px-3 py-2">
-                  <input
-                    type="text"
-                    value={newGroupName}
-                    onChange={(e) => setNewGroupName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleAddGroup()
-                      if (e.key === 'Escape') setAddingGroup(false)
-                    }}
-                    placeholder="Название группы"
-                    className="input flex-1 py-1.5 text-sm"
-                    autoFocus
-                  />
-                  <button type="button" onClick={handleAddGroup} className="icon-btn h-8 w-8 p-0 text-[var(--accent)]">
-                    <CheckSquare className="h-4 w-4" />
+                {/* Разделитель */}
+                <div className="h-px bg-[var(--border)] my-1" />
+
+                {/* Добавить группу */}
+                {addingGroup ? (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-[var(--surface)]">
+                    <input
+                      type="text"
+                      value={newGroupName}
+                      onChange={(e) => setNewGroupName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleAddGroup()
+                          setShowGroupSelector(false)
+                        }
+                        if (e.key === 'Escape') setAddingGroup(false)
+                      }}
+                      placeholder="Название группы"
+                      className="input flex-1 py-1.5 text-sm"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleAddGroup()
+                        setShowGroupSelector(false)
+                      }}
+                      className="icon-btn h-8 w-8 p-0 text-[var(--accent)]"
+                    >
+                      <CheckSquare className="h-4 w-4" />
+                    </button>
+                    <button type="button" onClick={() => setAddingGroup(false)} className="icon-btn h-8 w-8 p-0">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAddingGroup(true)}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-[var(--fg-muted)] hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)] transition-all"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Добавить группу
                   </button>
-                  <button type="button" onClick={() => setAddingGroup(false)} className="icon-btn h-8 w-8 p-0">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setAddingGroup(true)}
-                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-[var(--fg-muted)] hover:bg-[var(--surface)] hover:text-[var(--fg)] transition-colors"
-                >
-                  <Plus className="h-4 w-4" />
-                  Добавить группу
-                </button>
-              )}
-            </div>
-          </div>
+                )}
+              </div>,
+            document.body
+          )}
 
           {/* Фильтр по статусу задач */}
           <div className="mt-4 border-t border-[var(--border)] pt-4">
             <p className="mb-2 text-xs font-medium text-[var(--fg-muted)]">Статус задач</p>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-4 gap-2">
+              <button
+                type="button"
+                onClick={() => setTaskFilter('all')}
+                className={cn(
+                  'flex items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
+                  taskFilter === 'all'
+                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
+                    : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
+                )}
+                title="Все задачи"
+              >
+                <List className="h-5 w-5" />
+              </button>
               <button
                 type="button"
                 onClick={() => setTaskFilter('active')}
                 className={cn(
-                  'flex flex-1 items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
+                  'flex items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
                   taskFilter === 'active'
                     ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
                     : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
@@ -504,7 +692,7 @@ export default function TasksPage() {
                 type="button"
                 onClick={() => setTaskFilter('completed')}
                 className={cn(
-                  'flex flex-1 items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
+                  'flex items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
                   taskFilter === 'completed'
                     ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
                     : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
@@ -517,7 +705,7 @@ export default function TasksPage() {
                 type="button"
                 onClick={() => setTaskFilter('canceled')}
                 className={cn(
-                  'flex flex-1 items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
+                  'flex items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
                   taskFilter === 'canceled'
                     ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
                     : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
@@ -543,12 +731,13 @@ export default function TasksPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {sortedTasks.map((task) => (
+              {tasksWithRewards.map(({ task, rewards }) => (
                 <TaskCard
                   key={task.id}
                   task={task}
                   selected={task.id === selectedId}
                   onSelect={() => setSelectedId(task.id)}
+                  rewards={rewards}
                 />
               ))}
             </div>
