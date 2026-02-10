@@ -364,15 +364,10 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
           <button
             type="button"
             onClick={() => setShowSubtaskModal(true)}
-            className={cn(
-              'flex w-full items-center gap-3 rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] px-4 py-3 text-left transition-colors',
-              'hover:bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]'
-            )}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--accent)] transition-colors hover:bg-[var(--accent-subtle)] hover:border-[var(--accent)]"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]">
-              <ListPlus className="h-5 w-5" />
-            </div>
-            <span className="text-sm font-semibold text-[var(--accent)]">Добавить подзадачу</span>
+            <Plus className="h-4 w-4" />
+            Добавить подзадачу
           </button>
         </div>
       )}
