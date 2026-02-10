@@ -624,56 +624,12 @@ export const useRpgStore = create<RpgStoreState>()(
             })
           }
 
-          // Instant recurrence: после выполнения награды выданы — задача остаётся, можно выполнить снова
+          // Instant recurrence: награды выданы — сбрасываем задачу для повторного выполнения
+          // Награды за подзадачи НЕ забираются — игрок их заработал
           if (task.recurrence === 'instant') {
-            // Для nested-задач с подзадачами: сбрасываем подзадачи БЕЗ выдачи награды за основную задачу
-            // (награды за подзадачи уже были получены при их выполнении)
-            if (task.kind === 'nested' && task.subtasks.length > 0) {
-              // Забираем обратно награды за все выполненные подзадачи
-              const completedSubtasks = task.subtasks.filter(s => s.isCompleted)
-              if (completedSubtasks.length > 0) {
-                const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
-
-                completedSubtasks.forEach(subtask => {
-                  const coinRwd = subtask.coinReward ?? 0
-                  const gemRwd = subtask.gemReward ?? 0
-                  const diff = subtask.difficulty ?? 'medium'
-                  const xpRwd = subtask.customXp ?? settings.taskDifficultyXp?.[diff] ?? TASK_XP_BY_DIFFICULTY[diff] ?? subtask.xpReward ?? 0
-
-                  // Забираем награды
-                  if (coinRwd > 0) get().deductCurrency(CURRENCY_IDS.COINS, coinRwd)
-                  if (gemRwd > 0) get().deductCurrency(CURRENCY_IDS.GEMS, gemRwd)
-                  if (xpRwd > 0 && attrIds.length > 0 && profile) {
-                    let currentAttrs = profile.attributes
-                    for (const attrId of attrIds) {
-                      const tempProfile = { ...profile, attributes: currentAttrs }
-                      currentAttrs = deductXpFromAttribute(tempProfile, attrId, xpRwd)
-                    }
-                    updateProfile(profile.id, (p) => ({ ...p, attributes: currentAttrs }))
-                  }
-                })
-              }
-
-              // Сбрасываем все подзадачи
-              updateTask(id, (t) => {
-                if (t.kind === 'nested') {
-                  const resetSubtasks = t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
-                  return { ...t, isCompleted: false, completedAt: undefined, subtasks: resetSubtasks }
-                }
-                return t
-              })
-
-              updateStats((s) => ({ totalTasksCompleted: s.totalTasksCompleted + 1 }))
-              tryRandomFragmentDrop()
-              checkAchievements()
-              return
-            }
-
-            // Для остальных типов задач (checkbox, counter, nested без подзадач) — стандартная логика
             updateStats((s) => ({ totalTasksCompleted: s.totalTasksCompleted + 1 }))
             tryRandomFragmentDrop()
             checkAchievements()
-            // Сбрасываем задачу: isCompleted = false
             updateTask(id, (t) => {
               if (t.kind === 'checkbox') return { ...t, isCompleted: false, completedAt: undefined }
               if (t.kind === 'counter') return { ...t, isCompleted: false, current: 0, completedAt: undefined }
@@ -686,14 +642,17 @@ export const useRpgStore = create<RpgStoreState>()(
             return
           }
 
-          // Recurring tasks (daily/weekly/monthly/yearly): сохраняем lastCompletedAt
+          // Recurring tasks (daily/weekly/monthly/yearly): сохраняем lastCompletedAt, сбрасываем подзадачи
           if (task.recurrence === 'daily' || task.recurrence === 'weekly' ||
               task.recurrence === 'monthly' || task.recurrence === 'yearly') {
             updateTask(id, (t) => ({
               ...t,
               isCompleted: true,
               completedAt: now(),
-              lastCompletedAt: now()
+              lastCompletedAt: now(),
+              ...(t.kind === 'nested' ? {
+                subtasks: t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
+              } : {})
             }))
             updateStats((s) => ({ totalTasksCompleted: s.totalTasksCompleted + 1 }))
             tryRandomFragmentDrop()

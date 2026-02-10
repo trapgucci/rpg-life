@@ -182,53 +182,49 @@ export default function TasksPage() {
     return list
   }, [tasks, activeProfileId, selectedGroupId, taskFilter, searchQuery])
 
-  const sortedTasks = useMemo(
-    () =>
-      [...filteredTasks].sort((a, b) => {
-        if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1
+  // Вычисляем награды один раз, затем сортируем используя уже вычисленные значения
+  const tasksWithRewards = useMemo(() => {
+    const rewardMap = new Map<string, { xp: number; coins: number; gems: number }>()
+    for (const task of filteredTasks) {
+      rewardMap.set(task.id, getTaskRewardPreview(task))
+    }
 
-        const dir = sortDirection === 'asc' ? 1 : -1
-        switch (sortField) {
-          case 'date':
-            return (b.updatedAt - a.updatedAt) * dir
-          case 'deadline': {
-            const aD = a.deadlineAt ?? Infinity
-            const bD = b.deadlineAt ?? Infinity
-            return (aD - bD) * dir
-          }
-          case 'priority': {
-            // Use actual priority field
-            const aP = PRIORITY_ORDER[a.priority ?? 'none'] ?? 0
-            const bP = PRIORITY_ORDER[b.priority ?? 'none'] ?? 0
-            return (aP - bP) * dir
-          }
-          case 'reward': {
-            const aR = getTaskRewardPreview(a)
-            const bR = getTaskRewardPreview(b)
-            const aTot = aR.coins + aR.gems + aR.xp
-            const bTot = bR.coins + bR.gems + bR.xp
-            return (aTot - bTot) * dir
-          }
-          case 'difficulty': {
-            const aD2 = DIFFICULTY_ORDER[a.difficulty] ?? 0
-            const bD2 = DIFFICULTY_ORDER[b.difficulty] ?? 0
-            return (aD2 - bD2) * dir
-          }
-          default:
-            return b.updatedAt - a.updatedAt
+    const sorted = [...filteredTasks].sort((a, b) => {
+      if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1
+
+      const dir = sortDirection === 'asc' ? 1 : -1
+      switch (sortField) {
+        case 'date':
+          return (b.updatedAt - a.updatedAt) * dir
+        case 'deadline': {
+          const aD = a.deadlineAt ?? Infinity
+          const bD = b.deadlineAt ?? Infinity
+          return (aD - bD) * dir
         }
-      }),
-    [filteredTasks, sortField, sortDirection, getTaskRewardPreview]
-  )
+        case 'priority': {
+          const aP = PRIORITY_ORDER[a.priority ?? 'none'] ?? 0
+          const bP = PRIORITY_ORDER[b.priority ?? 'none'] ?? 0
+          return (aP - bP) * dir
+        }
+        case 'reward': {
+          const aR = rewardMap.get(a.id)!
+          const bR = rewardMap.get(b.id)!
+          const aTot = aR.coins + aR.gems + aR.xp
+          const bTot = bR.coins + bR.gems + bR.xp
+          return (aTot - bTot) * dir
+        }
+        case 'difficulty': {
+          const aD2 = DIFFICULTY_ORDER[a.difficulty] ?? 0
+          const bD2 = DIFFICULTY_ORDER[b.difficulty] ?? 0
+          return (aD2 - bD2) * dir
+        }
+        default:
+          return b.updatedAt - a.updatedAt
+      }
+    })
 
-  // Предвычисление наград для оптимизации
-  const tasksWithRewards = useMemo(
-    () => sortedTasks.map(task => ({
-      task,
-      rewards: getTaskRewardPreview(task)
-    })),
-    [sortedTasks, getTaskRewardPreview]
-  )
+    return sorted.map(task => ({ task, rewards: rewardMap.get(task.id)! }))
+  }, [filteredTasks, sortField, sortDirection, getTaskRewardPreview])
 
   // Bug fix: look up selectedTask in ALL tasks (not just filteredTasks)
   // so switching filter/group doesn't lose the selected task panel
@@ -774,7 +770,7 @@ export default function TasksPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto rounded-2xl">
-          {sortedTasks.length === 0 ? (
+          {tasksWithRewards.length === 0 ? (
             <div className="glass-card flex h-full flex-col items-center justify-center rounded-2xl py-12 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--accent-subtle)] mb-4">
                 <CheckSquare className="h-8 w-8 text-[var(--accent)]" />
