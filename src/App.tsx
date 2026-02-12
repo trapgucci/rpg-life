@@ -2,9 +2,10 @@ import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import TasksPage from './pages/TasksPage'
-import HabitsPage from './pages/HabitsPage'
 import ShopPage from './pages/ShopPage'
+import InventoryPage from './pages/InventoryPage'
 import CraftingPage from './pages/CraftingPage'
+import BankPage from './pages/BankPage'
 import StatusPage from './pages/StatusPage'
 import AchievementsPage from './pages/AchievementsPage'
 import SettingsPage from './pages/SettingsPage'
@@ -47,9 +48,10 @@ function App() {
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<TasksPage />} />
-          <Route path="habits" element={<HabitsPage />} />
           <Route path="shop" element={<ShopPage />} />
+          <Route path="inventory" element={<InventoryPage />} />
           <Route path="crafting" element={<CraftingPage />} />
+          <Route path="bank" element={<BankPage />} />
           <Route path="status" element={<StatusPage />} />
           <Route path="achievements" element={<AchievementsPage />} />
           <Route path="settings" element={<SettingsPage />} />

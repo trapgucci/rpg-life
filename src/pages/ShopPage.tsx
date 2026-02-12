@@ -3,13 +3,13 @@ import { cn } from '../lib/cn'
 import ConfirmModal from '../components/ConfirmModal'
 import { 
   ShoppingBag, Package, Plus, Pencil, Trash2, X, 
-  Coins, Gem, Gift, Sparkles, Check, ChevronRight, ChevronDown, Box, Lightbulb, Hammer, CheckCircle2, Trash, GripVertical, Settings, Percent, Smile, ImagePlus, Palette, History, ArrowUpDown
+  Coins, Gem, Gift, Sparkles, Check, ChevronRight, ChevronDown, Box, Lightbulb, CheckCircle2, Trash, GripVertical, Settings, Percent, Smile, ImagePlus, Palette, History, ArrowUpDown
 } from 'lucide-react'
 import { useRpgStore } from '../store/useRpgStore'
 import type { ShopItem, ItemRarity, CraftRecipe, FragmentSourceType, ItemGroup } from '../types/domain'
 import { CURRENCY_IDS } from '../types/domain'
 
-type Tab = 'shop' | 'crafting' | 'inventory'
+type Tab = 'shop' | 'fragments'
 
 const RARITY_COLORS: Record<ItemRarity, string> = {
   common: '#9ca3af',
@@ -1972,7 +1972,7 @@ function ItemForm({ item, onClose }: ItemFormProps) {
           <div className="mt-4">
             <div className="glass-card flex flex-col items-center justify-center rounded-2xl px-6 py-8 text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-500/10">
-                <Hammer className="h-8 w-8 text-purple-500" />
+                <Sparkles className="h-8 w-8 text-purple-500" />
               </div>
               <p className="text-sm font-semibold text-[var(--fg)]">Рецептов крафта пока нет</p>
               <p className="mt-1 text-sm text-[var(--fg-muted)] max-w-xs">
@@ -2811,7 +2811,6 @@ type ShopSortBy = 'default' | 'name' | 'price' | 'rarity'
 
 export default function ShopPage() {
   const shopItems = useRpgStore((s) => s.shopItems)
-  const inventory = useRpgStore((s) => s.inventory)
   const allRecipes = useRpgStore((s) => s.craftRecipes)
   const allItemGroups = useRpgStore((s) => s.itemGroups)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
@@ -2850,14 +2849,6 @@ export default function ShopPage() {
       ? shopItems
       : shopItems.filter((i) => i.groupId === groupFilter)
 
-  const filteredInventory = useMemo(() => {
-    const withItem = inventory
-      .map((entry) => ({ entry, item: shopItems.find((i) => i.id === entry.itemId) as ShopItem | undefined }))
-      .filter((x): x is { entry: typeof inventory[0]; item: ShopItem } => x.item != null)
-    if (groupFilter === 'all') return withItem
-    return withItem.filter((x) => x.item.groupId === groupFilter)
-  }, [inventory, shopItems, groupFilter])
-
   const sortedItems = useMemo(() => {
     const list = [...filteredItems]
     if (sortBy === 'default') return list
@@ -2893,7 +2884,7 @@ export default function ShopPage() {
   const [visibleGroupCount, setVisibleGroupCount] = useState(0)
 
   useEffect(() => {
-    if (tab !== 'shop' && tab !== 'inventory') return
+    if (tab !== 'shop') return
     const outer = groupsRowOuterRef.current
     const inner = groupsRowInnerRef.current
     if (!outer || !inner || !itemGroups.length) {
@@ -2934,58 +2925,50 @@ export default function ShopPage() {
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto pb-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
           <div
             className={cn(
-              'flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br shadow-lg',
+              'flex h-10 w-10 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br shadow-lg',
               tab === 'shop' && 'from-amber-500 to-orange-600 shadow-amber-500/30',
-              tab === 'crafting' && 'from-purple-500 to-violet-600 shadow-purple-500/30',
-              tab === 'inventory' && 'from-amber-800 to-amber-900 shadow-amber-900/30'
+              tab === 'fragments' && 'from-purple-500 to-violet-600 shadow-purple-500/30'
             )}
           >
-            {tab === 'shop' && <ShoppingBag className="h-6 w-6 text-white" />}
-            {tab === 'crafting' && <Hammer className="h-6 w-6 text-white" />}
-            {tab === 'inventory' && <Box className="h-6 w-6 text-white" />}
+            {tab === 'shop' && <ShoppingBag className="h-5 w-5 md:h-6 md:w-6 text-white" />}
+            {tab === 'fragments' && <Sparkles className="h-5 w-5 md:h-6 md:w-6 text-white" />}
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-[var(--fg)]">
-              {tab === 'shop'
-                ? 'Магазин'
-                : tab === 'crafting'
-                  ? 'Фрагменты'
-                  : 'Инвентарь'}
+          <div className="min-w-0">
+            <h1 className="text-lg md:text-xl font-bold text-[var(--fg)]">
+              {tab === 'shop' ? 'Магазин' : 'Фрагменты'}
             </h1>
-            <p className="text-sm text-[var(--fg-muted)]">
+            <p className="text-xs md:text-sm text-[var(--fg-muted)]">
               {tab === 'shop'
                 ? `${shopItems.length} предметов`
-                : tab === 'inventory'
-                  ? `${inventory.length} в инвентаре`
-                  : `${recipes.length} рецептов крафта`}
+                : `${recipes.length} рецептов крафта`}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
           {tab === 'shop' && (
             <>
               <button
                 type="button"
                 onClick={() => setShowPurchaseHistory(true)}
-                className="btn-secondary flex items-center gap-1.5 px-3 py-2 text-sm rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)] transition-colors"
+                className="btn-secondary flex items-center gap-1.5 px-2 py-1.5 md:px-3 md:py-2 text-sm rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)] transition-colors"
                 title="История покупок"
               >
                 <History className="h-4 w-4" />
-                История
+                <span className="hidden sm:inline">История</span>
               </button>
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setShowSortMenu((v) => !v)}
-                  className="btn-secondary flex items-center gap-1.5 px-3 py-2 text-sm rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)] transition-colors"
+                  className="btn-secondary flex items-center gap-1.5 px-2 py-1.5 md:px-3 md:py-2 text-sm rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--surface-elevated)] transition-colors"
                   title="Сортировка"
                 >
                   <ArrowUpDown className="h-4 w-4" />
-                  Сортировка
+                  <span className="hidden sm:inline">Сортировка</span>
                 </button>
                 {showSortMenu && (
                   <>
@@ -3027,7 +3010,7 @@ export default function ShopPage() {
           <button
             type="button"
             onClick={() => {
-              if (tab === 'crafting') {
+              if (tab === 'fragments') {
                 setShowRecipeForm(true)
               } else {
                 setShowForm(true)
@@ -3042,61 +3025,43 @@ export default function ShopPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 rounded-2xl bg-[var(--surface)] p-1.5">
+      <div className="flex gap-1.5 md:gap-2 rounded-2xl bg-[var(--surface)] p-1.5">
         <button
           type="button"
           onClick={() => setTab('shop')}
           className={cn(
-            'flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all',
-            tab === 'shop' 
-              ? 'bg-[var(--accent)] text-white shadow-md' 
+            'flex-1 flex items-center justify-center gap-1.5 md:gap-2 rounded-xl py-2 md:py-2.5 text-xs md:text-sm font-medium transition-all',
+            tab === 'shop'
+              ? 'bg-[var(--accent)] text-white shadow-md'
               : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'
           )}
         >
           <ShoppingBag className="h-4 w-4" />
-          Магазин
+          <span className="hidden sm:inline">Магазин</span>
         </button>
         <button
           type="button"
-          onClick={() => setTab('crafting')}
+          onClick={() => setTab('fragments')}
           className={cn(
-            'flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all',
-            tab === 'crafting' 
-              ? 'bg-[var(--accent)] text-white shadow-md' 
+            'flex-1 flex items-center justify-center gap-1.5 md:gap-2 rounded-xl py-2 md:py-2.5 text-xs md:text-sm font-medium transition-all',
+            tab === 'fragments'
+              ? 'bg-[var(--accent)] text-white shadow-md'
               : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'
           )}
         >
-          <Hammer className="h-4 w-4" />
-          Фрагменты
+          <Sparkles className="h-4 w-4" />
+          <span className="hidden sm:inline">Фрагменты</span>
           {recipes.length > 0 && (
-            <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
+            <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] md:text-xs">
               {recipes.length}
-            </span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('inventory')}
-          className={cn(
-            'flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all',
-          tab === 'inventory' 
-              ? 'bg-[var(--accent)] text-white shadow-md' 
-              : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'
-          )}
-        >
-          <Package className="h-4 w-4" />
-          Инвентарь
-          {inventory.length > 0 && (
-            <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
-              {inventory.reduce((sum, i) => sum + i.quantity, 0)}
             </span>
           )}
         </button>
       </div>
 
       {/* Content */}
-      {/* Filter by groups (shop + inventory) */}
-      {(tab === 'shop' || tab === 'inventory') && (
+      {/* Filter by groups (shop) */}
+      {tab === 'shop' && (
         <div className="flex items-center gap-2">
           <div className="flex-1 min-w-0 relative flex gap-1.5 flex-nowrap">
             <div
@@ -3192,10 +3157,11 @@ export default function ShopPage() {
           <button
             type="button"
             onClick={() => setShowGroupManager(true)}
-            className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
+            className="shrink-0 inline-flex items-center gap-1.5 md:gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 md:px-3 text-[10px] md:text-xs font-medium text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
           >
-            Управлять группами
-            <ChevronRight className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Управлять группами</span>
+            <Settings className="h-3.5 w-3.5 sm:hidden" />
+            <ChevronRight className="h-3.5 w-3.5 hidden sm:block" />
           </button>
         </div>
       )}
@@ -3212,7 +3178,7 @@ export default function ShopPage() {
               <p className="mt-1 text-sm text-[var(--fg-muted)]">Добавьте первый предмет</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
               {sortedItems.map((item) => (
                 <ShopItemCard key={item.id} item={item} onEdit={() => handleEdit(item)} />
               ))}
@@ -3221,35 +3187,7 @@ export default function ShopPage() {
         </>
       )}
 
-      {tab === 'inventory' && (
-        <>
-          {filteredInventory.length === 0 ? (
-            <div className="glass-card flex flex-col items-center justify-center rounded-2xl py-16">
-              <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-[var(--surface)] mb-4">
-                <Package className="h-10 w-10 text-[var(--fg-muted)]" />
-              </div>
-              <p className="font-medium text-[var(--fg)]">
-                {inventory.length === 0 ? 'Инвентарь пуст' : 'В этой группе ничего нет'}
-              </p>
-              <p className="mt-1 text-sm text-[var(--fg-muted)]">
-                {inventory.length === 0 ? 'Купите что-нибудь в магазине' : 'Выберите другую группу или «Все предметы»'}
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {filteredInventory.map(({ entry, item }) => (
-                <InventoryItemCard
-                  key={entry.itemId}
-                  item={item}
-                  quantity={entry.quantity}
-                />
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {tab === 'crafting' && (
+      {tab === 'fragments' && (
         <>
           {recipes.length === 0 ? (
             <div className="glass-card flex flex-col items-center justify-center rounded-2xl py-16">
@@ -3272,7 +3210,7 @@ export default function ShopPage() {
               {activeRecipes.length > 0 && (
                 <div>
                   <h2 className="text-lg font-semibold text-[var(--fg)] mb-4">В процессе</h2>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
                     {activeRecipes.map((recipe) => (
                       <RecipeCard key={recipe.id} recipe={recipe} onEdit={() => handleEditRecipe(recipe)} />
                     ))}

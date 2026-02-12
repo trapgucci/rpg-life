@@ -1,15 +1,15 @@
 import { NavLink } from 'react-router-dom'
 import {
   CheckSquare,
-  Repeat,
   ShoppingBag,
+  Package,
+  Hammer,
+  Landmark,
   Activity,
   Trophy,
   Settings,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
-  Hammer,
   Gamepad2,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
@@ -17,8 +17,10 @@ import { useState } from 'react'
 
 const navItems = [
   { to: '/', label: 'Задачи', icon: CheckSquare, color: '#6366f1' },
-  { to: '/habits', label: 'Привычки', icon: Repeat, color: '#10b981' },
-  { to: '/shop', label: 'Предметы', icon: ShoppingBag, color: '#f59e0b' },
+  { to: '/shop', label: 'Магазин', icon: ShoppingBag, color: '#f59e0b' },
+  { to: '/inventory', label: 'Инвентарь', icon: Package, color: '#8b5cf6' },
+  { to: '/crafting', label: 'Крафт', icon: Hammer, color: '#06b6d4' },
+  { to: '/bank', label: 'Банк', icon: Landmark, color: '#10b981' },
   { to: '/status', label: 'Статус', icon: Activity, color: '#3b82f6' },
   { to: '/achievements', label: 'Достижения', icon: Trophy, color: '#eab308' },
 ] as const
@@ -33,7 +35,7 @@ export default function Sidebar() {
   return (
     <aside
       className={cn(
-        'glass-sidebar flex shrink-0 flex-col transition-all duration-300 ease-out',
+        'glass-sidebar hidden md:flex shrink-0 flex-col transition-all duration-300 ease-out',
         'border-r border-[var(--border)]',
         collapsed ? 'w-[68px]' : 'w-[220px]'
       )}
