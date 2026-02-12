@@ -222,7 +222,10 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const handleComplete = () => {
     if (!canComplete) return
     completeTask(task.id)
-    onDeselect?.()
+    // Для instant задач НЕ десeлектим — задача сбрасывается и готова к повторному выполнению
+    if (task.recurrence !== 'instant') {
+      onDeselect?.()
+    }
   }
 
   const handleSkip = () => {
@@ -232,7 +235,10 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const confirmSkip = () => {
     setShowSkipConfirm(false)
     skipTask(task.id)
-    onDeselect?.()
+    // Для instant задач НЕ десeлектим — задача сбрасывается и готова к повторному выполнению
+    if (task.recurrence !== 'instant') {
+      onDeselect?.()
+    }
   }
 
   const handleAbandon = () => {

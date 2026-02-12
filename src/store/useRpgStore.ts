@@ -748,6 +748,23 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         skipTask: (id) => {
+          const task = get().tasks.find((t) => t.id === id)
+          if (!task) return
+
+          // Для instant — сбрасываем задачу (без наград), чтобы можно было выполнить снова
+          if (task.recurrence === 'instant') {
+            get().updateTask(id, (t) => {
+              if (t.kind === 'checkbox') return { ...t, isCompleted: false, completedAt: undefined }
+              if (t.kind === 'counter') return { ...t, isCompleted: false, current: 0, completedAt: undefined }
+              if (t.kind === 'nested') {
+                const resetSubtasks = t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
+                return { ...t, isCompleted: false, completedAt: undefined, subtasks: resetSubtasks }
+              }
+              return t
+            })
+            return
+          }
+
           get().updateTask(id, (t) => {
             if (t.kind === 'checkbox') return { ...t, isCompleted: true, completedAt: now() }
             if (t.kind === 'counter') return { ...t, isCompleted: true, current: t.target, completedAt: now() }
