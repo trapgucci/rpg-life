@@ -419,14 +419,14 @@ export default function AchievementsPage() {
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto pb-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg shadow-amber-500/30">
-            <Trophy className="h-6 w-6 text-white" />
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex h-10 w-10 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg shadow-amber-500/30">
+            <Trophy className="h-5 w-5 md:h-6 md:w-6 text-white" />
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-[var(--fg)]">Достижения</h1>
-            <p className="text-sm text-[var(--fg-muted)]">
+          <div className="min-w-0">
+            <h1 className="text-lg md:text-xl font-bold text-[var(--fg)]">Достижения</h1>
+            <p className="text-xs md:text-sm text-[var(--fg-muted)]">
               {unlockedCount} из {achievements.length} разблокировано
             </p>
           </div>
@@ -434,21 +434,22 @@ export default function AchievementsPage() {
         <button
           type="button"
           onClick={() => setShowForm(true)}
-          className="btn-primary flex items-center gap-2"
+          className="btn-primary flex items-center gap-2 shrink-0"
         >
           <Plus className="h-4 w-4" />
-          Новое достижение
+          <span className="hidden sm:inline">Новое достижение</span>
+          <span className="sm:hidden">Новое</span>
         </button>
       </div>
 
       {/* Filter */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 overflow-x-auto">
         {(['all', 'locked', 'unlocked'] as const).map((f) => (
           <button
             key={f}
             type="button"
             onClick={() => setFilter(f)}
-            className={cn('tab', filter === f && 'tab-active')}
+            className={cn('tab whitespace-nowrap', filter === f && 'tab-active')}
           >
             {f === 'all' ? 'Все' : f === 'locked' ? '🔒 Заблокированные' : '🏆 Разблокированные'}
           </button>

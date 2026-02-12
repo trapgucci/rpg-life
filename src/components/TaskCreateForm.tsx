@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { Plus, X, ChevronRight, Calendar, Clock, BarChart3, Gift, Target, Construction, ListPlus, Flag, Folder, Edit2, Coins, Gem, Zap } from 'lucide-react'
 import { cn } from '../lib/cn'
-import type { TaskRecurrence, SubtaskItem, TaskDifficulty, AttributeId, TaskPriority } from '../types/domain'
+import type { TaskRecurrence, SubtaskItem, TaskDifficulty, AttributeId, TaskPriority, RecurrenceSettings } from '../types/domain'
 import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
 import { useRpgStore } from '../store/useRpgStore'
 import type { TaskGroupId } from '../types/domain'
@@ -44,6 +44,10 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   const [showSubtaskModal, setShowSubtaskModal] = useState(false)
   const [editingSubtask, setEditingSubtask] = useState<SubtaskEditData | null>(null)
   const [recurrence, setRecurrence] = useState<TaskRecurrence>('once')
+  const [recurrenceSettings, setRecurrenceSettings] = useState<RecurrenceSettings>({
+    type: 'once',
+    endMode: 'never',
+  })
   const [deadlineAt, setDeadlineAt] = useState<string>('')
   const [showRecurrenceModal, setShowRecurrenceModal] = useState(false)
   const [showDeadlineModal, setShowDeadlineModal] = useState(false)
@@ -139,6 +143,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         deadlineAt: deadlineMs,
         archived: false,
         recurrence,
+        recurrenceSettings,
         coinReward,
         gemReward,
         current: 0,
@@ -171,6 +176,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         deadlineAt: deadlineMs,
         archived: false,
         recurrence,
+        recurrenceSettings,
         coinReward,
         gemReward,
         subtasks: subtaskItems,
@@ -190,6 +196,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         deadlineAt: deadlineMs,
         archived: false,
         recurrence,
+        recurrenceSettings,
         coinReward,
         gemReward,
         isCompleted: false,
@@ -209,6 +216,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       setGemReward(0)
       setSubtasks([])
       setRecurrence('once')
+      setRecurrenceSettings({ type: 'once', endMode: 'never' })
       setDeadlineAt('')
       setCountingTaskEnabled(false)
       setTargetQuantity(2)
@@ -226,6 +234,12 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   const selectedAttrs = selectedAttributeIds.map((id) => attributes.find((a) => a.id === id)).filter(Boolean)
   const effectiveDifficulty = difficulty ?? 'medium'
   const difficultyXp = selectedAttributeIds.length > 0 ? (customXp ?? (settings.taskDifficultyXp?.[effectiveDifficulty] ?? TASK_XP_BY_DIFFICULTY[effectiveDifficulty])) : 0
+
+  // Синхронизация типа повтора
+  const handleRecurrenceSettingsChange = (newSettings: RecurrenceSettings) => {
+    setRecurrenceSettings(newSettings)
+    setRecurrence(newSettings.type)
+  }
 
   return (
     <>
@@ -785,8 +799,8 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
     />
     <RecurrenceSelectModal
       isOpen={showRecurrenceModal}
-      selected={recurrence}
-      onSelect={setRecurrence}
+      settings={recurrenceSettings}
+      onSave={handleRecurrenceSettingsChange}
       onClose={() => setShowRecurrenceModal(false)}
     />
     <DateTimePickerModal

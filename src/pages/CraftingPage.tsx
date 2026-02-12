@@ -500,7 +500,7 @@ export default function CraftingPage() {
           {activeRecipes.length > 0 && (
             <div>
               <h2 className="text-lg font-semibold text-[var(--fg)] mb-4">В процессе</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {activeRecipes.map((recipe) => (
                   <RecipeCard key={recipe.id} recipe={recipe} onEdit={() => handleEdit(recipe)} />
                 ))}
@@ -512,7 +512,7 @@ export default function CraftingPage() {
           {craftedRecipes.length > 0 && (
             <div>
               <h2 className="text-lg font-semibold text-[var(--fg)] mb-4">Скрафченные</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {craftedRecipes.map((recipe) => (
                   <RecipeCard key={recipe.id} recipe={recipe} onEdit={() => handleEdit(recipe)} />
                 ))}

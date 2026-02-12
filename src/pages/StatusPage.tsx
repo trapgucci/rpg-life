@@ -280,19 +280,19 @@ export default function StatusPage() {
       </div>
 
       {/* Profile overview */}
-      <div className="glass-card rounded-3xl p-6">
-        <div className="flex items-center gap-6">
-          <div className="relative">
-            <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-5xl shadow-2xl shadow-purple-500/30">
+      <div className="glass-card rounded-3xl p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row items-center gap-4 md:gap-6">
+          <div className="relative shrink-0">
+            <div className="flex h-20 w-20 md:h-24 md:w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-4xl md:text-5xl shadow-2xl shadow-purple-500/30">
               👤
             </div>
-            <div className="absolute -bottom-2 -right-2 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-sm font-bold text-white shadow-lg">
+            <div className="absolute -bottom-2 -right-2 flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-xs md:text-sm font-bold text-white shadow-lg">
               {profile.level}
             </div>
           </div>
-          <div className="flex-1">
-            <h2 className="text-2xl font-bold text-[var(--fg)]">{profile.name}</h2>
-            <div className="mt-1 flex items-center gap-2">
+          <div className="flex-1 w-full text-center sm:text-left">
+            <h2 className="text-xl md:text-2xl font-bold text-[var(--fg)]">{profile.name}</h2>
+            <div className="mt-1 flex items-center justify-center sm:justify-start gap-2">
               <span className="badge badge-accent text-sm">Уровень {profile.level}</span>
               <span className="text-sm text-[var(--fg-muted)]">
                 {profile.xp.toLocaleString('ru-RU')} / {xpForNext.toLocaleString('ru-RU')} XP
@@ -302,7 +302,7 @@ export default function StatusPage() {
               <div className="h-3 w-full overflow-hidden rounded-full bg-[var(--border)]">
                 <div
                   className="h-full rounded-full transition-all duration-700 ease-out"
-                  style={{ 
+                  style={{
                     width: `${profileProgress}%`,
                     background: 'linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)'
                   }}
@@ -317,7 +317,7 @@ export default function StatusPage() {
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
         <StatCard
           icon={<CheckCircle2 className="h-6 w-6" />}
           label="Задач выполнено"

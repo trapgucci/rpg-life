@@ -19,30 +19,26 @@ interface RewardBadgeProps {
   className?: string
 }
 
-const DIFFICULTY_COLORS: Record<TaskDifficulty, { bg: string; text: string; border: string; shadow: string }> = {
+const DIFFICULTY_COLORS: Record<TaskDifficulty, { bg: string; text: string; border: string }> = {
   easy: {
-    bg: 'bg-emerald-500/10',
+    bg: 'bg-gradient-to-r from-emerald-500/10 to-green-500/10',
     text: 'text-emerald-500',
     border: 'border-emerald-500/30',
-    shadow: '0 0 10px rgba(16, 185, 129, 0.2)',
   },
   medium: {
-    bg: 'bg-blue-500/10',
+    bg: 'bg-gradient-to-r from-blue-500/10 to-cyan-500/10',
     text: 'text-blue-500',
     border: 'border-blue-500/30',
-    shadow: '0 0 10px rgba(59, 130, 246, 0.2)',
   },
   hard: {
-    bg: 'bg-orange-500/10',
+    bg: 'bg-gradient-to-r from-orange-500/10 to-amber-500/10',
     text: 'text-orange-500',
     border: 'border-orange-500/30',
-    shadow: '0 0 10px rgba(249, 115, 22, 0.2)',
   },
   veryHard: {
-    bg: 'bg-red-500/10',
+    bg: 'bg-gradient-to-r from-red-500/10 to-rose-500/10',
     text: 'text-red-500',
     border: 'border-red-500/30',
-    shadow: '0 0 10px rgba(239, 68, 68, 0.2)',
   },
 }
 
@@ -103,12 +99,9 @@ export default function RewardBadge({
             'inline-flex items-center gap-1 rounded-lg border',
             compact ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-xs font-semibold',
             customXp
-              ? 'bg-purple-500/10 text-purple-500 border-purple-500/30'
+              ? 'bg-gradient-to-r from-purple-500/10 to-violet-500/10 text-purple-500 border-purple-500/30'
               : cn(diffStyle.bg, diffStyle.text, diffStyle.border)
           )}
-          style={{
-            boxShadow: customXp ? '0 0 10px rgba(168, 85, 247, 0.2)' : diffStyle.shadow,
-          }}
         >
           <Zap className={cn(compact ? 'h-3 w-3' : 'h-3.5 w-3.5')} />
           {xp} XP

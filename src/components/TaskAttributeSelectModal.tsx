@@ -152,87 +152,98 @@ export default function TaskAttributeSelectModal({
         {/* Сложность с настройкой XP */}
         <div>
           <h3 className="text-sm font-semibold text-[var(--fg)] mb-2">Сложность</h3>
-          <div className="grid grid-cols-2 gap-1.5">
-            {DIFFICULTY_OPTIONS.map((opt) => {
-              const optXp = settings.taskDifficultyXp?.[opt.value] ?? opt.defaultXp
-              const optColors = getXpColorClasses(optXp, false)
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => {
-                    onSelectDifficulty(opt.value)
-                    // Reset custom XP when changing difficulty
-                    onChangeCustomXp?.(null)
-                  }}
-                  className={cn(
-                    'flex flex-col items-center gap-1.5 rounded-lg border p-2.5 transition-all',
-                    selectedDifficulty === opt.value && !isCustomXp
-                      ? 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-lg shadow-[var(--accent)]/10'
-                      : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-elevated)]'
-                  )}
-                >
-                  <span className="text-xs font-semibold text-[var(--fg)]">{opt.label}</span>
-                  <div className={cn(
-                    'flex items-center gap-0.5 rounded-lg px-2 py-0.5 text-[10px] font-semibold border',
-                    optColors.bg,
-                    optColors.text,
-                    optColors.border
-                  )}>
-                    <Zap className="h-2.5 w-2.5" />
-                    {optXp} XP
-                  </div>
-                </button>
-              )
-            })}
-          </div>
+          {selectedAttributeIds.length === 0 && (
+            <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-6 text-center">
+              <p className="text-xs text-[var(--fg-muted)]">
+                Сначала выберите атрибуты, чтобы настроить сложность
+              </p>
+            </div>
+          )}
+          {selectedAttributeIds.length > 0 && (
+            <div className="grid grid-cols-2 gap-1.5">
+              {DIFFICULTY_OPTIONS.map((opt) => {
+                const optXp = settings.taskDifficultyXp?.[opt.value] ?? opt.defaultXp
+                const optColors = getXpColorClasses(optXp, false)
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      onSelectDifficulty(opt.value)
+                      // Reset custom XP when changing difficulty
+                      onChangeCustomXp?.(null)
+                    }}
+                    className={cn(
+                      'flex flex-col items-center gap-1.5 rounded-lg border p-2.5 transition-all',
+                      selectedDifficulty === opt.value && !isCustomXp
+                        ? 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-lg shadow-[var(--accent)]/10'
+                        : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-elevated)]'
+                    )}
+                  >
+                    <span className="text-xs font-semibold text-[var(--fg)]">{opt.label}</span>
+                    <div className={cn(
+                      'flex items-center gap-0.5 rounded-lg px-2 py-0.5 text-[10px] font-semibold border',
+                      optColors.bg,
+                      optColors.text,
+                      optColors.border
+                    )}>
+                      <Zap className="h-2.5 w-2.5" />
+                      {optXp} XP
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
 
           {/* Custom XP override */}
-          <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
-            <label className="block text-[11px] font-medium text-[var(--fg-muted)] mb-1.5">
-              Свой XP (переопределить сложность)
-            </label>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => onChangeCustomXp?.(Math.max(0, (customXp ?? difficultyXp) - 10))}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-sm text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
-              >
-                −
-              </button>
-              <input
-                type="number"
-                min={0}
-                value={customXp ?? ''}
-                placeholder={String(difficultyXp)}
-                onChange={(e) => {
-                  const val = e.target.value.trim()
-                  if (val === '') {
-                    onChangeCustomXp?.(null)
-                  } else {
-                    onChangeCustomXp?.(Math.max(0, parseInt(val, 10) || 0))
-                  }
-                }}
-                className="input flex-1 text-center h-8 text-sm"
-              />
-              <button
-                type="button"
-                onClick={() => onChangeCustomXp?.((customXp ?? difficultyXp) + 10)}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-sm text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors"
-              >
-                +
-              </button>
+          {selectedAttributeIds.length > 0 && (
+            <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+              <label className="block text-[11px] font-medium text-[var(--fg-muted)] mb-1.5">
+                Свой XP (переопределить сложность)
+              </label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onChangeCustomXp?.(Math.max(0, (customXp ?? difficultyXp) - 10))}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-sm text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  min={0}
+                  value={customXp ?? ''}
+                  placeholder={String(difficultyXp)}
+                  onChange={(e) => {
+                    const val = e.target.value.trim()
+                    if (val === '') {
+                      onChangeCustomXp?.(null)
+                    } else {
+                      onChangeCustomXp?.(Math.max(0, parseInt(val, 10) || 0))
+                    }
+                  }}
+                  className="input flex-1 text-center h-8 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => onChangeCustomXp?.((customXp ?? difficultyXp) + 10)}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-sm text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors"
+                >
+                  +
+                </button>
+              </div>
+              {customXp != null && (
+                <button
+                  type="button"
+                  onClick={() => onChangeCustomXp?.(null)}
+                  className="mt-1.5 text-[10px] text-[var(--accent)] hover:underline"
+                >
+                  Сбросить к значению сложности ({difficultyXp} XP)
+                </button>
+              )}
             </div>
-            {customXp != null && (
-              <button
-                type="button"
-                onClick={() => onChangeCustomXp?.(null)}
-                className="mt-1.5 text-[10px] text-[var(--accent)] hover:underline"
-              >
-                Сбросить к значению сложности ({difficultyXp} XP)
-              </button>
-            )}
-          </div>
+          )}
 
           {/* Summary - только если есть XP */}
           {effectiveXp > 0 && (

@@ -30,10 +30,26 @@ export type TaskKindRpg = 'checkbox' | 'counter' | 'nested'
 
 /** Recurrence: when the task repeats. instant = после выполнения награды, задача остаётся и можно выполнить снова */
 export type TaskRecurrence = 'once' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'instant' | 'custom'
-/** Custom interval: e.g. every 3 days */
-export interface RecurrenceCustom {
-  type: 'custom'
-  intervalDays: number
+
+/** Режим окончания повторяющейся задачи */
+export type RecurrenceEndMode = 'never' | 'byDate' | 'byCount'
+
+/** Расширенные настройки повтора задачи */
+export interface RecurrenceSettings {
+  /** Базовый тип повтора */
+  type: TaskRecurrence
+  /** Дни недели (для weekly) — 0 = воскресенье, 6 = суббота */
+  weeklyDays?: number[]
+  /** Кастомный интервал в днях (для custom) */
+  customIntervalDays?: number
+  /** Режим окончания */
+  endMode: RecurrenceEndMode
+  /** Дата окончания (timestamp, для endMode = 'byDate') */
+  endDate?: number | null
+  /** Количество циклов (для endMode = 'byCount') */
+  endCount?: number
+  /** Сколько циклов уже выполнено (счетчик для byCount) */
+  completedCount?: number
 }
 
 /** Группа задач — пользовательская категория (например "Работа", "Дом") */
@@ -83,6 +99,8 @@ export interface TaskBase {
   archived?: boolean
   recurrence: TaskRecurrence
   recurrenceIntervalDays?: number
+  /** Расширенные настройки повтора (новая система) */
+  recurrenceSettings?: RecurrenceSettings
   /** Timestamp последнего завершения (для recurring задач) */
   lastCompletedAt?: number
   coinReward: number

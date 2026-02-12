@@ -876,6 +876,11 @@ html.dark,
   .text-balance {
     text-wrap: balance;
   }
+
+  /* Safe area for mobile bottom nav */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
 
 /* TaskCard glow animations (global, not per-card) */

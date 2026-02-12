@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  Check, SkipForward, Pencil, Trash2, X,
+  Check, SkipForward, XCircle, Pencil, Trash2, X,
   Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder, Edit2, Target, Hash, ListChecks, Flag, Coins, Gem, Zap
 } from 'lucide-react'
 import { cn } from '../lib/cn'
-import type { TaskRpg, TaskDifficulty, TaskRecurrence, AttributeId, SubtaskItem, TaskGroupId, TaskPriority } from '../types/domain'
+import type { TaskRpg, TaskDifficulty, TaskRecurrence, AttributeId, SubtaskItem, TaskGroupId, TaskPriority, RecurrenceSettings } from '../types/domain'
 import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
 import { useRpgStore } from '../store/useRpgStore'
 import TaskGroupSelectModal from './TaskGroupSelectModal'
@@ -64,6 +64,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const completeTask = useRpgStore((s) => s.completeTask)
   const canCompleteTask = useRpgStore((s) => s.canCompleteTask)
   const skipTask = useRpgStore((s) => s.skipTask)
+  const abandonTask = useRpgStore((s) => s.abandonTask)
   const deleteTask = useRpgStore((s) => s.deleteTask)
   const updateTask = useRpgStore((s) => s.updateTask)
   const incrementCounter = useRpgStore((s) => s.incrementCounter)
@@ -85,6 +86,9 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const [editCoinReward, setEditCoinReward] = useState(task.coinReward)
   const [editGemReward, setEditGemReward] = useState(task.gemReward ?? 0)
   const [editRecurrence, setEditRecurrence] = useState<TaskRecurrence>(task.recurrence)
+  const [editRecurrenceSettings, setEditRecurrenceSettings] = useState<RecurrenceSettings>(
+    task.recurrenceSettings ?? { type: task.recurrence, endMode: 'never' }
+  )
   const [editDeadlineAt, setEditDeadlineAt] = useState<string>(() => {
     if (!task.deadlineAt) return ''
     const d = new Date(task.deadlineAt)
@@ -102,6 +106,8 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false)
   const [showDeleteSubtaskConfirm, setShowDeleteSubtaskConfirm] = useState(false)
+  const [showSkipConfirm, setShowSkipConfirm] = useState(false)
+  const [showAbandonConfirm, setShowAbandonConfirm] = useState(false)
   const [subtaskToDelete, setSubtaskToDelete] = useState<string | null>(null)
   // Stores the new task that triggered the unsaved changes prompt
   const pendingTaskRef = useRef<TaskRpg | null>(null)
@@ -158,6 +164,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
         coinReward: editCoinReward,
         gemReward: editGemReward,
         recurrence: editRecurrence,
+        recurrenceSettings: editRecurrenceSettings,
         deadlineAt: deadlineMs,
       }
 
@@ -215,6 +222,26 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const handleComplete = () => {
     if (!canComplete) return
     completeTask(task.id)
+    onDeselect?.()
+  }
+
+  const handleSkip = () => {
+    setShowSkipConfirm(true)
+  }
+
+  const confirmSkip = () => {
+    setShowSkipConfirm(false)
+    skipTask(task.id)
+    onDeselect?.()
+  }
+
+  const handleAbandon = () => {
+    setShowAbandonConfirm(true)
+  }
+
+  const confirmAbandon = () => {
+    setShowAbandonConfirm(false)
+    abandonTask(task.id)
     onDeselect?.()
   }
 
@@ -313,6 +340,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
     setEditCoinReward(t.coinReward)
     setEditGemReward(t.gemReward ?? 0)
     setEditRecurrence(t.recurrence)
+    setEditRecurrenceSettings(t.recurrenceSettings ?? { type: t.recurrence, endMode: 'never' })
     setEditDeadlineAt(() => {
       if (!t.deadlineAt) return ''
       const d = new Date(t.deadlineAt)
@@ -393,6 +421,12 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
     return parentAttrIds.length > 0
       ? (s.customXp ?? settings.taskDifficultyXp?.[s.difficulty ?? 'medium'] ?? TASK_XP_BY_DIFFICULTY[s.difficulty ?? 'medium'] ?? s.xpReward ?? 0)
       : 0
+  }
+
+  // Синхронизация типа повтора
+  const handleRecurrenceSettingsChange = (newSettings: RecurrenceSettings) => {
+    setEditRecurrenceSettings(newSettings)
+    setEditRecurrence(newSettings.type)
   }
 
   return (
@@ -855,6 +889,8 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                     setEditCustomXp(task.customXp ?? null)
                     setEditCoinReward(task.coinReward)
                     setEditGemReward(task.gemReward ?? 0)
+                    setEditRecurrence(task.recurrence)
+                    setEditRecurrenceSettings(task.recurrenceSettings ?? { type: task.recurrence, endMode: 'never' })
                     setEditCounterEnabled(task.kind === 'counter')
                     setEditTarget(task.kind === 'counter' ? task.target : 2)
                     setEditCountUnit(task.kind === 'counter' ? (task.countUnit ?? 'раз') : 'раз')
@@ -965,7 +1001,36 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   <span className="rounded-xl bg-blue-500/15 px-3 py-1.5 text-sm font-medium text-blue-500 border-2 border-blue-500/50">
                     <Clock className="h-3.5 w-3.5 inline mr-1" />
                     {RECURRENCE_LABELS[task.recurrence]}
+                    {/* Дополнительная информация о настройках повтора */}
+                    {task.recurrenceSettings && (
+                      <>
+                        {task.recurrenceSettings.type === 'weekly' && task.recurrenceSettings.weeklyDays && task.recurrenceSettings.weeklyDays.length > 0 && (
+                          <span className="ml-1 text-xs opacity-80">
+                            ({task.recurrenceSettings.weeklyDays.length} {task.recurrenceSettings.weeklyDays.length === 1 ? 'день' : task.recurrenceSettings.weeklyDays.length < 5 ? 'дня' : 'дней'})
+                          </span>
+                        )}
+                        {task.recurrenceSettings.type === 'custom' && task.recurrenceSettings.customIntervalDays && (
+                          <span className="ml-1 text-xs opacity-80">
+                            (каждые {task.recurrenceSettings.customIntervalDays} {task.recurrenceSettings.customIntervalDays === 1 ? 'день' : task.recurrenceSettings.customIntervalDays < 5 ? 'дня' : 'дней'})
+                          </span>
+                        )}
+                      </>
+                    )}
                   </span>
+                  {/* Окончание повтора */}
+                  {task.recurrenceSettings && task.recurrenceSettings.endMode !== 'never' && (
+                    <>
+                      <span className="text-[var(--fg-muted)] text-lg leading-none select-none">·</span>
+                      <span className="rounded-xl bg-orange-500/15 px-3 py-1.5 text-sm font-medium text-orange-500 border-2 border-orange-500/50">
+                        {task.recurrenceSettings.endMode === 'byDate' && task.recurrenceSettings.endDate && (
+                          <>до {new Date(task.recurrenceSettings.endDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</>
+                        )}
+                        {task.recurrenceSettings.endMode === 'byCount' && task.recurrenceSettings.endCount && (
+                          <>{task.recurrenceSettings.completedCount ?? 0} / {task.recurrenceSettings.endCount}</>
+                        )}
+                      </span>
+                    </>
+                  )}
                 </>
               )}
               {task.priority && task.priority !== 'none' && (
@@ -1477,31 +1542,56 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
 
       {/* Action buttons - fixed at bottom */}
       {!isEditing && (
-        <div className="mt-4 flex gap-3 shrink-0">
+        <div className="mt-4 shrink-0">
           {!task.isCompleted && (
-            <button
-              type="button"
-              onClick={handleComplete}
-              disabled={!canComplete}
-              className={cn(
-                'flex-1 flex items-center justify-center gap-2 rounded-2xl py-4 font-semibold transition-all duration-200',
-                canComplete
-                  ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98]'
-                  : 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed opacity-50'
-              )}
-            >
-              <Check className="h-5 w-5" />
-              Выполнить
-            </button>
+            <div className="flex gap-2">
+              {/* Main complete button */}
+              <button
+                type="button"
+                onClick={handleComplete}
+                disabled={!canComplete}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 rounded-2xl py-4 font-semibold transition-all duration-200',
+                  canComplete
+                    ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98]'
+                    : 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed opacity-50'
+                )}
+              >
+                <Check className="h-5 w-5" />
+                Выполнить
+              </button>
+
+              {/* Skip button (smaller) */}
+              <button
+                type="button"
+                onClick={handleSkip}
+                className="flex items-center justify-center gap-1.5 rounded-2xl px-3 md:px-4 py-4 font-medium text-sm transition-all duration-200 bg-blue-500/10 text-blue-500 border border-blue-500/30 hover:bg-blue-500/20 hover:border-blue-500/50 hover:scale-[1.02] active:scale-[0.98] min-w-[48px]"
+                title="Пропустить (отметить как выполненное без наград)"
+              >
+                <SkipForward className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline">Пропустить</span>
+              </button>
+
+              {/* Abandon button (smaller) */}
+              <button
+                type="button"
+                onClick={handleAbandon}
+                className="flex items-center justify-center gap-1.5 rounded-2xl px-3 md:px-4 py-4 font-medium text-sm transition-all duration-200 bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-500/20 hover:border-red-500/50 hover:scale-[1.02] active:scale-[0.98] min-w-[48px]"
+                title="Отказаться (архивировать задачу)"
+              >
+                <XCircle className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline">Отказаться</span>
+              </button>
+            </div>
           )}
           {task.isCompleted && (
-            <div className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-emerald-500/10 py-4 text-emerald-500">
+            <div className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-500/10 py-4 text-emerald-500">
               <Award className="h-5 w-5" />
               <span className="font-semibold">Задача выполнена!</span>
             </div>
           )}
           {!canComplete && !task.isCompleted && isPastDeadline && (
-            <div className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-red-500/10 py-4 text-red-500">
+            <div className="flex items-center justify-center gap-2 rounded-2xl bg-red-500/10 py-4 text-red-500">
               <Clock className="h-5 w-5" />
               <span className="font-semibold">Дедлайн истёк</span>
             </div>
@@ -1552,8 +1642,8 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
       />
       <RecurrenceSelectModal
         isOpen={showRecurrenceModal}
-        selected={editRecurrence}
-        onSelect={setEditRecurrence}
+        settings={editRecurrenceSettings}
+        onSave={handleRecurrenceSettingsChange}
         onClose={() => setShowRecurrenceModal(false)}
       />
       <DateTimePickerModal
@@ -1592,6 +1682,26 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
         title="Удалить подзадачу?"
         message="Подзадача будет удалена безвозвратно."
         confirmText="Удалить"
+        cancelText="Отмена"
+        variant="danger"
+      />
+      <ConfirmModal
+        isOpen={showSkipConfirm}
+        onConfirm={confirmSkip}
+        onCancel={() => setShowSkipConfirm(false)}
+        title="Пропустить задачу?"
+        message="Задача будет отмечена как выполненная, но вы не получите награды."
+        confirmText="Пропустить"
+        cancelText="Отмена"
+        variant="warning"
+      />
+      <ConfirmModal
+        isOpen={showAbandonConfirm}
+        onConfirm={confirmAbandon}
+        onCancel={() => setShowAbandonConfirm(false)}
+        title="Отказаться от задачи?"
+        message="Задача будет перемещена в архив без штрафов и наград."
+        confirmText="Отказаться"
         cancelText="Отмена"
         variant="danger"
       />

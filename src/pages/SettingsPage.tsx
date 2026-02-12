@@ -548,12 +548,12 @@ export default function SettingsPage() {
     <div className="flex h-full flex-col gap-6 overflow-y-auto pb-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-slate-500 to-slate-700 shadow-lg">
-          <Settings className="h-6 w-6 text-white" />
+        <div className="flex h-10 w-10 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-slate-500 to-slate-700 shadow-lg">
+          <Settings className="h-5 w-5 md:h-6 md:w-6 text-white" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-[var(--fg)]">Настройки</h1>
-          <p className="text-sm text-[var(--fg-muted)]">Управление приложением</p>
+          <h1 className="text-lg md:text-xl font-bold text-[var(--fg)]">Настройки</h1>
+          <p className="text-xs md:text-sm text-[var(--fg-muted)]">Управление приложением</p>
         </div>
       </div>
 

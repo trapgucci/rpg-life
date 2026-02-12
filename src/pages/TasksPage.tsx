@@ -323,15 +323,15 @@ export default function TasksPage() {
     <div className="flex h-full min-h-0 gap-4">
       <div className="flex w-full md:basis-[42%] md:max-w-[560px] md:min-w-[420px] md:shrink-0 flex-col gap-4">
         {/* Header */}
-        <div className="glass-card rounded-2xl p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30">
-                <Target className="h-5 w-5 text-white" />
+        <div className="glass-card rounded-2xl p-3 md:p-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 md:gap-3 min-w-0">
+              <div className="flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30">
+                <Target className="h-4.5 w-4.5 md:h-5 md:w-5 text-white" />
               </div>
-              <div>
-                <h1 className="text-lg font-bold text-[var(--fg)]">Задачи</h1>
-                <p className="text-xs text-[var(--fg-muted)]">
+              <div className="min-w-0">
+                <h1 className="text-base md:text-lg font-bold text-[var(--fg)]">Задачи</h1>
+                <p className="text-[10px] md:text-xs text-[var(--fg-muted)]">
                   {taskFilter === 'all' && 'Все задачи'}
                   {taskFilter === 'active' && 'Активные'}
                   {taskFilter === 'completed' && 'Выполненные'}
@@ -750,7 +750,8 @@ export default function TasksPage() {
         </div>
       </div>
 
-      <div className="min-w-0 flex-1">
+      {/* Desktop right panel */}
+      <div className="hidden md:block min-w-0 flex-1">
         {showForm ? (
           <div className="glass-card flex h-full flex-col rounded-2xl p-6 overflow-hidden">
             <div className="flex shrink-0 items-center justify-between mb-4">
@@ -783,6 +784,37 @@ export default function TasksPage() {
           </div>
         )}
       </div>
+
+      {/* Mobile detail overlay */}
+      {showForm && (
+        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-habit-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
+          <div className="glass-card flex flex-col rounded-2xl p-4 overflow-hidden">
+            <div className="flex shrink-0 items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-[var(--fg)]">Новая задача</h2>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="icon-btn h-9 w-9 shrink-0 rounded-full p-0 text-[var(--fg-muted)] hover:text-[var(--fg)]"
+                title="Закрыть"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="overflow-y-auto">
+              <TaskCreateForm
+                defaultGroupId={selectedGroupId === NO_GROUP_ID ? null : selectedGroupId}
+                onCreated={() => setShowForm(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      {selectedTask && !showForm && (
+        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-habit-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
+          <TaskDetailPanel task={selectedTask} onDeselect={() => setSelectedId(null)} />
+        </div>
+      )}
+
       <ConfirmModal
         isOpen={deletingGroupId !== null}
         onConfirm={confirmDeleteGroup}

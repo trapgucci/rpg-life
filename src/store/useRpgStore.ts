@@ -77,6 +77,28 @@ function applyMultiplierCeil(value: number, mult: number, applies: boolean): num
   return Math.ceil(value * mult)
 }
 
+/** Проверка: достигла ли задача лимита выполнений */
+function isTaskRecurrenceCompleted(task: TaskRpg): boolean {
+  const settings = task.recurrenceSettings
+  if (!settings) return false
+
+  // Если режим "всегда" — задача никогда не завершается
+  if (settings.endMode === 'never') return false
+
+  // Проверка по дате окончания
+  if (settings.endMode === 'byDate' && settings.endDate) {
+    return Date.now() >= settings.endDate
+  }
+
+  // Проверка по количеству циклов
+  if (settings.endMode === 'byCount' && settings.endCount) {
+    const completed = settings.completedCount ?? 0
+    return completed >= settings.endCount
+  }
+
+  return false
+}
+
 function createDefaultProfile(name: string): Profile {
   const id = crypto.randomUUID()
   const attributes: Attribute[] = DEFAULT_ATTRIBUTES.map((a, i) => ({
@@ -560,7 +582,8 @@ export const useRpgStore = create<RpgStoreState>()(
         getTaskRewardPreview: (task) => {
           const { settings } = get()
           // Если атрибуты не выбраны, XP = 0
-          const xp = task.attributeIds.length > 0
+          const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
+          const xp = attrIds.length > 0
             ? (task.customXp ?? settings.taskDifficultyXp?.[task.difficulty] ?? TASK_XP_BY_DIFFICULTY[task.difficulty])
             : 0
           const coins = task.coinReward
@@ -578,6 +601,18 @@ export const useRpgStore = create<RpgStoreState>()(
           const deadlineAt = task.deadlineAt ?? null
           // Instant tasks ignore deadline — they're meant to be repeatable forever
           if (task.recurrence !== 'instant' && deadlineAt != null && now() > deadlineAt) return false
+
+          // Проверка: если задача достигла даты окончания повтора — завершить нельзя
+          if (task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate) {
+            if (now() >= task.recurrenceSettings.endDate) return false
+          }
+
+          // Проверка: если задача достигла лимита по количеству — завершить нельзя
+          if (task.recurrenceSettings?.endMode === 'byCount' && task.recurrenceSettings.endCount) {
+            const completed = task.recurrenceSettings.completedCount ?? 0
+            if (completed >= task.recurrenceSettings.endCount) return false
+          }
+
           // For counter tasks, can only complete when current >= target
           if (task.kind === 'counter' && task.current < task.target) return false
           return true
@@ -630,18 +665,36 @@ export const useRpgStore = create<RpgStoreState>()(
             })
           }
 
+          // Проверка: достигла ли задача лимита повторов
+          const isRecurrenceCompleted = isTaskRecurrenceCompleted(task)
+
           // Instant recurrence: награды выданы — сбрасываем задачу для повторного выполнения
           // Награды за подзадачи НЕ забираются — игрок их заработал
           if (task.recurrence === 'instant') {
             updateStats((s) => ({ totalTasksCompleted: s.totalTasksCompleted + 1 }))
             tryRandomFragmentDrop()
             checkAchievements()
+
+            // Увеличиваем счетчик выполнений для byCount
+            const newCompletedCount = (task.recurrenceSettings?.completedCount ?? 0) + 1
+            const updatedSettings = task.recurrenceSettings
+              ? { ...task.recurrenceSettings, completedCount: newCompletedCount }
+              : undefined
+
+            // Если лимит достигнут — помечаем задачу как завершенную (архивируем)
+            if (isRecurrenceCompleted || (updatedSettings && updatedSettings.endMode === 'byCount' && updatedSettings.endCount && newCompletedCount >= updatedSettings.endCount)) {
+              updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), archived: true, recurrenceSettings: updatedSettings }))
+              return
+            }
+
+            // Иначе сбрасываем для повторного выполнения
             updateTask(id, (t) => {
-              if (t.kind === 'checkbox') return { ...t, isCompleted: false, completedAt: undefined }
-              if (t.kind === 'counter') return { ...t, isCompleted: false, current: 0, completedAt: undefined }
+              const base = { recurrenceSettings: updatedSettings }
+              if (t.kind === 'checkbox') return { ...t, ...base, isCompleted: false, completedAt: undefined }
+              if (t.kind === 'counter') return { ...t, ...base, isCompleted: false, current: 0, completedAt: undefined }
               if (t.kind === 'nested') {
                 const resetSubtasks = t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
-                return { ...t, isCompleted: false, completedAt: undefined, subtasks: resetSubtasks }
+                return { ...t, ...base, isCompleted: false, completedAt: undefined, subtasks: resetSubtasks }
               }
               return t
             })
@@ -650,19 +703,34 @@ export const useRpgStore = create<RpgStoreState>()(
 
           // Recurring tasks (daily/weekly/monthly/yearly): сохраняем lastCompletedAt, сбрасываем подзадачи
           if (task.recurrence === 'daily' || task.recurrence === 'weekly' ||
-              task.recurrence === 'monthly' || task.recurrence === 'yearly') {
+              task.recurrence === 'monthly' || task.recurrence === 'yearly' || task.recurrence === 'custom') {
+            updateStats((s) => ({ totalTasksCompleted: s.totalTasksCompleted + 1 }))
+            tryRandomFragmentDrop()
+            checkAchievements()
+
+            // Увеличиваем счетчик выполнений для byCount
+            const newCompletedCount = (task.recurrenceSettings?.completedCount ?? 0) + 1
+            const updatedSettings = task.recurrenceSettings
+              ? { ...task.recurrenceSettings, completedCount: newCompletedCount }
+              : undefined
+
+            // Если лимит достигнут — помечаем задачу как завершенную (архивируем)
+            if (isRecurrenceCompleted || (updatedSettings && updatedSettings.endMode === 'byCount' && updatedSettings.endCount && newCompletedCount >= updatedSettings.endCount)) {
+              updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), archived: true, lastCompletedAt: now(), recurrenceSettings: updatedSettings }))
+              return
+            }
+
+            // Обычное выполнение recurring задачи
             updateTask(id, (t) => ({
               ...t,
               isCompleted: true,
               completedAt: now(),
               lastCompletedAt: now(),
+              recurrenceSettings: updatedSettings,
               ...(t.kind === 'nested' ? {
                 subtasks: t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
               } : {})
             }))
-            updateStats((s) => ({ totalTasksCompleted: s.totalTasksCompleted + 1 }))
-            tryRandomFragmentDrop()
-            checkAchievements()
             return
           }
 
@@ -699,6 +767,14 @@ export const useRpgStore = create<RpgStoreState>()(
           const nowTime = now()
 
           tasks.forEach(task => {
+            // Проверка: если задача достигла лимита по дате окончания — архивируем
+            if (task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate) {
+              if (nowTime >= task.recurrenceSettings.endDate && !task.archived) {
+                updateTask(task.id, t => ({ ...t, archived: true, isCompleted: true }))
+                return
+              }
+            }
+
             if (!task.lastCompletedAt || !task.isCompleted) return
 
             const shouldReset = (() => {
@@ -708,7 +784,14 @@ export const useRpgStore = create<RpgStoreState>()(
                   return !isSameDay(task.lastCompletedAt, nowTime)
 
                 case 'weekly': {
-                  // Сбросить если новая неделя
+                  // Если есть настройки дней недели — проверяем по дням
+                  const weeklyDays = task.recurrenceSettings?.weeklyDays
+                  if (weeklyDays && weeklyDays.length > 0) {
+                    const today = new Date(nowTime).getDay() // 0 = воскресенье, 6 = суббота
+                    // Если сегодня входит в список дней повтора и задача не была выполнена сегодня
+                    return weeklyDays.includes(today) && !isSameDay(task.lastCompletedAt, nowTime)
+                  }
+                  // Иначе стандартная логика: сбросить если новая неделя
                   const lastWeek = getStartOfWeek(task.lastCompletedAt)
                   const currentWeek = getStartOfWeek(nowTime)
                   return lastWeek !== currentWeek
@@ -728,12 +811,20 @@ export const useRpgStore = create<RpgStoreState>()(
                   return lastYear !== currentYear
                 }
 
+                case 'custom': {
+                  // Кастомный интервал в днях
+                  const intervalDays = task.recurrenceSettings?.customIntervalDays ?? task.recurrenceIntervalDays ?? 1
+                  const daysSinceCompletion = Math.floor((nowTime - task.lastCompletedAt) / (1000 * 60 * 60 * 24))
+                  return daysSinceCompletion >= intervalDays
+                }
+
                 default:
                   return false
               }
             })()
 
-            if (shouldReset) {
+            // Не сбрасываем задачу, если достигнут лимит по дате или количеству
+            if (shouldReset && !isTaskRecurrenceCompleted(task)) {
               updateTask(task.id, t => ({
                 ...t,
                 isCompleted: false,
