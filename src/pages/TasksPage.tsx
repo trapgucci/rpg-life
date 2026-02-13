@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '../lib/cn'
-import { CheckSquare, Plus, Sparkles, Target, Folder, Pencil, Trash2, X, Clock, ArrowUpDown, ArrowUp, ArrowDown, Search, ChevronDown, List } from 'lucide-react'
+import { CheckSquare, Plus, Sparkles, Target, Folder, Pencil, Trash2, X, Clock, ArrowUpDown, ArrowUp, ArrowDown, Search, ChevronDown, List, FlaskConical } from 'lucide-react'
 import TaskCreateForm from '../components/TaskCreateForm'
 import TaskCard from '../components/TaskCard'
 import TaskDetailPanel from '../components/TaskDetailPanel'
@@ -53,6 +53,11 @@ export default function TasksPage() {
   const reorderTaskGroups = useRpgStore((s) => s.reorderTaskGroups)
   const resetRecurringTasks = useRpgStore((s) => s.resetRecurringTasks)
   const getTaskRewardPreview = useRpgStore((s) => s.getTaskRewardPreview)
+
+  // Debug mode
+  const debugDaysOffset = useRpgStore((s) => s.debugDaysOffset)
+  const incrementDebugDay = useRpgStore((s) => s.incrementDebugDay)
+  const resetDebugTime = useRpgStore((s) => s.resetDebugTime)
 
   const taskGroups = useMemo(
     () =>
@@ -132,6 +137,7 @@ export default function TasksPage() {
   const [deletingGroupId, setDeletingGroupId] = useState<TaskGroupId | null>(null)
   const [draggedGroupId, setDraggedGroupId] = useState<TaskGroupId | null>(null)
   const [dragOverGroupId, setDragOverGroupId] = useState<TaskGroupId | null>(null)
+  const [showDebugMode, setShowDebugMode] = useState(false)
 
   const filteredTasks = useMemo(() => {
     if (!activeProfileId) return []
@@ -142,16 +148,20 @@ export default function TasksPage() {
 
       // Фильтр по статусу
       if (taskFilter === 'all') {
-        // Все задачи - пропускаем фильтрацию по статусу
+        // Все задачи - но не архивированные
+        if (t.canceledAt) return false
       } else if (taskFilter === 'active') {
-        // Активные: не выполнены и не просрочены
+        // Активные: не выполнены, не просрочены, не архивированы
+        if (t.canceledAt) return false
         if (t.isCompleted) return false
         if (t.deadlineAt && now > t.deadlineAt) return false
       } else if (taskFilter === 'completed') {
-        // Выполненные
+        // Выполненные (не архивированные)
+        if (t.canceledAt) return false
         if (!t.isCompleted) return false
       } else if (taskFilter === 'canceled') {
-        // Отмененные (просроченные)
+        // Отмененные (просроченные + архивированные)
+        if (t.canceledAt) return true
         if (t.isCompleted) return false
         if (!t.deadlineAt || now <= t.deadlineAt) return false
       }
@@ -259,13 +269,16 @@ export default function TasksPage() {
 
         // Применяем тот же фильтр, что и для отображения задач
         if (taskFilter === 'all') {
-          // Все задачи - пропускаем фильтрацию по статусу
+          if (t.canceledAt) return false
         } else if (taskFilter === 'active') {
+          if (t.canceledAt) return false
           if (t.isCompleted) return false
           if (t.deadlineAt && now > t.deadlineAt) return false
         } else if (taskFilter === 'completed') {
+          if (t.canceledAt) return false
           if (!t.isCompleted) return false
         } else if (taskFilter === 'canceled') {
+          if (t.canceledAt) return true
           if (t.isCompleted) return false
           if (!t.deadlineAt || now <= t.deadlineAt) return false
         }
@@ -340,6 +353,21 @@ export default function TasksPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {/* Debug mode button */}
+              <button
+                type="button"
+                onClick={() => setShowDebugMode(!showDebugMode)}
+                className={cn(
+                  'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
+                  'border border-[var(--border)] text-[var(--fg-muted)]',
+                  'hover:border-purple-500/50 hover:text-purple-500 hover:bg-purple-500/10',
+                  (showDebugMode || debugDaysOffset > 0) && 'border-purple-500 text-purple-500 bg-purple-500/10 animate-pulse'
+                )}
+                title="Экспериментальный режим"
+              >
+                <FlaskConical className="h-4 w-4" />
+              </button>
+
               {/* Sort button */}
               <div className="relative" ref={sortMenuRef}>
                 <button
@@ -661,6 +689,59 @@ export default function TasksPage() {
                 )}
               </div>,
             document.body
+          )}
+
+          {/* Экспериментальный режим */}
+          {showDebugMode && (
+            <div className="mt-4 rounded-xl p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/20">
+                    <FlaskConical className="h-4 w-4 text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-purple-400">Экспериментальный режим</h3>
+                    <p className="text-xs text-[var(--fg-muted)]">Тестирование циклов задач</p>
+                  </div>
+                </div>
+                {debugDaysOffset > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetDebugTime()
+                      setShowDebugMode(false)
+                    }}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-500/20 transition-colors font-semibold"
+                  >
+                    Выйти
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={incrementDebugDay}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 font-semibold transition-all duration-200 bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <Plus className="h-5 w-5" />
+                  +1 День
+                </button>
+                <div className="flex flex-col items-center justify-center px-4 py-2 rounded-xl bg-[var(--surface)] border border-[var(--border)]">
+                  <span className="text-2xl font-bold text-purple-500">{debugDaysOffset > 0 ? `+${debugDaysOffset}` : '0'}</span>
+                  <span className="text-xs text-[var(--fg-muted)]">дней</span>
+                </div>
+              </div>
+              {debugDaysOffset > 0 && (
+                <div className="mt-3 text-xs text-center text-purple-400">
+                  Виртуальная дата: {new Date(Date.now() + debugDaysOffset * 24 * 60 * 60 * 1000).toLocaleDateString('ru-RU', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                    weekday: 'long'
+                  })}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Фильтр по статусу задач */}

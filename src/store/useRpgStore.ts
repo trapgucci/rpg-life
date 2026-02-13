@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { isSameDay, getStartOfWeek, getStartOfMonth, getStartOfYear } from '../lib/dateUtils'
+import { getCurrentCycleStart as calcCycleStart, getCycleEndDate } from '../lib/taskCycleUtils'
 import type {
   TaskRpg,
   TaskId,
@@ -24,6 +25,7 @@ import type {
   PurchaseHistoryEntry,
   AppSettings,
   CurrencyId,
+  TaskCompletionRecord,
 } from '../types/domain'
 import {
   TASK_XP_BY_DIFFICULTY,
@@ -186,6 +188,9 @@ interface RpgStoreState {
   activeShopDiscountPercent: number | null
   settings: AppSettings
 
+  // Debug mode (для тестирования циклов)
+  debugDaysOffset: number
+
   // Stats
   stats: {
     totalTasksCompleted: number
@@ -241,8 +246,14 @@ interface RpgStoreState {
   canCompleteTask: (task: TaskRpg) => boolean
   skipTask: (id: TaskId) => void
   abandonTask: (id: TaskId) => void
+  archiveTask: (id: TaskId) => void
   resetRecurringTasks: () => void
   incrementCounter: (id: TaskId) => void
+
+  // Debug methods
+  incrementDebugDay: () => void
+  resetDebugTime: () => void
+  getDebugNow: () => number
   decrementCounter: (id: TaskId) => void
   toggleSubtask: (taskId: TaskId, subtaskId: string) => void
   getTaskRewardPreview: (task: TaskRpg) => { xp: number; coins: number; gems: number }
@@ -319,6 +330,7 @@ export const useRpgStore = create<RpgStoreState>()(
         purchaseHistory: [],
         activeShopDiscountPercent: null,
         settings: { ...DEFAULT_SETTINGS },
+        debugDaysOffset: 0,
         stats: {
           totalTasksCompleted: 0,
           totalHabitsPositive: 0,
@@ -681,23 +693,59 @@ export const useRpgStore = create<RpgStoreState>()(
               ? { ...task.recurrenceSettings, completedCount: newCompletedCount }
               : undefined
 
+            // Запись в историю
+            const completionRecord: TaskCompletionRecord = {
+              id: crypto.randomUUID(),
+              cycleStart: calcCycleStart(task),
+              cycleEnd: now(),
+              completedAt: now(),
+              status: 'completed',
+              xpEarned: xpGain,
+              coinsEarned: coinGain,
+              gemsEarned: gemGain,
+            }
+            const newStreak = (task.currentStreak ?? 0) + 1
+            const historyFields = {
+              completionHistory: [...(task.completionHistory ?? []), completionRecord].slice(-365),
+              currentStreak: newStreak,
+              bestStreak: Math.max(task.bestStreak ?? 0, newStreak),
+            }
+
             // Если лимит достигнут — помечаем задачу как завершенную (архивируем)
             if (isRecurrenceCompleted || (updatedSettings && updatedSettings.endMode === 'byCount' && updatedSettings.endCount && newCompletedCount >= updatedSettings.endCount)) {
-              updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), archived: true, recurrenceSettings: updatedSettings }))
+              updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), archived: true, recurrenceSettings: updatedSettings, ...historyFields }))
               return
             }
 
             // Иначе сбрасываем для повторного выполнения
-            updateTask(id, (t) => {
-              const base = { recurrenceSettings: updatedSettings }
-              if (t.kind === 'checkbox') return { ...t, ...base, isCompleted: false, completedAt: undefined }
-              if (t.kind === 'counter') return { ...t, ...base, isCompleted: false, current: 0, completedAt: undefined }
-              if (t.kind === 'nested') {
-                const resetSubtasks = t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
-                return { ...t, ...base, isCompleted: false, completedAt: undefined, subtasks: resetSubtasks }
-              }
-              return t
-            })
+            if (task.kind === 'nested') {
+              // Для nested задач сбрасываем основную задачу и все подзадачи в одном обновлении
+              updateTask(id, (t) => {
+                if (t.kind !== 'nested') return t
+                const resetSubtasks = t.subtasks.map(s => ({
+                  ...s,
+                  isCompleted: false,
+                  completedAt: undefined
+                }))
+                return {
+                  ...t,
+                  recurrenceSettings: updatedSettings,
+                  isCompleted: false,
+                  completedAt: undefined,
+                  subtasks: resetSubtasks,
+                  currentCycleStart: now(),
+                  ...historyFields
+                }
+              })
+            } else {
+              // Для checkbox и counter задач
+              updateTask(id, (t) => {
+                const base = { recurrenceSettings: updatedSettings, currentCycleStart: now(), ...historyFields }
+                if (t.kind === 'checkbox') return { ...t, ...base, isCompleted: false, completedAt: undefined }
+                if (t.kind === 'counter') return { ...t, ...base, isCompleted: false, current: 0, completedAt: undefined }
+                return { ...t, ...base }
+              })
+            }
             return
           }
 
@@ -714,9 +762,27 @@ export const useRpgStore = create<RpgStoreState>()(
               ? { ...task.recurrenceSettings, completedCount: newCompletedCount }
               : undefined
 
+            // Запись в историю
+            const completionRecord: TaskCompletionRecord = {
+              id: crypto.randomUUID(),
+              cycleStart: calcCycleStart(task),
+              cycleEnd: getCycleEndDate(task) ?? now(),
+              completedAt: now(),
+              status: 'completed',
+              xpEarned: xpGain,
+              coinsEarned: coinGain,
+              gemsEarned: gemGain,
+            }
+            const newStreak = (task.currentStreak ?? 0) + 1
+            const historyFields = {
+              completionHistory: [...(task.completionHistory ?? []), completionRecord].slice(-365),
+              currentStreak: newStreak,
+              bestStreak: Math.max(task.bestStreak ?? 0, newStreak),
+            }
+
             // Если лимит достигнут — помечаем задачу как завершенную (архивируем)
             if (isRecurrenceCompleted || (updatedSettings && updatedSettings.endMode === 'byCount' && updatedSettings.endCount && newCompletedCount >= updatedSettings.endCount)) {
-              updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), archived: true, lastCompletedAt: now(), recurrenceSettings: updatedSettings }))
+              updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), archived: true, lastCompletedAt: now(), recurrenceSettings: updatedSettings, ...historyFields }))
               return
             }
 
@@ -727,6 +793,7 @@ export const useRpgStore = create<RpgStoreState>()(
               completedAt: now(),
               lastCompletedAt: now(),
               recurrenceSettings: updatedSettings,
+              ...historyFields,
               ...(t.kind === 'nested' ? {
                 subtasks: t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
               } : {})
@@ -751,14 +818,28 @@ export const useRpgStore = create<RpgStoreState>()(
           const task = get().tasks.find((t) => t.id === id)
           if (!task) return
 
+          // Запись пропуска в историю (для recurring задач)
+          const skipRecord: TaskCompletionRecord | null = task.recurrence !== 'once' ? {
+            id: crypto.randomUUID(),
+            cycleStart: calcCycleStart(task),
+            cycleEnd: getCycleEndDate(task) ?? now(),
+            status: 'skipped',
+          } : null
+          const skipHistoryFields = skipRecord ? {
+            completionHistory: [...(task.completionHistory ?? []), skipRecord].slice(-365),
+            currentStreak: 0,
+            totalSkipped: (task.totalSkipped ?? 0) + 1,
+          } : {}
+
           // Для instant — сбрасываем задачу (без наград), чтобы можно было выполнить снова
           if (task.recurrence === 'instant') {
             get().updateTask(id, (t) => {
-              if (t.kind === 'checkbox') return { ...t, isCompleted: false, completedAt: undefined }
-              if (t.kind === 'counter') return { ...t, isCompleted: false, current: 0, completedAt: undefined }
+              const base = { ...skipHistoryFields, currentCycleStart: now() }
+              if (t.kind === 'checkbox') return { ...t, ...base, isCompleted: false, completedAt: undefined }
+              if (t.kind === 'counter') return { ...t, ...base, isCompleted: false, current: 0, completedAt: undefined }
               if (t.kind === 'nested') {
                 const resetSubtasks = t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
-                return { ...t, isCompleted: false, completedAt: undefined, subtasks: resetSubtasks }
+                return { ...t, ...base, isCompleted: false, completedAt: undefined, subtasks: resetSubtasks }
               }
               return t
             })
@@ -766,9 +847,9 @@ export const useRpgStore = create<RpgStoreState>()(
           }
 
           get().updateTask(id, (t) => {
-            if (t.kind === 'checkbox') return { ...t, isCompleted: true, completedAt: now() }
-            if (t.kind === 'counter') return { ...t, isCompleted: true, current: t.target, completedAt: now() }
-            if (t.kind === 'nested') return { ...t, isCompleted: true, completedAt: now() }
+            if (t.kind === 'checkbox') return { ...t, ...skipHistoryFields, isCompleted: true, completedAt: now() }
+            if (t.kind === 'counter') return { ...t, ...skipHistoryFields, isCompleted: true, current: t.target, completedAt: now() }
+            if (t.kind === 'nested') return { ...t, ...skipHistoryFields, isCompleted: true, completedAt: now() }
             return t
           })
         },
@@ -779,9 +860,15 @@ export const useRpgStore = create<RpgStoreState>()(
           updateTask(id, (t) => ({ ...t, archived: true, updatedAt: now() }))
         },
 
+        archiveTask: (id) => {
+          const { updateTask } = get()
+          // Move task to "Отмененные" with canceledAt timestamp (visible, not hidden)
+          updateTask(id, (t) => ({ ...t, canceledAt: now(), updatedAt: now() }))
+        },
+
         resetRecurringTasks: () => {
-          const { tasks, updateTask } = get()
-          const nowTime = now()
+          const { tasks, updateTask, debugDaysOffset } = get()
+          const nowTime = now() + debugDaysOffset * 24 * 60 * 60 * 1000
 
           tasks.forEach(task => {
             // Проверка: если задача достигла лимита по дате окончания — архивируем
@@ -801,12 +888,19 @@ export const useRpgStore = create<RpgStoreState>()(
                   return !isSameDay(task.lastCompletedAt, nowTime)
 
                 case 'weekly': {
-                  // Если есть настройки дней недели — проверяем по дням
+                  // Вариант В: Задача сбрасывается в следующий день из weeklyDays после выполнения
                   const weeklyDays = task.recurrenceSettings?.weeklyDays
                   if (weeklyDays && weeklyDays.length > 0) {
-                    const today = new Date(nowTime).getDay() // 0 = воскресенье, 6 = суббота
-                    // Если сегодня входит в список дней повтора и задача не была выполнена сегодня
-                    return weeklyDays.includes(today) && !isSameDay(task.lastCompletedAt, nowTime)
+                    // Если задача не выполнена - не сбрасывать (ждем выполнения)
+                    if (!task.lastCompletedAt) return false
+
+                    // Получить конец текущего дня цикла
+                    const cycleEnd = getCycleEndDate(task)
+                    if (!cycleEnd) return false
+
+                    // Сброс происходит когда текущий день цикла закончился
+                    // (то есть наступил следующий день из weeklyDays)
+                    return nowTime > cycleEnd
                   }
                   // Иначе стандартная логика: сбросить если новая неделя
                   const lastWeek = getStartOfWeek(task.lastCompletedAt)
@@ -847,9 +941,10 @@ export const useRpgStore = create<RpgStoreState>()(
                 isCompleted: false,
                 completedAt: undefined,
                 lastCompletedAt: undefined,
+                currentCycleStart: nowTime,
                 ...(t.kind === 'counter' ? { current: 0 } : {}),
                 ...(t.kind === 'nested' ? {
-                  subtasks: t.subtasks.map(s => ({ ...s, isCompleted: false }))
+                  subtasks: t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
                 } : {})
               }))
             }
@@ -1233,8 +1328,11 @@ export const useRpgStore = create<RpgStoreState>()(
 
         tryRandomFragmentDrop: () => {
           const recipes = get().getCraftRecipes().filter((r) => !r.crafted)
-          
+
           recipes.forEach((recipe) => {
+            // Защита от старых рецептов без поля sources
+            if (!recipe.sources || !Array.isArray(recipe.sources)) return
+
             recipe.sources.forEach((source) => {
               if (source.type === 'random_drop' && source.dropChance) {
                 if (Math.random() < source.dropChance) {
@@ -1393,6 +1491,22 @@ export const useRpgStore = create<RpgStoreState>()(
             }))
           }
           return removeFromInventory(itemId, 1)
+        },
+
+        // ─── Debug Mode ───────────────────────────────────────────────────
+        getDebugNow: () => {
+          const offset = get().debugDaysOffset
+          return Date.now() + offset * 24 * 60 * 60 * 1000
+        },
+
+        incrementDebugDay: () => {
+          set((s) => ({ debugDaysOffset: s.debugDaysOffset + 1 }))
+          // Сразу проверяем задачи на сброс
+          get().resetRecurringTasks()
+        },
+
+        resetDebugTime: () => {
+          set({ debugDaysOffset: 0 })
         },
 
         // ─── Export/Import ────────────────────────────────────────────────

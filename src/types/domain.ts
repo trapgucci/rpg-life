@@ -97,12 +97,24 @@ export interface TaskBase {
   /** Дедлайн: после этого времени завершить задачу нельзя (опционально) */
   deadlineAt?: number | null
   archived?: boolean
+  /** Timestamp архивации задачи (перемещена в "Отмененные" с тегом "Архив") */
+  canceledAt?: number
   recurrence: TaskRecurrence
   recurrenceIntervalDays?: number
   /** Расширенные настройки повтора (новая система) */
   recurrenceSettings?: RecurrenceSettings
   /** Timestamp последнего завершения (для recurring задач) */
   lastCompletedAt?: number
+  /** История завершений циклов (для recurring задач) */
+  completionHistory?: TaskCompletionRecord[]
+  /** Timestamp начала текущего цикла */
+  currentCycleStart?: number
+  /** Текущая серия (подряд выполненных циклов) */
+  currentStreak?: number
+  /** Лучшая серия (максимум подряд выполненных циклов) */
+  bestStreak?: number
+  /** Всего пропущено/пропущено циклов */
+  totalSkipped?: number
   coinReward: number
   gemReward: number
 }
@@ -140,6 +152,23 @@ export interface SubtaskItem {
   difficulty?: TaskDifficulty
   /** Свой XP — переопределяет XP по сложности */
   customXp?: number | null
+}
+
+/** Запись о завершённом цикле повторяющейся задачи */
+export interface TaskCompletionRecord {
+  id: string
+  /** Начало цикла (timestamp) */
+  cycleStart: number
+  /** Конец цикла (timestamp, расчётный) */
+  cycleEnd: number
+  /** Когда завершена (undefined если пропущена/пропала) */
+  completedAt?: number
+  /** Статус цикла */
+  status: 'completed' | 'skipped' | 'missed'
+  /** Награды, выданные за этот цикл */
+  xpEarned?: number
+  coinsEarned?: number
+  gemsEarned?: number
 }
 
 export interface NestedTask extends TaskBase {
@@ -524,7 +553,7 @@ export interface CraftRecipe {
   /** Иконка результата */
   resultIcon: string
   /** Источники фрагментов */
-  sources: FragmentSource[]
+  sources?: FragmentSource[]
   /** Скрафчен ли предмет */
   crafted: boolean
   /** Когда скрафчен */
