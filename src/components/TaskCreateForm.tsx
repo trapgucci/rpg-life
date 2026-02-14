@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Plus, X, ChevronRight, Calendar, Clock, BarChart3, Gift, Target, Construction, ListPlus, Flag, Folder, Edit2, Coins, Gem, Zap } from 'lucide-react'
+import { Plus, X, ChevronRight, Calendar, BarChart3, Gift, Target, Construction, ListPlus, Flag, Folder, Edit2, Coins, Gem, Zap } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRecurrence, SubtaskItem, TaskDifficulty, AttributeId, TaskPriority, RecurrenceSettings } from '../types/domain'
 import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
@@ -11,7 +11,6 @@ import TaskAttributeSelectModal from './TaskAttributeSelectModal'
 import TaskRewardsModal from './TaskRewardsModal'
 import SubtaskCreateModal, { type SubtaskEditData, type SubtaskFormData } from './SubtaskCreateModal'
 import RecurrenceSelectModal from './RecurrenceSelectModal'
-import DateTimePickerModal from './DateTimePickerModal'
 
 const RECURRENCE_STATUS_LABEL: Record<TaskRecurrence, string> = {
   once: 'Без повтора',
@@ -48,9 +47,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
     type: 'once',
     endMode: 'never',
   })
-  const [deadlineAt, setDeadlineAt] = useState<string>('')
   const [showRecurrenceModal, setShowRecurrenceModal] = useState(false)
-  const [showDeadlineModal, setShowDeadlineModal] = useState(false)
 
   // Атрибуты и сложность
   const [selectedAttributeIds, setSelectedAttributeIds] = useState<AttributeId[]>([])
@@ -117,16 +114,6 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
     // Если атрибуты не выбраны, сложность все равно нужна (для базовой структуры задачи), но XP начисляться не будет
     const finalDifficulty = difficulty ?? 'medium'
 
-    let deadlineMs: number | null = null
-    if (deadlineAt) {
-      const ms = new Date(deadlineAt).getTime()
-      if (Number.isNaN(ms)) {
-        setError('Некорректная дата дедлайна')
-        return
-      }
-      deadlineMs = ms
-    }
-
     let newTask: any
 
     if (countingTaskEnabled) {
@@ -140,7 +127,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         attributeIds: selectedAttributeIds,
         customXp: selectedAttributeIds.length > 0 ? customXp : null,
         dueAt: null,
-        deadlineAt: deadlineMs,
+        deadlineAt: null,
         archived: false,
         recurrence,
         recurrenceSettings,
@@ -173,7 +160,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         attributeIds: selectedAttributeIds,
         customXp: selectedAttributeIds.length > 0 ? customXp : null,
         dueAt: null,
-        deadlineAt: deadlineMs,
+        deadlineAt: null,
         archived: false,
         recurrence,
         recurrenceSettings,
@@ -193,7 +180,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         attributeIds: selectedAttributeIds,
         customXp: selectedAttributeIds.length > 0 ? customXp : null,
         dueAt: null,
-        deadlineAt: deadlineMs,
+        deadlineAt: null,
         archived: false,
         recurrence,
         recurrenceSettings,
@@ -217,7 +204,6 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       setSubtasks([])
       setRecurrence('once')
       setRecurrenceSettings({ type: 'once', endMode: 'never' })
-      setDeadlineAt('')
       setCountingTaskEnabled(false)
       setTargetQuantity(2)
       setCountUnit('раз')
@@ -440,31 +426,11 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                   <p className="font-semibold text-[var(--fg)]">Повтор</p>
                   <p className="text-xs text-[var(--fg-muted)] mt-0.5">
                     {RECURRENCE_STATUS_LABEL[recurrence]}
-                  </p>
-                </div>
-              </span>
-              <ChevronRight className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" />
-            </button>
-          </div>
-          <div className="h-px bg-[var(--border)]" />
-          {/* Дедлайн */}
-          <div>
-            <button
-              type="button"
-              onClick={() => setShowDeadlineModal(true)}
-              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-[var(--surface-elevated)]"
-            >
-              <span className="flex items-center gap-3">
-                <Clock className="h-5 w-5 text-[var(--accent)]" />
-                <div>
-                  <p className="font-semibold text-[var(--fg)]">Дедлайн</p>
-                  <p className="text-xs text-[var(--fg-muted)] mt-0.5">
-                    {deadlineAt ? new Date(deadlineAt).toLocaleDateString('ru-RU', {
-                      day: 'numeric',
-                      month: 'short',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    }) : 'Не установлен'}
+                    {recurrence === 'weekly' && recurrenceSettings.weeklyMode === 'timesPerWeek' && recurrenceSettings.weeklyTimesPerWeek
+                      ? ` (${recurrenceSettings.weeklyTimesPerWeek} ${recurrenceSettings.weeklyTimesPerWeek === 1 ? 'раз' : recurrenceSettings.weeklyTimesPerWeek < 5 ? 'раза' : 'раз'}/нед)`
+                      : recurrence === 'weekly' && recurrenceSettings.weeklyDays && recurrenceSettings.weeklyDays.length > 0 && recurrenceSettings.weeklyDays.length < 7
+                      ? ` (${recurrenceSettings.weeklyDays.length} ${recurrenceSettings.weeklyDays.length === 1 ? 'день' : recurrenceSettings.weeklyDays.length < 5 ? 'дня' : 'дней'})`
+                      : ''}
                   </p>
                 </div>
               </span>
@@ -802,12 +768,6 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       settings={recurrenceSettings}
       onSave={handleRecurrenceSettingsChange}
       onClose={() => setShowRecurrenceModal(false)}
-    />
-    <DateTimePickerModal
-      isOpen={showDeadlineModal}
-      value={deadlineAt}
-      onChange={setDeadlineAt}
-      onClose={() => setShowDeadlineModal(false)}
     />
     </>
   )

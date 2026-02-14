@@ -34,12 +34,23 @@ export type TaskRecurrence = 'once' | 'daily' | 'weekly' | 'monthly' | 'yearly' 
 /** Режим окончания повторяющейся задачи */
 export type RecurrenceEndMode = 'never' | 'byDate' | 'byCount'
 
+/** Режим еженедельного повтора */
+export type WeeklyMode = 'days' | 'timesPerWeek'
+
 /** Расширенные настройки повтора задачи */
 export interface RecurrenceSettings {
   /** Базовый тип повтора */
   type: TaskRecurrence
-  /** Дни недели (для weekly) — 0 = воскресенье, 6 = суббота */
+  /** Режим еженедельного повтора: по дням недели или N раз в неделю */
+  weeklyMode?: WeeklyMode
+  /** Дни недели (для weekly, weeklyMode='days') — 0 = воскресенье, 6 = суббота */
   weeklyDays?: number[]
+  /** Сколько раз за неделю можно выполнить (для weekly, weeklyMode='timesPerWeek') */
+  weeklyTimesPerWeek?: number
+  /** Сколько раз выполнено на текущей неделе (для timesPerWeek) */
+  weeklyCompletedThisWeek?: number
+  /** Timestamp начала текущей недели (для timesPerWeek, отслеживание сброса) */
+  weeklyWeekStart?: number
   /** Кастомный интервал в днях (для custom) */
   customIntervalDays?: number
   /** Режим окончания */

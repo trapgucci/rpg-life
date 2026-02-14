@@ -18,12 +18,11 @@ const ALL_GROUPS_ID = '__all_groups__' as TaskGroupId
 type TaskFilter = 'all' | 'active' | 'completed' | 'canceled'
 
 /** Поля сортировки */
-type SortField = 'date' | 'deadline' | 'priority' | 'reward' | 'difficulty'
+type SortField = 'date' | 'priority' | 'reward' | 'difficulty'
 type SortDirection = 'asc' | 'desc'
 
 const SORT_LABELS: Record<SortField, string> = {
   date: 'Дата',
-  deadline: 'Дедлайн',
   priority: 'Приоритет',
   reward: 'Награда',
   difficulty: 'Сложность',
@@ -151,10 +150,11 @@ export default function TasksPage() {
         // Все задачи - но не архивированные
         if (t.canceledAt) return false
       } else if (taskFilter === 'active') {
-        // Активные: не выполнены, не просрочены, не архивированы
+        // Активные: не выполнены, не просрочены по endDate, не архивированы
         if (t.canceledAt) return false
         if (t.isCompleted) return false
-        if (t.deadlineAt && now > t.deadlineAt) return false
+        const endDate = t.recurrenceSettings?.endMode === 'byDate' ? t.recurrenceSettings.endDate : null
+        if (endDate && now > endDate) return false
       } else if (taskFilter === 'completed') {
         // Выполненные (не архивированные)
         if (t.canceledAt) return false
@@ -163,7 +163,8 @@ export default function TasksPage() {
         // Отмененные (просроченные + архивированные)
         if (t.canceledAt) return true
         if (t.isCompleted) return false
-        if (!t.deadlineAt || now <= t.deadlineAt) return false
+        const endDate = t.recurrenceSettings?.endMode === 'byDate' ? t.recurrenceSettings.endDate : null
+        if (!endDate || now <= endDate) return false
       }
 
       const g = t.groupId ?? null
@@ -195,11 +196,6 @@ export default function TasksPage() {
       switch (sortField) {
         case 'date':
           return (b.updatedAt - a.updatedAt) * dir
-        case 'deadline': {
-          const aD = a.deadlineAt ?? Infinity
-          const bD = b.deadlineAt ?? Infinity
-          return (aD - bD) * dir
-        }
         case 'priority': {
           const aP = PRIORITY_ORDER[a.priority ?? 'none'] ?? 0
           const bP = PRIORITY_ORDER[b.priority ?? 'none'] ?? 0
@@ -273,14 +269,16 @@ export default function TasksPage() {
         } else if (taskFilter === 'active') {
           if (t.canceledAt) return false
           if (t.isCompleted) return false
-          if (t.deadlineAt && now > t.deadlineAt) return false
+          const endDate = t.recurrenceSettings?.endMode === 'byDate' ? t.recurrenceSettings.endDate : null
+          if (endDate && now > endDate) return false
         } else if (taskFilter === 'completed') {
           if (t.canceledAt) return false
           if (!t.isCompleted) return false
         } else if (taskFilter === 'canceled') {
           if (t.canceledAt) return true
           if (t.isCompleted) return false
-          if (!t.deadlineAt || now <= t.deadlineAt) return false
+          const endDate = t.recurrenceSettings?.endMode === 'byDate' ? t.recurrenceSettings.endDate : null
+          if (!endDate || now <= endDate) return false
         }
 
         return true

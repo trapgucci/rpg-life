@@ -1,4 +1,4 @@
-import { CheckSquare, Hash, ListChecks, Clock, Repeat, Flag, Archive, CalendarClock } from 'lucide-react'
+import { CheckSquare, Hash, ListChecks, Clock, Repeat, Flag, Archive, CalendarClock, Timer } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRpg } from '../types/domain'
 import RewardBadge from './RewardBadge'
@@ -60,36 +60,8 @@ export default function TaskCard({ task, selected, onSelect, rewards }: TaskCard
         ? 1
         : 0
 
-  // Вычисляем время до дедлайна
-  const getDeadlineInfo = () => {
-    if (!task.deadlineAt) return null
-
-    const now = new Date()
-    const deadline = new Date(task.deadlineAt)
-    const diffTime = deadline.getTime() - now.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    const diffHours = Math.floor(diffTime / (1000 * 60 * 60))
-
-    if (diffTime <= 0) {
-      // Для инстант-задач с истекшим дедлайном показываем "Архив" (серый), а не "Просрочено" (красный)
-      if (task.recurrence === 'instant') {
-        return { text: 'Архив', color: 'text-gray-500', bg: 'bg-gray-500/10', border: 'border-gray-500/30' }
-      }
-      return { text: 'Просрочено', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30' }
-    } else if (diffHours < 1) {
-      return { text: '<1ч', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30' }
-    } else if (diffHours < 24) {
-      return { text: `${diffHours}ч`, color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30' }
-    } else if (diffDays <= 3) {
-      return { text: `${diffDays}д`, color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/30' }
-    } else if (diffDays <= 7) {
-      return { text: `${diffDays}д`, color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30' }
-    } else {
-      return { text: `${diffDays}д`, color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/30' }
-    }
-  }
-
-  const deadlineInfo = getDeadlineInfo()
+  // Проверяем наличие крайнего срока (endDate в recurrenceSettings)
+  const hasEndDate = task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate != null
 
   return (
       <button
@@ -203,16 +175,13 @@ export default function TaskCard({ task, selected, onSelect, rewards }: TaskCard
               </span>
             )}
 
-            {/* Deadline Badge */}
-            {deadlineInfo && (
-              <span className={cn(
-                'inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold border',
-                deadlineInfo.color,
-                deadlineInfo.bg,
-                deadlineInfo.border
-              )}>
-                <Clock className="h-3.5 w-3.5" />
-                {deadlineInfo.text}
+            {/* End date (deadline) icon */}
+            {hasEndDate && (
+              <span
+                className="inline-flex items-center justify-center rounded-lg p-1.5 border text-orange-500 bg-orange-500/10 border-orange-500/30"
+                title="Есть крайний срок"
+              >
+                <Timer className="h-3.5 w-3.5" />
               </span>
             )}
 

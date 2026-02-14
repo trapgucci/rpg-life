@@ -12,7 +12,6 @@ import TaskAttributeSelectModal from './TaskAttributeSelectModal'
 import TaskRewardsModal from './TaskRewardsModal'
 import SubtaskCreateModal, { type SubtaskEditData, type SubtaskFormData } from './SubtaskCreateModal'
 import RecurrenceSelectModal from './RecurrenceSelectModal'
-import DateTimePickerModal from './DateTimePickerModal'
 import ConfirmModal from './ConfirmModal'
 import RewardBadge from './RewardBadge'
 import { TaskCurrentCycleBlock, TaskStatsBlock, TaskHistoryBlock } from './TaskCycleSections'
@@ -92,18 +91,11 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const [editRecurrenceSettings, setEditRecurrenceSettings] = useState<RecurrenceSettings>(
     task.recurrenceSettings ?? { type: task.recurrence, endMode: 'never' }
   )
-  const [editDeadlineAt, setEditDeadlineAt] = useState<string>(() => {
-    if (!task.deadlineAt) return ''
-    const d = new Date(task.deadlineAt)
-    const pad = (n: number) => String(n).padStart(2, '0')
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-  })
   const [showGroupModal, setShowGroupModal] = useState(false)
   const [showAttributeModal, setShowAttributeModal] = useState(false)
   const [showRewardsModal, setShowRewardsModal] = useState(false)
   const [showSubtaskModal, setShowSubtaskModal] = useState(false)
   const [showRecurrenceModal, setShowRecurrenceModal] = useState(false)
-  const [showDeadlineModal, setShowDeadlineModal] = useState(false)
   const [editingSubtask, setEditingSubtask] = useState<SubtaskItem | null>(null)
   const [rewardFeedback, setRewardFeedback] = useState<{ subtaskId: string; coins: number; xp: number } | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -129,8 +121,6 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const isCustomXp = task.customXp != null
 
   const canComplete = canCompleteTask(task)
-  const deadlineAt = task.deadlineAt ?? null
-  const isPastDeadline = deadlineAt != null && Date.now() > deadlineAt
   const diffColor = DIFFICULTY_COLORS[task.difficulty]
 
   const progress =
@@ -147,14 +137,6 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
 
     const targetId = overrideTaskId ?? task.id
 
-    let deadlineMs: number | null = null
-    if (editDeadlineAt) {
-      const ms = new Date(editDeadlineAt).getTime()
-      if (!Number.isNaN(ms)) {
-        deadlineMs = ms
-      }
-    }
-
     updateTask(targetId, (t) => {
       const base = {
         ...t,
@@ -169,7 +151,6 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
         gemReward: editGemReward,
         recurrence: editRecurrence,
         recurrenceSettings: editRecurrenceSettings,
-        deadlineAt: deadlineMs,
       }
 
       // Handle counter conversion
@@ -361,12 +342,6 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
     setEditGemReward(t.gemReward ?? 0)
     setEditRecurrence(t.recurrence)
     setEditRecurrenceSettings(t.recurrenceSettings ?? { type: t.recurrence, endMode: 'never' })
-    setEditDeadlineAt(() => {
-      if (!t.deadlineAt) return ''
-      const d = new Date(t.deadlineAt)
-      const pad = (n: number) => String(n).padStart(2, '0')
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-    })
     setEditCounterEnabled(t.kind === 'counter')
     setEditTarget(t.kind === 'counter' ? t.target : 2)
     setEditCountUnit(t.kind === 'counter' ? (t.countUnit ?? 'раз') : 'раз')
@@ -621,31 +596,11 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                           <p className="font-semibold text-[var(--fg)]">Повтор</p>
                           <p className="text-xs text-[var(--fg-muted)] mt-0.5">
                             {RECURRENCE_LABELS[editRecurrence]}
-                          </p>
-                        </div>
-                      </span>
-                      <ChevronRight className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" />
-                    </button>
-                  </div>
-                  <div className="h-px bg-[var(--border)]" />
-                  {/* Дедлайн */}
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => setShowDeadlineModal(true)}
-                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-[var(--surface-elevated)]"
-                    >
-                      <span className="flex items-center gap-3">
-                        <Clock className="h-5 w-5 text-[var(--accent)]" />
-                        <div>
-                          <p className="font-semibold text-[var(--fg)]">Дедлайн</p>
-                          <p className="text-xs text-[var(--fg-muted)] mt-0.5">
-                            {editDeadlineAt ? new Date(editDeadlineAt).toLocaleDateString('ru-RU', {
-                              day: 'numeric',
-                              month: 'short',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            }) : 'Не установлен'}
+                            {editRecurrence === 'weekly' && editRecurrenceSettings.weeklyMode === 'timesPerWeek' && editRecurrenceSettings.weeklyTimesPerWeek
+                              ? ` (${editRecurrenceSettings.weeklyTimesPerWeek} ${editRecurrenceSettings.weeklyTimesPerWeek === 1 ? 'раз' : editRecurrenceSettings.weeklyTimesPerWeek < 5 ? 'раза' : 'раз'}/нед)`
+                              : editRecurrence === 'weekly' && editRecurrenceSettings.weeklyDays && editRecurrenceSettings.weeklyDays.length > 0 && editRecurrenceSettings.weeklyDays.length < 7
+                              ? ` (${editRecurrenceSettings.weeklyDays.length} ${editRecurrenceSettings.weeklyDays.length === 1 ? 'день' : editRecurrenceSettings.weeklyDays.length < 5 ? 'дня' : 'дней'})`
+                              : ''}
                           </p>
                         </div>
                       </span>
@@ -940,44 +895,47 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 {task.notes && (
                   <p className="text-[var(--fg-muted)] leading-relaxed break-words overflow-hidden">{task.notes}</p>
                 )}
-                {/* Тег "Архив" */}
-                {task.canceledAt && (
-                  <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-gray-500/10 px-3 py-1.5 text-sm text-gray-500 border-2 border-gray-500/30">
-                    <Archive className="h-4 w-4" />
-                    <span>
-                      Архив — {new Date(task.canceledAt).toLocaleDateString('ru-RU', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                      })}
-                    </span>
+                {/* Теги статуса (Архив + Завершено) */}
+                {(task.canceledAt || (task.isCompleted && task.completedAt)) && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {task.canceledAt && (
+                      <div className="inline-flex items-center gap-2 rounded-lg bg-gray-500/10 px-3 py-1.5 text-sm text-gray-500 border-2 border-gray-500/30">
+                        <Archive className="h-4 w-4" />
+                        <span>
+                          Архив — {new Date(task.canceledAt).toLocaleDateString('ru-RU', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric',
+                          })}
+                        </span>
+                      </div>
+                    )}
+                    {task.isCompleted && task.completedAt && (() => {
+                      const isRecurring = task.recurrence !== 'once'
+                      const rs = task.recurrenceSettings
+                      const isLimitReached = rs?.endMode === 'byCount' && rs.endCount && (rs.completedCount ?? 0) >= rs.endCount
+                      const isPermanentlyDone = !isRecurring || isLimitReached
+
+                      return (
+                        <div className={cn(
+                          "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm border-2",
+                          isPermanentlyDone
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                            : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
+                        )}>
+                          {isPermanentlyDone ? <Award className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+                          <span>
+                            {isPermanentlyDone ? 'Завершено' : 'Выполнено за цикл'} {new Date(task.completedAt).toLocaleDateString('ru-RU', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                            })}
+                          </span>
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
-                {/* Время выполнения */}
-                {task.isCompleted && task.completedAt && (() => {
-                  const isRecurring = task.recurrence !== 'once'
-                  const rs = task.recurrenceSettings
-                  const isLimitReached = rs?.endMode === 'byCount' && rs.endCount && (rs.completedCount ?? 0) >= rs.endCount
-                  const isPermanentlyDone = !isRecurring || isLimitReached
-
-                  return (
-                    <div className={cn(
-                      "mt-3 inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm border-2",
-                      isPermanentlyDone
-                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
-                        : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
-                    )}>
-                      {isPermanentlyDone ? <Award className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-                      <span>
-                        {isPermanentlyDone ? 'Завершено' : 'Выполнено за цикл'} {new Date(task.completedAt).toLocaleDateString('ru-RU', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                        })}
-                      </span>
-                    </div>
-                  )
-                })()}
               </div>
               <div className="flex gap-1 shrink-0">
                 {!task.isCompleted && !task.canceledAt && (
@@ -1065,7 +1023,12 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                       {RECURRENCE_LABELS[task.recurrence]}
                       {task.recurrenceSettings && (
                         <>
-                          {task.recurrenceSettings.type === 'weekly' && task.recurrenceSettings.weeklyDays && task.recurrenceSettings.weeklyDays.length > 0 && (
+                          {task.recurrenceSettings.type === 'weekly' && task.recurrenceSettings.weeklyMode === 'timesPerWeek' && task.recurrenceSettings.weeklyTimesPerWeek && (
+                            <span className="ml-1 text-xs opacity-80">
+                              ({task.recurrenceSettings.weeklyTimesPerWeek} {task.recurrenceSettings.weeklyTimesPerWeek === 1 ? 'раз' : task.recurrenceSettings.weeklyTimesPerWeek < 5 ? 'раза' : 'раз'}/нед)
+                            </span>
+                          )}
+                          {task.recurrenceSettings.type === 'weekly' && (task.recurrenceSettings.weeklyMode ?? 'days') === 'days' && task.recurrenceSettings.weeklyDays && task.recurrenceSettings.weeklyDays.length > 0 && (
                             <span className="ml-1 text-xs opacity-80">
                               ({task.recurrenceSettings.weeklyDays.length} {task.recurrenceSettings.weeklyDays.length === 1 ? 'день' : task.recurrenceSettings.weeklyDays.length < 5 ? 'дня' : 'дней'})
                             </span>
@@ -1114,157 +1077,6 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
               })()}
             </div>
 
-            {/* Deadline card (expanded info block) */}
-            {deadlineAt != null && (() => {
-              const now = new Date()
-              const deadline = new Date(deadlineAt)
-              const diffTime = deadline.getTime() - now.getTime()
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-              const diffHours = Math.floor(diffTime / (1000 * 60 * 60))
-              const diffMinutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60))
-
-              // Склонение часов
-              const pluralHours = (n: number) => {
-                const abs = Math.abs(n) % 100
-                const n1 = abs % 10
-                if (abs > 10 && abs < 20) return 'часов'
-                if (n1 > 1 && n1 < 5) return 'часа'
-                if (n1 === 1) return 'час'
-                return 'часов'
-              }
-              // Склонение минут
-              const pluralMinutes = (n: number) => {
-                const abs = Math.abs(n) % 100
-                const n1 = abs % 10
-                if (abs > 10 && abs < 20) return 'минут'
-                if (n1 > 1 && n1 < 5) return 'минуты'
-                if (n1 === 1) return 'минута'
-                return 'минут'
-              }
-              // Склонение дней
-              const pluralDays = (n: number) => {
-                const abs = Math.abs(n) % 100
-                const n1 = abs % 10
-                if (abs > 10 && abs < 20) return 'дней'
-                if (n1 > 1 && n1 < 5) return 'дня'
-                if (n1 === 1) return 'день'
-                return 'дней'
-              }
-
-              let color = 'green'
-              let bgColor = 'bg-green-500/15'
-              let borderColor = 'border-green-400/50'
-              let textColor = 'text-green-400'
-              let timeText = ''
-              let urgencyLabel = 'В пределах графика'
-
-              if (diffTime <= 0) {
-                color = 'red'
-                bgColor = 'bg-red-500/15'
-                borderColor = 'border-red-400/50'
-                textColor = 'text-red-400'
-                timeText = 'Задача просрочена'
-                urgencyLabel = 'Просрочено'
-              } else if (diffHours < 1) {
-                color = 'red'
-                bgColor = 'bg-red-500/15'
-                borderColor = 'border-red-400/50'
-                textColor = 'text-red-400'
-                timeText = diffMinutes > 0 ? `Осталось ${diffMinutes} ${pluralMinutes(diffMinutes)}` : 'Меньше минуты'
-                urgencyLabel = 'Срочно'
-              } else if (diffHours < 24) {
-                color = 'red'
-                bgColor = 'bg-red-500/15'
-                borderColor = 'border-red-400/50'
-                textColor = 'text-red-400'
-                timeText = `Остался ${diffHours} ${pluralHours(diffHours)}`
-                if (diffMinutes > 0) timeText += ` ${diffMinutes} ${pluralMinutes(diffMinutes)}`
-                urgencyLabel = 'Срочно'
-              } else if (diffDays <= 3) {
-                color = 'orange'
-                bgColor = 'bg-orange-500/15'
-                borderColor = 'border-orange-400/50'
-                textColor = 'text-orange-400'
-                const remainingHours = diffHours % 24
-                timeText = `Остался ${diffDays} ${pluralDays(diffDays)}`
-                if (remainingHours > 0) timeText += ` ${remainingHours} ${pluralHours(remainingHours)}`
-                urgencyLabel = 'Скоро'
-              } else if (diffDays <= 7) {
-                color = 'yellow'
-                bgColor = 'bg-yellow-500/15'
-                borderColor = 'border-yellow-400/50'
-                textColor = 'text-yellow-400'
-                timeText = `Осталось ${diffDays} ${pluralDays(diffDays)}`
-                urgencyLabel = 'Умеренно'
-              } else {
-                timeText = `Осталось ${diffDays} ${pluralDays(diffDays)}`
-              }
-
-              return (
-                <div
-                  className={cn(
-                    "glass rounded-2xl p-4 mb-6 border-2",
-                    bgColor,
-                    borderColor
-                  )}
-                  style={{
-                    boxShadow: color === 'red'
-                      ? '0 0 12px rgba(239, 68, 68, 0.3), 0 0 20px rgba(239, 68, 68, 0.1)'
-                      : color === 'orange'
-                      ? '0 0 12px rgba(251, 146, 60, 0.3), 0 0 20px rgba(251, 146, 60, 0.1)'
-                      : color === 'yellow'
-                      ? '0 0 12px rgba(234, 179, 8, 0.3), 0 0 20px rgba(234, 179, 8, 0.1)'
-                      : color === 'green'
-                      ? '0 0 12px rgba(16, 185, 129, 0.3), 0 0 20px rgba(16, 185, 129, 0.1)'
-                      : '0 0 8px rgba(107, 114, 128, 0.2)'
-                  }}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={cn(
-                      "flex h-12 w-12 items-center justify-center rounded-xl",
-                      color === 'red' && 'bg-red-500/25',
-                      color === 'orange' && 'bg-orange-500/25',
-                      color === 'yellow' && 'bg-yellow-500/25',
-                      color === 'green' && 'bg-green-500/25',
-                      color === 'gray' && 'bg-gray-500/25'
-                    )}>
-                      <Clock className={cn("h-6 w-6", textColor)} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-sm font-bold text-[var(--fg)]">Дедлайн</h3>
-                        <span className={cn(
-                          "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-                          bgColor,
-                          textColor,
-                          borderColor,
-                          "border"
-                        )}>
-                          {urgencyLabel}
-                        </span>
-                      </div>
-                      <p className={cn("text-lg font-bold mb-0.5", textColor)}>
-                        {timeText}
-                      </p>
-                      <p className="text-sm text-[var(--fg-muted)]">
-                        {deadline.toLocaleDateString('ru-RU', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </p>
-                      {isPastDeadline && (
-                        <p className="mt-2 text-xs text-red-400 font-medium">
-                          ⚠️ Завершить задачу больше нельзя
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )
-            })()}
 
             {/* Rewards card */}
             <div className="glass rounded-2xl p-4 mb-6">
@@ -1602,8 +1414,8 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
           </>
         )}
 
-        {/* Cycle, Stats, History blocks — only for recurring tasks in view mode */}
-        {!isEditing && task.recurrence !== 'once' && (
+        {/* Cycle, Stats, History blocks — for recurring tasks and once tasks with endDate */}
+        {!isEditing && (task.recurrence !== 'once' || (task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate)) && (
           <div className="mt-2">
             <TaskCurrentCycleBlock task={task} />
             <TaskStatsBlock task={task} />
@@ -1686,10 +1498,10 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
               </div>
             )
           })()}
-          {!canComplete && !task.isCompleted && isPastDeadline && (
+          {!canComplete && !task.isCompleted && task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate && Date.now() >= task.recurrenceSettings.endDate && (
             <div className="flex items-center justify-center gap-2 rounded-2xl bg-red-500/10 py-4 text-red-500">
               <Clock className="h-5 w-5" />
-              <span className="font-semibold">Дедлайн истёк</span>
+              <span className="font-semibold">Крайний срок истёк</span>
             </div>
           )}
         </div>
@@ -1741,12 +1553,6 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
         settings={editRecurrenceSettings}
         onSave={handleRecurrenceSettingsChange}
         onClose={() => setShowRecurrenceModal(false)}
-      />
-      <DateTimePickerModal
-        isOpen={showDeadlineModal}
-        value={editDeadlineAt}
-        onChange={setEditDeadlineAt}
-        onClose={() => setShowDeadlineModal(false)}
       />
       <ConfirmModal
         isOpen={showDeleteConfirm}

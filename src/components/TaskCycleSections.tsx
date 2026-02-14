@@ -69,6 +69,7 @@ interface TaskBlockProps {
 }
 
 const RECURRENCE_LABELS: Record<string, string> = {
+  once: 'Один раз',
   daily: 'Ежедневно',
   weekly: 'Еженедельно',
   monthly: 'Ежемесячно',
@@ -104,7 +105,21 @@ export function TaskCurrentCycleBlock({ task }: TaskBlockProps) {
         {/* Статус текущего цикла */}
         <div className="flex items-center justify-between py-2">
           <span className="text-sm text-[var(--fg-muted)]">Статус</span>
-          {task.recurrence === 'weekly' && rs?.weeklyDays && rs.weeklyDays.length > 0 ? (
+          {task.recurrence === 'weekly' && rs?.weeklyMode === 'timesPerWeek' && rs.weeklyTimesPerWeek ? (
+            /* Режим «N раз в неделю» — показываем прогресс */
+            <span className={cn(
+              'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold',
+              (rs.weeklyCompletedThisWeek ?? 0) >= rs.weeklyTimesPerWeek
+                ? 'bg-blue-500/15 text-blue-500'
+                : 'bg-amber-500/15 text-amber-500'
+            )}>
+              {(rs.weeklyCompletedThisWeek ?? 0) >= rs.weeklyTimesPerWeek ? (
+                <><Check className="h-3.5 w-3.5" /> {rs.weeklyCompletedThisWeek ?? 0}/{rs.weeklyTimesPerWeek} за неделю</>
+              ) : (
+                <><CalendarClock className="h-3.5 w-3.5" /> {rs.weeklyCompletedThisWeek ?? 0}/{rs.weeklyTimesPerWeek} за неделю</>
+              )}
+            </span>
+          ) : task.recurrence === 'weekly' && rs?.weeklyDays && rs.weeklyDays.length > 0 ? (
             <div className="flex items-center gap-1">
               {WEEKDAY_ORDER.map(day => {
                 const isActive = rs.weeklyDays!.includes(day)
@@ -202,7 +217,7 @@ export function TaskCurrentCycleBlock({ task }: TaskBlockProps) {
             <div className="text-sm">
               {rs.endMode === 'byDate' && rs.endDate && (
                 <div className="flex items-center justify-between">
-                  <span className="text-[var(--fg-muted)]">Завершить до</span>
+                  <span className="text-[var(--fg-muted)]">Будет доступна до</span>
                   <span className="font-semibold text-orange-500">
                     {formatDateShortRu(rs.endDate)}
                   </span>

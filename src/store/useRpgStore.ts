@@ -610,9 +610,6 @@ export const useRpgStore = create<RpgStoreState>()(
 
         canCompleteTask: (task) => {
           if (task.isCompleted) return false
-          const deadlineAt = task.deadlineAt ?? null
-          // Instant tasks ignore deadline — they're meant to be repeatable forever
-          if (task.recurrence !== 'instant' && deadlineAt != null && now() > deadlineAt) return false
 
           // Проверка: если задача достигла даты окончания повтора — завершить нельзя
           if (task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate) {
@@ -623,6 +620,12 @@ export const useRpgStore = create<RpgStoreState>()(
           if (task.recurrenceSettings?.endMode === 'byCount' && task.recurrenceSettings.endCount) {
             const completed = task.recurrenceSettings.completedCount ?? 0
             if (completed >= task.recurrenceSettings.endCount) return false
+          }
+
+          // Проверка: для timesPerWeek — исчерпаны ли выполнения на этой неделе
+          if (task.recurrenceSettings?.weeklyMode === 'timesPerWeek' && task.recurrenceSettings.weeklyTimesPerWeek) {
+            const done = task.recurrenceSettings.weeklyCompletedThisWeek ?? 0
+            if (done >= task.recurrenceSettings.weeklyTimesPerWeek) return false
           }
 
           // For counter tasks, can only complete when current >= target
@@ -711,9 +714,9 @@ export const useRpgStore = create<RpgStoreState>()(
               bestStreak: Math.max(task.bestStreak ?? 0, newStreak),
             }
 
-            // Если лимит достигнут — помечаем задачу как завершенную (архивируем)
+            // Если лимит достигнут — помечаем задачу как завершенную и перемещаем в «Отменённые»
             if (isRecurrenceCompleted || (updatedSettings && updatedSettings.endMode === 'byCount' && updatedSettings.endCount && newCompletedCount >= updatedSettings.endCount)) {
-              updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), archived: true, recurrenceSettings: updatedSettings, ...historyFields }))
+              updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), canceledAt: now(), recurrenceSettings: updatedSettings, ...historyFields }))
               return
             }
 
@@ -780,9 +783,42 @@ export const useRpgStore = create<RpgStoreState>()(
               bestStreak: Math.max(task.bestStreak ?? 0, newStreak),
             }
 
-            // Если лимит достигнут — помечаем задачу как завершенную (архивируем)
+            // Для timesPerWeek — обновляем weeklyCompletedThisWeek в settings перед проверкой лимита
+            if (updatedSettings?.weeklyMode === 'timesPerWeek' && updatedSettings.weeklyTimesPerWeek) {
+              const currentWeekStart = getStartOfWeek(now())
+              const prevDone = updatedSettings.weeklyCompletedThisWeek ?? 0
+              const newDone = (updatedSettings.weeklyWeekStart === currentWeekStart)
+                ? prevDone + 1
+                : 1
+              updatedSettings.weeklyCompletedThisWeek = newDone
+              updatedSettings.weeklyWeekStart = currentWeekStart
+            }
+
+            // Если лимит достигнут — помечаем задачу как завершенную и перемещаем в «Отменённые»
             if (isRecurrenceCompleted || (updatedSettings && updatedSettings.endMode === 'byCount' && updatedSettings.endCount && newCompletedCount >= updatedSettings.endCount)) {
-              updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), archived: true, lastCompletedAt: now(), recurrenceSettings: updatedSettings, ...historyFields }))
+              updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), canceledAt: now(), lastCompletedAt: now(), recurrenceSettings: updatedSettings, ...historyFields }))
+              return
+            }
+
+            // Режим «N раз в неделю»: помечаем isCompleted только если все разы использованы
+            // weeklyCompletedThisWeek уже обновлён в updatedSettings выше
+            if (updatedSettings?.weeklyMode === 'timesPerWeek' && updatedSettings.weeklyTimesPerWeek) {
+              const allDone = (updatedSettings.weeklyCompletedThisWeek ?? 0) >= updatedSettings.weeklyTimesPerWeek
+
+              updateTask(id, (t) => ({
+                ...t,
+                isCompleted: allDone,
+                completedAt: allDone ? now() : undefined,
+                lastCompletedAt: now(),
+                recurrenceSettings: updatedSettings,
+                ...historyFields,
+                // Для nested — сбрасываем подзадачи после каждого выполнения
+                ...(t.kind === 'nested' ? {
+                  subtasks: t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
+                } : {}),
+                // Для counter — сбрасываем прогресс после каждого выполнения (если не все разы использованы)
+                ...(t.kind === 'counter' && !allDone ? { current: 0 } : {}),
+              }))
               return
             }
 
@@ -871,10 +907,84 @@ export const useRpgStore = create<RpgStoreState>()(
           const nowTime = now() + debugDaysOffset * 24 * 60 * 60 * 1000
 
           tasks.forEach(task => {
-            // Проверка: если задача достигла лимита по дате окончания — архивируем
-            if (task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate) {
-              if (nowTime >= task.recurrenceSettings.endDate && !task.archived) {
-                updateTask(task.id, t => ({ ...t, archived: true, isCompleted: true }))
+            if (task.archived) return
+
+            const rs = task.recurrenceSettings
+            const endDate = rs?.endMode === 'byDate' ? rs.endDate : null
+
+            // === Обработка пропущенных задач с крайним сроком ===
+
+            // Тип «once» с endDate: если дата прошла и не выполнена — архивируем как «Пропущено»
+            if (task.recurrence === 'once' && endDate && nowTime >= endDate && !task.isCompleted && !task.canceledAt) {
+              const missedRecord: TaskCompletionRecord = {
+                id: crypto.randomUUID(),
+                cycleStart: task.createdAt,
+                cycleEnd: endDate,
+                status: 'missed',
+              }
+              updateTask(task.id, t => ({
+                ...t,
+                canceledAt: nowTime,
+                currentStreak: 0,
+                totalSkipped: (t.totalSkipped ?? 0) + 1,
+                completionHistory: [...(t.completionHistory ?? []), missedRecord].slice(-365),
+              }))
+              return
+            }
+
+            // Recurring (daily/weekly/monthly/yearly/custom) с endDate: если endDate прошла — архивируем
+            if (task.recurrence !== 'once' && task.recurrence !== 'instant' && endDate && nowTime >= endDate && !task.canceledAt) {
+              // Записываем пропуск последнего цикла, если не выполнена
+              const missedFields = !task.isCompleted ? {
+                currentStreak: 0,
+                totalSkipped: (task.totalSkipped ?? 0) + 1,
+                completionHistory: [...(task.completionHistory ?? []), {
+                  id: crypto.randomUUID(),
+                  cycleStart: task.currentCycleStart ?? nowTime,
+                  cycleEnd: endDate,
+                  status: 'missed' as const,
+                }].slice(-365),
+              } : {}
+              updateTask(task.id, t => ({
+                ...t,
+                canceledAt: nowTime,
+                ...missedFields,
+              }))
+              return
+            }
+
+            // Recurring: пропущенный цикл без endDate (или endDate еще не наступила)
+            // Если задача не выполнена и цикл закончился — записать «missed» и перейти к следующему
+            if (task.recurrence !== 'once' && task.recurrence !== 'instant' && !task.isCompleted && !task.canceledAt) {
+              const cycleEnd = getCycleEndDate(task)
+              if (cycleEnd && nowTime > cycleEnd) {
+                // Цикл закончился, а задача не выполнена — «Пропущено»
+                const missedRecord: TaskCompletionRecord = {
+                  id: crypto.randomUUID(),
+                  cycleStart: task.currentCycleStart ?? calcCycleStart(task),
+                  cycleEnd: cycleEnd,
+                  status: 'missed',
+                }
+                updateTask(task.id, t => ({
+                  ...t,
+                  currentStreak: 0,
+                  totalSkipped: (t.totalSkipped ?? 0) + 1,
+                  completionHistory: [...(t.completionHistory ?? []), missedRecord].slice(-365),
+                  currentCycleStart: nowTime,
+                  lastCompletedAt: undefined,
+                  ...(t.kind === 'counter' ? { current: 0 } : {}),
+                  ...(t.kind === 'nested' ? {
+                    subtasks: t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
+                  } : {}),
+                  // Сброс счётчика «раз в неделю»
+                  ...(t.recurrenceSettings?.weeklyMode === 'timesPerWeek' ? {
+                    recurrenceSettings: {
+                      ...t.recurrenceSettings,
+                      weeklyCompletedThisWeek: 0,
+                      weeklyWeekStart: getStartOfWeek(nowTime),
+                    }
+                  } : {}),
+                }))
                 return
               }
             }
@@ -888,8 +998,16 @@ export const useRpgStore = create<RpgStoreState>()(
                   return !isSameDay(task.lastCompletedAt, nowTime)
 
                 case 'weekly': {
+                  const rsTask = task.recurrenceSettings
+                  // Режим «N раз в неделю» — сбросить, если наступила новая неделя
+                  if (rsTask?.weeklyMode === 'timesPerWeek') {
+                    const weekStart = rsTask.weeklyWeekStart ?? 0
+                    const currentWeek = getStartOfWeek(nowTime)
+                    return weekStart !== currentWeek
+                  }
+
                   // Вариант В: Задача сбрасывается в следующий день из weeklyDays после выполнения
-                  const weeklyDays = task.recurrenceSettings?.weeklyDays
+                  const weeklyDays = rsTask?.weeklyDays
                   if (weeklyDays && weeklyDays.length > 0) {
                     // Если задача не выполнена - не сбрасывать (ждем выполнения)
                     if (!task.lastCompletedAt) return false
@@ -945,7 +1063,15 @@ export const useRpgStore = create<RpgStoreState>()(
                 ...(t.kind === 'counter' ? { current: 0 } : {}),
                 ...(t.kind === 'nested' ? {
                   subtasks: t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
-                } : {})
+                } : {}),
+                // Сброс счётчика «раз в неделю» при смене недели
+                ...(t.recurrenceSettings?.weeklyMode === 'timesPerWeek' ? {
+                  recurrenceSettings: {
+                    ...t.recurrenceSettings,
+                    weeklyCompletedThisWeek: 0,
+                    weeklyWeekStart: getStartOfWeek(nowTime),
+                  }
+                } : {}),
               }))
             }
           })

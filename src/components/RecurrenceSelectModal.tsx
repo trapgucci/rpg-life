@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Calendar, Repeat, Clock, Zap, Hash, Check } from 'lucide-react'
 import { cn } from '../lib/cn'
-import type { TaskRecurrence, RecurrenceSettings } from '../types/domain'
+import type { TaskRecurrence, RecurrenceSettings, WeeklyMode } from '../types/domain'
 import Modal from './Modal'
 
 interface RecurrenceOption {
@@ -95,12 +95,27 @@ export default function RecurrenceSelectModal({
   }
 
   const handleSave = () => {
-    // Валидация: для weekly должен быть выбран хотя бы один день
-    if (localSettings.type === 'weekly' && (!localSettings.weeklyDays || localSettings.weeklyDays.length === 0)) {
-      onSave({ ...localSettings, weeklyDays: [0, 1, 2, 3, 4, 5, 6] })
-      return
+    const s = { ...localSettings }
+    if (s.type === 'weekly') {
+      const mode = s.weeklyMode ?? 'days'
+      if (mode === 'days') {
+        // Валидация: должен быть выбран хотя бы один день
+        if (!s.weeklyDays || s.weeklyDays.length === 0) {
+          s.weeklyDays = [0, 1, 2, 3, 4, 5, 6]
+        }
+        // Очищаем поля timesPerWeek
+        s.weeklyTimesPerWeek = undefined
+        s.weeklyCompletedThisWeek = undefined
+        s.weeklyWeekStart = undefined
+      } else {
+        // timesPerWeek mode - очищаем weeklyDays
+        s.weeklyDays = undefined
+        if (!s.weeklyTimesPerWeek || s.weeklyTimesPerWeek < 1) {
+          s.weeklyTimesPerWeek = 3
+        }
+      }
     }
-    onSave(localSettings)
+    onSave(s)
     onClose()
   }
 
@@ -195,33 +210,111 @@ export default function RecurrenceSelectModal({
             <div>
               <h3 className="text-sm font-semibold text-[var(--fg)] mb-3 flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-[var(--accent)]" />
-                Дни недели
+                Режим повтора
               </h3>
-              <div className="grid grid-cols-7 gap-2">
-                {WEEKDAY_LABELS.map((label, index) => {
-                  const isSelected = (localSettings.weeklyDays ?? []).includes(index)
+
+              {/* Sub-mode toggle: days vs timesPerWeek */}
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                {([
+                  { mode: 'days' as WeeklyMode, label: 'По дням', desc: 'Выбрать дни недели' },
+                  { mode: 'timesPerWeek' as WeeklyMode, label: 'Раз в неделю', desc: 'N раз за неделю' },
+                ]).map(({ mode, label, desc }) => {
+                  const isActive = (localSettings.weeklyMode ?? 'days') === mode
                   return (
                     <button
-                      key={index}
+                      key={mode}
                       type="button"
-                      onClick={() => handleWeekdayToggle(index)}
+                      onClick={() => setLocalSettings({ ...localSettings, weeklyMode: mode })}
                       className={cn(
-                        'flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-xs font-semibold transition-all',
-                        isSelected
-                          ? 'bg-[var(--accent)] text-white border-2 border-[var(--accent)] shadow-md'
-                          : 'bg-[var(--surface)] text-[var(--fg-muted)] border-2 border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)]'
+                        'flex flex-col items-center gap-1 rounded-xl border-2 p-3 text-center transition-all',
+                        isActive
+                          ? 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-md'
+                          : 'border-[var(--border)] bg-white dark:bg-[var(--surface-elevated)] hover:border-[var(--accent)]'
                       )}
-                      title={WEEKDAY_FULL[index]}
                     >
-                      {isSelected && <Check className="h-3 w-3" />}
-                      {label}
+                      <span className={cn(
+                        'text-sm font-semibold',
+                        isActive ? 'text-[var(--accent)]' : 'text-[var(--fg)]'
+                      )}>
+                        {label}
+                      </span>
+                      <span className="text-xs text-[var(--fg-muted)]">{desc}</span>
                     </button>
                   )
                 })}
               </div>
-              <p className="mt-2 text-xs text-[var(--fg-muted)]">
-                Задача будет повторяться в выбранные дни недели
-              </p>
+
+              {/* Days of week selector */}
+              {(localSettings.weeklyMode ?? 'days') === 'days' && (
+                <>
+                  <div className="grid grid-cols-7 gap-2">
+                    {WEEKDAY_LABELS.map((label, index) => {
+                      const isSelected = (localSettings.weeklyDays ?? []).includes(index)
+                      return (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => handleWeekdayToggle(index)}
+                          className={cn(
+                            'flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-xs font-semibold transition-all',
+                            isSelected
+                              ? 'bg-[var(--accent)] text-white border-2 border-[var(--accent)] shadow-md'
+                              : 'bg-[var(--surface)] text-[var(--fg-muted)] border-2 border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)]'
+                          )}
+                          title={WEEKDAY_FULL[index]}
+                        >
+                          {isSelected && <Check className="h-3 w-3" />}
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <p className="mt-2 text-xs text-[var(--fg-muted)]">
+                    Задача будет повторяться в выбранные дни недели
+                  </p>
+                </>
+              )}
+
+              {/* Times per week input */}
+              {(localSettings.weeklyMode ?? 'days') === 'timesPerWeek' && (
+                <>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setLocalSettings({ ...localSettings, weeklyTimesPerWeek: Math.max(1, (localSettings.weeklyTimesPerWeek ?? 3) - 1) })}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] transition-all"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      min={1}
+                      max={7}
+                      value={localSettings.weeklyTimesPerWeek ?? 3}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10)
+                        if (!Number.isNaN(val) && val >= 1 && val <= 7) {
+                          setLocalSettings({ ...localSettings, weeklyTimesPerWeek: val })
+                        }
+                      }}
+                      className="input flex-1 text-center text-lg font-semibold"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setLocalSettings({ ...localSettings, weeklyTimesPerWeek: Math.min(7, (localSettings.weeklyTimesPerWeek ?? 3) + 1) })}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--accent)] text-white hover:brightness-110 transition-all"
+                    >
+                      +
+                    </button>
+                    <span className="text-sm font-medium text-[var(--fg)] shrink-0">
+                      {((n) => n === 1 ? 'раз' : n < 5 ? 'раза' : 'раз')(localSettings.weeklyTimesPerWeek ?? 3)}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs text-[var(--fg-muted)]">
+                    Задачу можно выполнить {localSettings.weeklyTimesPerWeek ?? 3} {((n: number) => n === 1 ? 'раз' : n < 5 ? 'раза' : 'раз')(localSettings.weeklyTimesPerWeek ?? 3)} в течение недели, в любые дни
+                  </p>
+                </>
+              )}
             </div>
           </>
         )}
@@ -275,8 +368,8 @@ export default function RecurrenceSelectModal({
           </>
         )}
 
-        {/* 4. Окончание повтора (только если не once) */}
-        {localSettings.type !== 'once' && (
+        {/* 4. Окончание повтора */}
+        {localSettings.type !== 'once' ? (
           <>
             <div className="border-t border-[var(--border)]" />
             <div>
@@ -473,6 +566,119 @@ export default function RecurrenceSelectModal({
                         (localSettings.endCount ?? 1) < 5 ? 'выполнений' : 'выполнений'
                       }
                     </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        ) : (
+          /* Для типа 'once' — только опция "По дате окончания" (дедлайн) */
+          <>
+            <div className="border-t border-[var(--border)]" />
+            <div>
+              <h3 className="text-sm font-semibold text-[var(--fg)] mb-3 flex items-center gap-2">
+                <Clock className="h-4 w-4 text-[var(--accent)]" />
+                Крайний срок
+              </h3>
+
+              {/* Без крайнего срока */}
+              <button
+                type="button"
+                onClick={() => setLocalSettings({ ...localSettings, endMode: 'never', endDate: null })}
+                className={cn(
+                  'w-full flex items-start gap-4 rounded-xl border-2 p-4 text-left transition-all mb-3',
+                  localSettings.endMode === 'never'
+                    ? 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-md'
+                    : 'border-[var(--border)] bg-white dark:bg-[var(--surface-elevated)] hover:border-[var(--accent)] hover:bg-[var(--accent-subtle)]/50'
+                )}
+              >
+                <div
+                  className={cn(
+                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors',
+                    localSettings.endMode === 'never'
+                      ? 'bg-[var(--accent)] text-white'
+                      : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)]'
+                  )}
+                >
+                  <Calendar className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0 pt-1">
+                  <div className="flex items-center gap-2">
+                    <h4
+                      className={cn(
+                        'text-base font-semibold',
+                        localSettings.endMode === 'never' ? 'text-[var(--accent)]' : 'text-[var(--fg)]'
+                      )}
+                    >
+                      Без крайнего срока
+                    </h4>
+                    {localSettings.endMode === 'never' && (
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--accent)] text-white">
+                        <Check className="h-3 w-3" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-1 text-sm text-[var(--fg-muted)]">
+                    Задача доступна без ограничения по времени
+                  </p>
+                </div>
+              </button>
+
+              {/* По дате окончания */}
+              <div
+                className={cn(
+                  'w-full flex flex-col rounded-xl border-2 p-4 transition-all',
+                  localSettings.endMode === 'byDate'
+                    ? 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-md'
+                    : 'border-[var(--border)] bg-white dark:bg-[var(--surface-elevated)]'
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() => setLocalSettings({ ...localSettings, endMode: 'byDate' })}
+                  className="flex items-start gap-4 text-left w-full"
+                >
+                  <div
+                    className={cn(
+                      'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors',
+                      localSettings.endMode === 'byDate'
+                        ? 'bg-[var(--accent)] text-white'
+                        : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)]'
+                    )}
+                  >
+                    <Calendar className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0 pt-1">
+                    <div className="flex items-center gap-2">
+                      <h4
+                        className={cn(
+                          'text-base font-semibold',
+                          localSettings.endMode === 'byDate' ? 'text-[var(--accent)]' : 'text-[var(--fg)]'
+                        )}
+                      >
+                        По дате окончания
+                      </h4>
+                      {localSettings.endMode === 'byDate' && (
+                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--accent)] text-white">
+                          <Check className="h-3 w-3" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="mt-1 text-sm text-[var(--fg-muted)]">
+                      Задача будет доступна до указанной даты
+                    </p>
+                  </div>
+                </button>
+
+                {localSettings.endMode === 'byDate' && (
+                  <div className="mt-3 pl-14">
+                    <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Дата и время окончания</label>
+                    <input
+                      type="datetime-local"
+                      value={formatEndDate(localSettings.endDate)}
+                      onChange={(e) => setLocalSettings({ ...localSettings, endDate: parseEndDate(e.target.value) })}
+                      className="input w-full"
+                    />
                   </div>
                 )}
               </div>
