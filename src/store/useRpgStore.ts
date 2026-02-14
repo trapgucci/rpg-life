@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { isSameDay, getStartOfWeek, getStartOfMonth, getStartOfYear } from '../lib/dateUtils'
-import { getCurrentCycleStart as calcCycleStart, getCycleEndDate } from '../lib/taskCycleUtils'
+import { getCurrentCycleStart as calcCycleStart, getCycleEndDate, getSubtaskXp } from '../lib/taskCycleUtils'
 import type {
   TaskRpg,
   TaskId,
@@ -694,20 +694,17 @@ export const useRpgStore = create<RpgStoreState>()(
           // Проверка: достигла ли задача лимита повторов
           const isRecurrenceCompleted = isTaskRecurrenceCompleted(task)
 
-          // Собираем выполненные подзадачи для записи в историю
+          // Собираем все подзадачи для записи в историю (и выполненные, и нет)
           const completedSubtasks: CompletedSubtaskRecord[] | undefined =
-            task.kind === 'nested' && task.subtasks.some(s => s.isCompleted)
-              ? task.subtasks.filter(s => s.isCompleted).map(s => {
-                  const diff = s.difficulty ?? 'medium'
-                  const subAttrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
-                  const subXp = subAttrIds.length > 0
-                    ? (s.customXp ?? settings.taskDifficultyXp?.[diff] ?? TASK_XP_BY_DIFFICULTY[diff] ?? s.xpReward ?? 0)
-                    : 0
+            task.kind === 'nested' && task.subtasks.length > 0
+              ? task.subtasks.map(s => {
+                  const subXp = s.isCompleted ? getSubtaskXp(s, task, settings) : 0
                   return {
                     id: s.id,
                     title: s.title,
-                    coinReward: s.coinReward,
-                    gemReward: s.gemReward,
+                    isCompleted: s.isCompleted,
+                    coinReward: s.isCompleted ? s.coinReward : undefined,
+                    gemReward: s.isCompleted ? s.gemReward : undefined,
                     xpEarned: subXp > 0 ? subXp : undefined,
                   }
                 })
@@ -915,14 +912,22 @@ export const useRpgStore = create<RpgStoreState>()(
             return
           }
 
-          // Для once-задач: пропуск = архивация (задача больше не будет повторяться)
+          // Для once-задач: пропуск = провал, архивация с причиной 'failed'
           const isOnce = task.recurrence === 'once'
-          const archiveFields = isOnce ? { canceledAt: now(), archiveReason: 'completed' as TaskArchiveReason } : {}
+          const archiveFields = isOnce ? { canceledAt: now(), archiveReason: 'failed' as TaskArchiveReason } : {}
 
           get().updateTask(id, (t) => {
-            if (t.kind === 'checkbox') return { ...t, ...skipHistoryFields, ...archiveFields, isCompleted: true, completedAt: now() }
-            if (t.kind === 'counter') return { ...t, ...skipHistoryFields, ...archiveFields, isCompleted: true, current: t.target, completedAt: now() }
-            if (t.kind === 'nested') return { ...t, ...skipHistoryFields, ...archiveFields, isCompleted: true, completedAt: now() }
+            if (isOnce) {
+              // Once-задача провалена — НЕ помечаем как выполненную
+              if (t.kind === 'checkbox') return { ...t, ...skipHistoryFields, ...archiveFields }
+              if (t.kind === 'counter') return { ...t, ...skipHistoryFields, ...archiveFields }
+              if (t.kind === 'nested') return { ...t, ...skipHistoryFields, ...archiveFields }
+              return t
+            }
+            // Recurring-задача — помечаем isCompleted для сброса цикла
+            if (t.kind === 'checkbox') return { ...t, ...skipHistoryFields, isCompleted: true, completedAt: now() }
+            if (t.kind === 'counter') return { ...t, ...skipHistoryFields, isCompleted: true, current: t.target, completedAt: now() }
+            if (t.kind === 'nested') return { ...t, ...skipHistoryFields, isCompleted: true, completedAt: now() }
             return t
           })
         },
@@ -1154,12 +1159,8 @@ export const useRpgStore = create<RpgStoreState>()(
           if (profile) {
             const coinRwd = subtask.coinReward ?? 0
             const gemRwd = subtask.gemReward ?? 0
-            const diff = subtask.difficulty ?? 'medium'
             const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
-            // XP начисляется только если у родительской задачи есть атрибуты
-            const xpRwd = attrIds.length > 0
-              ? (subtask.customXp ?? settings.taskDifficultyXp?.[diff] ?? TASK_XP_BY_DIFFICULTY[diff] ?? subtask.xpReward ?? 0)
-              : 0
+            const xpRwd = getSubtaskXp(subtask, task, settings)
 
             if (isNowCompleted) {
               // Award per-subtask rewards when toggling ON
@@ -1786,7 +1787,7 @@ export const useRpgStore = create<RpgStoreState>()(
               ...state.settings,
               taskDifficultyXp: {
                 easy: 10,
-                medium: 40,
+                medium: 30,
                 hard: 100,
                 veryHard: 300,
               },

@@ -174,10 +174,11 @@ export interface SubtaskItem {
   customXp?: number | null
 }
 
-/** Запись о выполненной подзадаче (сохраняется в истории) */
+/** Запись о подзадаче (сохраняется в истории цикла) */
 export interface CompletedSubtaskRecord {
   id: string
   title: string
+  isCompleted: boolean
   coinReward?: number
   gemReward?: number
   xpEarned?: number

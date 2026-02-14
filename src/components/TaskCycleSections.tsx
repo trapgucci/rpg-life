@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import {
   ChevronDown, ChevronRight, RefreshCw, CalendarClock, BarChart3, History,
-  Check, SkipForward, XCircle, Zap, Coins, Gem, ListChecks, TrendingUp
+  Check, SkipForward, XCircle, Zap, Coins, Gem, ListChecks, TrendingUp,
+  CheckCircle2, Ban, Flame, Crown
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRpg } from '../types/domain'
@@ -323,20 +324,32 @@ export function TaskStatsBlock({ task }: TaskBlockProps) {
             {/* Stat grid */}
             <div className="grid grid-cols-2 gap-3">
               <div className="stat-card">
-                <div className="stat-value text-emerald-500">{completedCount}</div>
+                <div className="flex items-center justify-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                  <div className="stat-value text-emerald-500">{completedCount}</div>
+                </div>
                 <div className="stat-label">Выполнено</div>
               </div>
               <div className="stat-card">
-                <div className="stat-value text-red-500">{skippedCount}</div>
+                <div className="flex items-center justify-center gap-2">
+                  <Ban className="h-5 w-5 text-red-500" />
+                  <div className="stat-value text-red-500">{skippedCount}</div>
+                </div>
                 <div className="stat-label">Пропущено</div>
               </div>
               <div className="stat-card">
-                <div className="stat-value text-orange-500">{streak}</div>
+                <div className="flex items-center justify-center gap-2">
+                  <Flame className="h-5 w-5 text-orange-500" />
+                  <div className="stat-value text-orange-500">{streak}</div>
+                </div>
                 <div className="stat-label">Текущая серия</div>
               </div>
               <div className="stat-card">
-                <div className="stat-value text-purple-500">{best}</div>
-                <div className="stat-label">Лучшая серия</div>
+                <div className="flex items-center justify-center gap-2">
+                  <Crown className="h-5 w-5 text-amber-500" />
+                  <div className="stat-value text-amber-500">{best}</div>
+                </div>
+                <div className="stat-label">Лучший результат</div>
               </div>
             </div>
           </>
@@ -546,16 +559,24 @@ export function TaskHistoryBlock({ task }: TaskBlockProps) {
                                 <div className="flex items-center gap-1.5 mb-1.5">
                                   <ListChecks className="h-3 w-3 text-[var(--fg-muted)]" />
                                   <span className="text-[10px] font-bold text-[var(--fg-muted)] uppercase tracking-wider">
-                                    Подзадачи ({subs.length})
+                                    Подзадачи ({subs.filter(s => s.isCompleted !== false).length}/{subs.length})
                                   </span>
                                 </div>
                                 <div className="flex flex-col gap-1">
-                                  {subs.map((sub) => (
+                                  {subs.map((sub) => {
+                                    const done = sub.isCompleted !== false
+                                    return (
                                     <div key={sub.id} className="flex items-center gap-2 py-1">
-                                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-emerald-500/20">
-                                        <Check className="h-2.5 w-2.5 text-emerald-500" />
-                                      </div>
-                                      <span className="flex-1 text-xs text-[var(--fg)] truncate">{sub.title}</span>
+                                      {done ? (
+                                        <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-emerald-500/20">
+                                          <Check className="h-2.5 w-2.5 text-emerald-500" />
+                                        </div>
+                                      ) : (
+                                        <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[var(--border)]">
+                                          <XCircle className="h-2.5 w-2.5 text-[var(--fg-muted)]" />
+                                        </div>
+                                      )}
+                                      <span className={cn('flex-1 text-xs truncate', done ? 'text-[var(--fg)]' : 'text-[var(--fg-muted)]')}>{sub.title}</span>
                                       <div className="flex items-center gap-1 shrink-0">
                                         {(sub.xpEarned ?? 0) > 0 && (
                                           <span className="text-[10px] text-purple-500 font-semibold">
@@ -574,7 +595,8 @@ export function TaskHistoryBlock({ task }: TaskBlockProps) {
                                         )}
                                       </div>
                                     </div>
-                                  ))}
+                                    )
+                                  })}
                                 </div>
                               </div>
                             )}

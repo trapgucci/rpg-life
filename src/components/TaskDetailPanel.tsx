@@ -15,7 +15,7 @@ import RecurrenceSelectModal from './RecurrenceSelectModal'
 import ConfirmModal from './ConfirmModal'
 import RewardBadge from './RewardBadge'
 import { TaskCurrentCycleBlock, TaskStatsBlock, TaskHistoryBlock } from './TaskCycleSections'
-import { getNextAvailableDate, getRelativeTimeRu } from '../lib/taskCycleUtils'
+import { getNextAvailableDate, getRelativeTimeRu, getSubtaskXp } from '../lib/taskCycleUtils'
 
 const DIFFICULTY_LABELS: Record<TaskDifficulty, string> = {
   easy: 'Лёгкая',
@@ -402,12 +402,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
     ? (editCustomXp ?? (settings.taskDifficultyXp?.[editDifficulty] ?? TASK_XP_BY_DIFFICULTY[editDifficulty]))
     : 0
   // Для подзадач XP также зависит от атрибутов родительской задачи
-  const getSubtaskEffectiveXp = (s: SubtaskItem) => {
-    const parentAttrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
-    return parentAttrIds.length > 0
-      ? (s.customXp ?? settings.taskDifficultyXp?.[s.difficulty ?? 'medium'] ?? TASK_XP_BY_DIFFICULTY[s.difficulty ?? 'medium'] ?? s.xpReward ?? 0)
-      : 0
-  }
+  const getSubtaskEffectiveXp = (s: SubtaskItem) => getSubtaskXp(s, task, settings)
 
   // Синхронизация типа повтора
   const handleRecurrenceSettingsChange = (newSettings: RecurrenceSettings) => {
@@ -1229,25 +1224,22 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
               <div className="glass rounded-2xl p-5 mb-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-semibold text-[var(--fg)]">
-                    Подзадачи ({task.isCompleted ? task.subtasks.length : task.subtasks.filter((s) => s.isCompleted).length}/{task.subtasks.length})
+                    Подзадачи {!task.isCompleted && `(${task.subtasks.filter((s) => s.isCompleted).length}/${task.subtasks.length})`}
                   </h3>
-                  {task.isCompleted && (
-                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                      Задача выполнена
-                    </span>
-                  )}
                 </div>
 
-                {/* Progress bar */}
-                <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--border)] mb-4">
-                  <div
-                    className="h-full rounded-full transition-all duration-500 ease-out"
-                    style={{
-                      width: `${task.isCompleted ? 100 : subtaskProgress * 100}%`,
-                      background: 'linear-gradient(90deg, #10b981, #34d399)'
-                    }}
-                  />
-                </div>
+                {/* Progress bar — only for active tasks */}
+                {!task.isCompleted && (
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--border)] mb-4">
+                    <div
+                      className="h-full rounded-full transition-all duration-500 ease-out"
+                      style={{
+                        width: `${subtaskProgress * 100}%`,
+                        background: 'linear-gradient(90deg, #10b981, #34d399)'
+                      }}
+                    />
+                  </div>
+                )}
 
                 <div className="flex flex-col gap-2 max-h-[280px] overflow-y-auto">
                   {task.subtasks.map((subtask) => (
@@ -1255,42 +1247,41 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                       key={subtask.id}
                       className={cn(
                         'group flex flex-col rounded-xl p-3 transition-all',
-                        (subtask.isCompleted || task.isCompleted)
+                        !task.isCompleted && subtask.isCompleted
                           ? 'bg-emerald-500/10'
                           : 'bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (task.isCompleted) return
-                            if (!subtask.isCompleted) {
-                              const cr = subtask.coinReward ?? 0
-                              const xr = getSubtaskEffectiveXp(subtask)
-                              if (cr > 0 || xr > 0) {
-                                setRewardFeedback({ subtaskId: subtask.id, coins: cr, xp: xr })
-                                setTimeout(() => setRewardFeedback(null), 1500)
+                        {!task.isCompleted ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!subtask.isCompleted) {
+                                const cr = subtask.coinReward ?? 0
+                                const xr = getSubtaskEffectiveXp(subtask)
+                                if (cr > 0 || xr > 0) {
+                                  setRewardFeedback({ subtaskId: subtask.id, coins: cr, xp: xr })
+                                  setTimeout(() => setRewardFeedback(null), 1500)
+                                }
                               }
-                            }
-                            toggleSubtask(task.id, subtask.id)
-                          }}
-                          disabled={task.isCompleted}
-                          className={cn(
-                            'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-all',
-                            task.isCompleted
-                              ? 'bg-emerald-500/70 text-white cursor-not-allowed'
-                              : subtask.isCompleted
-                              ? 'bg-emerald-500 text-white'
-                              : 'border-2 border-[var(--border)] hover:border-emerald-500'
-                          )}
-                        >
-                          {(subtask.isCompleted || task.isCompleted) && <Check className="h-4 w-4" />}
-                        </button>
+                              toggleSubtask(task.id, subtask.id)
+                            }}
+                            className={cn(
+                              'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-all',
+                              subtask.isCompleted
+                                ? 'bg-emerald-500 text-white'
+                                : 'border-2 border-[var(--border)] hover:border-emerald-500'
+                            )}
+                          >
+                            {subtask.isCompleted && <Check className="h-4 w-4" />}
+                          </button>
+                        ) : (
+                          <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--fg-muted)]" />
+                        )}
                         <span className={cn(
                           'flex-1 min-w-0 text-sm',
-                          subtask.isCompleted && 'text-[var(--fg-muted)]',
-                          task.isCompleted && !subtask.isCompleted && 'text-[var(--fg-muted)]'
+                          !task.isCompleted && subtask.isCompleted && 'text-[var(--fg-muted)]'
                         )}>
                           {subtask.title}
                         </span>

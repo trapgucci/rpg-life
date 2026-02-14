@@ -1,4 +1,5 @@
-import type { TaskRpg } from '../types/domain'
+import type { TaskRpg, SubtaskItem, TaskDifficulty, AppSettings } from '../types/domain'
+import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
 import { getStartOfDay, getStartOfWeek, getStartOfMonth, getStartOfYear } from './dateUtils'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -349,4 +350,12 @@ function pluralMonths(n: number): string {
   if (n1 > 1 && n1 < 5) return 'месяца'
   if (n1 === 1) return 'месяц'
   return 'месяцев'
+}
+
+/** Рассчитать эффективный XP подзадачи (зависит от атрибутов родительской задачи) */
+export function getSubtaskXp(subtask: SubtaskItem, task: TaskRpg, settings: AppSettings): number {
+  const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
+  if (attrIds.length === 0) return 0
+  const diff: TaskDifficulty = subtask.difficulty ?? 'medium'
+  return subtask.customXp ?? settings.taskDifficultyXp?.[diff] ?? TASK_XP_BY_DIFFICULTY[diff] ?? subtask.xpReward ?? 0
 }
