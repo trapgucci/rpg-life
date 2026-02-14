@@ -26,6 +26,7 @@ import type {
   AppSettings,
   CurrencyId,
   TaskCompletionRecord,
+  CompletedSubtaskRecord,
   TaskArchiveReason,
 } from '../types/domain'
 import {
@@ -693,6 +694,25 @@ export const useRpgStore = create<RpgStoreState>()(
           // Проверка: достигла ли задача лимита повторов
           const isRecurrenceCompleted = isTaskRecurrenceCompleted(task)
 
+          // Собираем выполненные подзадачи для записи в историю
+          const completedSubtasks: CompletedSubtaskRecord[] | undefined =
+            task.kind === 'nested' && task.subtasks.some(s => s.isCompleted)
+              ? task.subtasks.filter(s => s.isCompleted).map(s => {
+                  const diff = s.difficulty ?? 'medium'
+                  const subAttrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
+                  const subXp = subAttrIds.length > 0
+                    ? (s.customXp ?? settings.taskDifficultyXp?.[diff] ?? TASK_XP_BY_DIFFICULTY[diff] ?? s.xpReward ?? 0)
+                    : 0
+                  return {
+                    id: s.id,
+                    title: s.title,
+                    coinReward: s.coinReward,
+                    gemReward: s.gemReward,
+                    xpEarned: subXp > 0 ? subXp : undefined,
+                  }
+                })
+              : undefined
+
           // Instant recurrence: награды выданы — сбрасываем задачу для повторного выполнения
           // Награды за подзадачи НЕ забираются — игрок их заработал
           if (task.recurrence === 'instant') {
@@ -716,6 +736,7 @@ export const useRpgStore = create<RpgStoreState>()(
               xpEarned: xpGain,
               coinsEarned: coinGain,
               gemsEarned: gemGain,
+              completedSubtasks,
             }
             const newStreak = (task.currentStreak ?? 0) + 1
             const historyFields = {
@@ -785,6 +806,7 @@ export const useRpgStore = create<RpgStoreState>()(
               xpEarned: xpGain,
               coinsEarned: coinGain,
               gemsEarned: gemGain,
+              completedSubtasks,
             }
             const newStreak = (task.currentStreak ?? 0) + 1
             const historyFields = {

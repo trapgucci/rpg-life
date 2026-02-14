@@ -174,6 +174,15 @@ export interface SubtaskItem {
   customXp?: number | null
 }
 
+/** Запись о выполненной подзадаче (сохраняется в истории) */
+export interface CompletedSubtaskRecord {
+  id: string
+  title: string
+  coinReward?: number
+  gemReward?: number
+  xpEarned?: number
+}
+
 /** Запись о завершённом цикле повторяющейся задачи */
 export interface TaskCompletionRecord {
   id: string
@@ -189,6 +198,8 @@ export interface TaskCompletionRecord {
   xpEarned?: number
   coinsEarned?: number
   gemsEarned?: number
+  /** Выполненные подзадачи (для nested задач) */
+  completedSubtasks?: CompletedSubtaskRecord[]
 }
 
 export interface NestedTask extends TaskBase {

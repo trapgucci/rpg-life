@@ -1289,7 +1289,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                         </button>
                         <span className={cn(
                           'flex-1 min-w-0 text-sm',
-                          subtask.isCompleted && 'line-through text-[var(--fg-muted)]',
+                          subtask.isCompleted && 'text-[var(--fg-muted)]',
                           task.isCompleted && !subtask.isCompleted && 'text-[var(--fg-muted)]'
                         )}>
                           {subtask.title}
