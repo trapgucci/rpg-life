@@ -1229,7 +1229,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
               <div className="glass rounded-2xl p-5 mb-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-semibold text-[var(--fg)]">
-                    Подзадачи ({task.subtasks.filter((s) => s.isCompleted).length}/{task.subtasks.length})
+                    Подзадачи ({task.isCompleted ? task.subtasks.length : task.subtasks.filter((s) => s.isCompleted).length}/{task.subtasks.length})
                   </h3>
                   {task.isCompleted && (
                     <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
@@ -1243,7 +1243,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   <div
                     className="h-full rounded-full transition-all duration-500 ease-out"
                     style={{
-                      width: `${subtaskProgress * 100}%`,
+                      width: `${task.isCompleted ? 100 : subtaskProgress * 100}%`,
                       background: 'linear-gradient(90deg, #10b981, #34d399)'
                     }}
                   />
@@ -1255,7 +1255,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                       key={subtask.id}
                       className={cn(
                         'group flex flex-col rounded-xl p-3 transition-all',
-                        subtask.isCompleted
+                        (subtask.isCompleted || task.isCompleted)
                           ? 'bg-emerald-500/10'
                           : 'bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
                       )}
@@ -1279,17 +1279,18 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                           className={cn(
                             'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-all',
                             task.isCompleted
-                              ? 'opacity-50 cursor-not-allowed'
+                              ? 'bg-emerald-500/70 text-white cursor-not-allowed'
                               : subtask.isCompleted
                               ? 'bg-emerald-500 text-white'
                               : 'border-2 border-[var(--border)] hover:border-emerald-500'
                           )}
                         >
-                          {subtask.isCompleted && <Check className="h-4 w-4" />}
+                          {(subtask.isCompleted || task.isCompleted) && <Check className="h-4 w-4" />}
                         </button>
                         <span className={cn(
                           'flex-1 min-w-0 text-sm',
-                          subtask.isCompleted && 'line-through text-[var(--fg-muted)]'
+                          subtask.isCompleted && 'line-through text-[var(--fg-muted)]',
+                          task.isCompleted && !subtask.isCompleted && 'text-[var(--fg-muted)]'
                         )}>
                           {subtask.title}
                         </span>

@@ -80,10 +80,10 @@ export default function TaskCard({ task, selected, onSelect, rewards }: TaskCard
         {/* Icon */}
         <div
           className={cn(
-            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors',
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all',
             task.isCompleted
-              ? 'bg-emerald-500/10 text-emerald-500'
-              : 'bg-[var(--accent-subtle)] text-[var(--accent)] group-hover:bg-[var(--accent)] group-hover:text-white'
+              ? 'bg-gradient-to-br from-emerald-400/15 to-emerald-600/15 text-emerald-500 ring-1 ring-emerald-500/20 shadow-sm shadow-emerald-500/10'
+              : 'bg-gradient-to-br from-[var(--accent-subtle)] to-[var(--accent-subtle)] text-[var(--accent)] ring-1 ring-[var(--accent)]/15 shadow-sm shadow-[var(--accent)]/10 group-hover:from-[var(--accent)] group-hover:to-[var(--accent)] group-hover:text-white group-hover:ring-[var(--accent)]/30 group-hover:shadow-md group-hover:shadow-[var(--accent)]/20'
           )}
         >
           <Icon className="h-5 w-5" />
