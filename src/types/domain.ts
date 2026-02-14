@@ -25,6 +25,13 @@ export type TaskDifficulty = keyof typeof TASK_XP_BY_DIFFICULTY
 /** Task priority levels (independent from difficulty) */
 export type TaskPriority = 'none' | 'low' | 'medium' | 'high'
 
+/** Причина архивации задачи */
+export type TaskArchiveReason =
+  | 'completed'   // Все циклы выполнены — задача завершена окончательно
+  | 'expired'     // Срок истёк, но часть циклов была выполнена (не все)
+  | 'failed'      // Автоархивация без единого выполненного цикла — провалена
+  | 'manual'      // Архивирована вручную пользователем
+
 /** Task types: Checkbox (simple), Counter (progress), Nested (subtasks) */
 export type TaskKindRpg = 'checkbox' | 'counter' | 'nested'
 
@@ -108,8 +115,10 @@ export interface TaskBase {
   /** Дедлайн: после этого времени завершить задачу нельзя (опционально) */
   deadlineAt?: number | null
   archived?: boolean
-  /** Timestamp архивации задачи (перемещена в "Отмененные" с тегом "Архив") */
+  /** Timestamp архивации задачи (перемещена в "Отмененные") */
   canceledAt?: number
+  /** Причина архивации: completed (все циклы), failed (0 циклов), manual (вручную) */
+  archiveReason?: TaskArchiveReason
   recurrence: TaskRecurrence
   recurrenceIntervalDays?: number
   /** Расширенные настройки повтора (новая система) */

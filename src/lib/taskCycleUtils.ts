@@ -240,6 +240,38 @@ export function isWeeklyTimesExhausted(task: TaskRpg): boolean {
   return (rs.weeklyCompletedThisWeek ?? 0) >= rs.weeklyTimesPerWeek
 }
 
+/** Проверить, является ли сегодня одним из выбранных дней для еженедельной задачи */
+export function isTodayScheduled(task: TaskRpg): boolean {
+  if (task.recurrence !== 'weekly') return true
+  const rs = task.recurrenceSettings
+  if ((rs?.weeklyMode ?? 'days') !== 'days') return true
+  const weeklyDays = rs?.weeklyDays
+  if (!weeklyDays || weeklyDays.length === 0) return true
+  return weeklyDays.includes(new Date().getDay())
+}
+
+const DAY_NAMES_SHORT = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+
+/** Получить название ближайшего запланированного дня */
+export function getNextScheduledDayName(task: TaskRpg): string | null {
+  const rs = task.recurrenceSettings
+  if (task.recurrence !== 'weekly' || (rs?.weeklyMode ?? 'days') !== 'days') return null
+  const weeklyDays = rs?.weeklyDays
+  if (!weeklyDays || weeklyDays.length === 0) return null
+
+  const today = new Date().getDay()
+  const sorted = [...weeklyDays].sort((a, b) => a - b)
+
+  // Ищем ближайший день после сегодня
+  for (let i = 1; i <= 7; i++) {
+    const candidate = (today + i) % 7
+    if (sorted.includes(candidate)) {
+      return DAY_NAMES_SHORT[candidate]
+    }
+  }
+  return null
+}
+
 /** Процент выполнения */
 export function getCompletionRate(task: TaskRpg): number {
   const history = task.completionHistory ?? []

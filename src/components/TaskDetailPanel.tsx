@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  Check, SkipForward, XCircle, Pencil, Trash2, X,
-  Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder, Edit2, Target, Hash, ListChecks, Flag, Coins, Gem, Zap, Archive
+  Check, SkipForward, Pencil, Trash2, X,
+  Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder, Edit2, Target, Hash, ListChecks, Flag, Coins, Gem, Zap, Archive, XCircle, AlertTriangle
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRpg, TaskDifficulty, TaskRecurrence, AttributeId, SubtaskItem, TaskGroupId, TaskPriority, RecurrenceSettings } from '../types/domain'
@@ -65,7 +65,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const completeTask = useRpgStore((s) => s.completeTask)
   const canCompleteTask = useRpgStore((s) => s.canCompleteTask)
   const skipTask = useRpgStore((s) => s.skipTask)
-  const abandonTask = useRpgStore((s) => s.abandonTask)
+
   const archiveTask = useRpgStore((s) => s.archiveTask)
   const deleteTask = useRpgStore((s) => s.deleteTask)
   const updateTask = useRpgStore((s) => s.updateTask)
@@ -102,7 +102,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false)
   const [showDeleteSubtaskConfirm, setShowDeleteSubtaskConfirm] = useState(false)
   const [showSkipConfirm, setShowSkipConfirm] = useState(false)
-  const [showAbandonConfirm, setShowAbandonConfirm] = useState(false)
+
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
   const [subtaskToDelete, setSubtaskToDelete] = useState<string | null>(null)
   // Stores the new task that triggered the unsaved changes prompt
@@ -226,15 +226,6 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
     }
   }
 
-  const handleAbandon = () => {
-    setShowAbandonConfirm(true)
-  }
-
-  const confirmAbandon = () => {
-    setShowAbandonConfirm(false)
-    abandonTask(task.id)
-    onDeselect?.()
-  }
 
   const handleArchive = () => {
     setShowArchiveConfirm(true)
@@ -887,7 +878,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   )}
                   <h2 className={cn(
                     'text-xl font-bold text-[var(--fg)] break-words min-w-0',
-                    task.isCompleted && 'line-through opacity-60'
+                    task.isCompleted && 'opacity-70'
                   )}>
                     {task.title}
                   </h2>
@@ -895,42 +886,44 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 {task.notes && (
                   <p className="text-[var(--fg-muted)] leading-relaxed break-words overflow-hidden">{task.notes}</p>
                 )}
-                {/* Теги статуса (Архив + Завершено) */}
-                {(task.canceledAt || (task.isCompleted && task.completedAt)) && (
+                {/* Теги статуса (Архив / Завершено / Провалено) */}
+                {task.canceledAt && (
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {task.canceledAt && (
-                      <div className="inline-flex items-center gap-2 rounded-lg bg-gray-500/10 px-3 py-1.5 text-sm text-gray-500 border-2 border-gray-500/30">
-                        <Archive className="h-4 w-4" />
-                        <span>
-                          Архив — {new Date(task.canceledAt).toLocaleDateString('ru-RU', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric',
-                          })}
-                        </span>
-                      </div>
-                    )}
-                    {task.isCompleted && task.completedAt && (() => {
-                      const isRecurring = task.recurrence !== 'once'
-                      const rs = task.recurrenceSettings
-                      const isLimitReached = rs?.endMode === 'byCount' && rs.endCount && (rs.completedCount ?? 0) >= rs.endCount
-                      const isPermanentlyDone = !isRecurring || isLimitReached
-
+                    {task.canceledAt && (() => {
+                      const reason = task.archiveReason ?? 'manual'
+                      const dateStr = new Date(task.canceledAt).toLocaleDateString('ru-RU', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })
+                      if (reason === 'completed') {
+                        return (
+                          <div className="inline-flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-1.5 text-sm text-emerald-600 dark:text-emerald-400 border-2 border-emerald-500/30">
+                            <Award className="h-4 w-4" />
+                            <span>Завершена — {dateStr}</span>
+                          </div>
+                        )
+                      }
+                      if (reason === 'expired') {
+                        return (
+                          <div className="inline-flex items-center gap-2 rounded-lg bg-orange-500/10 px-3 py-1.5 text-sm text-orange-600 dark:text-orange-400 border-2 border-orange-500/30">
+                            <AlertTriangle className="h-4 w-4" />
+                            <span>Истёк срок — {dateStr}</span>
+                          </div>
+                        )
+                      }
+                      if (reason === 'failed') {
+                        return (
+                          <div className="inline-flex items-center gap-2 rounded-lg bg-red-500/10 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 border-2 border-red-500/30">
+                            <XCircle className="h-4 w-4" />
+                            <span>Провалена — {dateStr}</span>
+                          </div>
+                        )
+                      }
                       return (
-                        <div className={cn(
-                          "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm border-2",
-                          isPermanentlyDone
-                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
-                            : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
-                        )}>
-                          {isPermanentlyDone ? <Award className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-                          <span>
-                            {isPermanentlyDone ? 'Завершено' : 'Выполнено за цикл'} {new Date(task.completedAt).toLocaleDateString('ru-RU', {
-                              day: 'numeric',
-                              month: 'long',
-                              year: 'numeric',
-                            })}
-                          </span>
+                        <div className="inline-flex items-center gap-2 rounded-lg bg-gray-500/10 px-3 py-1.5 text-sm text-gray-500 border-2 border-gray-500/30">
+                          <Archive className="h-4 w-4" />
+                          <span>Архив — {dateStr}</span>
                         </div>
                       )
                     })()}
@@ -1456,33 +1449,9 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 <span className="hidden sm:inline">Пропустить</span>
               </button>
 
-              {/* Abandon button (smaller) */}
-              <button
-                type="button"
-                onClick={handleAbandon}
-                className="flex items-center justify-center gap-1.5 rounded-2xl px-3 md:px-4 py-4 font-medium text-sm transition-all duration-200 bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-500/20 hover:border-red-500/50 hover:scale-[1.02] active:scale-[0.98] min-w-[48px]"
-                title="Отказаться (архивировать задачу)"
-              >
-                <XCircle className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline">Отказаться</span>
-              </button>
             </div>
           )}
           {task.isCompleted && (() => {
-            const isRecurring = task.recurrence !== 'once'
-            const rs = task.recurrenceSettings
-            const isLimitReached = rs?.endMode === 'byCount' && rs.endCount && (rs.completedCount ?? 0) >= rs.endCount
-            const isPermanentlyDone = !isRecurring || isLimitReached
-
-            if (isPermanentlyDone) {
-              return (
-                <div className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-500/10 py-4 text-emerald-500">
-                  <Award className="h-5 w-5" />
-                  <span className="font-semibold">Задача завершена!</span>
-                </div>
-              )
-            }
-
             const nextDate = getNextAvailableDate(task)
             return (
               <div className="flex flex-col items-center gap-1 rounded-2xl bg-blue-500/10 py-4 text-blue-500">
@@ -1504,6 +1473,54 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
               <span className="font-semibold">Крайний срок истёк</span>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Status bar for archived tasks */}
+      {!isEditing && task.canceledAt && (
+        <div className="mt-4 shrink-0">
+          {(() => {
+            const reason = task.archiveReason ?? 'manual'
+            if (reason === 'completed') {
+              return (
+                <div className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-500/10 py-4 text-emerald-500">
+                  <Award className="h-5 w-5" />
+                  <span className="font-semibold">Задача завершена!</span>
+                </div>
+              )
+            }
+            if (reason === 'expired') {
+              const done = task.recurrenceSettings?.completedCount ?? 0
+              const total = task.recurrenceSettings?.endCount
+              return (
+                <div className="flex flex-col items-center gap-1 rounded-2xl bg-orange-500/10 py-4 text-orange-500">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5" />
+                    <span className="font-semibold">Срок истёк</span>
+                  </div>
+                  {total && (
+                    <span className="text-xs text-orange-400">
+                      Выполнено {done} из {total} циклов
+                    </span>
+                  )}
+                </div>
+              )
+            }
+            if (reason === 'failed') {
+              return (
+                <div className="flex items-center justify-center gap-2 rounded-2xl bg-red-500/10 py-4 text-red-500">
+                  <XCircle className="h-5 w-5" />
+                  <span className="font-semibold">Задача провалена</span>
+                </div>
+              )
+            }
+            return (
+              <div className="flex items-center justify-center gap-2 rounded-2xl bg-gray-500/10 py-4 text-gray-500">
+                <Archive className="h-5 w-5" />
+                <span className="font-semibold">Задача архивирована</span>
+              </div>
+            )
+          })()}
         </div>
       )}
 
@@ -1596,16 +1613,6 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
         confirmText="Пропустить"
         cancelText="Отмена"
         variant="warning"
-      />
-      <ConfirmModal
-        isOpen={showAbandonConfirm}
-        onConfirm={confirmAbandon}
-        onCancel={() => setShowAbandonConfirm(false)}
-        title="Отказаться от задачи?"
-        message="Задача будет перемещена в архив без штрафов и наград."
-        confirmText="Отказаться"
-        cancelText="Отмена"
-        variant="danger"
       />
       <ConfirmModal
         isOpen={showArchiveConfirm}

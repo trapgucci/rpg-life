@@ -26,6 +26,7 @@ import type {
   AppSettings,
   CurrencyId,
   TaskCompletionRecord,
+  TaskArchiveReason,
 } from '../types/domain'
 import {
   TASK_XP_BY_DIFFICULTY,
@@ -245,7 +246,7 @@ interface RpgStoreState {
   completeTask: (id: TaskId) => void
   canCompleteTask: (task: TaskRpg) => boolean
   skipTask: (id: TaskId) => void
-  abandonTask: (id: TaskId) => void
+
   archiveTask: (id: TaskId) => void
   resetRecurringTasks: () => void
   incrementCounter: (id: TaskId) => void
@@ -628,6 +629,15 @@ export const useRpgStore = create<RpgStoreState>()(
             if (done >= task.recurrenceSettings.weeklyTimesPerWeek) return false
           }
 
+          // Проверка: для weekly по дням — сегодня должен быть один из выбранных дней
+          if (task.recurrence === 'weekly' && (task.recurrenceSettings?.weeklyMode ?? 'days') === 'days') {
+            const weeklyDays = task.recurrenceSettings?.weeklyDays
+            if (weeklyDays && weeklyDays.length > 0) {
+              const today = new Date().getDay()
+              if (!weeklyDays.includes(today)) return false
+            }
+          }
+
           // For counter tasks, can only complete when current >= target
           if (task.kind === 'counter' && task.current < task.target) return false
           return true
@@ -714,9 +724,9 @@ export const useRpgStore = create<RpgStoreState>()(
               bestStreak: Math.max(task.bestStreak ?? 0, newStreak),
             }
 
-            // Если лимит достигнут — помечаем задачу как завершенную и перемещаем в «Отменённые»
+            // Если лимит достигнут — помечаем задачу как завершенную и архивируем
             if (isRecurrenceCompleted || (updatedSettings && updatedSettings.endMode === 'byCount' && updatedSettings.endCount && newCompletedCount >= updatedSettings.endCount)) {
-              updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), canceledAt: now(), recurrenceSettings: updatedSettings, ...historyFields }))
+              updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), canceledAt: now(), archiveReason: 'completed' as TaskArchiveReason, recurrenceSettings: updatedSettings, ...historyFields }))
               return
             }
 
@@ -794,9 +804,9 @@ export const useRpgStore = create<RpgStoreState>()(
               updatedSettings.weeklyWeekStart = currentWeekStart
             }
 
-            // Если лимит достигнут — помечаем задачу как завершенную и перемещаем в «Отменённые»
+            // Если лимит достигнут — помечаем задачу как завершенную и архивируем
             if (isRecurrenceCompleted || (updatedSettings && updatedSettings.endMode === 'byCount' && updatedSettings.endCount && newCompletedCount >= updatedSettings.endCount)) {
-              updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), canceledAt: now(), lastCompletedAt: now(), recurrenceSettings: updatedSettings, ...historyFields }))
+              updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), canceledAt: now(), archiveReason: 'completed' as TaskArchiveReason, lastCompletedAt: now(), recurrenceSettings: updatedSettings, ...historyFields }))
               return
             }
 
@@ -837,11 +847,12 @@ export const useRpgStore = create<RpgStoreState>()(
             return
           }
 
-          // Mark completed
+          // Mark completed — once-задача завершена окончательно, архивируем
           updateTask(id, (t) => {
-            if (t.kind === 'checkbox') return { ...t, isCompleted: true, completedAt: now() }
-            if (t.kind === 'counter') return { ...t, isCompleted: true, current: t.target, completedAt: now() }
-            if (t.kind === 'nested') return { ...t, isCompleted: true, completedAt: now() }
+            const archiveFields = { isCompleted: true, completedAt: now(), canceledAt: now(), archiveReason: 'completed' as TaskArchiveReason }
+            if (t.kind === 'checkbox') return { ...t, ...archiveFields }
+            if (t.kind === 'counter') return { ...t, ...archiveFields, current: t.target }
+            if (t.kind === 'nested') return { ...t, ...archiveFields }
             return t
           })
 
@@ -882,24 +893,23 @@ export const useRpgStore = create<RpgStoreState>()(
             return
           }
 
+          // Для once-задач: пропуск = архивация (задача больше не будет повторяться)
+          const isOnce = task.recurrence === 'once'
+          const archiveFields = isOnce ? { canceledAt: now(), archiveReason: 'completed' as TaskArchiveReason } : {}
+
           get().updateTask(id, (t) => {
-            if (t.kind === 'checkbox') return { ...t, ...skipHistoryFields, isCompleted: true, completedAt: now() }
-            if (t.kind === 'counter') return { ...t, ...skipHistoryFields, isCompleted: true, current: t.target, completedAt: now() }
-            if (t.kind === 'nested') return { ...t, ...skipHistoryFields, isCompleted: true, completedAt: now() }
+            if (t.kind === 'checkbox') return { ...t, ...skipHistoryFields, ...archiveFields, isCompleted: true, completedAt: now() }
+            if (t.kind === 'counter') return { ...t, ...skipHistoryFields, ...archiveFields, isCompleted: true, current: t.target, completedAt: now() }
+            if (t.kind === 'nested') return { ...t, ...skipHistoryFields, ...archiveFields, isCompleted: true, completedAt: now() }
             return t
           })
         },
 
-        abandonTask: (id) => {
-          const { updateTask } = get()
-          // No penalty - just archive the task
-          updateTask(id, (t) => ({ ...t, archived: true, updatedAt: now() }))
-        },
 
         archiveTask: (id) => {
           const { updateTask } = get()
-          // Move task to "Отмененные" with canceledAt timestamp (visible, not hidden)
-          updateTask(id, (t) => ({ ...t, canceledAt: now(), updatedAt: now() }))
+          // Move task to "Отмененные" with canceledAt timestamp — ручная архивация
+          updateTask(id, (t) => ({ ...t, canceledAt: now(), archiveReason: 'manual' as TaskArchiveReason, updatedAt: now() }))
         },
 
         resetRecurringTasks: () => {
@@ -914,7 +924,7 @@ export const useRpgStore = create<RpgStoreState>()(
 
             // === Обработка пропущенных задач с крайним сроком ===
 
-            // Тип «once» с endDate: если дата прошла и не выполнена — архивируем как «Пропущено»
+            // Тип «once» с endDate: если дата прошла и не выполнена — архивируем как «Проваленная»
             if (task.recurrence === 'once' && endDate && nowTime >= endDate && !task.isCompleted && !task.canceledAt) {
               const missedRecord: TaskCompletionRecord = {
                 id: crypto.randomUUID(),
@@ -925,6 +935,7 @@ export const useRpgStore = create<RpgStoreState>()(
               updateTask(task.id, t => ({
                 ...t,
                 canceledAt: nowTime,
+                archiveReason: 'failed' as TaskArchiveReason,
                 currentStreak: 0,
                 totalSkipped: (t.totalSkipped ?? 0) + 1,
                 completionHistory: [...(t.completionHistory ?? []), missedRecord].slice(-365),
@@ -945,9 +956,19 @@ export const useRpgStore = create<RpgStoreState>()(
                   status: 'missed' as const,
                 }].slice(-365),
               } : {}
+              // Определяем причину архивации:
+              // - completed: все циклы выполнены (byCount и completedCount >= endCount, или задача выполнена в последнем цикле)
+              // - expired: срок истёк, но часть циклов была выполнена
+              // - failed: ни одного выполненного цикла
+              const completedCount = task.recurrenceSettings?.completedCount ?? 0
+              const endCount = task.recurrenceSettings?.endCount
+              const hasAnyCompletion = (task.completionHistory ?? []).some(r => r.status === 'completed') || completedCount > 0
+              const allCyclesDone = endCount ? completedCount >= endCount : task.isCompleted
+              const reason: TaskArchiveReason = allCyclesDone ? 'completed' : hasAnyCompletion ? 'expired' : 'failed'
               updateTask(task.id, t => ({
                 ...t,
                 canceledAt: nowTime,
+                archiveReason: reason,
                 ...missedFields,
               }))
               return
@@ -1755,21 +1776,39 @@ export const useRpgStore = create<RpgStoreState>()(
             t.groupId === undefined ||
             t.deadlineAt === undefined ||
             !t.attributeIds ||
-            t.gemReward === undefined
+            t.gemReward === undefined ||
+            (t.canceledAt && !t.archiveReason) ||
+            (t.isCompleted && !t.canceledAt && (t.recurrence === 'once' || !t.recurrence))
           )
           if (needsMigration) {
             useRpgStore.setState({
-              tasks: state.tasks.map((t: any) => ({
-                ...t,
-                groupId: t.groupId ?? null,
-                deadlineAt: t.deadlineAt ?? null,
-                attributeIds: t.attributeIds ?? (t.attributeId ? [t.attributeId] : []),
-                gemReward: t.gemReward ?? 0,
-                // Мигрируем подзадачи
-                subtasks: t.kind === 'nested' && t.subtasks
-                  ? t.subtasks.map((s: any) => ({ ...s, gemReward: s.gemReward ?? 0 }))
-                  : t.subtasks,
-              })),
+              tasks: state.tasks.map((t: any) => {
+                // Миграция archiveReason для уже архивированных задач
+                let archiveReason = t.archiveReason
+                let canceledAt = t.canceledAt
+                if (canceledAt && !archiveReason) {
+                  // Определяем причину: если задача выполнена — completed, иначе — manual
+                  archiveReason = t.isCompleted ? 'completed' : 'manual'
+                }
+                // Миграция: once-задачи, которые выполнены но не имеют canceledAt — архивируем
+                if (t.isCompleted && !canceledAt && (t.recurrence === 'once' || !t.recurrence)) {
+                  canceledAt = t.completedAt ?? t.updatedAt
+                  archiveReason = 'completed'
+                }
+                return {
+                  ...t,
+                  groupId: t.groupId ?? null,
+                  deadlineAt: t.deadlineAt ?? null,
+                  attributeIds: t.attributeIds ?? (t.attributeId ? [t.attributeId] : []),
+                  gemReward: t.gemReward ?? 0,
+                  canceledAt,
+                  archiveReason,
+                  // Мигрируем подзадачи
+                  subtasks: t.kind === 'nested' && t.subtasks
+                    ? t.subtasks.map((s: any) => ({ ...s, gemReward: s.gemReward ?? 0 }))
+                    : t.subtasks,
+                }
+              }),
             })
           }
         }

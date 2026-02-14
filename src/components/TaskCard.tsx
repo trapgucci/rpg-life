@@ -1,4 +1,4 @@
-import { CheckSquare, Hash, ListChecks, Clock, Repeat, Flag, Archive, CalendarClock, Timer } from 'lucide-react'
+import { CheckSquare, Hash, ListChecks, Clock, Repeat, Flag, Archive, CalendarClock, Timer, Award, XCircle, AlertTriangle } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRpg } from '../types/domain'
 import RewardBadge from './RewardBadge'
@@ -95,7 +95,7 @@ export default function TaskCard({ task, selected, onSelect, rewards }: TaskCard
             <h3
               className={cn(
                 'font-medium text-[var(--fg)] line-clamp-1 flex-1',
-                task.isCompleted && 'line-through'
+                task.isCompleted && 'opacity-80'
               )}
             >
               {task.title}
@@ -116,14 +116,14 @@ export default function TaskCard({ task, selected, onSelect, rewards }: TaskCard
 
               if (isPermanentlyDone) {
                 return (
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white shrink-0">
-                    <CheckSquare className="h-3.5 w-3.5" />
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shrink-0 ring-2 ring-emerald-300/50 shadow-md shadow-emerald-500/25">
+                    <CheckSquare className="h-3 w-3 stroke-[2.5]" />
                   </div>
                 )
               }
               return (
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-white shrink-0" title="Выполнено за цикл">
-                  <CheckSquare className="h-3.5 w-3.5" />
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white shrink-0 ring-2 ring-blue-300/50 shadow-md shadow-blue-500/25" title="Выполнено за цикл">
+                  <CheckSquare className="h-3 w-3 stroke-[2.5]" />
                 </div>
               )
             })()}
@@ -214,13 +214,40 @@ export default function TaskCard({ task, selected, onSelect, rewards }: TaskCard
               )
             })()}
 
-            {/* Archive badge */}
-            {task.canceledAt && (
-              <span className="inline-flex items-center gap-1 rounded-lg bg-gray-500/10 px-2 py-1 text-xs font-semibold text-gray-500 border border-gray-500/30">
-                <Archive className="h-3.5 w-3.5" />
-                Архив
-              </span>
-            )}
+            {/* Archive badge — с разными стилями по причине */}
+            {task.canceledAt && (() => {
+              const reason = task.archiveReason ?? 'manual'
+              if (reason === 'completed') {
+                return (
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-500 border border-emerald-500/30">
+                    <Award className="h-3.5 w-3.5" />
+                    Завершена
+                  </span>
+                )
+              }
+              if (reason === 'expired') {
+                return (
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-orange-500/10 px-2 py-1 text-xs font-semibold text-orange-500 border border-orange-500/30">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    Истёк срок
+                  </span>
+                )
+              }
+              if (reason === 'failed') {
+                return (
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-500 border border-red-500/30">
+                    <XCircle className="h-3.5 w-3.5" />
+                    Провалена
+                  </span>
+                )
+              }
+              return (
+                <span className="inline-flex items-center gap-1 rounded-lg bg-gray-500/10 px-2 py-1 text-xs font-semibold text-gray-500 border border-gray-500/30">
+                  <Archive className="h-3.5 w-3.5" />
+                  Архив
+                </span>
+              )
+            })()}
           </div>
         </div>
       </div>

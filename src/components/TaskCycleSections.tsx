@@ -7,7 +7,8 @@ import { cn } from '../lib/cn'
 import type { TaskRpg } from '../types/domain'
 import {
   getNextAvailableDate,
-  getCompletionRate, formatCycleDateRu, formatDateShortRu, getRelativeTimeRu
+  getCompletionRate, formatCycleDateRu, formatDateShortRu, getRelativeTimeRu,
+  isTodayScheduled, getNextScheduledDayName
 } from '../lib/taskCycleUtils'
 
 // ─── Collapsible wrapper ─────────────────────────────────────────────────
@@ -195,17 +196,30 @@ export function TaskCurrentCycleBlock({ task }: TaskBlockProps) {
             </div>
           </div>
         ) : !task.isCompleted && nextAvailable != null ? (
-          // Задача ещё не выполнена — показываем что доступна сейчас
-          <div className="flex items-center gap-3 rounded-xl bg-amber-500/10 p-3 border border-amber-500/30">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20">
-              <CalendarClock className="h-5 w-5 text-amber-500" />
+          // Задача ещё не выполнена — проверяем, запланирована ли сегодня
+          isTodayScheduled(task) ? (
+            <div className="flex items-center gap-3 rounded-xl bg-amber-500/10 p-3 border border-amber-500/30">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20">
+                <CalendarClock className="h-5 w-5 text-amber-500" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-0.5">Текущий цикл</p>
+                <p className="text-sm font-bold text-amber-500">Доступна сейчас</p>
+                <p className="text-xs text-[var(--fg-muted)]">Выполните задачу, чтобы получить награды</p>
+              </div>
             </div>
-            <div className="flex-1">
-              <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-0.5">Текущий цикл</p>
-              <p className="text-sm font-bold text-amber-500">Доступна сейчас</p>
-              <p className="text-xs text-[var(--fg-muted)]">Выполните задачу, чтобы получить награды</p>
+          ) : (
+            <div className="flex items-center gap-3 rounded-xl bg-orange-500/10 p-3 border border-orange-500/30">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/20">
+                <CalendarClock className="h-5 w-5 text-orange-500" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-orange-400 uppercase tracking-wider mb-0.5">Текущий цикл</p>
+                <p className="text-sm font-bold text-orange-500">Сегодня не запланировано</p>
+                <p className="text-xs text-[var(--fg-muted)]">Ближайший день: {getNextScheduledDayName(task)}</p>
+              </div>
             </div>
-          </div>
+          )
         ) : null}
 
         {/* Информация об окончании повтора */}
