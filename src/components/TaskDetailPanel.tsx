@@ -504,7 +504,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   <div className={cn(
                     'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-300',
                     editAttrNames.length > 0
-                      ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
+                      ? 'bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10'
                       : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)]'
                   )}>
                     <BarChart3 className="h-4.5 w-4.5" />
@@ -796,7 +796,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                             className="group relative rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition-all hover:border-[var(--border-strong)] hover:shadow-sm"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)]">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10">
                                 <ListChecks className="h-4 w-4" />
                               </div>
                               <span className="flex-1 truncate text-sm font-medium text-[var(--fg)]">{subtask.title}</span>
@@ -822,7 +822,14 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                             {(subXp > 0 || subHasCurrency) && (
                               <div className="mt-2 ml-11 flex flex-wrap items-center gap-1.5">
                                 {subHasCurrency && (
-                                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-50 to-cyan-50 dark:from-amber-950/30 dark:to-cyan-950/30 px-2 py-0.5 text-xs font-semibold border border-amber-200 dark:border-amber-800">
+                                  <span className={cn(
+                                    'inline-flex items-center gap-1.5 rounded-xl px-2 py-0.5 text-xs font-semibold shadow-sm',
+                                    (subtask.coinReward ?? 0) > 0 && (subtask.gemReward ?? 0) > 0
+                                      ? 'bg-gradient-to-r from-amber-500/15 via-amber-500/8 to-cyan-500/15 ring-1 ring-inset ring-amber-400/15 shadow-amber-500/5'
+                                      : (subtask.gemReward ?? 0) > 0
+                                      ? 'bg-gradient-to-b from-cyan-500/15 to-cyan-500/5 ring-1 ring-inset ring-cyan-400/20 shadow-cyan-500/10'
+                                      : 'bg-gradient-to-b from-amber-500/15 to-amber-500/5 ring-1 ring-inset ring-amber-400/20 shadow-amber-500/10'
+                                  )}>
                                     {(subtask.coinReward ?? 0) > 0 && (
                                       <>
                                         <Coins className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
@@ -830,7 +837,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                                       </>
                                     )}
                                     {(subtask.coinReward ?? 0) > 0 && (subtask.gemReward ?? 0) > 0 && (
-                                      <span className="text-[var(--fg-muted)]">•</span>
+                                      <span className="w-px h-3 bg-[var(--border)] rounded-full self-center" />
                                     )}
                                     {(subtask.gemReward ?? 0) > 0 && (
                                       <>
@@ -842,16 +849,16 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                                 )}
                                 {subXp > 0 && (
                                   <span className={cn(
-                                    'inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold border',
+                                    'inline-flex items-center gap-1 rounded-xl px-2 py-0.5 text-xs font-semibold shadow-sm',
                                     subtask.customXp != null
-                                      ? 'bg-purple-500/10 text-purple-500 border-purple-500/30'
+                                      ? 'bg-gradient-to-b from-purple-500/20 to-purple-500/8 text-purple-500 ring-1 ring-inset ring-purple-400/25 shadow-purple-500/10'
                                       : subDiff === 'easy'
-                                      ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                      ? 'bg-gradient-to-b from-emerald-500/20 to-emerald-500/8 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-emerald-500/10'
                                       : subDiff === 'medium'
-                                      ? 'bg-blue-500/10 text-blue-500 border-blue-500/30'
+                                      ? 'bg-gradient-to-b from-blue-500/20 to-blue-500/8 text-blue-500 ring-1 ring-inset ring-blue-400/25 shadow-blue-500/10'
                                       : subDiff === 'hard'
-                                      ? 'bg-orange-500/10 text-orange-500 border-orange-500/30'
-                                      : 'bg-red-500/10 text-red-500 border-red-500/30'
+                                      ? 'bg-gradient-to-b from-orange-500/20 to-orange-500/8 text-orange-500 ring-1 ring-inset ring-orange-400/25 shadow-orange-500/10'
+                                      : 'bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 shadow-red-500/10'
                                   )}>
                                     <Zap className="h-3 w-3" />
                                     {subXp} XP
@@ -899,8 +906,8 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   <div className={cn(
                     'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
                     task.isCompleted
-                      ? 'bg-gradient-to-br from-emerald-400/15 to-emerald-600/15 text-emerald-500 ring-1 ring-emerald-500/20'
-                      : 'bg-gradient-to-br from-[var(--accent-subtle)] to-[var(--accent-subtle)] text-[var(--accent)] ring-1 ring-[var(--accent)]/15'
+                      ? 'bg-gradient-to-b from-emerald-400/20 to-emerald-600/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/15'
+                      : 'bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10'
                   )}>
                     {(() => { const KindIcon = KIND_ICON[task.kind]; return <KindIcon className="h-5 w-5" /> })()}
                   </div>
@@ -1110,22 +1117,22 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 {taskAttrIds.length > 0 && xp > 0 && (
                   <div
                     className={cn(
-                      "flex items-center gap-3 rounded-xl p-3 border flex-1 min-w-0",
-                      isCustomXp && 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800',
-                      !isCustomXp && task.difficulty === 'easy' && 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800',
-                      !isCustomXp && task.difficulty === 'medium' && 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800',
-                      !isCustomXp && task.difficulty === 'hard' && 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800',
-                      !isCustomXp && task.difficulty === 'veryHard' && 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
+                      "flex items-center gap-3 rounded-2xl p-3 flex-1 min-w-0 shadow-sm",
+                      isCustomXp && 'bg-gradient-to-b from-purple-500/15 to-purple-500/5 ring-1 ring-inset ring-purple-400/20 shadow-purple-500/10',
+                      !isCustomXp && task.difficulty === 'easy' && 'bg-gradient-to-b from-emerald-500/15 to-emerald-500/5 ring-1 ring-inset ring-emerald-400/20 shadow-emerald-500/10',
+                      !isCustomXp && task.difficulty === 'medium' && 'bg-gradient-to-b from-blue-500/15 to-blue-500/5 ring-1 ring-inset ring-blue-400/20 shadow-blue-500/10',
+                      !isCustomXp && task.difficulty === 'hard' && 'bg-gradient-to-b from-orange-500/15 to-orange-500/5 ring-1 ring-inset ring-orange-400/20 shadow-orange-500/10',
+                      !isCustomXp && task.difficulty === 'veryHard' && 'bg-gradient-to-b from-red-500/15 to-red-500/5 ring-1 ring-inset ring-red-400/20 shadow-red-500/10'
                     )}
                   >
                     <div
                       className={cn(
-                        "flex h-10 w-10 items-center justify-center rounded-lg",
-                        isCustomXp && 'bg-purple-100 dark:bg-purple-900/50',
-                        !isCustomXp && task.difficulty === 'easy' && 'bg-emerald-100 dark:bg-emerald-900/50',
-                        !isCustomXp && task.difficulty === 'medium' && 'bg-blue-100 dark:bg-blue-900/50',
-                        !isCustomXp && task.difficulty === 'hard' && 'bg-orange-100 dark:bg-orange-900/50',
-                        !isCustomXp && task.difficulty === 'veryHard' && 'bg-red-100 dark:bg-red-900/50'
+                        "flex h-10 w-10 items-center justify-center rounded-xl",
+                        isCustomXp && 'bg-gradient-to-b from-purple-500/25 to-purple-500/10 ring-1 ring-inset ring-purple-400/30',
+                        !isCustomXp && task.difficulty === 'easy' && 'bg-gradient-to-b from-emerald-500/25 to-emerald-500/10 ring-1 ring-inset ring-emerald-400/30',
+                        !isCustomXp && task.difficulty === 'medium' && 'bg-gradient-to-b from-blue-500/25 to-blue-500/10 ring-1 ring-inset ring-blue-400/30',
+                        !isCustomXp && task.difficulty === 'hard' && 'bg-gradient-to-b from-orange-500/25 to-orange-500/10 ring-1 ring-inset ring-orange-400/30',
+                        !isCustomXp && task.difficulty === 'veryHard' && 'bg-gradient-to-b from-red-500/25 to-red-500/10 ring-1 ring-inset ring-red-400/30'
                       )}
                     >
                       <Zap
@@ -1159,8 +1166,8 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
 
                 {/* Coins reward - только если больше 0 */}
                 {coins > 0 && (
-                  <div className="flex items-center gap-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 p-3 border border-amber-200 dark:border-amber-800 flex-1 min-w-0">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50">
+                  <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-b from-amber-500/15 to-amber-500/5 p-3 ring-1 ring-inset ring-amber-400/20 shadow-sm shadow-amber-500/10 flex-1 min-w-0">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-b from-amber-500/25 to-amber-500/10 ring-1 ring-inset ring-amber-400/30">
                       <Coins className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                     </div>
                     <div>
@@ -1172,8 +1179,8 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
 
                 {/* Gems reward */}
                 {gems > 0 && (
-                  <div className="flex items-center gap-3 rounded-xl bg-cyan-50 dark:bg-cyan-950/30 p-3 border border-cyan-200 dark:border-cyan-800 flex-1 min-w-0">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-100 dark:bg-cyan-900/50">
+                  <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-b from-cyan-500/15 to-cyan-500/5 p-3 ring-1 ring-inset ring-cyan-400/20 shadow-sm shadow-cyan-500/10 flex-1 min-w-0">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-b from-cyan-500/25 to-cyan-500/10 ring-1 ring-inset ring-cyan-400/30">
                       <Gem className="h-6 w-6 text-cyan-600 dark:text-cyan-400" strokeWidth={2.5} />
                     </div>
                     <div>
@@ -1198,7 +1205,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                       'flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-200',
                       task.current === 0
                         ? 'bg-[var(--surface)] text-[var(--fg-muted)]'
-                        : 'bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:scale-110 active:scale-95'
+                        : 'bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 shadow-sm shadow-red-500/10 hover:from-red-500/30 hover:to-red-500/15 hover:scale-110 active:scale-95'
                     )}
                   >
                     <Minus className="h-6 w-6" />
@@ -1215,7 +1222,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                       'flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-200',
                       task.current >= task.target
                         ? 'bg-[var(--surface)] text-[var(--fg-muted)]'
-                        : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 hover:scale-110 active:scale-95'
+                        : 'bg-gradient-to-b from-emerald-400 to-emerald-600 text-white ring-1 ring-inset ring-emerald-300/30 shadow-lg shadow-emerald-500/30 hover:scale-110 active:scale-95'
                     )}
                   >
                     <Plus className="h-6 w-6" />
@@ -1284,7 +1291,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                       className={cn(
                         'group flex flex-col rounded-xl p-3 transition-all',
                         !task.isCompleted && subtask.isCompleted
-                          ? 'bg-emerald-500/10'
+                          ? 'bg-gradient-to-b from-emerald-500/12 to-emerald-500/4 ring-1 ring-inset ring-emerald-400/15'
                           : 'bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
                       )}
                     >
@@ -1327,7 +1334,14 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
                           {((subtask.coinReward ?? 0) > 0 || (subtask.gemReward ?? 0) > 0) && (
-                            <span className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-50 to-cyan-50 dark:from-amber-950/30 dark:to-cyan-950/30 px-2 py-1 text-xs font-semibold border border-amber-200 dark:border-amber-800">
+                            <span className={cn(
+                              'inline-flex items-center gap-1.5 rounded-xl px-2 py-1 text-xs font-semibold shadow-sm',
+                              (subtask.coinReward ?? 0) > 0 && (subtask.gemReward ?? 0) > 0
+                                ? 'bg-gradient-to-r from-amber-500/15 via-amber-500/8 to-cyan-500/15 ring-1 ring-inset ring-amber-400/15 shadow-amber-500/5'
+                                : (subtask.gemReward ?? 0) > 0
+                                ? 'bg-gradient-to-b from-cyan-500/15 to-cyan-500/5 ring-1 ring-inset ring-cyan-400/20 shadow-cyan-500/10'
+                                : 'bg-gradient-to-b from-amber-500/15 to-amber-500/5 ring-1 ring-inset ring-amber-400/20 shadow-amber-500/10'
+                            )}>
                               {(subtask.coinReward ?? 0) > 0 && (
                                 <>
                                   <Coins className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
@@ -1335,7 +1349,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                                 </>
                               )}
                               {(subtask.coinReward ?? 0) > 0 && (subtask.gemReward ?? 0) > 0 && (
-                                <span className="text-[var(--fg-muted)]">•</span>
+                                <span className="w-px h-3 bg-[var(--border)] rounded-full self-center" />
                               )}
                               {(subtask.gemReward ?? 0) > 0 && (
                                 <>
@@ -1352,28 +1366,17 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                             return (
                               <span
                                 className={cn(
-                                  'inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold border',
+                                  'inline-flex items-center gap-1 rounded-xl px-2 py-1 text-xs font-semibold shadow-sm',
                                   subtask.customXp != null
-                                    ? 'bg-purple-500/10 text-purple-500 border-purple-500/30'
+                                    ? 'bg-gradient-to-b from-purple-500/20 to-purple-500/8 text-purple-500 ring-1 ring-inset ring-purple-400/25 shadow-purple-500/10'
                                     : subDiff === 'easy'
-                                    ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                    ? 'bg-gradient-to-b from-emerald-500/20 to-emerald-500/8 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-emerald-500/10'
                                     : subDiff === 'medium'
-                                    ? 'bg-blue-500/10 text-blue-500 border-blue-500/30'
+                                    ? 'bg-gradient-to-b from-blue-500/20 to-blue-500/8 text-blue-500 ring-1 ring-inset ring-blue-400/25 shadow-blue-500/10'
                                     : subDiff === 'hard'
-                                    ? 'bg-orange-500/10 text-orange-500 border-orange-500/30'
-                                    : 'bg-red-500/10 text-red-500 border-red-500/30'
+                                    ? 'bg-gradient-to-b from-orange-500/20 to-orange-500/8 text-orange-500 ring-1 ring-inset ring-orange-400/25 shadow-orange-500/10'
+                                    : 'bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 shadow-red-500/10'
                                 )}
-                                style={{
-                                  boxShadow: subtask.customXp != null
-                                    ? '0 0 8px rgba(168, 85, 247, 0.2)'
-                                    : subDiff === 'easy'
-                                    ? '0 0 8px rgba(16, 185, 129, 0.2)'
-                                    : subDiff === 'medium'
-                                    ? '0 0 8px rgba(59, 130, 246, 0.2)'
-                                    : subDiff === 'hard'
-                                    ? '0 0 8px rgba(249, 115, 22, 0.2)'
-                                    : '0 0 8px rgba(239, 68, 68, 0.2)'
-                                }}
                               >
                                 <Zap className="h-3.5 w-3.5" />{subXpVal} XP
                               </span>
@@ -1474,7 +1477,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
           {task.isCompleted && (() => {
             const nextDate = getNextAvailableDate(task, debugNow)
             return (
-              <div className="flex flex-col items-center gap-1 rounded-2xl bg-blue-500/10 py-4 text-blue-500">
+              <div className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-b from-blue-500/18 to-blue-500/6 ring-1 ring-inset ring-blue-400/20 shadow-sm shadow-blue-500/10 py-4 text-blue-500">
                 <div className="flex items-center gap-2">
                   <Check className="h-5 w-5" />
                   <span className="font-semibold">Выполнено за цикл!</span>
@@ -1488,7 +1491,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
             )
           })()}
           {!canComplete && !task.isCompleted && task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate && debugNow >= task.recurrenceSettings.endDate && (
-            <div className="flex items-center justify-center gap-2 rounded-2xl bg-red-500/10 py-4 text-red-500">
+            <div className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-red-500/18 to-red-500/6 ring-1 ring-inset ring-red-400/20 shadow-sm shadow-red-500/10 py-4 text-red-500">
               <Clock className="h-5 w-5" />
               <span className="font-semibold">Крайний срок истёк</span>
             </div>
@@ -1503,7 +1506,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
             const reason = task.archiveReason ?? 'manual'
             if (reason === 'completed') {
               return (
-                <div className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-500/10 py-4 text-emerald-500">
+                <div className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-emerald-500/18 to-emerald-500/6 ring-1 ring-inset ring-emerald-400/20 shadow-sm shadow-emerald-500/10 py-4 text-emerald-500">
                   <Award className="h-5 w-5" />
                   <span className="font-semibold">Задача завершена!</span>
                 </div>
@@ -1513,7 +1516,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
               const done = task.recurrenceSettings?.completedCount ?? 0
               const total = task.recurrenceSettings?.endCount
               return (
-                <div className="flex flex-col items-center gap-1 rounded-2xl bg-orange-500/10 py-4 text-orange-500">
+                <div className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-b from-orange-500/18 to-orange-500/6 ring-1 ring-inset ring-orange-400/20 shadow-sm shadow-orange-500/10 py-4 text-orange-500">
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5" />
                     <span className="font-semibold">Срок истёк</span>
@@ -1528,14 +1531,14 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
             }
             if (reason === 'failed') {
               return (
-                <div className="flex items-center justify-center gap-2 rounded-2xl bg-red-500/10 py-4 text-red-500">
+                <div className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-red-500/18 to-red-500/6 ring-1 ring-inset ring-red-400/20 shadow-sm shadow-red-500/10 py-4 text-red-500">
                   <XCircle className="h-5 w-5" />
                   <span className="font-semibold">Задача провалена</span>
                 </div>
               )
             }
             return (
-              <div className="flex items-center justify-center gap-2 rounded-2xl bg-gray-500/10 py-4 text-gray-500">
+              <div className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-gray-500/18 to-gray-500/6 ring-1 ring-inset ring-gray-400/20 shadow-sm shadow-gray-500/10 py-4 text-gray-500">
                 <Archive className="h-5 w-5" />
                 <span className="font-semibold">Задача архивирована</span>
               </div>

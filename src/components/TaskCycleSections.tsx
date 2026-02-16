@@ -49,7 +49,7 @@ function CollapsibleBlock({ icon, title, defaultOpen = false, children }: Collap
         className="flex w-full items-center justify-between p-4 text-left"
       >
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--accent-subtle)] text-[var(--accent)]">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10">
             {icon}
           </div>
           <h3 className="text-sm font-semibold text-[var(--fg)]">{title}</h3>
@@ -129,10 +129,10 @@ export function TaskCurrentCycleBlock({ task, nowMs = Date.now() }: TaskBlockPro
           {task.canceledAt ? (
             /* Архивированная задача */
             <span className={cn(
-              'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold',
+              'inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-semibold shadow-sm',
               isLimitReached
-                ? 'bg-emerald-500/15 text-emerald-500'
-                : 'bg-gray-500/15 text-gray-500'
+                ? 'bg-gradient-to-b from-emerald-500/20 to-emerald-500/8 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-emerald-500/10'
+                : 'bg-gradient-to-b from-gray-500/20 to-gray-500/8 text-gray-500 ring-1 ring-inset ring-gray-400/25 shadow-gray-500/10'
             )}>
               {isLimitReached ? (
                 <><Check className="h-3.5 w-3.5" /> Завершена</>
@@ -143,10 +143,10 @@ export function TaskCurrentCycleBlock({ task, nowMs = Date.now() }: TaskBlockPro
           ) : task.recurrence === 'weekly' && rs?.weeklyMode === 'timesPerWeek' && rs.weeklyTimesPerWeek ? (
             /* Режим «N раз в неделю» — показываем прогресс */
             <span className={cn(
-              'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold',
+              'inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-semibold shadow-sm',
               (rs.weeklyCompletedThisWeek ?? 0) >= rs.weeklyTimesPerWeek
-                ? 'bg-blue-500/15 text-blue-500'
-                : 'bg-amber-500/15 text-amber-500'
+                ? 'bg-gradient-to-b from-blue-500/20 to-blue-500/8 text-blue-500 ring-1 ring-inset ring-blue-400/25 shadow-blue-500/10'
+                : 'bg-gradient-to-b from-amber-500/20 to-amber-500/8 text-amber-500 ring-1 ring-inset ring-amber-400/25 shadow-amber-500/10'
             )}>
               {(rs.weeklyCompletedThisWeek ?? 0) >= rs.weeklyTimesPerWeek ? (
                 <><Check className="h-3.5 w-3.5" /> {rs.weeklyCompletedThisWeek ?? 0}/{rs.weeklyTimesPerWeek} за неделю</>
@@ -178,12 +178,12 @@ export function TaskCurrentCycleBlock({ task, nowMs = Date.now() }: TaskBlockPro
             </div>
           ) : (
             <span className={cn(
-              'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold',
+              'inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-semibold shadow-sm',
               isLimitReached
-                ? 'bg-emerald-500/15 text-emerald-500'
+                ? 'bg-gradient-to-b from-emerald-500/20 to-emerald-500/8 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-emerald-500/10'
                 : task.isCompleted
-                ? 'bg-blue-500/15 text-blue-500'
-                : 'bg-amber-500/15 text-amber-500'
+                ? 'bg-gradient-to-b from-blue-500/20 to-blue-500/8 text-blue-500 ring-1 ring-inset ring-blue-400/25 shadow-blue-500/10'
+                : 'bg-gradient-to-b from-amber-500/20 to-amber-500/8 text-amber-500 ring-1 ring-inset ring-amber-400/25 shadow-amber-500/10'
             )}>
               {isLimitReached ? (
                 <><Check className="h-3.5 w-3.5" /> Завершена</>
@@ -200,8 +200,8 @@ export function TaskCurrentCycleBlock({ task, nowMs = Date.now() }: TaskBlockPro
         {task.canceledAt ? (
           /* Архивированная задача — только «завершена навсегда» если лимит достигнут */
           isLimitReached ? (
-            <div className="flex items-center gap-3 rounded-xl bg-emerald-500/10 p-3 border-t border-[var(--border)]">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20">
+            <div className="flex items-center gap-3 rounded-xl bg-gradient-to-b from-emerald-500/18 to-emerald-500/6 p-3 ring-1 ring-inset ring-emerald-400/20 shadow-sm shadow-emerald-500/10">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-emerald-500/25 to-emerald-500/10 ring-1 ring-inset ring-emerald-400/30">
                 <Check className="h-4 w-4 text-emerald-500" />
               </div>
               <div className="flex-1">
@@ -211,8 +211,8 @@ export function TaskCurrentCycleBlock({ task, nowMs = Date.now() }: TaskBlockPro
             </div>
           ) : null
         ) : task.recurrence === 'instant' ? (
-          <div className="flex items-center gap-3 rounded-xl bg-blue-500/10 p-3 border-t border-[var(--border)]">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20">
+          <div className="flex items-center gap-3 rounded-xl bg-gradient-to-b from-blue-500/18 to-blue-500/6 p-3 ring-1 ring-inset ring-blue-400/20 shadow-sm shadow-blue-500/10">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-blue-500/25 to-blue-500/10 ring-1 ring-inset ring-blue-400/30">
               <Zap className="h-4 w-4 text-blue-500" />
             </div>
             <div className="flex-1">
@@ -221,8 +221,8 @@ export function TaskCurrentCycleBlock({ task, nowMs = Date.now() }: TaskBlockPro
             </div>
           </div>
         ) : isLimitReached ? (
-          <div className="flex items-center gap-3 rounded-xl bg-emerald-500/10 p-3 border-t border-[var(--border)]">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20">
+          <div className="flex items-center gap-3 rounded-xl bg-gradient-to-b from-emerald-500/18 to-emerald-500/6 p-3 ring-1 ring-inset ring-emerald-400/20 shadow-sm shadow-emerald-500/10">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-emerald-500/25 to-emerald-500/10 ring-1 ring-inset ring-emerald-400/30">
               <Check className="h-4 w-4 text-emerald-500" />
             </div>
             <div className="flex-1">
@@ -232,8 +232,8 @@ export function TaskCurrentCycleBlock({ task, nowMs = Date.now() }: TaskBlockPro
           </div>
         ) : task.isCompleted && nextAvailable != null ? (
           // Задача выполнена за цикл — показываем когда можно снова
-          <div className="flex items-center gap-3 rounded-xl bg-indigo-500/10 p-3 border border-indigo-500/30">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/20">
+          <div className="flex items-center gap-3 rounded-xl bg-gradient-to-b from-indigo-500/18 to-indigo-500/6 p-3 ring-1 ring-inset ring-indigo-400/20 shadow-sm shadow-indigo-500/10">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-b from-indigo-500/25 to-indigo-500/10 ring-1 ring-inset ring-indigo-400/30">
               <CalendarClock className="h-5 w-5 text-indigo-500" />
             </div>
             <div className="flex-1">
@@ -245,8 +245,8 @@ export function TaskCurrentCycleBlock({ task, nowMs = Date.now() }: TaskBlockPro
         ) : !task.isCompleted && nextAvailable != null ? (
           // Задача ещё не выполнена — проверяем, запланирована ли сегодня
           isTodayScheduled(task, nowMs) ? (
-            <div className="flex items-center gap-3 rounded-xl bg-amber-500/10 p-3 border border-amber-500/30">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20">
+            <div className="flex items-center gap-3 rounded-xl bg-gradient-to-b from-amber-500/18 to-amber-500/6 p-3 ring-1 ring-inset ring-amber-400/20 shadow-sm shadow-amber-500/10">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-b from-amber-500/25 to-amber-500/10 ring-1 ring-inset ring-amber-400/30">
                 <CalendarClock className="h-5 w-5 text-amber-500" />
               </div>
               <div className="flex-1">
@@ -256,8 +256,8 @@ export function TaskCurrentCycleBlock({ task, nowMs = Date.now() }: TaskBlockPro
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-3 rounded-xl bg-orange-500/10 p-3 border border-orange-500/30">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/20">
+            <div className="flex items-center gap-3 rounded-xl bg-gradient-to-b from-orange-500/18 to-orange-500/6 p-3 ring-1 ring-inset ring-orange-400/20 shadow-sm shadow-orange-500/10">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-b from-orange-500/25 to-orange-500/10 ring-1 ring-inset ring-orange-400/30">
                 <CalendarClock className="h-5 w-5 text-orange-500" />
               </div>
               <div className="flex-1">
@@ -271,7 +271,7 @@ export function TaskCurrentCycleBlock({ task, nowMs = Date.now() }: TaskBlockPro
 
         {/* Информация об окончании повтора (не показываем для архивных задач) */}
         {rs && rs.endMode !== 'never' && !task.canceledAt && (
-          <div className="rounded-xl bg-orange-500/10 p-3 border border-orange-500/30">
+          <div className="rounded-xl bg-gradient-to-b from-orange-500/18 to-orange-500/6 p-3 ring-1 ring-inset ring-orange-400/20 shadow-sm shadow-orange-500/10">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-semibold text-orange-500 uppercase tracking-wider">Окончание</span>
             </div>
@@ -328,7 +328,7 @@ export function TaskStatsBlock({ task }: TaskBlockProps) {
         {hasData ? (
           <>
             {/* Обзор процента выполнения */}
-            <div className="mb-4 rounded-xl bg-[var(--surface)] p-4">
+            <div className="mb-4 rounded-xl bg-gradient-to-b from-blue-500/8 to-transparent p-4 ring-1 ring-inset ring-blue-400/10">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider">
                   Процент выполнения
@@ -352,33 +352,41 @@ export function TaskStatsBlock({ task }: TaskBlockProps) {
 
             {/* Stat grid */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="stat-card">
+              <div className="rounded-2xl bg-gradient-to-b from-emerald-500/12 to-emerald-500/4 p-4 text-center ring-1 ring-inset ring-emerald-400/15 shadow-sm shadow-emerald-500/5">
                 <div className="flex items-center justify-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                  <div className="stat-value text-emerald-500">{completedCount}</div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-emerald-500/25 to-emerald-500/10 ring-1 ring-inset ring-emerald-400/30">
+                    <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500" />
+                  </div>
+                  <div className="text-2xl font-bold text-emerald-500">{completedCount}</div>
                 </div>
-                <div className="stat-label">Выполнено</div>
+                <div className="text-xs mt-1 text-[var(--fg-muted)]">Выполнено</div>
               </div>
-              <div className="stat-card">
+              <div className="rounded-2xl bg-gradient-to-b from-red-500/12 to-red-500/4 p-4 text-center ring-1 ring-inset ring-red-400/15 shadow-sm shadow-red-500/5">
                 <div className="flex items-center justify-center gap-2">
-                  <Ban className="h-5 w-5 text-red-500" />
-                  <div className="stat-value text-red-500">{skippedCount}</div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-red-500/25 to-red-500/10 ring-1 ring-inset ring-red-400/30">
+                    <Ban className="h-4.5 w-4.5 text-red-500" />
+                  </div>
+                  <div className="text-2xl font-bold text-red-500">{skippedCount}</div>
                 </div>
-                <div className="stat-label">Пропущено</div>
+                <div className="text-xs mt-1 text-[var(--fg-muted)]">Пропущено</div>
               </div>
-              <div className="stat-card">
+              <div className="rounded-2xl bg-gradient-to-b from-orange-500/12 to-orange-500/4 p-4 text-center ring-1 ring-inset ring-orange-400/15 shadow-sm shadow-orange-500/5">
                 <div className="flex items-center justify-center gap-2">
-                  <Flame className="h-5 w-5 text-orange-500" />
-                  <div className="stat-value text-orange-500">{streak}</div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-orange-500/25 to-orange-500/10 ring-1 ring-inset ring-orange-400/30">
+                    <Flame className="h-4.5 w-4.5 text-orange-500" />
+                  </div>
+                  <div className="text-2xl font-bold text-orange-500">{streak}</div>
                 </div>
-                <div className="stat-label">Текущая серия</div>
+                <div className="text-xs mt-1 text-[var(--fg-muted)]">Текущая серия</div>
               </div>
-              <div className="stat-card">
+              <div className="rounded-2xl bg-gradient-to-b from-amber-500/12 to-amber-500/4 p-4 text-center ring-1 ring-inset ring-amber-400/15 shadow-sm shadow-amber-500/5">
                 <div className="flex items-center justify-center gap-2">
-                  <Crown className="h-5 w-5 text-amber-500" />
-                  <div className="stat-value text-amber-500">{best}</div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-amber-500/25 to-amber-500/10 ring-1 ring-inset ring-amber-400/30">
+                    <Crown className="h-4.5 w-4.5 text-amber-500" />
+                  </div>
+                  <div className="text-2xl font-bold text-amber-500">{best}</div>
                 </div>
-                <div className="stat-label">Лучший результат</div>
+                <div className="text-xs mt-1 text-[var(--fg-muted)]">Лучший результат</div>
               </div>
             </div>
           </>
@@ -399,20 +407,20 @@ export function TaskStatsBlock({ task }: TaskBlockProps) {
 
 const STATUS_CONFIG = {
   completed: {
-    bg: 'bg-emerald-500/10',
-    iconBg: 'bg-emerald-500/20 text-emerald-500',
+    bg: 'bg-gradient-to-b from-emerald-500/15 to-emerald-500/5',
+    iconBg: 'bg-gradient-to-b from-emerald-500/25 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/30',
     icon: Check,
     label: 'Выполнено',
   },
   skipped: {
-    bg: 'bg-blue-500/10',
-    iconBg: 'bg-blue-500/20 text-blue-500',
+    bg: 'bg-gradient-to-b from-blue-500/15 to-blue-500/5',
+    iconBg: 'bg-gradient-to-b from-blue-500/25 to-blue-500/10 text-blue-500 ring-1 ring-inset ring-blue-400/30',
     icon: SkipForward,
     label: 'Пропущено',
   },
   missed: {
-    bg: 'bg-red-500/10',
-    iconBg: 'bg-red-500/20 text-red-500',
+    bg: 'bg-gradient-to-b from-red-500/15 to-red-500/5',
+    iconBg: 'bg-gradient-to-b from-red-500/25 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/30',
     icon: XCircle,
     label: 'Пропущено (авто)',
   },
@@ -536,11 +544,11 @@ export function TaskHistoryBlock({ task, nowMs = Date.now() }: TaskBlockProps) {
                         const isOnce = task.recurrence === 'once'
                         const config =
                           record.status === 'skipped' && isOnce
-                            ? { bg: 'bg-red-500/10', iconBg: 'bg-red-500/20 text-red-500', icon: XCircle, label: 'Провалено' }
+                            ? { bg: 'bg-gradient-to-b from-red-500/15 to-red-500/5', iconBg: 'bg-gradient-to-b from-red-500/25 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/30', icon: XCircle, label: 'Провалено' }
                           : record.status === 'missed' && isOnce
-                            ? { bg: 'bg-red-500/10', iconBg: 'bg-red-500/20 text-red-500', icon: XCircle, label: 'Провалено (авто)' }
+                            ? { bg: 'bg-gradient-to-b from-red-500/15 to-red-500/5', iconBg: 'bg-gradient-to-b from-red-500/25 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/30', icon: XCircle, label: 'Провалено (авто)' }
                           : record.status === 'missed'
-                            ? { bg: 'bg-blue-500/10', iconBg: 'bg-blue-500/20 text-blue-500', icon: SkipForward, label: 'Пропущено (авто)' }
+                            ? { bg: 'bg-gradient-to-b from-blue-500/15 to-blue-500/5', iconBg: 'bg-gradient-to-b from-blue-500/25 to-blue-500/10 text-blue-500 ring-1 ring-inset ring-blue-400/30', icon: SkipForward, label: 'Пропущено (авто)' }
                           : STATUS_CONFIG[record.status]
                         const Icon = config.icon
                         const subs = record.completedSubtasks ?? []
@@ -558,7 +566,7 @@ export function TaskHistoryBlock({ task, nowMs = Date.now() }: TaskBlockProps) {
                               )}
                             >
                               <div className={cn(
-                                'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                                'flex h-8 w-8 shrink-0 items-center justify-center rounded-xl',
                                 config.iconBg
                               )}>
                                 <Icon className="h-4 w-4" />
@@ -574,17 +582,17 @@ export function TaskHistoryBlock({ task, nowMs = Date.now() }: TaskBlockProps) {
                               {record.status === 'completed' && (
                                 <div className="flex flex-wrap items-center gap-1.5 text-xs shrink-0">
                                   {recXp > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 rounded-md bg-purple-500/10 px-1.5 py-0.5 text-purple-500 font-semibold border border-purple-500/20">
+                                    <span className="inline-flex items-center gap-0.5 rounded-lg bg-gradient-to-b from-purple-500/20 to-purple-500/8 px-1.5 py-0.5 text-purple-500 font-semibold ring-1 ring-inset ring-purple-400/25 shadow-sm shadow-purple-500/10">
                                       <Zap className="h-3 w-3" />+{recXp}
                                     </span>
                                   )}
                                   {recCoins > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-amber-500 font-semibold border border-amber-500/20">
+                                    <span className="inline-flex items-center gap-0.5 rounded-lg bg-gradient-to-b from-amber-500/20 to-amber-500/8 px-1.5 py-0.5 text-amber-500 font-semibold ring-1 ring-inset ring-amber-400/25 shadow-sm shadow-amber-500/10">
                                       <Coins className="h-3 w-3" />+{recCoins}
                                     </span>
                                   )}
                                   {recGems > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 rounded-md bg-cyan-500/10 px-1.5 py-0.5 text-cyan-500 font-semibold border border-cyan-500/20">
+                                    <span className="inline-flex items-center gap-0.5 rounded-lg bg-gradient-to-b from-cyan-500/20 to-cyan-500/8 px-1.5 py-0.5 text-cyan-500 font-semibold ring-1 ring-inset ring-cyan-400/25 shadow-sm shadow-cyan-500/10">
                                       <Gem className="h-3 w-3" strokeWidth={2.5} />+{recGems}
                                     </span>
                                   )}

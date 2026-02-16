@@ -71,10 +71,12 @@ export default function RewardBadge({
       {hasCurrency && (
         <span
           className={cn(
-            'inline-flex items-center gap-1.5 rounded-xl',
-            'bg-gradient-to-b from-amber-500/15 to-amber-500/5 dark:from-amber-400/15 dark:to-amber-500/5',
-            'ring-1 ring-inset ring-amber-400/20 dark:ring-amber-500/20',
-            'shadow-sm shadow-amber-500/10',
+            'inline-flex items-center gap-1.5 rounded-xl shadow-sm',
+            coins > 0 && gems > 0
+              ? 'bg-gradient-to-r from-amber-500/15 via-amber-500/8 to-cyan-500/15 ring-1 ring-inset ring-amber-400/15 shadow-amber-500/5'
+              : gems > 0
+              ? 'bg-gradient-to-b from-cyan-500/15 to-cyan-500/5 dark:from-cyan-400/15 dark:to-cyan-500/5 ring-1 ring-inset ring-cyan-400/20 dark:ring-cyan-500/20 shadow-cyan-500/10'
+              : 'bg-gradient-to-b from-amber-500/15 to-amber-500/5 dark:from-amber-400/15 dark:to-amber-500/5 ring-1 ring-inset ring-amber-400/20 dark:ring-amber-500/20 shadow-amber-500/10',
             compact ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-xs font-semibold'
           )}
         >
@@ -84,7 +86,7 @@ export default function RewardBadge({
               <span className="text-amber-600 dark:text-amber-400">{coins}</span>
             </>
           )}
-          {coins > 0 && gems > 0 && <span className="text-[var(--fg-muted)]">•</span>}
+          {coins > 0 && gems > 0 && <span className="w-px h-3 bg-[var(--border)] rounded-full self-center" />}
           {gems > 0 && (
             <>
               <Gem
