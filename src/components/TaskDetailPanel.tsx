@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Check, SkipForward, Pencil, Trash2, X,
-  Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder, Edit2, Target, Hash, ListChecks, Flag, Coins, Gem, Zap, Archive, XCircle, AlertTriangle
+  Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder, Edit2, Target, Hash, ListChecks, CheckSquare, Flag, Coins, Gem, Zap, Archive, XCircle, AlertTriangle
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRpg, TaskDifficulty, TaskRecurrence, AttributeId, SubtaskItem, TaskGroupId, TaskPriority, RecurrenceSettings } from '../types/domain'
@@ -15,7 +15,7 @@ import RecurrenceSelectModal from './RecurrenceSelectModal'
 import ConfirmModal from './ConfirmModal'
 import RewardBadge from './RewardBadge'
 import { TaskCurrentCycleBlock, TaskStatsBlock, TaskHistoryBlock } from './TaskCycleSections'
-import { getNextAvailableDate, getRelativeTimeRu, getSubtaskXp } from '../lib/taskCycleUtils'
+import { getNextAvailableDate, getRelativeTimeRu, getSubtaskXp, isTodayScheduled } from '../lib/taskCycleUtils'
 
 const DIFFICULTY_LABELS: Record<TaskDifficulty, string> = {
   easy: 'Лёгкая',
@@ -53,6 +53,12 @@ const PRIORITY_LABELS = {
   low: 'Низкий',
   medium: 'Средний',
   high: 'Высокий',
+} as const
+
+const KIND_ICON = {
+  checkbox: CheckSquare,
+  counter: Hash,
+  nested: ListChecks,
 } as const
 
 interface TaskDetailPanelProps {
@@ -153,6 +159,40 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
         recurrenceSettings: editRecurrenceSettings,
       }
 
+      // Определяем, нужно ли сбросить isCompleted для recurring задач
+      // Если задача выполнена и изменились настройки повтора — сбрасываем
+      const shouldResetCompletion = t.isCompleted && t.recurrence !== 'once' && (() => {
+        // Сменился тип повтора
+        if (editRecurrence !== t.recurrence) return true
+        const oldRs = t.recurrenceSettings
+        const newRs = editRecurrenceSettings
+        // Сменились дни недели
+        if (JSON.stringify(oldRs?.weeklyDays) !== JSON.stringify(newRs?.weeklyDays)) return true
+        // Сменился режим недели (days ↔ timesPerWeek)
+        if (oldRs?.weeklyMode !== newRs?.weeklyMode) return true
+        // Увеличилось количество раз в неделю
+        if (newRs?.weeklyMode === 'timesPerWeek' &&
+            (newRs.weeklyTimesPerWeek ?? 0) > (oldRs?.weeklyTimesPerWeek ?? 0)) return true
+        // Сменился кастомный интервал
+        if (oldRs?.customIntervalDays !== newRs?.customIntervalDays) return true
+        // Counter: target увеличился выше текущего прогресса
+        if (t.kind === 'counter' && editCounterEnabled && editTarget > t.current) return true
+        return false
+      })()
+
+      const resetFields: Record<string, unknown> = shouldResetCompletion ? {
+        isCompleted: false,
+        completedAt: undefined,
+        currentCycleStart: Date.now(),
+        // Сбрасываем weeklyCompletedThisWeek при изменении расписания
+        ...(editRecurrenceSettings?.weeklyMode === 'timesPerWeek' ? {
+          recurrenceSettings: {
+            ...editRecurrenceSettings,
+            weeklyCompletedThisWeek: 0,
+          }
+        } : {}),
+      } : {}
+
       // Handle counter conversion
       if (editCounterEnabled && t.kind !== 'counter') {
         // Convert checkbox to counter
@@ -181,12 +221,13 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
         // Update counter settings
         return {
           ...base,
+          ...resetFields,
           target: editTarget,
           countUnit: editCountUnit,
         } as TaskRpg
       }
 
-      return base as TaskRpg
+      return { ...base, ...resetFields } as TaskRpg
     })
     setIsEditing(false)
   }
@@ -866,11 +907,14 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
             <>
               <div className="flex-1 min-w-0 overflow-hidden">
                 <div className="flex items-center gap-3 mb-2 min-w-0">
-                  {task.isCompleted && (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 text-white shrink-0">
-                      <Check className="h-5 w-5" />
-                    </div>
-                  )}
+                  <div className={cn(
+                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
+                    task.isCompleted
+                      ? 'bg-gradient-to-br from-emerald-400/15 to-emerald-600/15 text-emerald-500 ring-1 ring-emerald-500/20'
+                      : 'bg-gradient-to-br from-[var(--accent-subtle)] to-[var(--accent-subtle)] text-[var(--accent)] ring-1 ring-[var(--accent)]/15'
+                  )}>
+                    {(() => { const KindIcon = KIND_ICON[task.kind]; return <KindIcon className="h-5 w-5" /> })()}
+                  </div>
                   <h2 className={cn(
                     'text-xl font-bold text-[var(--fg)] break-words min-w-0',
                     task.isCompleted && 'opacity-70'
@@ -881,52 +925,9 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 {task.notes && (
                   <p className="text-[var(--fg-muted)] leading-relaxed break-words overflow-hidden">{task.notes}</p>
                 )}
-                {/* Теги статуса (Архив / Завершено / Провалено) */}
-                {task.canceledAt && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {task.canceledAt && (() => {
-                      const reason = task.archiveReason ?? 'manual'
-                      const dateStr = new Date(task.canceledAt).toLocaleDateString('ru-RU', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                      })
-                      if (reason === 'completed') {
-                        return (
-                          <div className="inline-flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-1.5 text-sm text-emerald-600 dark:text-emerald-400 border-2 border-emerald-500/30">
-                            <Award className="h-4 w-4" />
-                            <span>Завершена — {dateStr}</span>
-                          </div>
-                        )
-                      }
-                      if (reason === 'expired') {
-                        return (
-                          <div className="inline-flex items-center gap-2 rounded-lg bg-orange-500/10 px-3 py-1.5 text-sm text-orange-600 dark:text-orange-400 border-2 border-orange-500/30">
-                            <AlertTriangle className="h-4 w-4" />
-                            <span>Истёк срок — {dateStr}</span>
-                          </div>
-                        )
-                      }
-                      if (reason === 'failed') {
-                        return (
-                          <div className="inline-flex items-center gap-2 rounded-lg bg-red-500/10 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 border-2 border-red-500/30">
-                            <XCircle className="h-4 w-4" />
-                            <span>Провалена — {dateStr}</span>
-                          </div>
-                        )
-                      }
-                      return (
-                        <div className="inline-flex items-center gap-2 rounded-lg bg-gray-500/10 px-3 py-1.5 text-sm text-gray-500 border-2 border-gray-500/30">
-                          <Archive className="h-4 w-4" />
-                          <span>Архив — {dateStr}</span>
-                        </div>
-                      )
-                    })()}
-                  </div>
-                )}
               </div>
               <div className="flex gap-1 shrink-0">
-                {!task.isCompleted && !task.canceledAt && (
+                {!task.canceledAt && (
                   <button
                     type="button"
                     onClick={() => setIsEditing(true)}
@@ -970,6 +971,41 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
             <div className="flex flex-wrap items-center gap-2 mb-6">
               {(() => {
                 const badges: React.ReactNode[] = []
+
+                // Тег архива
+                if (task.canceledAt) {
+                  const reason = task.archiveReason ?? 'manual'
+                  const dateStr = new Date(task.canceledAt).toLocaleDateString('ru-RU', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })
+                  if (reason === 'completed') {
+                    badges.push(
+                      <span key="archive" className="inline-flex items-center gap-2 rounded-xl bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400 border-2 border-emerald-500/30">
+                        <Award className="h-3.5 w-3.5" />Завершена — {dateStr}
+                      </span>
+                    )
+                  } else if (reason === 'expired') {
+                    badges.push(
+                      <span key="archive" className="inline-flex items-center gap-2 rounded-xl bg-orange-500/10 px-3 py-1.5 text-sm font-medium text-orange-600 dark:text-orange-400 border-2 border-orange-500/30">
+                        <AlertTriangle className="h-3.5 w-3.5" />Истёк срок — {dateStr}
+                      </span>
+                    )
+                  } else if (reason === 'failed') {
+                    badges.push(
+                      <span key="archive" className="inline-flex items-center gap-2 rounded-xl bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 border-2 border-red-500/30">
+                        <XCircle className="h-3.5 w-3.5" />Провалена — {dateStr}
+                      </span>
+                    )
+                  } else {
+                    badges.push(
+                      <span key="archive" className="inline-flex items-center gap-2 rounded-xl bg-gray-500/10 px-3 py-1.5 text-sm font-medium text-gray-500 border-2 border-gray-500/30">
+                        <Archive className="h-3.5 w-3.5" />Архив — {dateStr}
+                      </span>
+                    )
+                  }
+                }
 
                 // Атрибуты
                 taskAttrs.forEach((a) => {
@@ -1050,11 +1086,13 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   )
                 }
 
-                // Вставляем точки-разделители между группами: атрибуты+сложность | повтор | приоритет
+                // Вставляем точки-разделители между группами: архив | атрибуты+сложность | повтор | приоритет
+                const archiveCount = task.canceledAt ? 1 : 0
                 const attrCount = taskAttrs.filter(Boolean).length + (taskAttrs.length > 0 ? 1 : 0) // attrs + difficulty
                 const groups: React.ReactNode[][] = []
-                if (attrCount > 0) groups.push(badges.slice(0, attrCount))
-                const rest = badges.slice(attrCount)
+                if (archiveCount > 0) groups.push(badges.slice(0, archiveCount))
+                if (attrCount > 0) groups.push(badges.slice(archiveCount, archiveCount + attrCount))
+                const rest = badges.slice(archiveCount + attrCount)
                 rest.forEach(b => groups.push([b]))
 
                 return groups.flatMap((group, i) => (
@@ -1069,12 +1107,12 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
             {/* Rewards card */}
             <div className="glass rounded-2xl p-4 mb-6">
               <h3 className="text-sm font-semibold text-[var(--fg)] mb-3">Награды</h3>
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-row gap-3">
                 {/* XP reward - только если есть атрибуты */}
                 {taskAttrIds.length > 0 && xp > 0 && (
                   <div
                     className={cn(
-                      "flex items-center gap-3 rounded-xl p-3 border",
+                      "flex items-center gap-3 rounded-xl p-3 border flex-1 min-w-0",
                       isCustomXp && 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800',
                       !isCustomXp && task.difficulty === 'easy' && 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800',
                       !isCustomXp && task.difficulty === 'medium' && 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800',
@@ -1123,7 +1161,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
 
                 {/* Coins reward - только если больше 0 */}
                 {coins > 0 && (
-                  <div className="flex items-center gap-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 p-3 border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-center gap-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 p-3 border border-amber-200 dark:border-amber-800 flex-1 min-w-0">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50">
                       <Coins className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                     </div>
@@ -1136,7 +1174,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
 
                 {/* Gems reward */}
                 {gems > 0 && (
-                  <div className="flex items-center gap-3 rounded-xl bg-cyan-50 dark:bg-cyan-950/30 p-3 border border-cyan-200 dark:border-cyan-800">
+                  <div className="flex items-center gap-3 rounded-xl bg-cyan-50 dark:bg-cyan-950/30 p-3 border border-cyan-200 dark:border-cyan-800 flex-1 min-w-0">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-100 dark:bg-cyan-900/50">
                       <Gem className="h-6 w-6 text-cyan-600 dark:text-cyan-400" strokeWidth={2.5} />
                     </div>
@@ -1256,7 +1294,9 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                         {!task.isCompleted ? (
                           <button
                             type="button"
+                            disabled={!isTodayScheduled(task)}
                             onClick={() => {
+                              if (!isTodayScheduled(task)) return
                               if (!subtask.isCompleted) {
                                 const cr = subtask.coinReward ?? 0
                                 const xr = getSubtaskEffectiveXp(subtask)
@@ -1269,7 +1309,9 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                             }}
                             className={cn(
                               'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-all',
-                              subtask.isCompleted
+                              !isTodayScheduled(task)
+                                ? 'border-2 border-[var(--border)] opacity-40 cursor-not-allowed'
+                                : subtask.isCompleted
                                 ? 'bg-emerald-500 text-white'
                                 : 'border-2 border-[var(--border)] hover:border-emerald-500'
                             )}
@@ -1340,26 +1382,6 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                             )
                           })()}
                         </div>
-                        {!task.isCompleted && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => openEditSubtask(subtask)}
-                              className="icon-btn opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
-                              title="Редактировать"
-                            >
-                              <Edit2 className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveSubtask(subtask.id)}
-                              className="icon-btn icon-btn-danger opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
-                              title="Удалить"
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          </>
-                        )}
                       </div>
                       {subtask.description && (
                         <p className="ml-9 mt-1 text-xs text-[var(--fg-muted)] leading-relaxed">
@@ -1611,7 +1633,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
         onConfirm={confirmArchive}
         onCancel={() => setShowArchiveConfirm(false)}
         title="Архивировать задачу?"
-        message="Задача будет перемещена в раздел «Отмененные» с тегом «Архив»."
+        message="Задача будет перемещена в раздел «Архив»."
         confirmText="Архивировать"
         cancelText="Отмена"
         variant="warning"

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { isSameDay, getStartOfWeek, getStartOfMonth, getStartOfYear } from '../lib/dateUtils'
+import { isSameDay, getStartOfDay, getStartOfWeek, getStartOfMonth, getStartOfYear } from '../lib/dateUtils'
 import { getCurrentCycleStart as calcCycleStart, getCycleEndDate, getSubtaskXp } from '../lib/taskCycleUtils'
 import type {
   TaskRpg,
@@ -889,6 +889,7 @@ export const useRpgStore = create<RpgStoreState>()(
             id: crypto.randomUUID(),
             cycleStart: calcCycleStart(task),
             cycleEnd: getCycleEndDate(task) ?? now(),
+            completedAt: now(),
             status: 'skipped',
           } : null
           const skipHistoryFields = skipRecord ? {
@@ -1054,19 +1055,24 @@ export const useRpgStore = create<RpgStoreState>()(
                     return weekStart !== currentWeek
                   }
 
-                  // Вариант В: Задача сбрасывается в следующий день из weeklyDays после выполнения
+                  // Вариант В: Задача сбрасывается только когда наступил следующий день из weeklyDays
                   const weeklyDays = rsTask?.weeklyDays
                   if (weeklyDays && weeklyDays.length > 0) {
-                    // Если задача не выполнена - не сбрасывать (ждем выполнения)
                     if (!task.lastCompletedAt) return false
 
-                    // Получить конец текущего дня цикла
-                    const cycleEnd = getCycleEndDate(task)
-                    if (!cycleEnd) return false
-
-                    // Сброс происходит когда текущий день цикла закончился
-                    // (то есть наступил следующий день из weeklyDays)
-                    return nowTime > cycleEnd
+                    // Вычисляем следующий запланированный день от даты последнего выполнения
+                    const completedDay = new Date(task.lastCompletedAt).getDay()
+                    const sorted = [...weeklyDays].sort((a, b) => a - b)
+                    const nextDay = sorted.find(d => d > completedDay)
+                    let daysUntilNext: number
+                    if (nextDay != null) {
+                      daysUntilNext = nextDay - completedDay
+                    } else {
+                      // Первый день на следующей неделе
+                      daysUntilNext = (7 - completedDay + sorted[0]) % 7 || 7
+                    }
+                    const nextScheduledDate = getStartOfDay(task.lastCompletedAt) + daysUntilNext * 24 * 60 * 60 * 1000
+                    return nowTime >= nextScheduledDate
                   }
                   // Иначе стандартная логика: сбросить если новая неделя
                   const lastWeek = getStartOfWeek(task.lastCompletedAt)

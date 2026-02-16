@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import {
   ChevronDown, ChevronRight, RefreshCw, CalendarClock, BarChart3, History,
   Check, SkipForward, XCircle, Zap, Coins, Gem, ListChecks, TrendingUp,
-  CheckCircle2, Ban, Flame, Crown
+  CheckCircle2, Ban, Flame, Crown, Archive
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRpg } from '../types/domain'
@@ -125,7 +125,21 @@ export function TaskCurrentCycleBlock({ task }: TaskBlockProps) {
         {/* Статус текущего цикла */}
         <div className="flex items-center justify-between py-2">
           <span className="text-sm text-[var(--fg-muted)]">Статус</span>
-          {task.recurrence === 'weekly' && rs?.weeklyMode === 'timesPerWeek' && rs.weeklyTimesPerWeek ? (
+          {task.canceledAt ? (
+            /* Архивированная задача */
+            <span className={cn(
+              'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold',
+              isLimitReached
+                ? 'bg-emerald-500/15 text-emerald-500'
+                : 'bg-gray-500/15 text-gray-500'
+            )}>
+              {isLimitReached ? (
+                <><Check className="h-3.5 w-3.5" /> Завершена</>
+              ) : (
+                <><Archive className="h-3.5 w-3.5" /> Архивирована</>
+              )}
+            </span>
+          ) : task.recurrence === 'weekly' && rs?.weeklyMode === 'timesPerWeek' && rs.weeklyTimesPerWeek ? (
             /* Режим «N раз в неделю» — показываем прогресс */
             <span className={cn(
               'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold',
@@ -182,7 +196,20 @@ export function TaskCurrentCycleBlock({ task }: TaskBlockProps) {
         </div>
 
         {/* Следующий цикл */}
-        {task.recurrence === 'instant' ? (
+        {task.canceledAt ? (
+          /* Архивированная задача — только «завершена навсегда» если лимит достигнут */
+          isLimitReached ? (
+            <div className="flex items-center gap-3 rounded-xl bg-emerald-500/10 p-3 border-t border-[var(--border)]">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20">
+                <Check className="h-4 w-4 text-emerald-500" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-emerald-500">Задача завершена навсегда</p>
+                <p className="text-xs text-[var(--fg-muted)]">Достигнут лимит повторов — больше циклов не будет</p>
+              </div>
+            </div>
+          ) : null
+        ) : task.recurrence === 'instant' ? (
           <div className="flex items-center gap-3 rounded-xl bg-blue-500/10 p-3 border-t border-[var(--border)]">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20">
               <Zap className="h-4 w-4 text-blue-500" />
@@ -241,8 +268,8 @@ export function TaskCurrentCycleBlock({ task }: TaskBlockProps) {
           )
         ) : null}
 
-        {/* Информация об окончании повтора */}
-        {rs && rs.endMode !== 'never' && (
+        {/* Информация об окончании повтора (не показываем для архивных задач) */}
+        {rs && rs.endMode !== 'never' && !task.canceledAt && (
           <div className="rounded-xl bg-orange-500/10 p-3 border border-orange-500/30">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-semibold text-orange-500 uppercase tracking-wider">Окончание</span>
@@ -277,7 +304,7 @@ export function TaskNextCycleBlock({ task }: TaskBlockProps) {
   return null
 }
 
-// ─── 3. Статистика задач ─────────────────────────────────────────────────
+// ─── 3. Статистика задачи ────────────────────────────────────────────────
 
 export function TaskStatsBlock({ task }: TaskBlockProps) {
   const history = task.completionHistory ?? []
@@ -293,7 +320,7 @@ export function TaskStatsBlock({ task }: TaskBlockProps) {
   return (
     <CollapsibleBlock
       icon={<BarChart3 className="h-4.5 w-4.5" />}
-      title="Статистика задач"
+      title="Статистика задачи"
     >
       <div className="mt-3">
         {hasData ? (
