@@ -369,6 +369,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
     setEditGroupId(t.groupId ?? null)
     setEditAttributeIds(t.attributeIds?.length ? t.attributeIds : (t.attributeId ? [t.attributeId] : []))
     setEditDifficulty(t.difficulty)
+    setEditPriority(t.priority ?? 'none')
     setEditCustomXp(t.customXp ?? null)
     setEditCoinReward(t.coinReward)
     setEditGemReward(t.gemReward ?? 0)
@@ -881,22 +882,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsEditing(false)
-                    setEditTitle(task.title)
-                    setEditNotes(task.notes ?? '')
-                    setEditGroupId(task.groupId ?? null)
-                    setEditAttributeIds(task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : []))
-                    setEditDifficulty(task.difficulty)
-                    setEditCustomXp(task.customXp ?? null)
-                    setEditCoinReward(task.coinReward)
-                    setEditGemReward(task.gemReward ?? 0)
-                    setEditRecurrence(task.recurrence)
-                    setEditRecurrenceSettings(task.recurrenceSettings ?? { type: task.recurrence, endMode: 'never' })
-                    setEditCounterEnabled(task.kind === 'counter')
-                    setEditTarget(task.kind === 'counter' ? task.target : 2)
-                    setEditCountUnit(task.kind === 'counter' ? (task.countUnit ?? 'раз') : 'раз')
-                  }}
+                  onClick={() => resetEditState(task)}
                   className="btn-secondary flex-1"
                 >
                   Отмена
@@ -1421,11 +1407,13 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
           </>
         )}
 
-        {/* Cycle, Stats, History blocks — for recurring tasks and once tasks with endDate */}
-        {!isEditing && (task.recurrence !== 'once' || (task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate)) && (
+        {/* Cycle, Stats, History blocks */}
+        {!isEditing && (
           <div className="mt-2">
-            <TaskCurrentCycleBlock task={task} />
-            <TaskStatsBlock task={task} />
+            {(task.recurrence !== 'once' || (task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate)) && (
+              <TaskCurrentCycleBlock task={task} />
+            )}
+            {task.recurrence !== 'once' && <TaskStatsBlock task={task} />}
             <TaskHistoryBlock task={task} />
           </div>
         )}

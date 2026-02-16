@@ -161,10 +161,11 @@ export default function TasksPage() {
         if (!t.isCompleted) return false
       } else if (taskFilter === 'canceled') {
         // Отмененные (просроченные + архивированные)
-        if (t.canceledAt) return true
-        if (t.isCompleted) return false
-        const endDate = t.recurrenceSettings?.endMode === 'byDate' ? t.recurrenceSettings.endDate : null
-        if (!endDate || now <= endDate) return false
+        if (!t.canceledAt) {
+          if (t.isCompleted) return false
+          const endDate = t.recurrenceSettings?.endMode === 'byDate' ? t.recurrenceSettings.endDate : null
+          if (!endDate || now <= endDate) return false
+        }
       }
 
       const g = t.groupId ?? null

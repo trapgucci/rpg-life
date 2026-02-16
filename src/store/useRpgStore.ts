@@ -867,8 +867,24 @@ export const useRpgStore = create<RpgStoreState>()(
           }
 
           // Mark completed — once-задача завершена окончательно, архивируем
+          // Запись в историю для once-задач (чтобы блок «История» не был пустым)
+          const onceRecord: TaskCompletionRecord = {
+            id: crypto.randomUUID(),
+            cycleStart: task.currentCycleStart ?? task.createdAt,
+            cycleEnd: now(),
+            completedAt: now(),
+            status: 'completed',
+            xpEarned: xpGain,
+            coinsEarned: coinGain,
+            gemsEarned: gemGain,
+            completedSubtasks,
+          }
+          const onceHistoryFields = {
+            completionHistory: [...(task.completionHistory ?? []), onceRecord],
+          }
+
           updateTask(id, (t) => {
-            const archiveFields = { isCompleted: true, completedAt: now(), canceledAt: now(), archiveReason: 'completed' as TaskArchiveReason }
+            const archiveFields = { isCompleted: true, completedAt: now(), canceledAt: now(), archiveReason: 'completed' as TaskArchiveReason, ...onceHistoryFields }
             if (t.kind === 'checkbox') return { ...t, ...archiveFields }
             if (t.kind === 'counter') return { ...t, ...archiveFields, current: t.target }
             if (t.kind === 'nested') return { ...t, ...archiveFields }
@@ -884,19 +900,19 @@ export const useRpgStore = create<RpgStoreState>()(
           const task = get().tasks.find((t) => t.id === id)
           if (!task) return
 
-          // Запись пропуска в историю (для recurring задач)
-          const skipRecord: TaskCompletionRecord | null = task.recurrence !== 'once' ? {
+          // Запись пропуска в историю
+          const skipRecord: TaskCompletionRecord = {
             id: crypto.randomUUID(),
-            cycleStart: calcCycleStart(task),
-            cycleEnd: getCycleEndDate(task) ?? now(),
+            cycleStart: task.recurrence === 'once' ? (task.currentCycleStart ?? task.createdAt) : calcCycleStart(task),
+            cycleEnd: task.recurrence === 'once' ? now() : (getCycleEndDate(task) ?? now()),
             completedAt: now(),
             status: 'skipped',
-          } : null
-          const skipHistoryFields = skipRecord ? {
+          }
+          const skipHistoryFields = {
             completionHistory: [...(task.completionHistory ?? []), skipRecord].slice(-365),
             currentStreak: 0,
             totalSkipped: (task.totalSkipped ?? 0) + 1,
-          } : {}
+          }
 
           // Для instant — сбрасываем задачу (без наград), чтобы можно было выполнить снова
           if (task.recurrence === 'instant') {

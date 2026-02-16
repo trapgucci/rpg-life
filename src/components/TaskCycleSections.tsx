@@ -529,7 +529,17 @@ export function TaskHistoryBlock({ task }: TaskBlockProps) {
                     {/* Records for this date */}
                     <div className="flex flex-col gap-2">
                       {records.map((record) => {
-                        const config = STATUS_CONFIG[record.status]
+                        // Для once-задач пропуск = провал → красный стиль
+                        // Для recurring-задач пропуск (авто) → синий стиль
+                        const isOnce = task.recurrence === 'once'
+                        const config =
+                          record.status === 'skipped' && isOnce
+                            ? { bg: 'bg-red-500/10', iconBg: 'bg-red-500/20 text-red-500', icon: XCircle, label: 'Провалено' }
+                          : record.status === 'missed' && isOnce
+                            ? { bg: 'bg-red-500/10', iconBg: 'bg-red-500/20 text-red-500', icon: XCircle, label: 'Провалено (авто)' }
+                          : record.status === 'missed'
+                            ? { bg: 'bg-blue-500/10', iconBg: 'bg-blue-500/20 text-blue-500', icon: SkipForward, label: 'Пропущено (авто)' }
+                          : STATUS_CONFIG[record.status]
                         const Icon = config.icon
                         const subs = record.completedSubtasks ?? []
                         // Суммируем основные + подзадачные награды для записи
