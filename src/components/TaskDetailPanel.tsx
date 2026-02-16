@@ -516,31 +516,32 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                           {editAttrNames.map((a) => (
                             <span
                               key={a!.id}
-                              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold border shadow-sm"
+                              className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-semibold shadow-sm"
                               style={{
-                                backgroundColor: `${a!.color}12`,
+                                background: `linear-gradient(to bottom, ${a!.color}22, ${a!.color}10)`,
                                 color: a!.color,
-                                borderColor: `${a!.color}30`,
-                                boxShadow: `0 1px 3px ${a!.color}10`,
+                                boxShadow: `0 1px 3px ${a!.color}12, inset 0 1px 0 ${a!.color}15`,
+                                outline: `1px solid ${a!.color}20`,
+                                outlineOffset: '-1px',
                               }}
                             >
                               <span className="text-sm">{a!.icon}</span>
                               {a!.name}
                             </span>
                           ))}
-                          <span className="text-[var(--fg-muted)] text-xs">·</span>
+                          <span className="w-px h-4 bg-[var(--border)] rounded-full self-center" />
                           <span
                             className={cn(
-                              'inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold border',
+                              'inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold shadow-sm',
                               editCustomXp != null
-                                ? 'bg-purple-500/10 text-purple-500 border-purple-500/30'
+                                ? 'bg-gradient-to-b from-purple-500/20 to-purple-500/10 text-purple-500 ring-1 ring-inset ring-purple-400/25 shadow-purple-500/10'
                                 : editDifficulty === 'easy'
-                                ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                ? 'bg-gradient-to-b from-emerald-500/20 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-emerald-500/10'
                                 : editDifficulty === 'medium'
-                                ? 'bg-blue-500/10 text-blue-500 border-blue-500/30'
+                                ? 'bg-gradient-to-b from-blue-500/20 to-blue-500/10 text-blue-500 ring-1 ring-inset ring-blue-400/25 shadow-blue-500/10'
                                 : editDifficulty === 'hard'
-                                ? 'bg-orange-500/10 text-orange-500 border-orange-500/30'
-                                : 'bg-red-500/10 text-red-500 border-red-500/30'
+                                ? 'bg-gradient-to-b from-orange-500/20 to-orange-500/10 text-orange-500 ring-1 ring-inset ring-orange-400/25 shadow-orange-500/10'
+                                : 'bg-gradient-to-b from-red-500/20 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/25 shadow-red-500/10'
                             )}
                           >
                             <Zap className="h-3 w-3" />
@@ -970,26 +971,26 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   })
                   if (reason === 'completed') {
                     badges.push(
-                      <span key="archive" className="inline-flex items-center gap-2 rounded-xl bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400 border-2 border-emerald-500/30">
-                        <Award className="h-3.5 w-3.5" />Завершена — {dateStr}
+                      <span key="archive" className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-b from-emerald-500/20 to-emerald-500/8 px-3.5 py-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10">
+                        <Award className="h-4 w-4" />Завершена — {dateStr}
                       </span>
                     )
                   } else if (reason === 'expired') {
                     badges.push(
-                      <span key="archive" className="inline-flex items-center gap-2 rounded-xl bg-orange-500/10 px-3 py-1.5 text-sm font-medium text-orange-600 dark:text-orange-400 border-2 border-orange-500/30">
-                        <AlertTriangle className="h-3.5 w-3.5" />Истёк срок — {dateStr}
+                      <span key="archive" className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-b from-orange-500/20 to-orange-500/8 px-3.5 py-1.5 text-sm font-medium text-orange-600 dark:text-orange-400 ring-1 ring-inset ring-orange-400/25 shadow-sm shadow-orange-500/10">
+                        <AlertTriangle className="h-4 w-4" />Истёк срок — {dateStr}
                       </span>
                     )
                   } else if (reason === 'failed') {
                     badges.push(
-                      <span key="archive" className="inline-flex items-center gap-2 rounded-xl bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 border-2 border-red-500/30">
-                        <XCircle className="h-3.5 w-3.5" />Провалена — {dateStr}
+                      <span key="archive" className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-b from-red-500/20 to-red-500/8 px-3.5 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 ring-1 ring-inset ring-red-400/25 shadow-sm shadow-red-500/10">
+                        <XCircle className="h-4 w-4" />Провалена — {dateStr}
                       </span>
                     )
                   } else {
                     badges.push(
-                      <span key="archive" className="inline-flex items-center gap-2 rounded-xl bg-gray-500/10 px-3 py-1.5 text-sm font-medium text-gray-500 border-2 border-gray-500/30">
-                        <Archive className="h-3.5 w-3.5" />Архив — {dateStr}
+                      <span key="archive" className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-b from-gray-500/20 to-gray-500/8 px-3.5 py-1.5 text-sm font-medium text-gray-500 ring-1 ring-inset ring-gray-400/25 shadow-sm shadow-gray-500/10">
+                        <Archive className="h-4 w-4" />Архив — {dateStr}
                       </span>
                     )
                   }
@@ -1001,8 +1002,14 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   badges.push(
                     <span
                       key={a.id}
-                      className="rounded-xl px-3 py-1.5 text-sm font-medium border-2"
-                      style={{ backgroundColor: `${a.color}15`, color: a.color, borderColor: `${a.color}50` }}
+                      className="rounded-2xl px-3.5 py-1.5 text-sm font-medium shadow-sm"
+                      style={{
+                        background: `linear-gradient(to bottom, ${a.color}22, ${a.color}10)`,
+                        color: a.color,
+                        boxShadow: `0 1px 3px ${a.color}15, inset 0 1px 0 ${a.color}15`,
+                        outline: `1px solid ${a.color}25`,
+                        outlineOffset: '-1px',
+                      }}
                     >
                       {a.icon} {a.name}
                     </span>
@@ -1014,11 +1021,13 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   badges.push(
                     <span
                       key="difficulty"
-                      className="rounded-xl px-3 py-1.5 text-sm font-medium border-2"
+                      className="rounded-2xl px-3.5 py-1.5 text-sm font-medium shadow-sm"
                       style={{
-                        backgroundColor: `${diffColor}15`,
+                        background: `linear-gradient(to bottom, ${diffColor}22, ${diffColor}10)`,
                         color: diffColor,
-                        borderColor: `${diffColor}50`,
+                        boxShadow: `0 1px 3px ${diffColor}15, inset 0 1px 0 ${diffColor}15`,
+                        outline: `1px solid ${diffColor}25`,
+                        outlineOffset: '-1px',
                       }}
                     >
                       <Zap className="h-3.5 w-3.5 inline mr-1" />
@@ -1030,7 +1039,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 // Повтор
                 if (task.recurrence !== 'once') {
                   badges.push(
-                    <span key="recurrence" className="rounded-xl bg-blue-500/15 px-3 py-1.5 text-sm font-medium text-blue-500 border-2 border-blue-500/50">
+                    <span key="recurrence" className="rounded-2xl bg-gradient-to-b from-blue-500/22 to-blue-500/8 px-3.5 py-1.5 text-sm font-medium text-blue-500 ring-1 ring-inset ring-blue-400/25 shadow-sm shadow-blue-500/10">
                       <Clock className="h-3.5 w-3.5 inline mr-1" />
                       {RECURRENCE_LABELS[task.recurrence]}
                       {task.recurrenceSettings && (
@@ -1062,10 +1071,11 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                     <span
                       key="priority"
                       className={cn(
-                        'rounded-xl px-3 py-1.5 text-sm font-medium border-2',
-                        PRIORITY_COLORS[task.priority].bg,
+                        'rounded-2xl px-3.5 py-1.5 text-sm font-medium shadow-sm',
                         PRIORITY_COLORS[task.priority].text,
-                        PRIORITY_COLORS[task.priority].border
+                        task.priority === 'low' && 'bg-gradient-to-b from-emerald-500/20 to-emerald-500/8 ring-1 ring-inset ring-emerald-400/25 shadow-emerald-500/10',
+                        task.priority === 'medium' && 'bg-gradient-to-b from-yellow-500/20 to-yellow-500/8 ring-1 ring-inset ring-yellow-400/25 shadow-yellow-500/10',
+                        task.priority === 'high' && 'bg-gradient-to-b from-red-500/20 to-red-500/8 ring-1 ring-inset ring-red-400/25 shadow-red-500/10',
                       )}
                     >
                       <Flag className="h-3.5 w-3.5 inline mr-1" fill="currentColor" />
@@ -1086,7 +1096,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 return groups.flatMap((group, i) => (
                   i === 0
                     ? group
-                    : [<span key={`dot-${i}`} className="text-[var(--fg-muted)] text-lg leading-none select-none">·</span>, ...group]
+                    : [<span key={`dot-${i}`} className="w-px h-5 bg-[var(--border)] rounded-full self-center select-none" />, ...group]
                 ))
               })()}
             </div>

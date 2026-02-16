@@ -19,26 +19,30 @@ interface RewardBadgeProps {
   className?: string
 }
 
-const DIFFICULTY_COLORS: Record<TaskDifficulty, { bg: string; text: string; border: string }> = {
+const DIFFICULTY_COLORS: Record<TaskDifficulty, { bg: string; text: string; ring: string; shadow: string }> = {
   easy: {
-    bg: 'bg-gradient-to-r from-emerald-500/10 to-green-500/10',
+    bg: 'bg-gradient-to-b from-emerald-500/20 to-emerald-500/8',
     text: 'text-emerald-500',
-    border: 'border-emerald-500/30',
+    ring: 'ring-1 ring-inset ring-emerald-400/25',
+    shadow: 'shadow-sm shadow-emerald-500/10',
   },
   medium: {
-    bg: 'bg-gradient-to-r from-blue-500/10 to-cyan-500/10',
+    bg: 'bg-gradient-to-b from-blue-500/20 to-blue-500/8',
     text: 'text-blue-500',
-    border: 'border-blue-500/30',
+    ring: 'ring-1 ring-inset ring-blue-400/25',
+    shadow: 'shadow-sm shadow-blue-500/10',
   },
   hard: {
-    bg: 'bg-gradient-to-r from-orange-500/10 to-amber-500/10',
+    bg: 'bg-gradient-to-b from-orange-500/20 to-orange-500/8',
     text: 'text-orange-500',
-    border: 'border-orange-500/30',
+    ring: 'ring-1 ring-inset ring-orange-400/25',
+    shadow: 'shadow-sm shadow-orange-500/10',
   },
   veryHard: {
-    bg: 'bg-gradient-to-r from-red-500/10 to-rose-500/10',
+    bg: 'bg-gradient-to-b from-red-500/20 to-red-500/8',
     text: 'text-red-500',
-    border: 'border-red-500/30',
+    ring: 'ring-1 ring-inset ring-red-400/25',
+    shadow: 'shadow-sm shadow-red-500/10',
   },
 }
 
@@ -67,9 +71,10 @@ export default function RewardBadge({
       {hasCurrency && (
         <span
           className={cn(
-            'inline-flex items-center gap-1.5 rounded-lg',
-            'bg-gradient-to-r from-amber-50 to-cyan-50 dark:from-amber-950/30 dark:to-cyan-950/30',
-            'border border-amber-200 dark:border-amber-800',
+            'inline-flex items-center gap-1.5 rounded-xl',
+            'bg-gradient-to-b from-amber-500/15 to-amber-500/5 dark:from-amber-400/15 dark:to-amber-500/5',
+            'ring-1 ring-inset ring-amber-400/20 dark:ring-amber-500/20',
+            'shadow-sm shadow-amber-500/10',
             compact ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-xs font-semibold'
           )}
         >
@@ -96,11 +101,11 @@ export default function RewardBadge({
       {hasXp && (
         <span
           className={cn(
-            'inline-flex items-center gap-1 rounded-lg border',
+            'inline-flex items-center gap-1 rounded-xl',
             compact ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-xs font-semibold',
             customXp
-              ? 'bg-gradient-to-r from-purple-500/10 to-violet-500/10 text-purple-500 border-purple-500/30'
-              : cn(diffStyle.bg, diffStyle.text, diffStyle.border)
+              ? 'bg-gradient-to-b from-purple-500/20 to-purple-500/8 text-purple-500 ring-1 ring-inset ring-purple-400/25 shadow-sm shadow-purple-500/10'
+              : cn(diffStyle.bg, diffStyle.text, diffStyle.ring, diffStyle.shadow)
           )}
         >
           <Zap className={cn(compact ? 'h-3 w-3' : 'h-3.5 w-3.5')} />

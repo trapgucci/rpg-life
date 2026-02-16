@@ -26,12 +26,6 @@ const DIFFICULTY_LABELS = {
   veryHard: 'Сложная+',
 }
 
-const PRIORITY_COLORS = {
-  none: {},
-  low: { bg: 'bg-emerald-500/10', text: 'text-emerald-500', border: 'border-emerald-500/30' },
-  medium: { bg: 'bg-yellow-500/10', text: 'text-yellow-500', border: 'border-yellow-500/30' },
-  high: { bg: 'bg-red-500/10', text: 'text-red-500', border: 'border-red-500/30' },
-} as const
 
 const PRIORITY_LABELS = {
   none: '',
@@ -51,7 +45,6 @@ interface TaskCardProps {
 export default function TaskCard({ task, selected, onSelect, rewards }: TaskCardProps) {
   const Icon = KIND_ICON[task.kind]
   const priority = task.priority ?? 'none'
-  const priorityStyle = PRIORITY_COLORS[priority]
 
   const progress =
     task.kind === 'counter'
@@ -102,7 +95,7 @@ export default function TaskCard({ task, selected, onSelect, rewards }: TaskCard
             </h3>
             {/* Индикатор подзадач */}
             {task.kind === 'nested' && task.subtasks.length > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-lg bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-500 shrink-0">
+              <span className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-b from-blue-500/20 to-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-500 ring-1 ring-inset ring-blue-400/25 shrink-0">
                 <ListChecks className="h-3 w-3" />
                 {task.subtasks.filter((s) => s.isCompleted).length}/{task.subtasks.length}
               </span>
@@ -169,7 +162,7 @@ export default function TaskCard({ task, selected, onSelect, rewards }: TaskCard
 
             {/* Recurrence */}
             {task.recurrence !== 'once' && (
-              <span className="inline-flex items-center gap-1 rounded-lg bg-blue-500/10 px-2.5 py-1 text-xs font-semibold text-blue-500 border border-blue-500/30">
+              <span className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-b from-blue-500/20 to-blue-500/10 px-2.5 py-1 text-xs font-semibold text-blue-500 ring-1 ring-inset ring-blue-400/25 shadow-sm shadow-blue-500/10">
                 <Repeat className="h-3.5 w-3.5" />
                 {task.recurrence === 'daily' ? 'Ежедневно' : task.recurrence === 'weekly' ? 'Еженедельно' : task.recurrence === 'monthly' ? 'Ежемесячно' : task.recurrence === 'yearly' ? 'Ежегодно' : task.recurrence === 'instant' ? 'Инстант' : 'Повтор'}
               </span>
@@ -178,7 +171,7 @@ export default function TaskCard({ task, selected, onSelect, rewards }: TaskCard
             {/* End date (deadline) icon */}
             {hasEndDate && (
               <span
-                className="inline-flex items-center justify-center rounded-lg p-1.5 border text-orange-500 bg-orange-500/10 border-orange-500/30"
+                className="inline-flex items-center justify-center rounded-xl p-1.5 bg-gradient-to-b from-orange-500/20 to-orange-500/10 text-orange-500 ring-1 ring-inset ring-orange-400/25 shadow-sm shadow-orange-500/10"
                 title="Есть крайний срок"
               >
                 <Timer className="h-3.5 w-3.5" />
@@ -189,10 +182,10 @@ export default function TaskCard({ task, selected, onSelect, rewards }: TaskCard
             {priority !== 'none' && (
               <span
                 className={cn(
-                  'inline-flex items-center justify-center rounded-lg p-1.5 border',
-                  priorityStyle.text,
-                  priorityStyle.bg,
-                  priorityStyle.border
+                  'inline-flex items-center justify-center rounded-xl p-1.5 shadow-sm',
+                  priority === 'low' && 'bg-gradient-to-b from-emerald-500/20 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-emerald-500/10',
+                  priority === 'medium' && 'bg-gradient-to-b from-yellow-500/20 to-yellow-500/10 text-yellow-500 ring-1 ring-inset ring-yellow-400/25 shadow-yellow-500/10',
+                  priority === 'high' && 'bg-gradient-to-b from-red-500/20 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/25 shadow-red-500/10'
                 )}
               >
                 <Flag className="h-3.5 w-3.5" fill="currentColor" />
@@ -207,7 +200,7 @@ export default function TaskCard({ task, selected, onSelect, rewards }: TaskCard
               const nextDate = getNextAvailableDate(task)
               if (nextDate == null) return null
               return (
-                <span className="inline-flex items-center gap-1 rounded-lg bg-indigo-500/10 px-2 py-1 text-xs font-semibold text-indigo-500 border border-indigo-500/30">
+                <span className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-b from-indigo-500/20 to-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-indigo-500 ring-1 ring-inset ring-indigo-400/25 shadow-sm shadow-indigo-500/10">
                   <CalendarClock className="h-3.5 w-3.5" />
                   {getRelativeTimeRu(nextDate)}
                 </span>
@@ -219,7 +212,7 @@ export default function TaskCard({ task, selected, onSelect, rewards }: TaskCard
               const reason = task.archiveReason ?? 'manual'
               if (reason === 'completed') {
                 return (
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-500 border border-emerald-500/30">
+                  <span className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-b from-emerald-500/20 to-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10">
                     <Award className="h-3.5 w-3.5" />
                     Завершена
                   </span>
@@ -227,7 +220,7 @@ export default function TaskCard({ task, selected, onSelect, rewards }: TaskCard
               }
               if (reason === 'expired') {
                 return (
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-orange-500/10 px-2 py-1 text-xs font-semibold text-orange-500 border border-orange-500/30">
+                  <span className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-b from-orange-500/20 to-orange-500/10 px-2.5 py-1 text-xs font-semibold text-orange-500 ring-1 ring-inset ring-orange-400/25 shadow-sm shadow-orange-500/10">
                     <AlertTriangle className="h-3.5 w-3.5" />
                     Истёк срок
                   </span>
@@ -235,14 +228,14 @@ export default function TaskCard({ task, selected, onSelect, rewards }: TaskCard
               }
               if (reason === 'failed') {
                 return (
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-500 border border-red-500/30">
+                  <span className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-b from-red-500/20 to-red-500/10 px-2.5 py-1 text-xs font-semibold text-red-500 ring-1 ring-inset ring-red-400/25 shadow-sm shadow-red-500/10">
                     <XCircle className="h-3.5 w-3.5" />
                     Провалена
                   </span>
                 )
               }
               return (
-                <span className="inline-flex items-center gap-1 rounded-lg bg-gray-500/10 px-2 py-1 text-xs font-semibold text-gray-500 border border-gray-500/30">
+                <span className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-b from-gray-500/20 to-gray-500/10 px-2.5 py-1 text-xs font-semibold text-gray-500 ring-1 ring-inset ring-gray-400/25 shadow-sm shadow-gray-500/10">
                   <Archive className="h-3.5 w-3.5" />
                   Архив
                 </span>
