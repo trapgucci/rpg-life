@@ -55,6 +55,7 @@ export default function TasksPage() {
 
   // Debug mode
   const debugDaysOffset = useRpgStore((s) => s.debugDaysOffset)
+  const debugNow = useRpgStore((s) => s.getDebugNow)()
   const incrementDebugDay = useRpgStore((s) => s.incrementDebugDay)
   const resetDebugTime = useRpgStore((s) => s.resetDebugTime)
 
@@ -83,9 +84,18 @@ export default function TasksPage() {
   const groupButtonRef = useRef<HTMLButtonElement>(null)
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
 
-  // Сброс recurring задач при монтировании
+  // Сброс recurring задач: при монтировании, каждые 60с, и при возврате на вкладку
   useEffect(() => {
     resetRecurringTasks()
+    const interval = setInterval(resetRecurringTasks, 60_000)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') resetRecurringTasks()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [resetRecurringTasks])
 
   // Close sort menu on outside click
@@ -140,7 +150,7 @@ export default function TasksPage() {
 
   const filteredTasks = useMemo(() => {
     if (!activeProfileId) return []
-    const now = Date.now()
+    const now = debugNow
     let list = tasks.filter((t) => {
       if (t.profileId !== activeProfileId) return false
       if (t.archived) return false
@@ -181,7 +191,7 @@ export default function TasksPage() {
     }
 
     return list
-  }, [tasks, activeProfileId, selectedGroupId, taskFilter, searchQuery])
+  }, [tasks, activeProfileId, selectedGroupId, taskFilter, searchQuery, debugNow])
 
   // Вычисляем награды один раз, затем сортируем используя уже вычисленные значения
   const tasksWithRewards = useMemo(() => {
@@ -259,7 +269,7 @@ export default function TasksPage() {
   const taskCountByGroup = useMemo(() => {
     const map = new Map<TaskGroupId | null, number>()
     if (!activeProfileId) return map
-    const now = Date.now()
+    const now = debugNow
     tasks
       .filter((t) => {
         if (t.profileId !== activeProfileId || t.archived) return false
@@ -289,7 +299,7 @@ export default function TasksPage() {
         map.set(g, (map.get(g) ?? 0) + 1)
       })
     return map
-  }, [tasks, activeProfileId, taskFilter])
+  }, [tasks, activeProfileId, taskFilter, debugNow])
 
   const countNoGroup = taskCountByGroup.get(null) ?? 0
 
@@ -775,7 +785,7 @@ export default function TasksPage() {
               </div>
               {debugDaysOffset > 0 && (
                 <div className="mt-3 text-xs text-center text-purple-400">
-                  Виртуальная дата: {new Date(Date.now() + debugDaysOffset * 24 * 60 * 60 * 1000).toLocaleDateString('ru-RU', {
+                  Виртуальная дата: {new Date(debugNow).toLocaleDateString('ru-RU', {
                     day: 'numeric',
                     month: 'long',
                     year: 'numeric',
@@ -852,9 +862,23 @@ export default function TasksPage() {
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--accent-subtle)] mb-4">
                 <CheckSquare className="h-8 w-8 text-[var(--accent)]" />
               </div>
-              <p className="font-medium text-[var(--fg)]">Нет задач в этой группе</p>
+              <p className="font-medium text-[var(--fg)]">
+                {searchQuery.trim()
+                  ? 'Ничего не найдено'
+                  : taskFilter === 'completed'
+                  ? 'Нет выполненных задач'
+                  : taskFilter === 'canceled'
+                  ? 'Архив пуст'
+                  : 'Нет задач в этой группе'}
+              </p>
               <p className="mt-1 text-sm text-[var(--fg-muted)]">
-                Создайте задачу или выберите другую группу
+                {searchQuery.trim()
+                  ? 'Попробуйте изменить запрос'
+                  : taskFilter === 'completed'
+                  ? 'Выполненные задачи появятся здесь'
+                  : taskFilter === 'canceled'
+                  ? 'Просроченные и архивированные задачи появятся здесь'
+                  : 'Создайте задачу или выберите другую группу'}
               </p>
             </div>
           ) : (

@@ -42,12 +42,16 @@ import {
 // Removed DEFAULT_PENALTY_FACTOR - penalty system removed
 const EMPTY_ATTRIBUTES: Attribute[] = []
 
+/** Module-level debug offset kept in sync with the store via subscribe (see bottom of file) */
+let _debugDaysOffset = 0
+const DAY_MS_STORE = 24 * 60 * 60 * 1000
+
 function now() {
-  return Date.now()
+  return Date.now() + _debugDaysOffset * DAY_MS_STORE
 }
 
 function getTodayStart(): number {
-  const d = new Date()
+  const d = new Date(now())
   d.setHours(0, 0, 0, 0)
   return d.getTime()
 }
@@ -91,7 +95,7 @@ function isTaskRecurrenceCompleted(task: TaskRpg): boolean {
 
   // Проверка по дате окончания
   if (settings.endMode === 'byDate' && settings.endDate) {
-    return Date.now() >= settings.endDate
+    return now() >= settings.endDate
   }
 
   // Проверка по количеству циклов
@@ -160,11 +164,23 @@ function deductXpFromAttribute(
   return profile.attributes.map((attr) => {
     if (attr.id !== attributeId) return attr
     let { level, current_xp } = attr
-    current_xp = Math.max(0, current_xp - xpDeduct)
-    while (level > 1 && current_xp === 0) {
-      const prevRequired = xpRequiredForNextLevel(profile, level - 1)
+    let debt = xpDeduct - current_xp
+    if (debt <= 0) {
+      // Enough XP in current level — just subtract
+      return { ...attr, current_xp: current_xp - xpDeduct }
+    }
+    // current_xp exhausted, need to go down levels
+    current_xp = 0
+    while (level > 1 && debt > 0) {
       level -= 1
-      current_xp = prevRequired - 1
+      const prevRequired = xpRequiredForNextLevel(profile, level)
+      if (debt >= prevRequired) {
+        debt -= prevRequired
+        // current_xp stays 0, continue dropping levels
+      } else {
+        current_xp = prevRequired - debt
+        debt = 0
+      }
     }
     return { ...attr, level, current_xp }
   })
@@ -634,7 +650,7 @@ export const useRpgStore = create<RpgStoreState>()(
           if (task.recurrence === 'weekly' && (task.recurrenceSettings?.weeklyMode ?? 'days') === 'days') {
             const weeklyDays = task.recurrenceSettings?.weeklyDays
             if (weeklyDays && weeklyDays.length > 0) {
-              const today = new Date().getDay()
+              const today = new Date(now()).getDay()
               if (!weeklyDays.includes(today)) return false
             }
           }
@@ -726,7 +742,7 @@ export const useRpgStore = create<RpgStoreState>()(
             // Запись в историю
             const completionRecord: TaskCompletionRecord = {
               id: crypto.randomUUID(),
-              cycleStart: calcCycleStart(task),
+              cycleStart: calcCycleStart(task, now()),
               cycleEnd: now(),
               completedAt: now(),
               status: 'completed',
@@ -796,8 +812,8 @@ export const useRpgStore = create<RpgStoreState>()(
             // Запись в историю
             const completionRecord: TaskCompletionRecord = {
               id: crypto.randomUUID(),
-              cycleStart: calcCycleStart(task),
-              cycleEnd: getCycleEndDate(task) ?? now(),
+              cycleStart: calcCycleStart(task, now()),
+              cycleEnd: getCycleEndDate(task, now()) ?? now(),
               completedAt: now(),
               status: 'completed',
               xpEarned: xpGain,
@@ -899,12 +915,13 @@ export const useRpgStore = create<RpgStoreState>()(
         skipTask: (id) => {
           const task = get().tasks.find((t) => t.id === id)
           if (!task) return
+          if (!get().canCompleteTask(task)) return
 
           // Запись пропуска в историю
           const skipRecord: TaskCompletionRecord = {
             id: crypto.randomUUID(),
-            cycleStart: task.recurrence === 'once' ? (task.currentCycleStart ?? task.createdAt) : calcCycleStart(task),
-            cycleEnd: task.recurrence === 'once' ? now() : (getCycleEndDate(task) ?? now()),
+            cycleStart: task.recurrence === 'once' ? (task.currentCycleStart ?? task.createdAt) : calcCycleStart(task, now()),
+            cycleEnd: task.recurrence === 'once' ? now() : (getCycleEndDate(task, now()) ?? now()),
             completedAt: now(),
             status: 'skipped',
           }
@@ -957,8 +974,8 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         resetRecurringTasks: () => {
-          const { tasks, updateTask, debugDaysOffset } = get()
-          const nowTime = now() + debugDaysOffset * 24 * 60 * 60 * 1000
+          const { tasks, updateTask } = get()
+          const nowTime = now()
 
           tasks.forEach(task => {
             if (task.archived) return
@@ -1021,12 +1038,12 @@ export const useRpgStore = create<RpgStoreState>()(
             // Recurring: пропущенный цикл без endDate (или endDate еще не наступила)
             // Если задача не выполнена и цикл закончился — записать «missed» и перейти к следующему
             if (task.recurrence !== 'once' && task.recurrence !== 'instant' && !task.isCompleted && !task.canceledAt) {
-              const cycleEnd = getCycleEndDate(task)
+              const cycleEnd = getCycleEndDate(task, now())
               if (cycleEnd && nowTime > cycleEnd) {
                 // Цикл закончился, а задача не выполнена — «Пропущено»
                 const missedRecord: TaskCompletionRecord = {
                   id: crypto.randomUUID(),
-                  cycleStart: task.currentCycleStart ?? calcCycleStart(task),
+                  cycleStart: task.currentCycleStart ?? calcCycleStart(task, now()),
                   cycleEnd: cycleEnd,
                   status: 'missed',
                 }
@@ -1873,4 +1890,9 @@ export const useRpgStore = create<RpgStoreState>()(
       },
     }
   )
+)
+
+// Keep module-level _debugDaysOffset in sync with the store
+useRpgStore.subscribe(
+  (state) => { _debugDaysOffset = state.debugDaysOffset }
 )

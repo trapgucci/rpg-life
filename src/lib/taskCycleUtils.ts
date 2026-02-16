@@ -5,41 +5,40 @@ import { getStartOfDay, getStartOfWeek, getStartOfMonth, getStartOfYear } from '
 const DAY_MS = 24 * 60 * 60 * 1000
 
 /** Рассчитать начало текущего цикла */
-export function getCurrentCycleStart(task: TaskRpg): number {
+export function getCurrentCycleStart(task: TaskRpg, nowMs: number = Date.now()): number {
   if (task.currentCycleStart != null) return task.currentCycleStart
 
-  const now = Date.now()
   switch (task.recurrence) {
     case 'daily':
-      return getStartOfDay(now)
+      return getStartOfDay(nowMs)
     case 'weekly': {
       const rs = task.recurrenceSettings
       // Режим «N раз в неделю» — цикл = вся неделя (Пн–Вс)
       if (rs?.weeklyMode === 'timesPerWeek') {
-        return rs.weeklyWeekStart ?? getStartOfWeek(now)
+        return rs.weeklyWeekStart ?? getStartOfWeek(nowMs)
       }
 
       const weeklyDays = rs?.weeklyDays
       if (weeklyDays && weeklyDays.length > 0) {
         // Вариант В: Найти текущий или последний прошедший день из weeklyDays
-        const today = new Date(now).getDay()
+        const today = new Date(nowMs).getDay()
         const sortedDays = [...weeklyDays].sort((a, b) => a - b)
 
         // Если сегодня в списке и задача была выполнена сегодня - вернуть начало сегодня
-        if (weeklyDays.includes(today) && task.lastCompletedAt && task.lastCompletedAt >= getStartOfDay(now)) {
-          return getStartOfDay(now)
+        if (weeklyDays.includes(today) && task.lastCompletedAt && task.lastCompletedAt >= getStartOfDay(nowMs)) {
+          return getStartOfDay(nowMs)
         }
 
         // Если сегодня в списке и задача НЕ выполнена - это текущий цикл
         if (weeklyDays.includes(today)) {
-          return getStartOfDay(now)
+          return getStartOfDay(nowMs)
         }
 
         // Найти последний прошедший день из списка (не сегодня, а раньше)
         for (let i = 1; i < 7; i++) {
           const day = (today - i + 7) % 7
           if (weeklyDays.includes(day)) {
-            const d = new Date(now)
+            const d = new Date(nowMs)
             d.setDate(d.getDate() - i)
             return getStartOfDay(d.getTime())
           }
@@ -47,21 +46,21 @@ export function getCurrentCycleStart(task: TaskRpg): number {
 
         // Если ничего не найдено - взять последний день из списка на прошлой неделе
         const lastDay = sortedDays[sortedDays.length - 1]
-        const d = new Date(now)
+        const d = new Date(nowMs)
         const daysBack = (today - lastDay + 7) % 7
         d.setDate(d.getDate() - daysBack - 7) // на прошлой неделе
         return getStartOfDay(d.getTime())
       }
-      return getStartOfWeek(now)
+      return getStartOfWeek(nowMs)
     }
     case 'monthly':
-      return getStartOfMonth(now)
+      return getStartOfMonth(nowMs)
     case 'yearly':
-      return getStartOfYear(now)
+      return getStartOfYear(nowMs)
     case 'custom': {
       const interval = task.recurrenceSettings?.customIntervalDays ?? task.recurrenceIntervalDays ?? 1
       const base = task.lastCompletedAt ?? task.createdAt
-      const daysSince = Math.floor((now - base) / DAY_MS)
+      const daysSince = Math.floor((nowMs - base) / DAY_MS)
       const cyclesPassed = Math.floor(daysSince / interval)
       return getStartOfDay(base + cyclesPassed * interval * DAY_MS)
     }
@@ -73,50 +72,49 @@ export function getCurrentCycleStart(task: TaskRpg): number {
 }
 
 /** Рассчитать конец текущего цикла */
-export function getCycleEndDate(task: TaskRpg): number | null {
-  const now = Date.now()
+export function getCycleEndDate(task: TaskRpg, nowMs: number = Date.now()): number | null {
   switch (task.recurrence) {
     case 'once':
       return task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate
         ? task.recurrenceSettings.endDate
         : null
     case 'daily': {
-      const start = getStartOfDay(now)
+      const start = getStartOfDay(nowMs)
       return start + DAY_MS - 1
     }
     case 'weekly': {
       const rs = task.recurrenceSettings
       // Режим «N раз в неделю» — конец недели (Вс 23:59:59)
       if (rs?.weeklyMode === 'timesPerWeek') {
-        const weekStart = rs.weeklyWeekStart ?? getStartOfWeek(now)
+        const weekStart = rs.weeklyWeekStart ?? getStartOfWeek(nowMs)
         return weekStart + 7 * DAY_MS - 1
       }
 
       const weeklyDays = rs?.weeklyDays
       if (weeklyDays && weeklyDays.length > 0) {
         // Вариант В: Конец цикла = конец текущего дня из weeklyDays
-        const cycleStart = getCurrentCycleStart(task)
+        const cycleStart = getCurrentCycleStart(task, nowMs)
         return cycleStart + DAY_MS - 1
       }
       // Конец недели (воскресенье 23:59:59)
-      const weekStart = getStartOfWeek(now)
+      const weekStart = getStartOfWeek(nowMs)
       return weekStart + 7 * DAY_MS - 1
     }
     case 'monthly': {
-      const d = new Date(now)
+      const d = new Date(nowMs)
       d.setMonth(d.getMonth() + 1, 1)
       d.setHours(0, 0, 0, 0)
       return d.getTime() - 1
     }
     case 'yearly': {
-      const d = new Date(now)
+      const d = new Date(nowMs)
       d.setFullYear(d.getFullYear() + 1, 0, 1)
       d.setHours(0, 0, 0, 0)
       return d.getTime() - 1
     }
     case 'custom': {
       const interval = task.recurrenceSettings?.customIntervalDays ?? task.recurrenceIntervalDays ?? 1
-      const cycleStart = getCurrentCycleStart(task)
+      const cycleStart = getCurrentCycleStart(task, nowMs)
       return cycleStart + interval * DAY_MS - 1
     }
     case 'instant':
@@ -127,11 +125,9 @@ export function getCycleEndDate(task: TaskRpg): number | null {
 }
 
 /** Рассчитать дату следующего цикла */
-export function getNextCycleDate(task: TaskRpg): number | null {
+export function getNextCycleDate(task: TaskRpg, nowMs: number = Date.now()): number | null {
   if (task.recurrence === 'once') return null
   if (task.recurrence === 'instant') return null
-
-  const now = Date.now()
 
   // Если лимит по количеству достигнут
   const rs = task.recurrenceSettings
@@ -139,13 +135,13 @@ export function getNextCycleDate(task: TaskRpg): number | null {
     return null
   }
   // Если лимит по дате достигнут
-  if (rs?.endMode === 'byDate' && rs.endDate && now >= rs.endDate) {
+  if (rs?.endMode === 'byDate' && rs.endDate && nowMs >= rs.endDate) {
     return null
   }
 
   switch (task.recurrence) {
     case 'daily': {
-      const tomorrow = new Date(now)
+      const tomorrow = new Date(nowMs)
       tomorrow.setDate(tomorrow.getDate() + 1)
       tomorrow.setHours(0, 0, 0, 0)
       return tomorrow.getTime()
@@ -153,14 +149,14 @@ export function getNextCycleDate(task: TaskRpg): number | null {
     case 'weekly': {
       // Режим «N раз в неделю» — следующий цикл = следующий понедельник
       if (rs?.weeklyMode === 'timesPerWeek') {
-        const weekStart = rs.weeklyWeekStart ?? getStartOfWeek(now)
+        const weekStart = rs.weeklyWeekStart ?? getStartOfWeek(nowMs)
         return weekStart + 7 * DAY_MS
       }
 
       const weeklyDays = rs?.weeklyDays
       if (weeklyDays && weeklyDays.length > 0) {
         // Вариант В: Следующий день из weeklyDays после текущего дня цикла
-        const cycleStart = getCurrentCycleStart(task)
+        const cycleStart = getCurrentCycleStart(task, nowMs)
         const currentDayOfWeek = new Date(cycleStart).getDay()
         const sortedDays = [...weeklyDays].sort((a, b) => a - b)
 
@@ -177,11 +173,11 @@ export function getNextCycleDate(task: TaskRpg): number | null {
         return getStartOfDay(cycleStart + daysUntil * DAY_MS)
       }
       // Следующий понедельник
-      const weekStart = getStartOfWeek(now)
+      const weekStart = getStartOfWeek(nowMs)
       return weekStart + 7 * DAY_MS
     }
     case 'monthly': {
-      const d = new Date(now)
+      const d = new Date(nowMs)
       const dayOfMonth = d.getDate()
       d.setMonth(d.getMonth() + 1)
       // Клемпим до последнего дня месяца
@@ -191,16 +187,16 @@ export function getNextCycleDate(task: TaskRpg): number | null {
       return d.getTime()
     }
     case 'yearly': {
-      const d = new Date(now)
+      const d = new Date(nowMs)
       d.setFullYear(d.getFullYear() + 1)
       d.setHours(0, 0, 0, 0)
       return d.getTime()
     }
     case 'custom': {
       const interval = rs?.customIntervalDays ?? task.recurrenceIntervalDays ?? 1
-      const cycleEnd = getCycleEndDate(task)
+      const cycleEnd = getCycleEndDate(task, nowMs)
       if (cycleEnd) return cycleEnd + 1
-      return getStartOfDay(now) + interval * DAY_MS
+      return getStartOfDay(nowMs) + interval * DAY_MS
     }
     default:
       return null
@@ -211,7 +207,7 @@ export function getNextCycleDate(task: TaskRpg): number | null {
  *  Если задача НЕ выполнена в текущем цикле → сегодня.
  *  Если выполнена → дата следующего цикла.
  */
-export function getNextAvailableDate(task: TaskRpg): number | null {
+export function getNextAvailableDate(task: TaskRpg, nowMs: number = Date.now()): number | null {
   if (task.recurrence === 'once') return null
   if (task.recurrence === 'instant') return null
 
@@ -221,17 +217,17 @@ export function getNextAvailableDate(task: TaskRpg): number | null {
     return null
   }
   // Лимит по дате достигнут
-  if (rs?.endMode === 'byDate' && rs.endDate && Date.now() >= rs.endDate) {
+  if (rs?.endMode === 'byDate' && rs.endDate && nowMs >= rs.endDate) {
     return null
   }
 
   // Задача не выполнена в текущем цикле → доступна сегодня
   if (!task.isCompleted) {
-    return getStartOfDay(Date.now())
+    return getStartOfDay(nowMs)
   }
 
   // Задача уже выполнена → следующий цикл
-  return getNextCycleDate(task)
+  return getNextCycleDate(task, nowMs)
 }
 
 /** Проверить, исчерпаны ли выполнения на текущей неделе (для timesPerWeek) */
@@ -242,25 +238,25 @@ export function isWeeklyTimesExhausted(task: TaskRpg): boolean {
 }
 
 /** Проверить, является ли сегодня одним из выбранных дней для еженедельной задачи */
-export function isTodayScheduled(task: TaskRpg): boolean {
+export function isTodayScheduled(task: TaskRpg, nowMs: number = Date.now()): boolean {
   if (task.recurrence !== 'weekly') return true
   const rs = task.recurrenceSettings
   if ((rs?.weeklyMode ?? 'days') !== 'days') return true
   const weeklyDays = rs?.weeklyDays
   if (!weeklyDays || weeklyDays.length === 0) return true
-  return weeklyDays.includes(new Date().getDay())
+  return weeklyDays.includes(new Date(nowMs).getDay())
 }
 
 const DAY_NAMES_SHORT = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
 
 /** Получить название ближайшего запланированного дня */
-export function getNextScheduledDayName(task: TaskRpg): string | null {
+export function getNextScheduledDayName(task: TaskRpg, nowMs: number = Date.now()): string | null {
   const rs = task.recurrenceSettings
   if (task.recurrence !== 'weekly' || (rs?.weeklyMode ?? 'days') !== 'days') return null
   const weeklyDays = rs?.weeklyDays
   if (!weeklyDays || weeklyDays.length === 0) return null
 
-  const today = new Date().getDay()
+  const today = new Date(nowMs).getDay()
   const sorted = [...weeklyDays].sort((a, b) => a - b)
 
   // Ищем ближайший день после сегодня
@@ -276,12 +272,14 @@ export function getNextScheduledDayName(task: TaskRpg): string | null {
 /** Процент выполнения */
 export function getCompletionRate(task: TaskRpg): number {
   const history = task.completionHistory ?? []
-  if (history.length === 0) {
-    const completed = task.recurrenceSettings?.completedCount ?? 0
-    return completed > 0 ? 100 : 0
-  }
-  const completed = history.filter(r => r.status === 'completed').length
-  return Math.round((completed / history.length) * 100)
+  const totalCompleted = Math.max(
+    task.recurrenceSettings?.completedCount ?? 0,
+    history.filter(r => r.status === 'completed').length
+  )
+  const totalSkipped = task.totalSkipped ?? 0
+  const total = totalCompleted + totalSkipped
+  if (total === 0) return 0
+  return Math.round((totalCompleted / total) * 100)
 }
 
 /** Форматирование даты на русском */
@@ -305,9 +303,8 @@ export function formatDateShortRu(ts: number): string {
 }
 
 /** Относительное время до даты */
-export function getRelativeTimeRu(ts: number): string {
-  const now = Date.now()
-  const todayStart = getStartOfDay(now)
+export function getRelativeTimeRu(ts: number, nowMs: number = Date.now()): string {
+  const todayStart = getStartOfDay(nowMs)
   const targetStart = getStartOfDay(ts)
 
   // Сравниваем по календарным дням

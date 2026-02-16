@@ -86,6 +86,7 @@ function InfoRow({ label, value, valueClass }: { label: string; value: React.Rea
 
 interface TaskBlockProps {
   task: TaskRpg
+  nowMs?: number
 }
 
 const RECURRENCE_LABELS: Record<string, string> = {
@@ -104,8 +105,8 @@ const WEEKDAY_SHORT: string[] = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ',
 /** Дни в порядке ПН–ВС для отображения */
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
 
-export function TaskCurrentCycleBlock({ task }: TaskBlockProps) {
-  const nextAvailable = getNextAvailableDate(task)
+export function TaskCurrentCycleBlock({ task, nowMs = Date.now() }: TaskBlockProps) {
+  const nextAvailable = getNextAvailableDate(task, nowMs)
   const rs = task.recurrenceSettings
   const isLimitReached = rs?.endMode === 'byCount' && rs.endCount && (rs.completedCount ?? 0) >= rs.endCount
 
@@ -157,7 +158,7 @@ export function TaskCurrentCycleBlock({ task }: TaskBlockProps) {
             <div className="flex items-center gap-1">
               {WEEKDAY_ORDER.map(day => {
                 const isActive = rs.weeklyDays!.includes(day)
-                const isToday = new Date().getDay() === day
+                const isToday = new Date(nowMs).getDay() === day
                 return (
                   <span
                     key={day}
@@ -238,12 +239,12 @@ export function TaskCurrentCycleBlock({ task }: TaskBlockProps) {
             <div className="flex-1">
               <p className="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-0.5">Следующий цикл</p>
               <p className="text-sm font-bold text-indigo-500">{formatDateShortRu(nextAvailable)}</p>
-              <p className="text-xs text-[var(--fg-muted)]">Доступна {getRelativeTimeRu(nextAvailable).toLowerCase()}</p>
+              <p className="text-xs text-[var(--fg-muted)]">Доступна {getRelativeTimeRu(nextAvailable, nowMs).toLowerCase()}</p>
             </div>
           </div>
         ) : !task.isCompleted && nextAvailable != null ? (
           // Задача ещё не выполнена — проверяем, запланирована ли сегодня
-          isTodayScheduled(task) ? (
+          isTodayScheduled(task, nowMs) ? (
             <div className="flex items-center gap-3 rounded-xl bg-amber-500/10 p-3 border border-amber-500/30">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20">
                 <CalendarClock className="h-5 w-5 text-amber-500" />
@@ -262,7 +263,7 @@ export function TaskCurrentCycleBlock({ task }: TaskBlockProps) {
               <div className="flex-1">
                 <p className="text-xs font-semibold text-orange-400 uppercase tracking-wider mb-0.5">Текущий цикл</p>
                 <p className="text-sm font-bold text-orange-500">Сегодня не запланировано</p>
-                <p className="text-xs text-[var(--fg-muted)]">Ближайший день: {getNextScheduledDayName(task)}</p>
+                <p className="text-xs text-[var(--fg-muted)]">Ближайший день: {getNextScheduledDayName(task, nowMs)}</p>
               </div>
             </div>
           )
@@ -308,9 +309,10 @@ export function TaskNextCycleBlock({ task }: TaskBlockProps) {
 
 export function TaskStatsBlock({ task }: TaskBlockProps) {
   const history = task.completionHistory ?? []
-  const completedCount = history.filter(r => r.status === 'completed').length
-    || task.recurrenceSettings?.completedCount
-    || 0
+  const completedCount = Math.max(
+    task.recurrenceSettings?.completedCount ?? 0,
+    history.filter(r => r.status === 'completed').length
+  )
   const skippedCount = task.totalSkipped ?? 0
   const rate = getCompletionRate(task)
   const streak = task.currentStreak ?? 0
@@ -417,9 +419,9 @@ const STATUS_CONFIG = {
 } as const
 
 /** Форматирование даты для заголовка группы (14 февраля) */
-function formatGroupDate(ts: number): string {
+function formatGroupDate(ts: number, nowMs: number = Date.now()): string {
   const d = new Date(ts)
-  const now = new Date()
+  const now = new Date(nowMs)
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const target = new Date(d.getFullYear(), d.getMonth(), d.getDate())
   const diffDays = Math.round((today.getTime() - target.getTime()) / (24 * 60 * 60 * 1000))
@@ -448,7 +450,7 @@ function getDateKey(ts: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-export function TaskHistoryBlock({ task }: TaskBlockProps) {
+export function TaskHistoryBlock({ task, nowMs = Date.now() }: TaskBlockProps) {
   const history = (task.completionHistory ?? [])
     .slice()
     .sort((a, b) => (b.completedAt ?? b.cycleStart) - (a.completedAt ?? a.cycleStart))
@@ -521,7 +523,7 @@ export function TaskHistoryBlock({ task }: TaskBlockProps) {
                     {/* Date header */}
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-xs font-bold text-[var(--fg-muted)] uppercase tracking-wider">
-                        {formatGroupDate(groupTs)}
+                        {formatGroupDate(groupTs, nowMs)}
                       </span>
                       <div className="flex-1 h-px bg-[var(--border)]" />
                     </div>

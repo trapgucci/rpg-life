@@ -71,6 +71,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const completeTask = useRpgStore((s) => s.completeTask)
   const canCompleteTask = useRpgStore((s) => s.canCompleteTask)
   const skipTask = useRpgStore((s) => s.skipTask)
+  const debugNow = useRpgStore((s) => s.getDebugNow)()
 
   const archiveTask = useRpgStore((s) => s.archiveTask)
   const deleteTask = useRpgStore((s) => s.deleteTask)
@@ -183,7 +184,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
       const resetFields: Record<string, unknown> = shouldResetCompletion ? {
         isCompleted: false,
         completedAt: undefined,
-        currentCycleStart: Date.now(),
+        currentCycleStart: debugNow,
         // Сбрасываем weeklyCompletedThisWeek при изменении расписания
         ...(editRecurrenceSettings?.weeklyMode === 'timesPerWeek' ? {
           recurrenceSettings: {
@@ -255,6 +256,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   }
 
   const handleSkip = () => {
+    if (!canComplete) return
     setShowSkipConfirm(true)
   }
 
@@ -1280,9 +1282,9 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                         {!task.isCompleted ? (
                           <button
                             type="button"
-                            disabled={!isTodayScheduled(task)}
+                            disabled={!isTodayScheduled(task, debugNow)}
                             onClick={() => {
-                              if (!isTodayScheduled(task)) return
+                              if (!isTodayScheduled(task, debugNow)) return
                               if (!subtask.isCompleted) {
                                 const cr = subtask.coinReward ?? 0
                                 const xr = getSubtaskEffectiveXp(subtask)
@@ -1295,7 +1297,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                             }}
                             className={cn(
                               'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-all',
-                              !isTodayScheduled(task)
+                              !isTodayScheduled(task, debugNow)
                                 ? 'border-2 border-[var(--border)] opacity-40 cursor-not-allowed'
                                 : subtask.isCompleted
                                 ? 'bg-emerald-500 text-white'
@@ -1411,10 +1413,10 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
         {!isEditing && (
           <div className="mt-2">
             {(task.recurrence !== 'once' || (task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate)) && (
-              <TaskCurrentCycleBlock task={task} />
+              <TaskCurrentCycleBlock task={task} nowMs={debugNow} />
             )}
             {task.recurrence !== 'once' && <TaskStatsBlock task={task} />}
-            <TaskHistoryBlock task={task} />
+            <TaskHistoryBlock task={task} nowMs={debugNow} />
           </div>
         )}
       </div>
@@ -1444,7 +1446,13 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
               <button
                 type="button"
                 onClick={handleSkip}
-                className="flex items-center justify-center gap-1.5 rounded-2xl px-3 md:px-4 py-4 font-medium text-sm transition-all duration-200 bg-blue-500/10 text-blue-500 border border-blue-500/30 hover:bg-blue-500/20 hover:border-blue-500/50 hover:scale-[1.02] active:scale-[0.98] min-w-[48px]"
+                disabled={!canComplete}
+                className={cn(
+                  'flex items-center justify-center gap-1.5 rounded-2xl px-3 md:px-4 py-4 font-medium text-sm transition-all duration-200 min-w-[48px]',
+                  canComplete
+                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98]'
+                    : 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed opacity-50'
+                )}
                 title="Пропустить (отметить как выполненное без наград)"
               >
                 <SkipForward className="h-4 w-4 shrink-0" />
@@ -1454,7 +1462,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
             </div>
           )}
           {task.isCompleted && (() => {
-            const nextDate = getNextAvailableDate(task)
+            const nextDate = getNextAvailableDate(task, debugNow)
             return (
               <div className="flex flex-col items-center gap-1 rounded-2xl bg-blue-500/10 py-4 text-blue-500">
                 <div className="flex items-center gap-2">
@@ -1463,13 +1471,13 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 </div>
                 {nextDate != null && (
                   <span className="text-xs text-blue-400">
-                    Следующий цикл: {getRelativeTimeRu(nextDate).toLowerCase()}
+                    Следующий цикл: {getRelativeTimeRu(nextDate, debugNow).toLowerCase()}
                   </span>
                 )}
               </div>
             )
           })()}
-          {!canComplete && !task.isCompleted && task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate && Date.now() >= task.recurrenceSettings.endDate && (
+          {!canComplete && !task.isCompleted && task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate && debugNow >= task.recurrenceSettings.endDate && (
             <div className="flex items-center justify-center gap-2 rounded-2xl bg-red-500/10 py-4 text-red-500">
               <Clock className="h-5 w-5" />
               <span className="font-semibold">Крайний срок истёк</span>
