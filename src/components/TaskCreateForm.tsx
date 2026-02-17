@@ -266,15 +266,10 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         <button
           type="button"
           onClick={() => setShowGroupModal(true)}
-          className={cn(
-            'flex w-full items-center gap-3 rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] px-4 py-3 text-left transition-colors',
-            'hover:bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]'
-          )}
+          className="flex w-full items-center gap-2 rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] px-3 py-2 text-left transition-colors hover:bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]"
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--accent-subtle)]">
-            <Folder className="h-5 w-5 text-[var(--accent)]" />
-          </div>
-          <span className="flex-1 text-sm font-semibold text-[var(--fg)]">
+          <Folder className="h-4 w-4 shrink-0 text-[var(--accent)]" />
+          <span className="flex-1 text-sm text-[var(--fg)]">
             {selectedGroupId ? getTaskGroups().find((g) => g.id === selectedGroupId)?.name ?? 'Без группы' : 'Без группы'}
           </span>
           <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />

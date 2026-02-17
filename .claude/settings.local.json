@@ -22,7 +22,15 @@
       "Bash(dir:*)",
       "Bash(findstr:*)",
       "Bash(npm install:*)",
-      "Bash(ping:*)"
+      "Bash(ping:*)",
+      "Bash(python3:*)",
+      "Bash(printf:*)",
+      "Bash(cat:*)",
+      "Bash(\"c:/Users/Jahseh/Desktop/rpg-life/src/components/shop/RecipeDetailPanel.tsx\":*)",
+      "Bash(git merge:*)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Jahseh\\Desktop\\rpg-life"
     ]
   }
 }

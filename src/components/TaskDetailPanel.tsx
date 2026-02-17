@@ -483,9 +483,9 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 <button
                   type="button"
                   onClick={() => setShowGroupModal(true)}
-                  className="flex w-full items-center gap-3 rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] px-4 py-2 text-left transition-colors hover:bg-[var(--surface-elevated)]"
+                  className="flex w-full items-center gap-2 rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] px-3 py-2 text-left transition-colors hover:bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]"
                 >
-                  <Folder className="h-4 w-4 text-[var(--accent)]" />
+                  <Folder className="h-4 w-4 shrink-0 text-[var(--accent)]" />
                   <span className="flex-1 text-sm">
                     {editGroupId ? getTaskGroups().find((g) => g.id === editGroupId)?.name : 'Без группы'}
                   </span>

@@ -105,15 +105,15 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
   return (
     <div className="glass-card flex h-full flex-col rounded-2xl overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 md:p-6 pb-0">
-        <h2 className="text-xl font-bold text-[var(--fg)]">Новый предмет</h2>
+      <div className="flex items-center justify-between p-4 md:p-6 pb-4">
+        <h2 className="text-lg font-semibold text-[var(--fg)]">Новый предмет</h2>
         <button type="button" onClick={onClose} className="icon-btn">
           <X className="h-5 w-5" />
         </button>
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 pt-4 flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-4 md:pb-6 flex flex-col gap-4">
         {/* Name + icon buttons */}
         <div className="flex gap-2 items-end">
           <div className="flex-1 min-w-0">
@@ -123,7 +123,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Введите название..."
-              className="input w-full text-base h-9 py-0"
+              className="input w-full text-base"
               autoFocus
             />
           </div>
@@ -177,7 +177,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
         <div>
           <p className="text-sm font-medium text-[var(--fg-muted)] mb-2">Группа</p>
           {itemGroups.length === 0 ? (
-            <p className="text-xs text-[var(--fg-muted)]">Группы пока не созданы. Добавьте их через кнопку «Управлять группами».</p>
+            <p className="text-xs text-[var(--fg-muted)]">Группы пока не созданы. Добавьте их в выпадающем списке «Группа».</p>
           ) : (
             <>
               <div ref={groupsContainerRef} className={cn('flex flex-wrap gap-1.5', !groupsExpanded && 'max-h-[4.5rem] overflow-hidden')}>
@@ -186,7 +186,6 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                 </button>
                 {itemGroups.map((group) => (
                   <button key={group.id} type="button" onClick={() => setGroupId(group.id)} className={cn('inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors', groupId === group.id ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm' : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]')}>
-                    <span className="inline-flex h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: group.color ?? '#22c55e' }} />
                     {group.name}
                   </button>
                 ))}
