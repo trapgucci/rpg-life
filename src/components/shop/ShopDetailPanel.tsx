@@ -3,8 +3,10 @@ import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
 import {
   X, Pencil, Trash2, Coins, Gem, Gift, Percent, ShoppingCart,
-  ChevronRight, Settings, Plus, Smile, ImagePlus, Sparkles, Folder,
+  ChevronRight, Settings, Plus, Sparkles, Folder,
 } from 'lucide-react'
+import ItemGroupSelectModal from './ItemGroupSelectModal'
+import IconSourcePicker from './IconSourcePicker'
 import { HabitIcon } from '../HabitIcon'
 import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem, ItemRarity } from '../../types/domain'
@@ -95,6 +97,8 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
   const [showDiscountModal, setShowDiscountModal] = useState(false)
   const [showCraftingTypePicker, setShowCraftingTypePicker] = useState(false)
   const [activeCraftingModal, setActiveCraftingModal] = useState<'create' | 'material' | null>(null)
+  const [showGroupModal, setShowGroupModal] = useState(false)
+  const [showIconSource, setShowIconSource] = useState(false)
 
   const iconFileInputRef = useRef<HTMLInputElement>(null)
 
@@ -261,36 +265,43 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
             /* ── EDIT MODE ─────────────────────────────────────────────── */
             <div className="flex-1 flex flex-col gap-4">
 
-              {/* Name + Emoji + Image buttons */}
-              <div className="flex gap-2 items-end">
-                <div className="flex-1 min-w-0">
-                  <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Название предмета</label>
+              {/* Name + icon avatar */}
+              <div>
+                <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Название предмета</label>
+                <div className="flex gap-2 items-stretch">
+                  <button
+                    type="button"
+                    onClick={() => setShowIconSource(true)}
+                    className="relative shrink-0 group/preview flex items-center justify-center w-[42px] rounded-xl overflow-hidden ring-1 ring-inset shadow-sm hover:ring-[var(--accent)] transition-all cursor-pointer"
+                    style={{
+                      background: `linear-gradient(to bottom, ${iconBgColor}35, ${iconBgColor}18)`,
+                      boxShadow: `0 1px 3px ${iconBgColor}25`,
+                      '--tw-ring-color': `${iconBgColor}30`,
+                    } as React.CSSProperties}
+                    title="Изменить иконку"
+                  >
+                    {editIconImage ? (
+                      <img src={editIconImage} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <HabitIcon iconName={editIcon || 'Scroll'} size={22} />
+                    )}
+                    {editIconImage && (
+                      <span
+                        onClick={(e) => { e.stopPropagation(); setEditIconImage('') }}
+                        className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white opacity-0 group-hover/preview:opacity-100 transition-opacity"
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </span>
+                    )}
+                  </button>
                   <input
                     type="text"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     placeholder="Введите название..."
-                    className="input w-full text-base"
+                    className="input flex-1 min-w-0 text-base"
                     autoFocus
                   />
-                </div>
-                <div className="flex gap-1 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setShowIconPicker(true)}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] transition-colors shrink-0"
-                    title="Выбрать эмодзи"
-                  >
-                    <Smile className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => iconFileInputRef.current?.click()}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] transition-colors shrink-0"
-                    title="Своё фото из файлов"
-                  >
-                    <ImagePlus className="h-4 w-4" />
-                  </button>
                   <input
                     ref={iconFileInputRef}
                     type="file"
@@ -307,35 +318,6 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 </div>
               </div>
 
-              {/* Icon / Image preview */}
-              {(editIcon || editIconImage) && (
-                <div className="flex items-center gap-2">
-                  <div
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden ring-1 ring-inset shadow-sm"
-                    style={{
-                      background: `linear-gradient(to bottom, ${iconBgColor}35, ${iconBgColor}18)`,
-                      boxShadow: `0 1px 3px ${iconBgColor}25`,
-                      '--tw-ring-color': `${iconBgColor}30`,
-                    } as React.CSSProperties}
-                  >
-                    {editIconImage ? (
-                      <img src={editIconImage} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <HabitIcon iconName={editIcon || 'Sword'} size={20} />
-                    )}
-                  </div>
-                  {editIconImage && (
-                    <button
-                      type="button"
-                      onClick={() => setEditIconImage('')}
-                      className="text-xs text-red-500 hover:underline"
-                    >
-                      Убрать фото
-                    </button>
-                  )}
-                </div>
-              )}
-
               {/* Description */}
               <div>
                 <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Описание предмета</label>
@@ -348,45 +330,20 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 />
               </div>
 
-              {/* Group selector (pills) */}
+              {/* Group selector (button + modal) */}
               <div>
-                <p className="text-sm font-medium text-[var(--fg-muted)] mb-2">Группа</p>
-                {itemGroups.length === 0 ? (
-                  <p className="text-xs text-[var(--fg-muted)]">
-                    Группы пока не созданы.
-                  </p>
-                ) : (
-                  <div className="flex flex-wrap gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setEditGroupId(null)}
-                      className={cn(
-                        'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
-                        editGroupId === null
-                          ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
-                          : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
-                      )}
-                    >
-                      Без группы
-                    </button>
-                    {itemGroups.map((g) => (
-                      <button
-                        key={g.id}
-                        type="button"
-                        onClick={() => setEditGroupId(g.id)}
-                        className={cn(
-                          'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
-                          editGroupId === g.id
-                            ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
-                            : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
-                        )}
-                      >
-                        <span className="inline-flex h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: g.color ?? '#22c55e' }} />
-                        {g.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Группа</label>
+                <button
+                  type="button"
+                  onClick={() => setShowGroupModal(true)}
+                  className="flex w-full items-center gap-2 rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] px-3 py-2 text-left transition-colors hover:bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]"
+                >
+                  <Folder className="h-4 w-4 shrink-0 text-[var(--accent)]" />
+                  <span className="flex-1 text-sm text-[var(--fg)]">
+                    {editGroupId ? itemGroups.find((g) => g.id === editGroupId)?.name ?? 'Без группы' : 'Без группы'}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
+                </button>
               </div>
 
               {/* Availability toggles */}
@@ -1101,6 +1058,15 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
         variant="save"
       />
 
+      {/* Icon source picker */}
+      {showIconSource && (
+        <IconSourcePicker
+          onSelectIcon={() => { setShowIconSource(false); setShowIconPicker(true) }}
+          onSelectPhoto={() => { setShowIconSource(false); iconFileInputRef.current?.click() }}
+          onClose={() => setShowIconSource(false)}
+        />
+      )}
+
       {/* Emoji picker */}
       {showIconPicker && (
         <EmojiPickerModal
@@ -1157,6 +1123,14 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
           defaultIngredientIcon={editIcon || getItemIcon(item)}
         />
       )}
+
+      {/* Group select modal */}
+      <ItemGroupSelectModal
+        isOpen={showGroupModal}
+        selectedGroupId={editGroupId}
+        onSelect={setEditGroupId}
+        onClose={() => setShowGroupModal(false)}
+      />
     </div>
   )
 }

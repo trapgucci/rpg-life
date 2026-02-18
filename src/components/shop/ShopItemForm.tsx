@@ -1,15 +1,18 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
-import { X, Smile, ImagePlus, Plus, Settings, Gift, ChevronRight, Percent, Sparkles } from 'lucide-react'
+import { X, Plus, Settings, Gift, ChevronRight, Percent, Sparkles, Folder } from 'lucide-react'
+import { HabitIcon } from '../HabitIcon'
 import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem, ItemRarity } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
 import { getItemIcon, RARITY_LABELS, RARITY_BADGE_CLASSES } from './shopUtils'
 import type { LootTableEntry } from './shopUtils'
 import EmojiPickerModal from './EmojiPickerModal'
+import IconSourcePicker from './IconSourcePicker'
 import LootboxEffectModal from './LootboxEffectModal'
 import DiscountVoucherModal from './DiscountVoucherModal'
+import ItemGroupSelectModal from './ItemGroupSelectModal'
 import { CraftingTypePickerModal, CraftingCreateItemModal, CraftingMaterialModal } from './CraftingModals'
 
 interface ShopItemFormProps {
@@ -33,9 +36,10 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [icon, setIcon] = useState('')
+  const [icon, setIcon] = useState('Scroll')
   const [iconImage, setIconImage] = useState('')
   const [showIconPicker, setShowIconPicker] = useState(false)
+  const [showIconSource, setShowIconSource] = useState(false)
   const iconFileInputRef = useRef<HTMLInputElement>(null)
   const [rarity, setRarity] = useState<ItemRarity>('common')
   const [coinCost, setCoinCost] = useState(15)
@@ -55,19 +59,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
   const [showDiscountModal, setShowDiscountModal] = useState(false)
   const [showCraftingTypePicker, setShowCraftingTypePicker] = useState(false)
   const [activeCraftingModal, setActiveCraftingModal] = useState<'create' | 'material' | null>(null)
-  const [groupsExpanded, setGroupsExpanded] = useState(false)
-  const groupsContainerRef = useRef<HTMLDivElement>(null)
-  const [groupsFormOverflow, setGroupsFormOverflow] = useState(false)
-
-  useEffect(() => {
-    const el = groupsContainerRef.current
-    if (!el) return
-    const check = () => setGroupsFormOverflow(el.scrollHeight > el.clientHeight)
-    check()
-    const ro = new ResizeObserver(check)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [itemGroups])
+  const [showGroupModal, setShowGroupModal] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -115,26 +107,38 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-4 md:pb-6 flex flex-col gap-4">
-        {/* Name + icon buttons */}
-        <div className="flex gap-2 items-end">
-          <div className="flex-1 min-w-0">
-            <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Название предмета</label>
+        {/* Name + icon avatar */}
+        <div>
+          <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Название предмета</label>
+          <div className="flex gap-2 items-stretch">
+            <button
+              type="button"
+              onClick={() => setShowIconSource(true)}
+              className="relative shrink-0 group/preview flex items-center justify-center w-[42px] rounded-xl overflow-hidden ring-1 ring-inset ring-[var(--border)] shadow-sm bg-[var(--surface)] hover:ring-[var(--accent)] transition-all cursor-pointer"
+              title="Изменить иконку"
+            >
+              {iconImage ? (
+                <img src={iconImage} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <HabitIcon iconName={icon || 'Scroll'} size={22} />
+              )}
+              {iconImage && (
+                <span
+                  onClick={(e) => { e.stopPropagation(); setIconImage('') }}
+                  className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white opacity-0 group-hover/preview:opacity-100 transition-opacity"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </span>
+              )}
+            </button>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Введите название..."
-              className="input w-full text-base"
+              className="input flex-1 min-w-0 text-base"
               autoFocus
             />
-          </div>
-          <div className="flex gap-1 shrink-0">
-            <button type="button" onClick={() => setShowIconPicker(true)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] transition-colors shrink-0" title="Выбрать эмодзи">
-              <Smile className="h-4 w-4" />
-            </button>
-            <button type="button" onClick={() => iconFileInputRef.current?.click()} className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] transition-colors shrink-0" title="Своё фото из файлов">
-              <ImagePlus className="h-4 w-4" />
-            </button>
             <input ref={iconFileInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
               const file = e.target.files?.[0]
               if (!file || !file.type.startsWith('image/')) return
@@ -175,28 +179,18 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
 
         {/* Group */}
         <div>
-          <p className="text-sm font-medium text-[var(--fg-muted)] mb-2">Группа</p>
-          {itemGroups.length === 0 ? (
-            <p className="text-xs text-[var(--fg-muted)]">Группы пока не созданы. Добавьте их в выпадающем списке «Группа».</p>
-          ) : (
-            <>
-              <div ref={groupsContainerRef} className={cn('flex flex-wrap gap-1.5', !groupsExpanded && 'max-h-[4.5rem] overflow-hidden')}>
-                <button type="button" onClick={() => setGroupId(null)} className={cn('inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors', groupId === null ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm' : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]')}>
-                  Без группы
-                </button>
-                {itemGroups.map((group) => (
-                  <button key={group.id} type="button" onClick={() => setGroupId(group.id)} className={cn('inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors', groupId === group.id ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm' : 'bg-[var(--surface)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]')}>
-                    {group.name}
-                  </button>
-                ))}
-              </div>
-              {(groupsFormOverflow || groupsExpanded) && (
-                <button type="button" onClick={() => setGroupsExpanded((v) => !v)} className="mt-2 text-xs font-medium text-[var(--accent)] hover:underline">
-                  {groupsExpanded ? 'Свернуть' : 'Показать все группы'}
-                </button>
-              )}
-            </>
-          )}
+          <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Группа</label>
+          <button
+            type="button"
+            onClick={() => setShowGroupModal(true)}
+            className="flex w-full items-center gap-2 rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] px-3 py-2 text-left transition-colors hover:bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]"
+          >
+            <Folder className="h-4 w-4 shrink-0 text-[var(--accent)]" />
+            <span className="flex-1 text-sm text-[var(--fg)]">
+              {groupId ? itemGroups.find((g) => g.id === groupId)?.name ?? 'Без группы' : 'Без группы'}
+            </span>
+            <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
+          </button>
         </div>
 
         {/* Availability */}
@@ -360,7 +354,20 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
       )}
       {showDiscountModal && <DiscountVoucherModal value={discountPercent} onSave={(p) => setDiscountPercent(p)} onClose={() => setShowDiscountModal(false)} />}
       {showLootboxModal && <LootboxEffectModal lootTable={lootTable} shopItems={shopItems} onSave={setLootTable} onClose={() => setShowLootboxModal(false)} />}
+      {showIconSource && (
+        <IconSourcePicker
+          onSelectIcon={() => { setShowIconSource(false); setShowIconPicker(true) }}
+          onSelectPhoto={() => { setShowIconSource(false); iconFileInputRef.current?.click() }}
+          onClose={() => setShowIconSource(false)}
+        />
+      )}
       {showIconPicker && <EmojiPickerModal currentIcon={icon} onSelect={setIcon} onClose={() => setShowIconPicker(false)} />}
+      <ItemGroupSelectModal
+        isOpen={showGroupModal}
+        selectedGroupId={groupId}
+        onSelect={setGroupId}
+        onClose={() => setShowGroupModal(false)}
+      />
     </div>
   )
 }
