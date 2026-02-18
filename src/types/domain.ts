@@ -549,16 +549,16 @@ export interface Achievement {
 // ─── Crafting System ────────────────────────────────────────────────────────
 
 /** Источник получения фрагментов */
-export type FragmentSourceType = 'task_linked' | 'habit_linked' | 'random_drop'
+export type FragmentSourceType = 'task_linked' | 'streak_reward' | 'random_drop'
 
 export interface FragmentSource {
   type: FragmentSourceType
   /** ID задачи (для task_linked) */
   taskId?: TaskId
-  /** ID привычки (для habit_linked) */
-  habitId?: HabitId
   /** Шанс дропа 0.0-1.0 (для random_drop) */
   dropChance?: number
+  /** Необходимая длина стрика для получения фрагмента (для streak_reward) */
+  streakRequired?: number
 }
 
 export interface CraftRecipe {
@@ -566,8 +566,10 @@ export interface CraftRecipe {
   profileId: ProfileId
   /** Название фрагмента (например, "Фрагмент консоли") */
   fragmentName: string
-  /** Иконка фрагмента */
+  /** Иконка фрагмента (Lucide icon name) */
   fragmentIcon: string
+  /** Кастомное изображение фрагмента (data URL) */
+  fragmentIconImage?: string
   /** Цвет фрагмента */
   fragmentColor: string
   /** Сколько фрагментов нужно собрать */

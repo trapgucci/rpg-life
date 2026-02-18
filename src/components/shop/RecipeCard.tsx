@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { cn } from '../../lib/cn'
-import { Pencil, Trash2, CheckCircle2, Sparkles } from 'lucide-react'
+import { Trash2, CheckCircle2, Sparkles, Dice5, Crosshair, Flame } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
 import ConfirmModal from '../ConfirmModal'
 import type { CraftRecipe } from '../../types/domain'
@@ -20,11 +20,12 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
   if (!recipe) return null
 
   const rawSource = (recipe as any).fragmentSource
-  const fragmentSource: { type?: string; dropChance?: number; linkedTaskIds?: string[] } =
+  const fragmentSource: { type?: string; dropChance?: number; linkedTaskIds?: string[]; streakRequired?: number } =
     rawSource != null && typeof rawSource === 'object'
       ? rawSource
       : { type: 'random_drop', dropChance: 0 }
-  const sourceType = fragmentSource?.type ?? 'random_drop'
+  const rawType = fragmentSource?.type ?? 'random_drop'
+  const sourceType = rawType === 'habit_linked' ? 'random_drop' : rawType
 
   const progress = recipe.fragmentsRequired > 0
     ? Math.min(1, recipe.fragmentsCollected / recipe.fragmentsRequired)
@@ -32,6 +33,7 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
 
   const canCraft = recipe.fragmentsCollected >= recipe.fragmentsRequired && !recipe.crafted
   const rarityColor = RARITY_COLORS[recipe.resultRarity]
+  const fragmentIconImage = (recipe as any).fragmentIconImage ?? ''
 
   return (
     <button
@@ -50,7 +52,7 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
         {/* Neumorphic icon */}
         <div
           className={cn(
-            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl transition-all',
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl transition-all overflow-hidden',
             'ring-1 ring-inset shadow-sm',
           )}
           style={{
@@ -60,7 +62,11 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
             '--tw-ring-color': `${rarityColor}40`,
           } as React.CSSProperties}
         >
-          <HabitIcon iconName={migrateIcon(recipe.fragmentIcon, 'Puzzle')} size={22} />
+          {fragmentIconImage ? (
+            <img src={fragmentIconImage} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <HabitIcon iconName={migrateIcon(recipe.fragmentIcon, 'Puzzle')} size={22} />
+          )}
         </div>
 
         {/* Content */}
@@ -81,9 +87,9 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
               {RARITY_LABELS[recipe.resultRarity]}
             </span>
             <span className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 px-2 py-0.5 text-xs font-semibold text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10">
-              {sourceType === 'task_linked' && <><HabitIcon iconName="Crosshair" size={12} className="inline" /> Задачи</>}
-              {sourceType === 'habit_linked' && <><HabitIcon iconName="Rocket" size={12} className="inline" /> Привычки</>}
-              {sourceType === 'random_drop' && <><HabitIcon iconName="Dice5" size={12} className="inline" /> Дроп</>}
+              {sourceType === 'task_linked' && <><Crosshair className="h-3 w-3" /> Задачи</>}
+              {sourceType === 'streak_reward' && <><Flame className="h-3 w-3" /> Стрик</>}
+              {sourceType === 'random_drop' && <><Dice5 className="h-3 w-3" /> Дроп</>}
             </span>
           </div>
 
@@ -130,8 +136,8 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
 
       <ConfirmModal
         isOpen={showDeleteConfirm}
-        title="Удалить рецепт?"
-        message="Рецепт будет удалён безвозвратно."
+        title="Удалить фрагмент?"
+        message="Фрагмент будет удалён безвозвратно."
         variant="danger"
         confirmText="Удалить"
         onConfirm={() => {

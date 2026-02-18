@@ -3,7 +3,7 @@ import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
 import {
   X, Pencil, Trash2, Coins, Gem, Gift, Percent, ShoppingCart,
-  ChevronRight, Settings, Plus, Sparkles, Folder,
+  ChevronRight, Settings, Folder,
 } from 'lucide-react'
 import ItemGroupSelectModal from './ItemGroupSelectModal'
 import IconSourcePicker from './IconSourcePicker'
@@ -20,7 +20,6 @@ import ConfirmModal from '../ConfirmModal'
 import EmojiPickerModal from './EmojiPickerModal'
 import LootboxEffectModal from './LootboxEffectModal'
 import DiscountVoucherModal from './DiscountVoucherModal'
-import { CraftingTypePickerModal, CraftingCreateItemModal, CraftingMaterialModal } from './CraftingModals'
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
@@ -95,8 +94,6 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
   const [showLootboxModal, setShowLootboxModal] = useState(false)
   const [showDiscountModal, setShowDiscountModal] = useState(false)
-  const [showCraftingTypePicker, setShowCraftingTypePicker] = useState(false)
-  const [activeCraftingModal, setActiveCraftingModal] = useState<'create' | 'material' | null>(null)
   const [showGroupModal, setShowGroupModal] = useState(false)
   const [showIconSource, setShowIconSource] = useState(false)
 
@@ -716,27 +713,6 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 </div>
               </div>
 
-              {/* Crafting type picker */}
-              <div>
-                <div className="glass-card flex flex-col items-center justify-center rounded-2xl px-6 py-6 text-center">
-                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-purple-500/10">
-                    <Sparkles className="h-6 w-6 text-purple-500" />
-                  </div>
-                  <p className="text-sm font-semibold text-[var(--fg)]">Рецепты крафта</p>
-                  <p className="mt-1 text-xs text-[var(--fg-muted)] max-w-xs">
-                    Создайте рецепты крафта для этого предмета.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowCraftingTypePicker(true)}
-                    className="mt-3 inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white shadow-md hover:shadow-lg transition-shadow"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Добавить рецепт
-                  </button>
-                </div>
-              </div>
-
               {/* Save / Cancel buttons */}
               <div className="flex gap-2 pt-1">
                 <button
@@ -1092,35 +1068,6 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
           value={editDiscountPercent}
           onSave={(p) => setEditDiscountPercent(p)}
           onClose={() => setShowDiscountModal(false)}
-        />
-      )}
-
-      {/* Crafting type picker */}
-      {showCraftingTypePicker && (
-        <CraftingTypePickerModal
-          onSelect={(type) => {
-            setShowCraftingTypePicker(false)
-            setActiveCraftingModal(type)
-          }}
-          onClose={() => setShowCraftingTypePicker(false)}
-        />
-      )}
-
-      {/* Crafting create item modal */}
-      {activeCraftingModal === 'create' && (
-        <CraftingCreateItemModal
-          onClose={() => setActiveCraftingModal(null)}
-          defaultResultName={editName}
-          defaultResultIcon={editIcon || getItemIcon(item)}
-        />
-      )}
-
-      {/* Crafting material modal */}
-      {activeCraftingModal === 'material' && (
-        <CraftingMaterialModal
-          onClose={() => setActiveCraftingModal(null)}
-          defaultIngredientName={editName}
-          defaultIngredientIcon={editIcon || getItemIcon(item)}
         />
       )}
 

@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react'
 import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
-import { X, Plus, Settings, Gift, ChevronRight, Percent, Sparkles, Folder } from 'lucide-react'
+import { X, Settings, Gift, ChevronRight, Percent, Folder } from 'lucide-react'
 import { HabitIcon } from '../HabitIcon'
 import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem, ItemRarity } from '../../types/domain'
@@ -13,7 +13,6 @@ import IconSourcePicker from './IconSourcePicker'
 import LootboxEffectModal from './LootboxEffectModal'
 import DiscountVoucherModal from './DiscountVoucherModal'
 import ItemGroupSelectModal from './ItemGroupSelectModal'
-import { CraftingTypePickerModal, CraftingCreateItemModal, CraftingMaterialModal } from './CraftingModals'
 
 interface ShopItemFormProps {
   defaultGroupId?: string | null
@@ -57,8 +56,6 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
   const [showLootboxModal, setShowLootboxModal] = useState(false)
   const [showDiscountModal, setShowDiscountModal] = useState(false)
-  const [showCraftingTypePicker, setShowCraftingTypePicker] = useState(false)
-  const [activeCraftingModal, setActiveCraftingModal] = useState<'create' | 'material' | null>(null)
   const [showGroupModal, setShowGroupModal] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -261,20 +258,6 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
           </div>
         </div>
 
-        {/* Crafting recipes placeholder */}
-        <div className="mt-4">
-          <div className="glass-card flex flex-col items-center justify-center rounded-2xl px-6 py-8 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-500/10">
-              <Sparkles className="h-8 w-8 text-purple-500" />
-            </div>
-            <p className="text-sm font-semibold text-[var(--fg)]">Рецептов крафта пока нет</p>
-            <p className="mt-1 text-sm text-[var(--fg-muted)] max-w-xs">Создайте рецепты крафта, чтобы получать этот предмет разными способами.</p>
-            <button type="button" onClick={() => setShowCraftingTypePicker(true)} className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white shadow-md hover:shadow-lg transition-shadow">
-              <Plus className="h-4 w-4" />Добавить рецепт
-            </button>
-          </div>
-        </div>
-
         {/* Buttons */}
         <div className="flex gap-3 pt-2">
           <button type="button" onClick={onClose} className="btn-secondary flex-1">Отмена</button>
@@ -283,11 +266,6 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
       </form>
 
       {/* Modals */}
-      {showCraftingTypePicker && (
-        <CraftingTypePickerModal onSelect={(type) => { setShowCraftingTypePicker(false); setActiveCraftingModal(type) }} onClose={() => setShowCraftingTypePicker(false)} />
-      )}
-      {activeCraftingModal === 'create' && <CraftingCreateItemModal onClose={() => setActiveCraftingModal(null)} defaultResultName={name} defaultResultIcon={icon || 'Sword'} />}
-      {activeCraftingModal === 'material' && <CraftingMaterialModal onClose={() => setActiveCraftingModal(null)} defaultIngredientName={name} defaultIngredientIcon={icon || 'Sword'} />}
       {showAdvancedSettings && (
         <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setShowAdvancedSettings(false)}>
           <div className="modal-content max-w-lg">
