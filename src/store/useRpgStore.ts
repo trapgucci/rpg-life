@@ -301,7 +301,7 @@ interface RpgStoreState {
   deleteCraftRecipe: (id: CraftRecipeId) => void
   addFragment: (recipeId: CraftRecipeId, amount?: number) => void
   craftItem: (recipeId: CraftRecipeId) => boolean
-  tryRandomFragmentDrop: () => void
+  tryRandomFragmentDrop: (taskId?: TaskId) => void
 
   // Shop actions
   getShopItems: () => ShopItem[]
@@ -730,7 +730,7 @@ export const useRpgStore = create<RpgStoreState>()(
           // Награды за подзадачи НЕ забираются — игрок их заработал
           if (task.recurrence === 'instant') {
             updateStats((s) => ({ totalTasksCompleted: s.totalTasksCompleted + 1 }))
-            tryRandomFragmentDrop()
+            tryRandomFragmentDrop(task.id)
             checkAchievements()
 
             // Увеличиваем счетчик выполнений для byCount
@@ -800,7 +800,7 @@ export const useRpgStore = create<RpgStoreState>()(
           if (task.recurrence === 'daily' || task.recurrence === 'weekly' ||
               task.recurrence === 'monthly' || task.recurrence === 'yearly' || task.recurrence === 'custom') {
             updateStats((s) => ({ totalTasksCompleted: s.totalTasksCompleted + 1 }))
-            tryRandomFragmentDrop()
+            tryRandomFragmentDrop(task.id)
             checkAchievements()
 
             // Увеличиваем счетчик выполнений для byCount
@@ -908,7 +908,7 @@ export const useRpgStore = create<RpgStoreState>()(
           })
 
           updateStats((s) => ({ totalTasksCompleted: s.totalTasksCompleted + 1 }))
-          tryRandomFragmentDrop()
+          tryRandomFragmentDrop(task.id)
           checkAchievements()
         },
 
@@ -1535,20 +1535,31 @@ export const useRpgStore = create<RpgStoreState>()(
           return true
         },
 
-        tryRandomFragmentDrop: () => {
+        tryRandomFragmentDrop: (taskId?: string) => {
           const recipes = get().getCraftRecipes().filter((r) => !r.crafted)
 
           recipes.forEach((recipe) => {
-            // Защита от старых рецептов без поля sources
-            if (!recipe.sources || !Array.isArray(recipe.sources)) return
+            const fs = (recipe as any).fragmentSource as
+              | { type?: string; dropChance?: number; linkedTaskIds?: string[]; streakRequired?: number }
+              | undefined
+            if (!fs || !fs.type) return
 
-            recipe.sources.forEach((source) => {
-              if (source.type === 'random_drop' && source.dropChance) {
-                if (Math.random() < source.dropChance) {
+            const chance = typeof fs.dropChance === 'number' ? fs.dropChance / 100 : 0
+
+            if (fs.type === 'random_drop' && chance > 0) {
+              if (Math.random() < chance) {
+                get().addFragment(recipe.id, 1)
+              }
+            }
+
+            if (fs.type === 'task_linked' && chance > 0 && taskId) {
+              const linked = fs.linkedTaskIds ?? []
+              if (linked.includes(taskId)) {
+                if (Math.random() < chance) {
                   get().addFragment(recipe.id, 1)
                 }
               }
-            })
+            }
           })
         },
 

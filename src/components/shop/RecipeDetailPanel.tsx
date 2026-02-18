@@ -145,7 +145,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
     if (!editFragmentName.trim()) return
     const fragmentSourceData =
       editSourceType === 'task_linked'
-        ? { type: 'task_linked' as const, linkedTaskIds: editLinkedTaskIds }
+        ? { type: 'task_linked' as const, linkedTaskIds: editLinkedTaskIds, dropChance: editDropChance }
         : editSourceType === 'streak_reward'
           ? { type: 'streak_reward' as const, streakRequired: editStreakRequired }
           : { type: 'random_drop' as const, dropChance: editDropChance }
@@ -251,7 +251,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                     {sourceType === 'random_drop' && (
                       <><Dice5 className="h-3.5 w-3.5" /> Случайный дроп{typeof fragmentSource?.dropChance === 'number' && fragmentSource.dropChance > 0 && ` ${fragmentSource.dropChance}%`}</>
                     )}
-                    {sourceType === 'task_linked' && <><Crosshair className="h-3.5 w-3.5" /> Привязка к задачам</>}
+                    {sourceType === 'task_linked' && <><Crosshair className="h-3.5 w-3.5" /> Привязка к задачам{typeof fragmentSource?.dropChance === 'number' && fragmentSource.dropChance > 0 && ` ${fragmentSource.dropChance}%`}</>}
                     {sourceType === 'streak_reward' && <><Flame className="h-3.5 w-3.5" /> За стрик{typeof fragmentSource?.streakRequired === 'number' && ` ${fragmentSource.streakRequired}д`}</>}
                   </span>
 
@@ -508,17 +508,32 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
             )}
 
             {editSourceType === 'task_linked' && (
-              <div className="glass rounded-2xl p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-[var(--fg)]">Привязанные задачи</p>
-                    <p className="text-xs text-[var(--fg-muted)] mt-0.5">Выбрано: {editLinkedTaskIds.length || 0}</p>
+              <>
+                <div className="glass rounded-2xl p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-[var(--fg)]">Привязанные задачи</p>
+                      <p className="text-xs text-[var(--fg-muted)] mt-0.5">Выбрано: {editLinkedTaskIds.length || 0}</p>
+                    </div>
+                    <button type="button" onClick={() => setShowTaskPicker(true)} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-b from-[var(--accent)] to-[var(--accent)]/90 px-4 py-2 text-sm font-medium text-white shadow-md shadow-[var(--accent)]/25 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all">
+                      Выбрать
+                    </button>
                   </div>
-                  <button type="button" onClick={() => setShowTaskPicker(true)} className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-b from-[var(--accent)] to-[var(--accent)]/90 px-4 py-2 text-sm font-medium text-white shadow-md shadow-[var(--accent)]/25 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all">
-                    Выбрать
-                  </button>
                 </div>
-              </div>
+                <div className="glass rounded-2xl p-4">
+                  <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Шанс выпадения</label>
+                  <div className="flex items-center gap-3">
+                    <input type="range" min={1} max={100} value={editDropChance} onChange={(e) => setEditDropChance(Number(e.target.value))} className="flex-1 accent-[var(--accent)]" />
+                    <div className="flex items-center gap-1">
+                      <input type="number" value={editDropChance} onChange={(e) => setEditDropChance(Math.max(1, Math.min(100, Number(e.target.value) || 1)))} min={1} max={100} className="input w-16 text-center h-9 py-0 text-sm font-bold" />
+                      <span className="text-sm font-bold text-[var(--fg-muted)]">%</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-[var(--fg-muted)] mt-2">
+                    При выполнении каждой привязанной задачи с вероятностью {editDropChance}% выпадет фрагмент
+                  </p>
+                </div>
+              </>
             )}
 
             {editSourceType === 'streak_reward' && (

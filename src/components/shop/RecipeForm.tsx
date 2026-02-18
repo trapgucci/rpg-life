@@ -50,7 +50,7 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
 
     const fragmentSource =
       sourceType === 'task_linked'
-        ? { type: 'task_linked' as const, linkedTaskIds }
+        ? { type: 'task_linked' as const, linkedTaskIds, dropChance }
         : sourceType === 'streak_reward'
           ? { type: 'streak_reward' as const, streakRequired }
           : { type: 'random_drop' as const, dropChance }
@@ -289,21 +289,50 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
         )}
 
         {sourceType === 'task_linked' && (
-          <div className="glass rounded-2xl p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-[var(--fg)]">Привязанные задачи</p>
-                <p className="text-xs text-[var(--fg-muted)] mt-0.5">Выбрано: {linkedTaskIds.length || 0}</p>
+          <>
+            <div className="glass rounded-2xl p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-[var(--fg)]">Привязанные задачи</p>
+                  <p className="text-xs text-[var(--fg-muted)] mt-0.5">Выбрано: {linkedTaskIds.length || 0}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowTaskPicker(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-b from-[var(--accent)] to-[var(--accent)]/90 px-4 py-2 text-sm font-medium text-white shadow-md shadow-[var(--accent)]/25 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
+                >
+                  Выбрать
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowTaskPicker(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-b from-[var(--accent)] to-[var(--accent)]/90 px-4 py-2 text-sm font-medium text-white shadow-md shadow-[var(--accent)]/25 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
-              >
-                Выбрать
-              </button>
             </div>
-          </div>
+            <div className="glass rounded-2xl p-4">
+              <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Шанс выпадения</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min={1}
+                  max={100}
+                  value={dropChance}
+                  onChange={(e) => setDropChance(Number(e.target.value))}
+                  className="flex-1 accent-[var(--accent)]"
+                />
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    value={dropChance}
+                    onChange={(e) => setDropChance(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+                    min={1}
+                    max={100}
+                    className="input w-16 text-center h-9 py-0 text-sm font-bold"
+                  />
+                  <span className="text-sm font-bold text-[var(--fg-muted)]">%</span>
+                </div>
+              </div>
+              <p className="text-xs text-[var(--fg-muted)] mt-2">
+                При выполнении каждой привязанной задачи с вероятностью {dropChance}% выпадет фрагмент
+              </p>
+            </div>
+          </>
         )}
 
         {sourceType === 'streak_reward' && (

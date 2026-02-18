@@ -87,9 +87,9 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
               {RARITY_LABELS[recipe.resultRarity]}
             </span>
             <span className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 px-2 py-0.5 text-xs font-semibold text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10">
-              {sourceType === 'task_linked' && <><Crosshair className="h-3 w-3" /> Задачи</>}
+              {sourceType === 'task_linked' && <><Crosshair className="h-3 w-3" /> Задачи{typeof fragmentSource?.dropChance === 'number' && fragmentSource.dropChance > 0 && ` ${fragmentSource.dropChance}%`}</>}
               {sourceType === 'streak_reward' && <><Flame className="h-3 w-3" /> Стрик</>}
-              {sourceType === 'random_drop' && <><Dice5 className="h-3 w-3" /> Дроп</>}
+              {sourceType === 'random_drop' && <><Dice5 className="h-3 w-3" /> Дроп{typeof fragmentSource?.dropChance === 'number' && fragmentSource.dropChance > 0 && ` ${fragmentSource.dropChance}%`}</>}
             </span>
           </div>
 
