@@ -3,7 +3,7 @@ import {
   Gamepad2, Beer, Utensils, Smartphone, BedDouble, Brain, Heart, Flame,
   Briefcase, Laptop, Code, FileText, Clipboard, BookOpen, NotebookPen,
   PenTool, FolderOpen, Archive, Package, Database,
-  GraduationCap, BookMarked, School, Award, Certificate,
+  GraduationCap, BookMarked, School, Award, BadgeCheck,
   Home, Bed, UtensilsCrossed, CookingPot, Lightbulb,
   ShoppingCart, Store, CreditCard, Wallet, PiggyBank, TrendingUp, Coins,
   Stethoscope, HeartPulse, Pill, Activity, Footprints,
@@ -19,6 +19,9 @@ import {
   Calendar, Clock, Timer, Hourglass,
   Smile, ThumbsUp, Check, Info, AlertCircle, HelpCircle,
   Megaphone, Image, Link, Tag,
+  // Shop icons
+  Sword, Crosshair, Gem, Hammer, Pickaxe, FlaskConical, Wand2,
+  Snowflake, Sun, ShieldCheck, ScrollText, Eye, Puzzle, Dice5,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -63,7 +66,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   'BookMarked': BookMarked,
   'School': School,
   'Award': Award,
-  'Certificate': Certificate,
+  'Certificate': BadgeCheck,
 
   // Дом и быт
   'Home': Home,
@@ -167,6 +170,22 @@ const ICON_MAP: Record<string, LucideIcon> = {
   'Image': Image,
   'Link': Link,
   'Tag': Tag,
+
+  // Shop / RPG icons
+  'Sword': Sword,
+  'Crosshair': Crosshair,
+  'Gem': Gem,
+  'Hammer': Hammer,
+  'Pickaxe': Pickaxe,
+  'FlaskConical': FlaskConical,
+  'Wand2': Wand2,
+  'Snowflake': Snowflake,
+  'Sun': Sun,
+  'ShieldCheck': ShieldCheck,
+  'Scroll': ScrollText,
+  'Eye': Eye,
+  'Puzzle': Puzzle,
+  'Dice5': Dice5,
 }
 
 interface HabitIconProps {

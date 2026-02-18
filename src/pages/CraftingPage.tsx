@@ -1,12 +1,14 @@
 import { useState } from 'react'
-import { 
-  Hammer, Plus, Pencil, Trash2, X, Sparkles, 
+import {
+  Hammer, Plus, Pencil, Trash2, X, Sparkles,
   Target, CheckCircle2, Package
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
 import type { CraftRecipe, ItemRarity, FragmentSourceType } from '../types/domain'
 import ConfirmModal from '../components/ConfirmModal'
+import { HabitIcon } from '../components/HabitIcon'
+import { FRAGMENT_ICON_OPTIONS, migrateIcon } from '../components/shop/shopUtils'
 
 const RARITY_COLORS: Record<ItemRarity, string> = {
   common: '#9ca3af',
@@ -98,12 +100,12 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
         {/* Fragment icon */}
         <div
           className={cn(
-            'flex h-20 w-20 items-center justify-center rounded-2xl text-4xl mb-4 shadow-lg',
+            'flex h-20 w-20 items-center justify-center rounded-2xl mb-4 shadow-lg text-white',
             `bg-gradient-to-br ${RARITY_GRADIENTS[recipe.resultRarity]}`
           )}
           style={{ boxShadow: `0 8px 20px ${rarityColor}40` }}
         >
-          {recipe.fragmentIcon}
+          <HabitIcon iconName={migrateIcon(recipe.fragmentIcon, 'Puzzle')} size={36} />
         </div>
 
         {/* Fragment name */}
@@ -122,10 +124,10 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
         </div>
 
         {/* Source info */}
-        <p className="mt-3 text-xs text-[var(--fg-muted)]">
+        <p className="mt-3 text-xs text-[var(--fg-muted)] flex items-center gap-1">
           {fragmentSource.type === 'task_linked'
-            ? '🎯 Привязано к задачам'
-            : '🎲 Случайный дроп'}
+            ? <><HabitIcon iconName="Crosshair" size={12} className="inline" /> Привязано к задачам</>
+            : <><HabitIcon iconName="Dice5" size={12} className="inline" /> Случайный дроп</>}
           {fragmentSource.type === 'random_drop' && typeof fragmentSource.dropChance === 'number' && fragmentSource.dropChance > 0 && (
             <span className="ml-1">
               ({fragmentSource.dropChance}% шанс)
@@ -201,7 +203,7 @@ interface RecipeFormProps {
   onClose: () => void
 }
 
-const FRAGMENT_ICONS = ['🧩', '💎', '⚡', '🔮', '🌟', '🔥', '❄️', '🌊', '🍀', '🎭', '⚙️', '🗝️', '📜', '🧬', '💠']
+// Using FRAGMENT_ICON_OPTIONS from shopUtils
 
 function RecipeForm({ recipe, onClose }: RecipeFormProps) {
   const addRecipe = useRpgStore((s) => s.addCraftRecipe)
@@ -211,7 +213,7 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
   const tasks = activeProfileId ? allTasks.filter((t) => t.profileId === activeProfileId) : []
 
   const [fragmentName, setFragmentName] = useState(recipe?.fragmentName ?? '')
-  const [fragmentIcon, setFragmentIcon] = useState(recipe?.fragmentIcon ?? '🧩')
+  const [fragmentIcon, setFragmentIcon] = useState(migrateIcon(recipe?.fragmentIcon, 'Puzzle'))
   const [fragmentsRequired, setFragmentsRequired] = useState(recipe?.fragmentsRequired ?? 10)
   const [resultItemName, setResultItemName] = useState(recipe?.resultItemName ?? '')
   const [resultRarity, setResultRarity] = useState<ItemRarity>(recipe?.resultRarity ?? 'rare')
@@ -287,19 +289,19 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
           <div>
             <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Иконка фрагмента</label>
             <div className="flex flex-wrap gap-2">
-              {FRAGMENT_ICONS.map((i) => (
+              {FRAGMENT_ICON_OPTIONS.map((iconName) => (
                 <button
-                  key={i}
+                  key={iconName}
                   type="button"
-                  onClick={() => setFragmentIcon(i)}
+                  onClick={() => setFragmentIcon(iconName)}
                   className={cn(
-                    'h-10 w-10 rounded-xl text-xl transition-all',
-                    fragmentIcon === i 
-                      ? 'bg-[var(--accent)] shadow-lg scale-110' 
-                      : 'bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
+                    'h-10 w-10 rounded-xl transition-all flex items-center justify-center',
+                    fragmentIcon === iconName
+                      ? 'bg-[var(--accent)] text-white shadow-lg scale-110'
+                      : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)]'
                   )}
                 >
-                  {i}
+                  <HabitIcon iconName={iconName} size={20} />
                 </button>
               ))}
             </div>
@@ -345,7 +347,7 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
                     : 'bg-[var(--surface)] border-2 border-transparent'
                 )}
               >
-                <div className="text-lg mb-1">🎲</div>
+                <div className="mb-1 text-[var(--fg-muted)]"><HabitIcon iconName="Dice5" size={20} /></div>
                 <div className="font-medium text-sm">Случайный дроп</div>
                 <div className="text-xs text-[var(--fg-muted)]">Шанс при выполнении задач</div>
               </button>
@@ -354,12 +356,12 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
                 onClick={() => setSourceType('task_linked')}
                 className={cn(
                   'rounded-xl p-4 text-left transition-all',
-                  sourceType === 'task_linked' 
-                    ? 'bg-[var(--accent-subtle)] border-2 border-[var(--accent)]' 
+                  sourceType === 'task_linked'
+                    ? 'bg-[var(--accent-subtle)] border-2 border-[var(--accent)]'
                     : 'bg-[var(--surface)] border-2 border-transparent'
                 )}
               >
-                <div className="text-lg mb-1">🎯</div>
+                <div className="mb-1 text-[var(--fg-muted)]"><HabitIcon iconName="Crosshair" size={20} /></div>
                 <div className="font-medium text-sm">Привязка к задачам</div>
                 <div className="text-xs text-[var(--fg-muted)]">Конкретные задачи</div>
               </button>

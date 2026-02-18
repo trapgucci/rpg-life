@@ -3,7 +3,8 @@ import { cn } from '../../lib/cn'
 import { X } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
 import type { CraftRecipe, ItemRarity, FragmentSourceType } from '../../types/domain'
-import { RARITY_LABELS, RARITY_BADGE_CLASSES, FRAGMENT_ICONS } from './shopUtils'
+import { RARITY_LABELS, RARITY_BADGE_CLASSES, FRAGMENT_ICON_OPTIONS, migrateIcon } from './shopUtils'
+import { HabitIcon } from '../HabitIcon'
 
 interface RecipeFormProps {
   recipe?: CraftRecipe
@@ -19,7 +20,7 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
   const tasks = activeProfileId ? allTasks.filter((t) => t.profileId === activeProfileId && !t.archived && !t.isCompleted) : []
 
   const [fragmentName, setFragmentName] = useState(recipe?.fragmentName ?? '')
-  const [fragmentIcon, setFragmentIcon] = useState(recipe?.fragmentIcon ?? '🧩')
+  const [fragmentIcon, setFragmentIcon] = useState(migrateIcon(recipe?.fragmentIcon, 'Puzzle'))
   const [fragmentsRequired, setFragmentsRequired] = useState(recipe?.fragmentsRequired ?? 5)
   const [resultItemName] = useState((recipe as any)?.resultItemName ?? 'Награда')
   const [resultRarity, setResultRarity] = useState<ItemRarity>(recipe?.resultRarity ?? 'common')
@@ -100,19 +101,19 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
         <div>
           <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Иконка фрагмента</label>
           <div className="flex flex-wrap gap-2">
-            {FRAGMENT_ICONS.map((i) => (
+            {FRAGMENT_ICON_OPTIONS.map((iconName) => (
               <button
-                key={i}
+                key={iconName}
                 type="button"
-                onClick={() => setFragmentIcon(i)}
+                onClick={() => setFragmentIcon(iconName)}
                 className={cn(
-                  'h-10 w-10 rounded-xl text-xl transition-all',
-                  fragmentIcon === i
-                    ? 'bg-[var(--accent)] shadow-lg scale-110'
-                    : 'bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
+                  'h-10 w-10 rounded-xl transition-all flex items-center justify-center',
+                  fragmentIcon === iconName
+                    ? 'bg-[var(--accent)] text-white shadow-lg scale-110'
+                    : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)]'
                 )}
               >
-                {i}
+                <HabitIcon iconName={iconName} size={20} />
               </button>
             ))}
           </div>
@@ -145,15 +146,15 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
           <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Источник фрагментов</label>
           <div className="grid grid-cols-3 gap-2">
             <button type="button" onClick={() => setSourceType('random_drop')} className={cn('rounded-xl p-3 text-left transition-all', sourceType === 'random_drop' ? 'bg-[var(--accent-subtle)] border-2 border-[var(--accent)]' : 'bg-[var(--surface)] border-2 border-transparent')}>
-              <div className="text-lg mb-1">🎲</div>
+              <div className="mb-1 text-[var(--fg-muted)]"><HabitIcon iconName="Dice5" size={20} /></div>
               <div className="font-medium text-xs">Случайный дроп</div>
             </button>
             <button type="button" onClick={() => setSourceType('task_linked')} className={cn('rounded-xl p-3 text-left transition-all', sourceType === 'task_linked' ? 'bg-[var(--accent-subtle)] border-2 border-[var(--accent)]' : 'bg-[var(--surface)] border-2 border-transparent')}>
-              <div className="text-lg mb-1">🎯</div>
+              <div className="mb-1 text-[var(--fg-muted)]"><HabitIcon iconName="Crosshair" size={20} /></div>
               <div className="font-medium text-xs">Привязка к задачам</div>
             </button>
             <button type="button" onClick={() => setSourceType('habit_linked')} className={cn('rounded-xl p-3 text-left transition-all', sourceType === 'habit_linked' ? 'bg-[var(--accent-subtle)] border-2 border-[var(--accent)]' : 'bg-[var(--surface)] border-2 border-transparent')}>
-              <div className="text-lg mb-1">🔁</div>
+              <div className="mb-1 text-[var(--fg-muted)]"><HabitIcon iconName="Rocket" size={20} /></div>
               <div className="font-medium text-xs">Привычки</div>
             </button>
           </div>

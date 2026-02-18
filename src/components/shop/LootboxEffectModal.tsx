@@ -5,6 +5,7 @@ import { CURRENCY_IDS } from '../../types/domain'
 import type { ShopItem } from '../../types/domain'
 import { getItemIcon } from './shopUtils'
 import type { LootTableEntry } from './shopUtils'
+import { HabitIcon } from '../HabitIcon'
 
 // ─── Reward Picker Modal (multi-select) ──────────────────────────────────────
 
@@ -33,9 +34,9 @@ function RewardPickerModal({ shopItems, excludeIds = [], onSelect, onClose }: Re
   }
 
   const options = [
-    { id: CURRENCY_IDS.COINS, name: 'Монеты', icon: '🪙' },
-    { id: CURRENCY_IDS.GEMS, name: 'Кристаллы', icon: '💎' },
-    ...shopItems.filter((i) => !excludeIds.includes(i.id)).map((i) => ({ id: i.id, name: i.name, icon: getItemIcon(i) })),
+    { id: CURRENCY_IDS.COINS, name: 'Монеты', iconName: 'Coins' },
+    { id: CURRENCY_IDS.GEMS, name: 'Кристаллы', iconName: 'Gem' },
+    ...shopItems.filter((i) => !excludeIds.includes(i.id)).map((i) => ({ id: i.id, name: i.name, iconName: getItemIcon(i) })),
   ]
 
   return (
@@ -60,7 +61,7 @@ function RewardPickerModal({ shopItems, excludeIds = [], onSelect, onClose }: Re
                   : 'border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
               )}
             >
-              <span className="text-2xl">{opt.icon}</span>
+              <span className="text-[var(--fg-muted)]"><HabitIcon iconName={opt.iconName} size={24} /></span>
               <span className="font-medium text-[var(--fg)]">{opt.name}</span>
               {selected.has(opt.id) && <Check className="h-5 w-5 text-[var(--accent)] ml-auto" />}
             </button>
@@ -91,9 +92,9 @@ function RewardPickerModalSingle({
   const [selected, setSelected] = useState<string | null>(currentId)
 
   const options = [
-    { id: CURRENCY_IDS.COINS, name: 'Монеты', icon: '🪙' },
-    { id: CURRENCY_IDS.GEMS, name: 'Кристаллы', icon: '💎' },
-    ...shopItems.map((i) => ({ id: i.id, name: i.name, icon: getItemIcon(i) })),
+    { id: CURRENCY_IDS.COINS, name: 'Монеты', iconName: 'Coins' },
+    { id: CURRENCY_IDS.GEMS, name: 'Кристаллы', iconName: 'Gem' },
+    ...shopItems.map((i) => ({ id: i.id, name: i.name, iconName: getItemIcon(i) })),
   ]
 
   return (
@@ -116,7 +117,7 @@ function RewardPickerModalSingle({
                 selected === opt.id ? 'border-[var(--accent)] bg-[var(--accent-subtle)]' : 'border-[var(--border)] bg-[var(--surface)]'
               )}
             >
-              <span className="text-2xl">{opt.icon}</span>
+              <span className="text-[var(--fg-muted)]"><HabitIcon iconName={opt.iconName} size={24} /></span>
               <span className="font-medium text-[var(--fg)]">{opt.name}</span>
               {selected === opt.id && <Check className="h-5 w-5 text-[var(--accent)] ml-auto" />}
             </button>
@@ -198,11 +199,11 @@ export default function LootboxEffectModal({ lootTable: initial, shopItems, onSa
     return shopItems.find((i) => i.id === id)?.name ?? id
   }
 
-  const getEntryIcon = (id: string) => {
-    if (id === CURRENCY_IDS.COINS) return '🪙'
-    if (id === CURRENCY_IDS.GEMS) return '💎'
+  const getEntryIconName = (id: string) => {
+    if (id === CURRENCY_IDS.COINS) return 'Coins'
+    if (id === CURRENCY_IDS.GEMS) return 'Gem'
     const it = shopItems.find((i) => i.id === id)
-    return it ? getItemIcon(it) : '⚔️'
+    return it ? getItemIcon(it) : 'Sword'
   }
 
   return (
@@ -241,7 +242,7 @@ export default function LootboxEffectModal({ lootTable: initial, shopItems, onSa
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl">{getEntryIcon(entry.id)}</span>
+                      <span className="text-[var(--fg-muted)]"><HabitIcon iconName={getEntryIconName(entry.id)} size={24} /></span>
                       <span className="font-medium text-[var(--fg)]">{getEntryName(entry.id)}</span>
                     </div>
                     <div className="flex items-center gap-2">

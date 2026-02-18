@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Coins, Gem, Package, Info, Minus, Plus, Check } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
+import { migrateIcon } from './shop/shopUtils'
+import { HabitIcon } from './HabitIcon'
 import Modal from './Modal'
 
 interface TaskRewardsModalProps {
@@ -208,10 +210,10 @@ export default function TaskRewardsModal({
                     className="flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"
                   >
                     <div
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-lg"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--fg-muted)]"
                       style={{ backgroundColor: `${recipe.fragmentColor}20` }}
                     >
-                      {recipe.fragmentIcon}
+                      <HabitIcon iconName={migrateIcon(recipe.fragmentIcon, 'Puzzle')} size={18} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-[var(--fg)] truncate">

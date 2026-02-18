@@ -1,23 +1,26 @@
 import { useState } from 'react'
 import { cn } from '../../lib/cn'
-import { X } from 'lucide-react'
-import { ITEM_EMOJI_OPTIONS } from './shopUtils'
+import { X, Search } from 'lucide-react'
+import { ITEM_ICON_OPTIONS } from './shopUtils'
+import { HabitIcon } from '../HabitIcon'
 
-interface EmojiPickerModalProps {
+interface IconPickerModalProps {
   currentIcon: string
-  onSelect: (emoji: string) => void
+  onSelect: (iconName: string) => void
   onClose: () => void
 }
 
-export default function EmojiPickerModal({ currentIcon, onSelect, onClose }: EmojiPickerModalProps) {
-  const [custom, setCustom] = useState('')
+export default function EmojiPickerModal({ currentIcon, onSelect, onClose }: IconPickerModalProps) {
+  const [search, setSearch] = useState('')
 
-  const handlePick = (emoji: string) => {
-    if (emoji) {
-      onSelect(emoji)
-      onClose()
-    }
+  const handlePick = (iconName: string) => {
+    onSelect(iconName)
+    onClose()
   }
+
+  const filtered = search.trim()
+    ? ITEM_ICON_OPTIONS.filter((name) => name.toLowerCase().includes(search.toLowerCase()))
+    : ITEM_ICON_OPTIONS
 
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -28,38 +31,42 @@ export default function EmojiPickerModal({ currentIcon, onSelect, onClose }: Emo
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="flex flex-wrap gap-2 mb-3 max-h-40 overflow-y-auto">
-          {ITEM_EMOJI_OPTIONS.map((emoji) => (
-            <button
-              key={emoji}
-              type="button"
-              onClick={() => handlePick(emoji)}
-              className={cn(
-                'h-10 w-10 rounded-xl text-xl transition-all flex items-center justify-center',
-                currentIcon === emoji ? 'bg-[var(--accent)] scale-110' : 'bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
-              )}
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-2">
+
+        {/* Search */}
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--fg-muted)]" />
           <input
             type="text"
-            value={custom}
-            onChange={(e) => setCustom(e.target.value)}
-            placeholder="Вставьте любой эмодзи..."
-            className="input flex-1 h-9 text-base"
-            maxLength={4}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Поиск иконки..."
+            className="input w-full h-9 text-sm pl-9"
           />
-          <button
-            type="button"
-            onClick={() => handlePick(custom.trim())}
-            disabled={!custom.trim()}
-            className="btn-primary shrink-0"
-          >
-            OK
-          </button>
+        </div>
+
+        {/* Icon grid */}
+        <div className="grid grid-cols-7 gap-1.5 mb-3 max-h-52 overflow-y-auto">
+          {filtered.map((iconName) => (
+            <button
+              key={iconName}
+              type="button"
+              onClick={() => handlePick(iconName)}
+              className={cn(
+                'flex h-10 w-10 items-center justify-center rounded-xl transition-all',
+                currentIcon === iconName
+                  ? 'bg-[var(--accent)] text-white scale-110 shadow-md'
+                  : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)]'
+              )}
+              title={iconName}
+            >
+              <HabitIcon iconName={iconName} size={20} />
+            </button>
+          ))}
+          {filtered.length === 0 && (
+            <p className="col-span-7 text-center text-sm text-[var(--fg-muted)] py-4">
+              Ничего не найдено
+            </p>
+          )}
         </div>
       </div>
     </div>

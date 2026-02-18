@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
+import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
 import { X, Smile, ImagePlus, Plus, Settings, Gift, ChevronRight, Percent, Sparkles } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
@@ -134,12 +135,11 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
             <button type="button" onClick={() => iconFileInputRef.current?.click()} className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] transition-colors shrink-0" title="Своё фото из файлов">
               <ImagePlus className="h-4 w-4" />
             </button>
-            <input ref={iconFileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
+            <input ref={iconFileInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
               const file = e.target.files?.[0]
               if (!file || !file.type.startsWith('image/')) return
-              const reader = new FileReader()
-              reader.onload = () => setIconImage(String(reader.result))
-              reader.readAsDataURL(file)
+              const dataUrl = await resizeImageFile(file)
+              setIconImage(dataUrl)
               e.target.value = ''
             }} />
           </div>
@@ -292,8 +292,8 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
       {showCraftingTypePicker && (
         <CraftingTypePickerModal onSelect={(type) => { setShowCraftingTypePicker(false); setActiveCraftingModal(type) }} onClose={() => setShowCraftingTypePicker(false)} />
       )}
-      {activeCraftingModal === 'create' && <CraftingCreateItemModal onClose={() => setActiveCraftingModal(null)} defaultResultName={name} defaultResultIcon={icon || '⚔️'} />}
-      {activeCraftingModal === 'material' && <CraftingMaterialModal onClose={() => setActiveCraftingModal(null)} defaultIngredientName={name} defaultIngredientIcon={icon || '⚔️'} />}
+      {activeCraftingModal === 'create' && <CraftingCreateItemModal onClose={() => setActiveCraftingModal(null)} defaultResultName={name} defaultResultIcon={icon || 'Sword'} />}
+      {activeCraftingModal === 'material' && <CraftingMaterialModal onClose={() => setActiveCraftingModal(null)} defaultIngredientName={name} defaultIngredientIcon={icon || 'Sword'} />}
       {showAdvancedSettings && (
         <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setShowAdvancedSettings(false)}>
           <div className="modal-content max-w-lg">

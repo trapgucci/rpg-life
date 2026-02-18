@@ -54,23 +54,63 @@ export type ItemTypeBadge =
   | { type: 'freeze'; label: string }
   | { type: 'discount'; label: string }
 
-// ─── Emoji / Icon Constants ─────────────────────────────────────────────────
+// ─── Icon Constants (Lucide icon names) ─────────────────────────────────────
 
-export const ITEM_EMOJI_OPTIONS = [
-  '🎁', '⚔️', '🎫', '🪙', '💎', '⭐', '🔥', '💪', '🧠', '🏃',
-  '🛡️', '🎨', '✨', '🍀', '🎭', '⚙️', '🗝️', '📜', '🧬', '💠',
-  '📦', '🎯', '🔮', '🌟', '❤️', '💀', '🏆', '🎪', '🎬', '📱',
-  '💻', '🌿', '🐉', '🦋', '🌸', '☕', '📚', '🎵', '🛒', '🧪',
+export const ITEM_ICON_OPTIONS = [
+  // RPG / Combat
+  'Sword', 'Shield', 'Crosshair', 'Flame', 'Zap', 'Crown', 'Trophy',
+  // Items & Loot
+  'Gift', 'Package', 'Key', 'Gem', 'Coins', 'Star', 'Sparkles',
+  // Tools & Craft
+  'Wrench', 'Cog', 'Hammer', 'Pickaxe', 'FlaskConical', 'Wand2',
+  // Nature & Elements
+  'Leaf', 'Flower', 'Snowflake', 'Droplet', 'Sun', 'Moon', 'Cloud',
+  // Status & Buffs
+  'Heart', 'HeartPulse', 'ShieldCheck', 'Timer', 'Hourglass', 'Rocket',
+  // Knowledge & Skills
+  'BookOpen', 'GraduationCap', 'Brain', 'Lightbulb', 'Scroll',
+  // Social
+  'Users', 'Handshake', 'MessageSquare', 'Bell',
+  // Lifestyle
+  'Coffee', 'Dumbbell', 'Music', 'Camera', 'Palette', 'Gamepad2',
+  // Finance
+  'Wallet', 'PiggyBank', 'CreditCard', 'TrendingUp',
+  // Misc
+  'Tag', 'Bookmark', 'Flag', 'MapPin', 'Compass', 'Globe',
+  'Lock', 'Eye', 'Footprints', 'Puzzle', 'Dice5', 'Cat', 'Dog',
 ]
 
-export const FRAGMENT_ICONS = [
-  '🧩', '💎', '⚡', '🔮', '🌟', '🔥', '❄️', '🌊', '🍀', '🎭', '⚙️', '🗝️', '📜', '🧬', '💠',
+export const FRAGMENT_ICON_OPTIONS = [
+  'Puzzle', 'Gem', 'Zap', 'Wand2', 'Star', 'Flame', 'Snowflake', 'Droplet',
+  'Leaf', 'Cog', 'Key', 'Scroll', 'FlaskConical', 'Sparkles', 'Crown',
 ]
+
+// ─── Legacy emoji → Lucide migration map ────────────────────────────────────
+
+const EMOJI_TO_ICON: Record<string, string> = {
+  '🎁': 'Gift', '⚔️': 'Sword', '🎫': 'Tag', '🪙': 'Coins', '💎': 'Gem',
+  '⭐': 'Star', '🔥': 'Flame', '💪': 'Dumbbell', '🧠': 'Brain', '🏃': 'Footprints',
+  '🛡️': 'Shield', '🎨': 'Palette', '✨': 'Sparkles', '🍀': 'Leaf', '🎭': 'Eye',
+  '⚙️': 'Cog', '🗝️': 'Key', '📜': 'Scroll', '🧬': 'FlaskConical', '💠': 'Gem',
+  '📦': 'Package', '🎯': 'Target', '🔮': 'Wand2', '🌟': 'Star', '❤️': 'Heart',
+  '💀': 'Crosshair', '🏆': 'Trophy', '🎪': 'Crown', '🎬': 'Film', '📱': 'Smartphone',
+  '💻': 'Laptop', '🌿': 'Leaf', '🐉': 'Flame', '🦋': 'Flower', '🌸': 'Flower',
+  '☕': 'Coffee', '📚': 'BookOpen', '🎵': 'Music', '🛒': 'ShoppingCart', '🧪': 'FlaskConical',
+  // Fragment emojis
+  '🧩': 'Puzzle', '⚡': 'Zap', '❄️': 'Snowflake', '🌊': 'Droplet',
+}
 
 // ─── Icon Helpers ───────────────────────────────────────────────────────────
 
+/** Convert a legacy emoji or valid icon name to a Lucide icon name */
+export function migrateIcon(raw: string | undefined, fallback = 'Sword'): string {
+  if (!raw) return fallback
+  return EMOJI_TO_ICON[raw] ?? (ITEM_ICON_OPTIONS.includes(raw) || FRAGMENT_ICON_OPTIONS.includes(raw) ? raw : fallback)
+}
+
 export function getItemIcon(item: ShopItem): string {
-  return item.icon ?? (item.isLootBox ? '🎁' : item.isDiscountVoucher ? '🎫' : '⚔️')
+  const fallback = item.isLootBox ? 'Gift' : item.isDiscountVoucher ? 'Tag' : 'Sword'
+  return migrateIcon(item.icon, fallback)
 }
 
 export function getItemTypeBadge(item: ShopItem): ItemTypeBadge | null {

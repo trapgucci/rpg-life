@@ -4,6 +4,7 @@ import { X, Plus, Trash2, ChevronRight, Check } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem } from '../../types/domain'
 import { getItemIcon } from './shopUtils'
+import { HabitIcon } from '../HabitIcon'
 
 // ─── Crafting Type Picker ────────────────────────────────────────────────────
 
@@ -14,8 +15,8 @@ interface CraftingTypePickerModalProps {
 
 export function CraftingTypePickerModal({ onSelect, onClose }: CraftingTypePickerModalProps) {
   const options = [
-    { type: 'create' as const, label: 'Создание предмета', desc: 'Крафт нового предмета из материалов', icon: '⚒️' },
-    { type: 'material' as const, label: 'Материал для крафта', desc: 'Предмет используется как ингредиент', icon: '🧩' },
+    { type: 'create' as const, label: 'Создание предмета', desc: 'Крафт нового предмета из материалов', iconName: 'Hammer' },
+    { type: 'material' as const, label: 'Материал для крафта', desc: 'Предмет используется как ингредиент', iconName: 'Puzzle' },
   ]
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -35,7 +36,7 @@ export function CraftingTypePickerModal({ onSelect, onClose }: CraftingTypePicke
               onClick={() => onSelect(opt.type)}
               className="w-full flex items-center gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-left hover:bg-[var(--surface-elevated)] hover:border-[var(--accent)]/50 transition-colors"
             >
-              <span className="text-2xl">{opt.icon}</span>
+              <span className="text-[var(--fg-muted)]"><HabitIcon iconName={opt.iconName} size={24} /></span>
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-[var(--fg)]">{opt.label}</div>
                 <div className="text-xs text-[var(--fg-muted)] mt-0.5">{opt.desc}</div>
@@ -93,7 +94,7 @@ export function ItemPickerModal({
                   : 'border-transparent bg-[var(--surface-elevated)] hover:bg-[var(--bg)] hover:border-[var(--border)]'
               )}
             >
-              <span className="text-2xl shrink-0">{getItemIcon(i)}</span>
+              <span className="shrink-0 text-[var(--fg-muted)]"><HabitIcon iconName={getItemIcon(i)} size={24} /></span>
               <span className="flex-1 min-w-0 font-medium text-[var(--fg)] truncate">{i.name}</span>
               {pickedId === i.id && <Check className="h-5 w-5 text-[var(--accent)] shrink-0" />}
             </button>
@@ -141,7 +142,7 @@ export function CraftingCreateItemModal({ onClose, defaultResultName, defaultRes
   const [showResultPicker, setShowResultPicker] = useState(false)
 
   const mainResultLabel = (defaultResultName?.trim() || 'Неизвестный предмет')
-  const mainResultIcon = defaultResultIcon || '⚔️'
+  const mainResultIconName = defaultResultIcon || 'Sword'
 
   const addIngredient = (itemId: string, quantity: number) => {
     setIngredients((prev) => {
@@ -221,7 +222,7 @@ export function CraftingCreateItemModal({ onClose, defaultResultName, defaultRes
                       const item = shopItems.find((i) => i.id === itemId)
                       return (
                         <li key={itemId} className="flex items-center gap-3 rounded-xl bg-[var(--bg)]/80 p-3 border border-[var(--border)]/50">
-                          <span className="text-2xl shrink-0">{item ? getItemIcon(item) : '⚔️'}</span>
+                          <span className="shrink-0 text-[var(--fg-muted)]"><HabitIcon iconName={item ? getItemIcon(item) : 'Sword'} size={24} /></span>
                           <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--fg)]">{item?.name ?? itemId}</span>
                           <input type="number" min={1} value={quantity} onChange={(e) => updateIngredientQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))} className="input w-16 text-center text-sm py-1.5 rounded-lg" />
                           <button type="button" onClick={() => removeIngredient(itemId)} className="p-2 rounded-lg hover:bg-[var(--surface-elevated)] text-[var(--fg-muted)]"><Trash2 className="h-4 w-4" /></button>
@@ -239,7 +240,7 @@ export function CraftingCreateItemModal({ onClose, defaultResultName, defaultRes
               <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Результат</label>
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/50 p-4 space-y-3">
                 <div className="flex items-center gap-3 rounded-xl bg-[var(--bg)]/80 p-3 border border-[var(--accent)]/40 shadow-sm">
-                  <span className="text-2xl shrink-0">{mainResultIcon}</span>
+                  <span className="shrink-0 text-[var(--fg-muted)]"><HabitIcon iconName={mainResultIconName} size={24} /></span>
                   <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--fg)]">{mainResultLabel}</span>
                   <input type="number" min={1} value={mainResultQuantity} onChange={(e) => setMainResultQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))} className="input w-16 text-center text-sm py-1.5 rounded-lg" />
                 </div>
@@ -249,7 +250,7 @@ export function CraftingCreateItemModal({ onClose, defaultResultName, defaultRes
                       const item = shopItems.find((i) => i.id === itemId)
                       return (
                         <li key={itemId} className="flex items-center gap-3 rounded-xl bg-[var(--bg)]/80 p-3 border border-[var(--border)]/50">
-                          <span className="text-2xl shrink-0">{item ? getItemIcon(item) : '⚔️'}</span>
+                          <span className="shrink-0 text-[var(--fg-muted)]"><HabitIcon iconName={item ? getItemIcon(item) : 'Sword'} size={24} /></span>
                           <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--fg)]">{item?.name ?? itemId}</span>
                           <input type="number" min={1} value={quantity} onChange={(e) => updateExtraResultQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))} className="input w-16 text-center text-sm py-1.5 rounded-lg" />
                           <button type="button" onClick={() => removeExtraResult(itemId)} className="p-2 rounded-lg hover:bg-[var(--surface-elevated)] text-[var(--fg-muted)]"><Trash2 className="h-4 w-4" /></button>
@@ -300,7 +301,7 @@ export function CraftingMaterialModal({ onClose, defaultIngredientName, defaultI
   const [showResultPicker, setShowResultPicker] = useState(false)
 
   const mainIngredientLabel = defaultIngredientName?.trim() || 'Неизвестный предмет'
-  const mainIngredientIcon = defaultIngredientIcon || '⚔️'
+  const mainIngredientIconName = defaultIngredientIcon || 'Sword'
 
   const addExtraIngredient = (itemId: string, quantity: number) => {
     setExtraIngredients((prev) => {
@@ -365,7 +366,7 @@ export function CraftingMaterialModal({ onClose, defaultIngredientName, defaultI
               <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Ингредиенты</label>
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/50 p-4 space-y-3">
                 <div className="flex items-center gap-3 rounded-xl bg-[var(--bg)]/80 p-3 border border-[var(--accent)]/40 shadow-sm">
-                  <span className="text-2xl shrink-0">{mainIngredientIcon}</span>
+                  <span className="shrink-0 text-[var(--fg-muted)]"><HabitIcon iconName={mainIngredientIconName} size={24} /></span>
                   <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--fg)]">{mainIngredientLabel}</span>
                   <input type="number" min={1} value={mainIngredientQuantity} onChange={(e) => setMainIngredientQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))} className="input w-16 text-center text-sm py-1.5 rounded-lg" />
                 </div>
@@ -375,7 +376,7 @@ export function CraftingMaterialModal({ onClose, defaultIngredientName, defaultI
                       const it = shopItems.find((i) => i.id === itemId)
                       return (
                         <li key={itemId} className="flex items-center gap-3 rounded-xl bg-[var(--bg)]/80 p-3 border border-[var(--border)]/50">
-                          <span className="text-2xl shrink-0">{it ? getItemIcon(it) : '⚔️'}</span>
+                          <span className="shrink-0 text-[var(--fg-muted)]"><HabitIcon iconName={it ? getItemIcon(it) : 'Sword'} size={24} /></span>
                           <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--fg)]">{it?.name ?? itemId}</span>
                           <input type="number" min={1} value={quantity} onChange={(e) => updateExtraIngredientQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))} className="input w-16 text-center text-sm py-1.5 rounded-lg" />
                           <button type="button" onClick={() => removeExtraIngredient(itemId)} className="p-2 rounded-lg hover:bg-[var(--surface-elevated)] text-[var(--fg-muted)]"><Trash2 className="h-4 w-4" /></button>
@@ -400,7 +401,7 @@ export function CraftingMaterialModal({ onClose, defaultIngredientName, defaultI
                       const it = shopItems.find((i) => i.id === itemId)
                       return (
                         <li key={itemId} className="flex items-center gap-3 rounded-xl bg-[var(--bg)]/80 p-3 border border-[var(--border)]/50">
-                          <span className="text-2xl shrink-0">{it ? getItemIcon(it) : '⚔️'}</span>
+                          <span className="shrink-0 text-[var(--fg-muted)]"><HabitIcon iconName={it ? getItemIcon(it) : 'Sword'} size={24} /></span>
                           <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--fg)]">{it?.name ?? itemId}</span>
                           <input type="number" min={1} value={quantity} onChange={(e) => updateResultQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))} className="input w-16 text-center text-sm py-1.5 rounded-lg" />
                           <button type="button" onClick={() => removeResult(itemId)} className="p-2 rounded-lg hover:bg-[var(--surface-elevated)] text-[var(--fg-muted)]"><Trash2 className="h-4 w-4" /></button>

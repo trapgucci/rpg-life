@@ -4,7 +4,8 @@ import { Pencil, Trash2, CheckCircle2, Sparkles } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
 import ConfirmModal from '../ConfirmModal'
 import type { CraftRecipe } from '../../types/domain'
-import { RARITY_COLORS, RARITY_LABELS, RARITY_BADGE_CLASSES } from './shopUtils'
+import { RARITY_COLORS, RARITY_LABELS, RARITY_BADGE_CLASSES, migrateIcon } from './shopUtils'
+import { HabitIcon } from '../HabitIcon'
 
 interface RecipeCardProps {
   recipe: CraftRecipe
@@ -59,7 +60,7 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
             '--tw-ring-color': `${rarityColor}40`,
           } as React.CSSProperties}
         >
-          {recipe.fragmentIcon}
+          <HabitIcon iconName={migrateIcon(recipe.fragmentIcon, 'Puzzle')} size={22} />
         </div>
 
         {/* Content */}
@@ -80,9 +81,9 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
               {RARITY_LABELS[recipe.resultRarity]}
             </span>
             <span className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 px-2 py-0.5 text-xs font-semibold text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10">
-              {sourceType === 'task_linked' && '🎯 Задачи'}
-              {sourceType === 'habit_linked' && '🔁 Привычки'}
-              {sourceType === 'random_drop' && '🎲 Дроп'}
+              {sourceType === 'task_linked' && <><HabitIcon iconName="Crosshair" size={12} className="inline" /> Задачи</>}
+              {sourceType === 'habit_linked' && <><HabitIcon iconName="Rocket" size={12} className="inline" /> Привычки</>}
+              {sourceType === 'random_drop' && <><HabitIcon iconName="Dice5" size={12} className="inline" /> Дроп</>}
             </span>
           </div>
 

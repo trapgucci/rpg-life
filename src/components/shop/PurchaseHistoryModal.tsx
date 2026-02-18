@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { X } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
 import { getItemIcon } from './shopUtils'
+import { HabitIcon } from '../HabitIcon'
 
 interface PurchaseHistoryModalProps {
   onClose: () => void
@@ -25,9 +26,9 @@ export default function PurchaseHistoryModal({ onClose }: PurchaseHistoryModalPr
 
   const getItemDisplay = (itemId: string) => {
     const it = shopItems.find((i) => i.id === itemId)
-    if (!it) return { type: 'emoji' as const, value: '⚔️' }
+    if (!it) return { type: 'icon' as const, value: 'Sword' }
     if (it.iconImage) return { type: 'image' as const, value: it.iconImage }
-    return { type: 'emoji' as const, value: getItemIcon(it) }
+    return { type: 'icon' as const, value: getItemIcon(it) }
   }
 
   return (
@@ -56,11 +57,11 @@ export default function PurchaseHistoryModal({ onClose }: PurchaseHistoryModalPr
                     key={`${e.timestamp}-${e.itemId}-${idx}`}
                     className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5"
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-elevated)] text-lg overflow-hidden">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-elevated)] overflow-hidden text-[var(--fg-muted)]">
                       {display.type === 'image' ? (
                         <img src={display.value} alt="" className="h-6 w-6 rounded object-cover" />
                       ) : (
-                        display.value
+                        <HabitIcon iconName={display.value} size={18} />
                       )}
                     </span>
                     <span className="flex-1 min-w-0 text-sm font-medium text-[var(--fg)] truncate">

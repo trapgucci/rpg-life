@@ -3,8 +3,9 @@ import { cn } from '../../lib/cn'
 import { X, Pencil, Trash2, Sparkles, CheckCircle2, Plus, Minus } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
 import type { CraftRecipe, ItemRarity, FragmentSourceType } from '../../types/domain'
-import { RARITY_LABELS, RARITY_COLORS, RARITY_BADGE_CLASSES, FRAGMENT_ICONS } from './shopUtils'
+import { RARITY_LABELS, RARITY_COLORS, RARITY_BADGE_CLASSES, FRAGMENT_ICON_OPTIONS, migrateIcon } from './shopUtils'
 import ConfirmModal from '../ConfirmModal'
+import { HabitIcon } from '../HabitIcon'
 
 interface RecipeDetailPanelProps {
   recipe: CraftRecipe
@@ -47,7 +48,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
 
   // --- Edit state ---
   const [editFragmentName, setEditFragmentName] = useState(recipe.fragmentName)
-  const [editFragmentIcon, setEditFragmentIcon] = useState(recipe.fragmentIcon)
+  const [editFragmentIcon, setEditFragmentIcon] = useState(migrateIcon(recipe.fragmentIcon, 'Puzzle'))
   const [editFragmentsRequired, setEditFragmentsRequired] = useState(recipe.fragmentsRequired)
   const [editResultRarity, setEditResultRarity] = useState<ItemRarity>(recipe.resultRarity)
   const [editSourceType, setEditSourceType] = useState<FragmentSourceType>(sourceType)
@@ -65,7 +66,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
 
     setIsEditing(false)
     setEditFragmentName(r.fragmentName)
-    setEditFragmentIcon(r.fragmentIcon)
+    setEditFragmentIcon(migrateIcon(r.fragmentIcon, 'Puzzle'))
     setEditFragmentsRequired(r.fragmentsRequired)
     setEditResultRarity(r.resultRarity)
     setEditSourceType((fs?.type ?? 'random_drop') as FragmentSourceType)
@@ -168,10 +169,10 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
   }
 
   // --- Source labels ---
-  const SOURCE_LABELS: Record<FragmentSourceType, { icon: string; label: string; description: string }> = {
-    random_drop: { icon: '🎲', label: 'Случайный дроп', description: 'Шанс при выполнении задач' },
-    task_linked: { icon: '🎯', label: 'Привязка к задачам', description: 'Конкретные задачи' },
-    habit_linked: { icon: '🔁', label: 'Привязка к привычкам', description: 'Награда за выполнение привычек' },
+  const SOURCE_LABELS: Record<FragmentSourceType, { iconName: string; label: string; description: string }> = {
+    random_drop: { iconName: 'Dice5', label: 'Случайный дроп', description: 'Шанс при выполнении задач' },
+    task_linked: { iconName: 'Crosshair', label: 'Привязка к задачам', description: 'Конкретные задачи' },
+    habit_linked: { iconName: 'Rocket', label: 'Привязка к привычкам', description: 'Награда за выполнение привычек' },
   }
 
   return (
@@ -205,7 +206,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                       '--tw-ring-color': `${rarityColor}40`,
                     } as React.CSSProperties}
                   >
-                    {recipe.fragmentIcon}
+                    <HabitIcon iconName={migrateIcon(recipe.fragmentIcon, 'Puzzle')} size={24} />
                   </div>
                   <h2 className="text-xl font-bold text-[var(--fg)] break-words min-w-0">
                     {recipe.fragmentName}
@@ -226,10 +227,10 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                   {/* Source badge */}
                   <span className="inline-flex items-center gap-1.5 rounded-2xl bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 px-3.5 py-1.5 text-sm font-medium text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10">
                     {sourceType === 'random_drop' && (
-                      <>🎲 Случайный дроп{typeof fragmentSource?.dropChance === 'number' && fragmentSource.dropChance > 0 && ` ${fragmentSource.dropChance}%`}</>
+                      <><HabitIcon iconName="Dice5" size={14} className="inline" /> Случайный дроп{typeof fragmentSource?.dropChance === 'number' && fragmentSource.dropChance > 0 && ` ${fragmentSource.dropChance}%`}</>
                     )}
-                    {sourceType === 'task_linked' && '🎯 Привязка к задачам'}
-                    {sourceType === 'habit_linked' && '🔁 Привязка к привычкам'}
+                    {sourceType === 'task_linked' && <><HabitIcon iconName="Crosshair" size={14} className="inline" /> Привязка к задачам</>}
+                    {sourceType === 'habit_linked' && <><HabitIcon iconName="Rocket" size={14} className="inline" /> Привязка к привычкам</>}
                   </span>
 
                   {recipe.crafted && (
@@ -329,7 +330,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                     '--tw-ring-color': `${rarityColor}35`,
                   } as React.CSSProperties}
                 >
-                  {resultItem?.icon ?? recipe.resultIcon ?? '🎁'}
+                  <HabitIcon iconName={resultItem?.icon ?? recipe.resultIcon ?? 'Gift'} size={20} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-[var(--fg)] truncate">
@@ -395,9 +396,9 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
             <div>
               <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Иконка фрагмента</label>
               <div className="flex flex-wrap gap-2">
-                {FRAGMENT_ICONS.map((icon) => (
-                  <button key={icon} type="button" onClick={() => setEditFragmentIcon(icon)} className={cn('h-10 w-10 rounded-xl text-xl transition-all', editFragmentIcon === icon ? 'bg-[var(--accent)] shadow-lg scale-110' : 'bg-[var(--surface)] hover:bg-[var(--surface-elevated)]')}>
-                    {icon}
+                {FRAGMENT_ICON_OPTIONS.map((iconName) => (
+                  <button key={iconName} type="button" onClick={() => setEditFragmentIcon(iconName)} className={cn('h-10 w-10 rounded-xl transition-all flex items-center justify-center', editFragmentIcon === iconName ? 'bg-[var(--accent)] text-white shadow-lg scale-110' : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)]')}>
+                    <HabitIcon iconName={iconName} size={20} />
                   </button>
                 ))}
               </div>
@@ -426,7 +427,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
               <div className="grid grid-cols-3 gap-3">
                 {(['random_drop', 'task_linked', 'habit_linked'] as FragmentSourceType[]).map((st) => (
                   <button key={st} type="button" onClick={() => setEditSourceType(st)} className={cn('rounded-xl p-4 text-left transition-all', editSourceType === st ? 'bg-[var(--accent-subtle)] border-2 border-[var(--accent)]' : 'bg-[var(--surface)] border-2 border-transparent')}>
-                    <div className="text-lg mb-1">{SOURCE_LABELS[st].icon}</div>
+                    <div className="mb-1 text-[var(--fg-muted)]"><HabitIcon iconName={SOURCE_LABELS[st].iconName} size={20} /></div>
                     <div className="font-medium text-sm">{SOURCE_LABELS[st].label}</div>
                     <div className="text-xs text-[var(--fg-muted)]">{SOURCE_LABELS[st].description}</div>
                   </button>

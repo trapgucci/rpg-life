@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
 import {
   X, Pencil, Trash2, Coins, Gem, Gift, Percent, ShoppingCart,
   ChevronRight, Settings, Plus, Smile, ImagePlus, Sparkles, Folder,
 } from 'lucide-react'
+import { HabitIcon } from '../HabitIcon'
 import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem, ItemRarity } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
 import {
-  getItemIcon, getItemTypeBadge,
+  getItemIcon, getItemTypeBadge, migrateIcon,
   RARITY_LABELS, RARITY_BADGE_CLASSES, RARITY_COLORS,
 } from './shopUtils'
 import type { LootTableEntry } from './shopUtils'
@@ -69,7 +71,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState(item.name)
   const [editDescription, setEditDescription] = useState(item.description ?? '')
-  const [editIcon, setEditIcon] = useState(item.icon ?? '')
+  const [editIcon, setEditIcon] = useState(migrateIcon(item.icon, ''))
   const [editIconImage, setEditIconImage] = useState(item.iconImage ?? '')
   const [editGroupId, setEditGroupId] = useState<string | null>(item.groupId ?? null)
   const [editAvailableForPurchase, setEditAvailableForPurchase] = useState(availableForPurchase)
@@ -104,7 +106,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
     setIsEditing(false)
     setEditName(i.name)
     setEditDescription(i.description ?? '')
-    setEditIcon(i.icon ?? '')
+    setEditIcon(migrateIcon(i.icon, ''))
     setEditIconImage(i.iconImage ?? '')
     setEditGroupId(i.groupId ?? null)
     setEditAvailableForPurchase(i.availableForPurchase !== false)
@@ -294,12 +296,11 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const file = e.target.files?.[0]
                       if (!file || !file.type.startsWith('image/')) return
-                      const reader = new FileReader()
-                      reader.onload = () => setEditIconImage(String(reader.result))
-                      reader.readAsDataURL(file)
+                      const dataUrl = await resizeImageFile(file)
+                      setEditIconImage(dataUrl)
                       e.target.value = ''
                     }}
                   />
@@ -320,7 +321,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                     {editIconImage ? (
                       <img src={editIconImage} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <span className="text-xl">{editIcon}</span>
+                      <HabitIcon iconName={editIcon || 'Sword'} size={20} />
                     )}
                   </div>
                   {editIconImage && (
@@ -814,7 +815,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                     {item.iconImage ? (
                       <img src={item.iconImage} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <span className="text-2xl">{getItemIcon(item)}</span>
+                      <HabitIcon iconName={getItemIcon(item)} size={24} />
                     )}
                   </div>
                   <h2 className="text-xl font-bold text-[var(--fg)] break-words min-w-0">
@@ -841,7 +842,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                         typeBadge.type === 'discount' && 'bg-gradient-to-b from-red-500/20 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/25',
                       )}>
                         {typeBadge.type === 'lootbox' && <Gift className="h-3.5 w-3.5" />}
-                        {typeBadge.type === 'freeze' && <span className="text-sm">❄️</span>}
+                        {typeBadge.type === 'freeze' && <HabitIcon iconName="Snowflake" size={14} />}
                         {typeBadge.type === 'discount' && <Percent className="h-3.5 w-3.5" />}
                         {typeBadge.label}
                       </span>
@@ -1005,7 +1006,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                     typeBadge.type === 'discount' && 'bg-gradient-to-b from-red-500/20 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/25',
                   )}>
                     {typeBadge.type === 'lootbox' && <Gift className="h-4 w-4" />}
-                    {typeBadge.type === 'freeze' && <span className="text-sm">❄️</span>}
+                    {typeBadge.type === 'freeze' && <HabitIcon iconName="Snowflake" size={14} />}
                     {typeBadge.type === 'discount' && <Percent className="h-4 w-4" />}
                     {typeBadge.label}
                   </span>
@@ -1033,17 +1034,17 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                         entry.id === CURRENCY_IDS.COINS ? 'Монеты'
                         : entry.id === CURRENCY_IDS.GEMS ? 'Кристаллы'
                         : lootItem?.name ?? entry.id
-                      const entryIcon =
-                        entry.id === CURRENCY_IDS.COINS ? '🪙'
-                        : entry.id === CURRENCY_IDS.GEMS ? '💎'
-                        : lootItem ? getItemIcon(lootItem) : '⚔️'
+                      const entryIconName =
+                        entry.id === CURRENCY_IDS.COINS ? 'Coins'
+                        : entry.id === CURRENCY_IDS.GEMS ? 'Gem'
+                        : lootItem ? getItemIcon(lootItem) : 'Sword'
 
                       return (
                         <div
                           key={`${entry.id}-${idx}`}
                           className="flex items-center gap-2 rounded-xl bg-[var(--surface-elevated)] px-3 py-2"
                         >
-                          <span className="text-lg shrink-0">{entryIcon}</span>
+                          <span className="shrink-0 text-[var(--fg-muted)]"><HabitIcon iconName={entryIconName} size={18} /></span>
                           <span className="flex-1 min-w-0 text-sm font-medium text-[var(--fg)] truncate">{entryName}</span>
                           {(entry.quantity ?? 1) > 1 && (
                             <span className="text-xs text-[var(--fg-muted)]">x{entry.quantity}</span>

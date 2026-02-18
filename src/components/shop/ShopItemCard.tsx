@@ -4,6 +4,7 @@ import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
 import { getItemIcon, getItemTypeBadge, RARITY_LABELS, RARITY_BADGE_CLASSES, RARITY_COLORS } from './shopUtils'
+import { HabitIcon } from '../HabitIcon'
 
 interface ShopItemCardProps {
   item: ShopItem
@@ -106,11 +107,11 @@ export default function ShopItemCard({ item, selected, onSelect }: ShopItemCardP
               '--tw-ring-color': `${iconBgColor}40`,
             } as React.CSSProperties}
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-transparent opacity-60" />
+            {!item.iconImage && <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-transparent opacity-60" />}
             {item.iconImage ? (
-              <img src={item.iconImage} alt="" className="relative h-full w-full object-cover z-10" />
+              <img src={item.iconImage} alt="" className="relative h-full w-full object-cover z-10" style={{ imageRendering: 'auto' }} />
             ) : (
-              <span className="relative text-2xl z-10 drop-shadow-sm">{getItemIcon(item)}</span>
+              <span className="relative z-10 drop-shadow-sm"><HabitIcon iconName={getItemIcon(item)} size={24} /></span>
             )}
           </div>
 
@@ -127,7 +128,7 @@ export default function ShopItemCard({ item, selected, onSelect }: ShopItemCardP
               )}
             >
               {typeBadge.type === 'lootbox' && <Gift className="h-3.5 w-3.5 text-white drop-shadow" />}
-              {typeBadge.type === 'freeze' && <span className="text-xs drop-shadow">❄️</span>}
+              {typeBadge.type === 'freeze' && <HabitIcon iconName="Snowflake" size={14} className="drop-shadow" />}
               {typeBadge.type === 'discount' && <Percent className="h-3.5 w-3.5 text-white drop-shadow" />}
             </div>
           )}
