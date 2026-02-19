@@ -465,6 +465,21 @@ export interface ShopItem {
   isDiscountVoucher?: boolean
   /** Размер скидки в % (1–85) при isDiscountVoucher */
   discountPercent?: number
+  /** Видеоигра: после покупки можно докупать часы для этой игры */
+  isVideoGame?: boolean
+  /** Пакеты времени для видеоигры: [{ hours, cost }] */
+  gameTimePackages?: GameTimePackage[]
+  /** Суммарное накопленное время (в минутах) */
+  gameTimeTotalMinutes?: number
+}
+
+/** Пакет времени для видеоигры */
+export interface GameTimePackage {
+  id: string
+  /** Количество часов в пакете */
+  hours: number
+  /** Стоимость пакета в монетах */
+  cost: number
 }
 
 export interface InventoryEntry {

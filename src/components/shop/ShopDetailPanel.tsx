@@ -3,13 +3,13 @@ import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
 import {
   X, Pencil, Trash2, Coins, Gem, Gift, Percent, ShoppingCart,
-  ChevronRight, Settings, Folder, TrendingUp,
+  ChevronRight, Settings, Folder, TrendingUp, Gamepad2, Plus, Clock,
 } from 'lucide-react'
 import ItemGroupSelectModal from './ItemGroupSelectModal'
 import IconSourcePicker from './IconSourcePicker'
 import { HabitIcon } from '../HabitIcon'
 import { useRpgStore } from '../../store/useRpgStore'
-import type { ShopItem } from '../../types/domain'
+import type { ShopItem, GameTimePackage } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
 import {
   getItemIcon, getItemTypeBadge, migrateIcon,
@@ -35,6 +35,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
   const updateItem = useRpgStore((s) => s.updateShopItem)
   const deleteShopItem = useRpgStore((s) => s.deleteShopItem)
   const purchaseItem = useRpgStore((s) => s.purchaseItem)
+  const purchaseGameTime = useRpgStore((s) => s.purchaseGameTime)
   const activeShopDiscountPercent = useRpgStore((s) => s.activeShopDiscountPercent)
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
@@ -87,6 +88,8 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
   const [editStreakMultiplierInterval, setEditStreakMultiplierInterval] = useState(item.streakMultiplierInterval ?? 3)
   const [editIsDiscountVoucher, setEditIsDiscountVoucher] = useState(item.isDiscountVoucher ?? false)
   const [editDiscountPercent, setEditDiscountPercent] = useState(item.discountPercent ?? 10)
+  const [editIsVideoGame, setEditIsVideoGame] = useState(item.isVideoGame ?? false)
+  const [editGameTimePackages, setEditGameTimePackages] = useState<GameTimePackage[]>(item.gameTimePackages ?? [])
 
   // ── Modal state ──────────────────────────────────────────────────────────
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -123,6 +126,8 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
     setEditStreakMultiplierInterval(i.streakMultiplierInterval ?? 3)
     setEditIsDiscountVoucher(i.isDiscountVoucher ?? false)
     setEditDiscountPercent(i.discountPercent ?? 10)
+    setEditIsVideoGame(i.isVideoGame ?? false)
+    setEditGameTimePackages(i.gameTimePackages ?? [])
     setShowAdvancedSettings(false)
   }, [])
 
@@ -145,13 +150,16 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
       editStreakMultiplierValue !== (prev.streakMultiplierValue ?? 1.5) ||
       editStreakMultiplierInterval !== (prev.streakMultiplierInterval ?? 3) ||
       editIsDiscountVoucher !== (prev.isDiscountVoucher ?? false) ||
-      editDiscountPercent !== (prev.discountPercent ?? 10)
+      editDiscountPercent !== (prev.discountPercent ?? 10) ||
+      editIsVideoGame !== (prev.isVideoGame ?? false) ||
+      JSON.stringify(editGameTimePackages) !== JSON.stringify(prev.gameTimePackages ?? [])
     )
   }, [
     editName, editDescription, editIcon, editIconImage, editGroupId,
     editAvailableForPurchase, editCanGetForFree, editCoinCost, editGemCost,
     editStock, editIsLootBox, editLootTable, editStreakMultiplierEnabled,
     editStreakMultiplierValue, editStreakMultiplierInterval, editIsDiscountVoucher, editDiscountPercent,
+    editIsVideoGame, editGameTimePackages,
   ])
 
   // Detect item switch while editing
@@ -192,7 +200,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
 
   // ── Save handler ─────────────────────────────────────────────────────────
   const doSave = (targetId?: string) => {
-    if (!editName.trim()) return
+    if (!editName.trim() || !editGroupId) return
     const id = targetId ?? item.id
     const cost = editAvailableForPurchase && !editCanGetForFree
       ? { [CURRENCY_IDS.COINS]: editCoinCost, [CURRENCY_IDS.GEMS]: editGemCost }
@@ -217,6 +225,9 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
       streakMultiplierInterval: editStreakMultiplierEnabled ? editStreakMultiplierInterval : undefined,
       isDiscountVoucher: editIsDiscountVoucher || undefined,
       discountPercent: editIsDiscountVoucher ? Math.min(85, Math.max(1, editDiscountPercent)) : undefined,
+      isVideoGame: editIsVideoGame || undefined,
+      gameTimePackages: editIsVideoGame && editGameTimePackages.length > 0 ? editGameTimePackages : undefined,
+      gameTimeTotalMinutes: editIsVideoGame ? (prev.gameTimeTotalMinutes ?? 0) : undefined,
     } as ShopItem))
     setIsEditing(false)
   }
@@ -342,8 +353,8 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)]">
                     <Folder className="h-4 w-4 text-[var(--accent)]" />
                   </div>
-                  <span className="flex-1 text-sm font-medium text-[var(--fg)]">
-                    {editGroupId ? itemGroups.find((g) => g.id === editGroupId)?.name ?? 'Без группы' : 'Без группы'}
+                  <span className={cn('flex-1 text-sm font-medium', editGroupId ? 'text-[var(--fg)]' : 'text-[var(--fg-muted)]')}>
+                    {editGroupId ? itemGroups.find((g) => g.id === editGroupId)?.name ?? 'Выберите группу' : 'Выберите группу'}
                   </span>
                   <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
                 </button>
@@ -465,7 +476,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-[var(--fg)]">Свойства предмета</p>
-                    <p className="text-xs text-[var(--fg-muted)]">Лутбокс, множитель за стрик, скидочный талон</p>
+                    <p className="text-xs text-[var(--fg-muted)]">Лутбокс, множитель, скидочник, видеоигра</p>
                   </div>
                   <ChevronRight className={cn(
                     'h-4 w-4 text-[var(--fg-muted)] transition-transform duration-200',
@@ -479,14 +490,14 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 )}>
                   <div className="space-y-3">
                     <p className="text-xs text-[var(--fg-muted)]">
-                      Включить можно только одну опцию: лутбокс, множитель за стрик или скидочный талон.
+                      Включить можно только одну опцию.
                     </p>
 
                     {/* Lootbox */}
-                    <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (editStreakMultiplierEnabled || editIsDiscountVoucher) && 'opacity-70')}>
+                    <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (editStreakMultiplierEnabled || editIsDiscountVoucher || editIsVideoGame) && 'opacity-70')}>
                       <div className="flex items-center justify-between gap-3">
                         <div><span className="font-medium text-[var(--fg)]">Лутбокс</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Случайный предмет при открытии</p></div>
-                        <button type="button" role="switch" aria-checked={editIsLootBox} disabled={editStreakMultiplierEnabled || editIsDiscountVoucher} onClick={() => { setEditIsLootBox((v) => !v); if (!editIsLootBox) { setEditStreakMultiplierEnabled(false); setEditIsDiscountVoucher(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editIsLootBox ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                        <button type="button" role="switch" aria-checked={editIsLootBox} disabled={editStreakMultiplierEnabled || editIsDiscountVoucher || editIsVideoGame} onClick={() => { setEditIsLootBox((v) => !v); if (!editIsLootBox) { setEditStreakMultiplierEnabled(false); setEditIsDiscountVoucher(false); setEditIsVideoGame(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editIsLootBox ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
                           <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', editIsLootBox ? 'right-1 left-auto' : 'left-1 right-auto')} />
                         </button>
                       </div>
@@ -500,10 +511,10 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                     </div>
 
                     {/* Streak Multiplier */}
-                    <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (editIsLootBox || editIsDiscountVoucher) && 'opacity-70')}>
+                    <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (editIsLootBox || editIsDiscountVoucher || editIsVideoGame) && 'opacity-70')}>
                       <div className="flex items-center justify-between gap-3">
                         <div><span className="font-medium text-[var(--fg)]">Множитель за стрик</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Увеличивает награды за серию выполнений</p></div>
-                        <button type="button" role="switch" aria-checked={editStreakMultiplierEnabled} disabled={editIsLootBox || editIsDiscountVoucher} onClick={() => { setEditStreakMultiplierEnabled((v) => !v); if (!editStreakMultiplierEnabled) { setEditIsLootBox(false); setEditIsDiscountVoucher(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editStreakMultiplierEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                        <button type="button" role="switch" aria-checked={editStreakMultiplierEnabled} disabled={editIsLootBox || editIsDiscountVoucher || editIsVideoGame} onClick={() => { setEditStreakMultiplierEnabled((v) => !v); if (!editStreakMultiplierEnabled) { setEditIsLootBox(false); setEditIsDiscountVoucher(false); setEditIsVideoGame(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editStreakMultiplierEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
                           <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', editStreakMultiplierEnabled ? 'right-1 left-auto' : 'left-1 right-auto')} />
                         </button>
                       </div>
@@ -556,10 +567,10 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                     </div>
 
                     {/* Discount Voucher */}
-                    <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (editIsLootBox || editStreakMultiplierEnabled) && 'opacity-70')}>
+                    <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (editIsLootBox || editStreakMultiplierEnabled || editIsVideoGame) && 'opacity-70')}>
                       <div className="flex items-center justify-between gap-3">
                         <div><span className="font-medium text-[var(--fg)]">Скидочный талон</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Снижает цены в магазине на N%</p></div>
-                        <button type="button" role="switch" aria-checked={editIsDiscountVoucher} disabled={editIsLootBox || editStreakMultiplierEnabled} onClick={() => { setEditIsDiscountVoucher((v) => !v); if (!editIsDiscountVoucher) { setEditIsLootBox(false); setEditStreakMultiplierEnabled(false); setShowDiscountModal(true) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editIsDiscountVoucher ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                        <button type="button" role="switch" aria-checked={editIsDiscountVoucher} disabled={editIsLootBox || editStreakMultiplierEnabled || editIsVideoGame} onClick={() => { setEditIsDiscountVoucher((v) => !v); if (!editIsDiscountVoucher) { setEditIsLootBox(false); setEditStreakMultiplierEnabled(false); setEditIsVideoGame(false); setShowDiscountModal(true) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editIsDiscountVoucher ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
                           <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', editIsDiscountVoucher ? 'right-1 left-auto' : 'left-1 right-auto')} />
                         </button>
                       </div>
@@ -568,6 +579,77 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                           <button type="button" onClick={() => setShowDiscountModal(true)} className="w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] py-3 text-sm font-medium text-[var(--accent)] hover:bg-[var(--accent-subtle)]">
                             <Percent className="h-5 w-5" />Размер скидки: {Math.min(85, Math.max(1, editDiscountPercent))}%<ChevronRight className="h-5 w-5" />
                           </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Video Game */}
+                    <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (editIsLootBox || editStreakMultiplierEnabled || editIsDiscountVoucher) && 'opacity-70')}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div><span className="font-medium text-[var(--fg)]">Видеоигра</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Докупка часов после покупки</p></div>
+                        <button type="button" role="switch" aria-checked={editIsVideoGame} disabled={editIsLootBox || editStreakMultiplierEnabled || editIsDiscountVoucher} onClick={() => { setEditIsVideoGame((v) => !v); if (!editIsVideoGame) { setEditIsLootBox(false); setEditStreakMultiplierEnabled(false); setEditIsDiscountVoucher(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editIsVideoGame ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                          <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', editIsVideoGame ? 'right-1 left-auto' : 'left-1 right-auto')} />
+                        </button>
+                      </div>
+                      {editIsVideoGame && (
+                        <div className="mt-4 pt-4 border-t border-[var(--border)] space-y-3">
+                          <div className="flex items-center justify-between">
+                            <label className="text-sm font-medium text-[var(--fg-muted)]">Пакеты времени</label>
+                            <button
+                              type="button"
+                              onClick={() => setEditGameTimePackages((prev) => [...prev, { id: crypto.randomUUID(), hours: 1, cost: 15 }])}
+                              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent-subtle)] transition-colors"
+                            >
+                              <Plus className="h-3.5 w-3.5" />Добавить
+                            </button>
+                          </div>
+                          {editGameTimePackages.length === 0 && (
+                            <p className="text-xs text-[var(--fg-muted)] text-center py-2">Нет пакетов. Добавьте хотя бы один.</p>
+                          )}
+                          <div className="space-y-2">
+                            {editGameTimePackages.map((pkg, idx) => (
+                              <div key={pkg.id} className="flex items-center gap-2 rounded-xl bg-[var(--surface-elevated)] p-2.5">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex-1">
+                                      <label className="block text-[10px] text-[var(--fg-muted)] mb-1">Часов</label>
+                                      <input
+                                        type="number"
+                                        min={0.5}
+                                        step={0.5}
+                                        value={pkg.hours}
+                                        onChange={(e) => {
+                                          const val = Math.max(0.5, Number(e.target.value) || 0.5)
+                                          setEditGameTimePackages((prev) => prev.map((p, i) => i === idx ? { ...p, hours: val } : p))
+                                        }}
+                                        className="input w-full h-8 py-0 text-center text-sm font-bold"
+                                      />
+                                    </div>
+                                    <div className="flex-1">
+                                      <label className="block text-[10px] text-[var(--fg-muted)] mb-1">Монет</label>
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        value={pkg.cost}
+                                        onChange={(e) => {
+                                          const val = Math.max(0, Number(e.target.value) || 0)
+                                          setEditGameTimePackages((prev) => prev.map((p, i) => i === idx ? { ...p, cost: val } : p))
+                                        }}
+                                        className="input w-full h-8 py-0 text-center text-sm font-bold"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditGameTimePackages((prev) => prev.filter((_, i) => i !== idx))}
+                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-400 hover:bg-red-500/15 transition-colors"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -581,7 +663,13 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 <button
                   type="button"
                   onClick={handleSave}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-2xl py-3 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-[var(--accent)] to-[var(--accent)]/80 shadow-lg shadow-[var(--accent)]/25 hover:shadow-xl hover:shadow-[var(--accent)]/35 hover:scale-[1.02] active:scale-[0.98]"
+                  disabled={!editName.trim() || !editGroupId}
+                  className={cn(
+                    'flex-1 flex items-center justify-center gap-2 rounded-2xl py-3 font-semibold transition-all duration-200',
+                    !editName.trim() || !editGroupId
+                      ? 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed opacity-50'
+                      : 'text-white bg-gradient-to-r from-[var(--accent)] to-[var(--accent)]/80 shadow-lg shadow-[var(--accent)]/25 hover:shadow-xl hover:shadow-[var(--accent)]/35 hover:scale-[1.02] active:scale-[0.98]'
+                  )}
                 >
                   Сохранить
                 </button>
@@ -629,10 +717,12 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                         typeBadge.type === 'lootbox' && 'bg-gradient-to-b from-violet-500/20 to-violet-500/10 text-violet-500 ring-1 ring-inset ring-violet-400/25',
                         typeBadge.type === 'multiplier' && 'bg-gradient-to-b from-amber-500/20 to-amber-500/10 text-amber-500 ring-1 ring-inset ring-amber-400/25',
                         typeBadge.type === 'discount' && 'bg-gradient-to-b from-red-500/20 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/25',
+                        typeBadge.type === 'videogame' && 'bg-gradient-to-b from-cyan-500/20 to-cyan-500/10 text-cyan-500 ring-1 ring-inset ring-cyan-400/25',
                       )}>
                         {typeBadge.type === 'lootbox' && <Gift className="h-3.5 w-3.5" />}
                         {typeBadge.type === 'multiplier' && <TrendingUp className="h-3.5 w-3.5" />}
                         {typeBadge.type === 'discount' && <Percent className="h-3.5 w-3.5" />}
+                        {typeBadge.type === 'videogame' && <Gamepad2 className="h-3.5 w-3.5" />}
                         {typeBadge.label}
                       </span>
                     </>
@@ -793,10 +883,12 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                     typeBadge.type === 'lootbox' && 'bg-gradient-to-b from-violet-500/20 to-violet-500/10 text-violet-500 ring-1 ring-inset ring-violet-400/25',
                     typeBadge.type === 'multiplier' && 'bg-gradient-to-b from-amber-500/20 to-amber-500/10 text-amber-500 ring-1 ring-inset ring-amber-400/25',
                     typeBadge.type === 'discount' && 'bg-gradient-to-b from-red-500/20 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/25',
+                    typeBadge.type === 'videogame' && 'bg-gradient-to-b from-cyan-500/20 to-cyan-500/10 text-cyan-500 ring-1 ring-inset ring-cyan-400/25',
                   )}>
                     {typeBadge.type === 'lootbox' && <Gift className="h-4 w-4" />}
                     {typeBadge.type === 'multiplier' && <TrendingUp className="h-3.5 w-3.5" />}
                     {typeBadge.type === 'discount' && <Percent className="h-4 w-4" />}
+                    {typeBadge.type === 'videogame' && <Gamepad2 className="h-4 w-4" />}
                     {typeBadge.label}
                   </span>
 
@@ -804,6 +896,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                     {typeBadge.type === 'lootbox' && 'Открытие выдает случайный предмет из таблицы наград.'}
                     {typeBadge.type === 'multiplier' && `Множитель ${item.streakMultiplierValue ?? 1.5}x каждые ${item.streakMultiplierInterval ?? 3} выполнений. Увеличивает награды за серию.`}
                     {typeBadge.type === 'discount' && `Скидка ${item.discountPercent ?? 10}% на следующую покупку (только монеты).`}
+                    {typeBadge.type === 'videogame' && 'Видеоигра — после покупки можно докупать часы.'}
                   </p>
                 </div>
               )}
@@ -846,6 +939,72 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 </div>
               )}
             </div>
+
+            {/* ── Video Game: time balance + buy packages ─────────────── */}
+            {item.isVideoGame && (
+              <div className="glass rounded-2xl p-4 mb-6">
+                <h3 className="text-sm font-semibold text-[var(--fg)] mb-3">Игровое время</h3>
+
+                {/* Current balance */}
+                <div className="flex items-center gap-3 rounded-xl bg-[var(--surface-elevated)] px-4 py-3 mb-4">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-b from-cyan-500/15 to-cyan-500/5 text-cyan-500 ring-1 ring-inset ring-cyan-400/20 shadow-sm shadow-cyan-500/10">
+                    <Clock className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-[var(--fg)]">
+                      {(() => {
+                        const total = item.gameTimeTotalMinutes ?? 0
+                        const h = Math.floor(total / 60)
+                        const m = total % 60
+                        return h > 0 ? `${h} ч ${m > 0 ? `${m} мин` : ''}` : `${m} мин`
+                      })()}
+                    </p>
+                    <p className="text-xs text-[var(--fg-muted)]">Накоплено</p>
+                  </div>
+                </div>
+
+                {/* Time packages to buy */}
+                {item.gameTimePackages && item.gameTimePackages.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-[var(--fg)] mb-2">Купить время</p>
+                    {item.gameTimePackages.map((pkg) => {
+                      const canAffordPkg = coins >= pkg.cost
+                      return (
+                        <button
+                          key={pkg.id}
+                          type="button"
+                          disabled={!canAffordPkg}
+                          onClick={() => purchaseGameTime(item.id, pkg.id)}
+                          className={cn(
+                            'w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-all',
+                            canAffordPkg
+                              ? 'bg-[var(--surface-elevated)] hover:bg-[var(--accent-subtle)] hover:ring-1 hover:ring-[var(--accent)]/30 active:scale-[0.98]'
+                              : 'bg-[var(--surface-elevated)] opacity-50 cursor-not-allowed'
+                          )}
+                        >
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-cyan-500/20 to-cyan-500/8 text-cyan-500 ring-1 ring-inset ring-cyan-400/20">
+                            <Clock className="h-4 w-4" />
+                          </div>
+                          <div className="flex-1 text-left">
+                            <p className="text-sm font-bold text-[var(--fg)]">
+                              {pkg.hours % 1 === 0 ? `${pkg.hours} ч` : `${pkg.hours} ч`}
+                            </p>
+                          </div>
+                          <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-bold bg-gradient-to-b from-amber-500/20 to-amber-500/10 text-amber-600 dark:text-amber-400 ring-1 ring-inset ring-amber-400/25">
+                            <Coins className="h-3.5 w-3.5" />
+                            {pkg.cost}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {(!item.gameTimePackages || item.gameTimePackages.length === 0) && (
+                  <p className="text-xs text-[var(--fg-muted)] text-center">Нет пакетов времени. Настройте их в режиме редактирования.</p>
+                )}
+              </div>
+            )}
 
             {/* ── Stats section ─────────────────────────────────────────── */}
             <div className="glass rounded-2xl p-4">

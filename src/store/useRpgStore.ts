@@ -310,6 +310,7 @@ interface RpgStoreState {
   deleteShopItem: (id: ItemId) => void
   purchaseItem: (itemId: ItemId) => boolean | { loot: { itemId: string; name: string } | null }
   openLootbox: (itemId: ItemId) => { itemId: string; name: string } | null
+  purchaseGameTime: (itemId: ItemId, packageId: string) => boolean
 
   // Inventory actions
   getInventory: () => InventoryEntry[]
@@ -1645,6 +1646,26 @@ export const useRpgStore = create<RpgStoreState>()(
           }
 
           return null
+        },
+
+        purchaseGameTime: (itemId, packageId) => {
+          const { shopItems, deductCurrency, updateShopItem } = get()
+          const item = shopItems.find((i) => i.id === itemId)
+          if (!item || !item.isVideoGame || !item.gameTimePackages) return false
+
+          const pkg = item.gameTimePackages.find((p) => p.id === packageId)
+          if (!pkg) return false
+
+          const coinBalance = get().getCurrency(CURRENCY_IDS.COINS)
+          if (coinBalance < pkg.cost) return false
+
+          deductCurrency(CURRENCY_IDS.COINS, pkg.cost)
+          const addMinutes = Math.round(pkg.hours * 60)
+          updateShopItem(itemId, (prev) => ({
+            ...prev,
+            gameTimeTotalMinutes: (prev.gameTimeTotalMinutes ?? 0) + addMinutes,
+          }))
+          return true
         },
 
         // ─── Inventory ────────────────────────────────────────────────────

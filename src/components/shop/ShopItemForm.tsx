@@ -1,10 +1,10 @@
 import { useState, useRef, useMemo } from 'react'
 import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
-import { X, Settings, Gift, ChevronRight, Percent, Folder, TrendingUp } from 'lucide-react'
+import { X, Settings, Gift, ChevronRight, Percent, Folder, Plus, Trash2 } from 'lucide-react'
 import { HabitIcon } from '../HabitIcon'
 import { useRpgStore } from '../../store/useRpgStore'
-import type { ShopItem } from '../../types/domain'
+import type { ShopItem, GameTimePackage } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
 import type { LootTableEntry } from './shopUtils'
 import EmojiPickerModal from './EmojiPickerModal'
@@ -52,6 +52,8 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
   const [streakMultiplierInterval, setStreakMultiplierInterval] = useState(3)
   const [isDiscountVoucher, setIsDiscountVoucher] = useState(false)
   const [discountPercent, setDiscountPercent] = useState(10)
+  const [isVideoGame, setIsVideoGame] = useState(false)
+  const [gameTimePackages, setGameTimePackages] = useState<GameTimePackage[]>([])
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
   const [showLootboxModal, setShowLootboxModal] = useState(false)
   const [showDiscountModal, setShowDiscountModal] = useState(false)
@@ -59,7 +61,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim() || !activeProfileId) return
+    if (!name.trim() || !activeProfileId || !groupId) return
 
     const cost = availableForPurchase && !canGetForFree
       ? { [CURRENCY_IDS.COINS]: coinCost, [CURRENCY_IDS.GEMS]: gemCost }
@@ -84,6 +86,9 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
       streakMultiplierInterval: streakMultiplierEnabled ? streakMultiplierInterval : undefined,
       isDiscountVoucher: isDiscountVoucher || undefined,
       discountPercent: isDiscountVoucher ? Math.min(85, Math.max(1, discountPercent)) : undefined,
+      isVideoGame: isVideoGame || undefined,
+      gameTimePackages: isVideoGame && gameTimePackages.length > 0 ? gameTimePackages : undefined,
+      gameTimeTotalMinutes: isVideoGame ? 0 : undefined,
     }
 
     const created = addItem(data)
@@ -168,8 +173,8 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)]">
               <Folder className="h-4 w-4 text-[var(--accent)]" />
             </div>
-            <span className="flex-1 text-sm font-medium text-[var(--fg)]">
-              {groupId ? itemGroups.find((g) => g.id === groupId)?.name ?? 'Без группы' : 'Без группы'}
+            <span className={cn('flex-1 text-sm font-medium', groupId ? 'text-[var(--fg)]' : 'text-[var(--fg-muted)]')}>
+              {groupId ? itemGroups.find((g) => g.id === groupId)?.name ?? 'Выберите группу' : 'Выберите группу'}
             </span>
             <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
           </button>
@@ -275,7 +280,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-[var(--fg)]">Свойства предмета</p>
-              <p className="text-xs text-[var(--fg-muted)]">Лутбокс, множитель за стрик, скидочный талон</p>
+              <p className="text-xs text-[var(--fg-muted)]">Лутбокс, множитель, скидочник, видеоигра</p>
             </div>
             <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
           </button>
@@ -286,7 +291,13 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
           <button type="button" onClick={onClose} className="btn-secondary flex-1">Отмена</button>
           <button
             type="submit"
-            className="flex-1 flex items-center justify-center gap-2 rounded-2xl py-3 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-[var(--accent)] to-[var(--accent)]/80 shadow-lg shadow-[var(--accent)]/25 hover:shadow-xl hover:shadow-[var(--accent)]/35 hover:scale-[1.02] active:scale-[0.98]"
+            disabled={!name.trim() || !groupId}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-2 rounded-2xl py-3 font-semibold transition-all duration-200',
+              !name.trim() || !groupId
+                ? 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed opacity-50'
+                : 'text-white bg-gradient-to-r from-[var(--accent)] to-[var(--accent)]/80 shadow-lg shadow-[var(--accent)]/25 hover:shadow-xl hover:shadow-[var(--accent)]/35 hover:scale-[1.02] active:scale-[0.98]'
+            )}
           >
             Создать
           </button>
@@ -302,12 +313,12 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
               <button type="button" onClick={() => setShowAdvancedSettings(false)} className="icon-btn"><X className="h-5 w-5" /></button>
             </div>
             <div className="space-y-4">
-              <p className="text-xs text-[var(--fg-muted)] mb-2">Включить можно только одну опцию: лутбокс, множитель за стрик или скидочный талон.</p>
+              <p className="text-xs text-[var(--fg-muted)] mb-2">Включить можно только одну опцию.</p>
               {/* Lootbox */}
-              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (streakMultiplierEnabled || isDiscountVoucher) && 'opacity-70')}>
+              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (streakMultiplierEnabled || isDiscountVoucher || isVideoGame) && 'opacity-70')}>
                 <div className="flex items-center justify-between gap-3">
                   <div><span className="font-medium text-[var(--fg)]">Лутбокс</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Случайный предмет при открытии</p></div>
-                  <button type="button" role="switch" aria-checked={isLootBox} disabled={streakMultiplierEnabled || isDiscountVoucher} onClick={() => { setIsLootBox((v) => !v); if (!isLootBox) { setStreakMultiplierEnabled(false); setIsDiscountVoucher(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isLootBox ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                  <button type="button" role="switch" aria-checked={isLootBox} disabled={streakMultiplierEnabled || isDiscountVoucher || isVideoGame} onClick={() => { setIsLootBox((v) => !v); if (!isLootBox) { setStreakMultiplierEnabled(false); setIsDiscountVoucher(false); setIsVideoGame(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isLootBox ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
                     <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', isLootBox ? 'right-1 left-auto' : 'left-1 right-auto')} />
                   </button>
                 </div>
@@ -320,10 +331,10 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                 )}
               </div>
               {/* Streak Multiplier */}
-              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (isLootBox || isDiscountVoucher) && 'opacity-70')}>
+              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (isLootBox || isDiscountVoucher || isVideoGame) && 'opacity-70')}>
                 <div className="flex items-center justify-between gap-3">
                   <div><span className="font-medium text-[var(--fg)]">Множитель за стрик</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Увеличивает награды за серию выполнений</p></div>
-                  <button type="button" role="switch" aria-checked={streakMultiplierEnabled} disabled={isLootBox || isDiscountVoucher} onClick={() => { setStreakMultiplierEnabled((v) => !v); if (!streakMultiplierEnabled) { setIsLootBox(false); setIsDiscountVoucher(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', streakMultiplierEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                  <button type="button" role="switch" aria-checked={streakMultiplierEnabled} disabled={isLootBox || isDiscountVoucher || isVideoGame} onClick={() => { setStreakMultiplierEnabled((v) => !v); if (!streakMultiplierEnabled) { setIsLootBox(false); setIsDiscountVoucher(false); setIsVideoGame(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', streakMultiplierEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
                     <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', streakMultiplierEnabled ? 'right-1 left-auto' : 'left-1 right-auto')} />
                   </button>
                 </div>
@@ -375,10 +386,10 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                 )}
               </div>
               {/* Discount Voucher */}
-              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (isLootBox || streakMultiplierEnabled) && 'opacity-70')}>
+              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (isLootBox || streakMultiplierEnabled || isVideoGame) && 'opacity-70')}>
                 <div className="flex items-center justify-between gap-3">
                   <div><span className="font-medium text-[var(--fg)]">Скидочный талон</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Снижает цены в магазине на N%</p></div>
-                  <button type="button" role="switch" aria-checked={isDiscountVoucher} disabled={isLootBox || streakMultiplierEnabled} onClick={() => { setIsDiscountVoucher((v) => !v); if (!isDiscountVoucher) { setIsLootBox(false); setStreakMultiplierEnabled(false); setShowDiscountModal(true) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isDiscountVoucher ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                  <button type="button" role="switch" aria-checked={isDiscountVoucher} disabled={isLootBox || streakMultiplierEnabled || isVideoGame} onClick={() => { setIsDiscountVoucher((v) => !v); if (!isDiscountVoucher) { setIsLootBox(false); setStreakMultiplierEnabled(false); setIsVideoGame(false); setShowDiscountModal(true) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isDiscountVoucher ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
                     <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', isDiscountVoucher ? 'right-1 left-auto' : 'left-1 right-auto')} />
                   </button>
                 </div>
@@ -387,6 +398,76 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                     <button type="button" onClick={() => setShowDiscountModal(true)} className="w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] py-3 text-sm font-medium text-[var(--accent)] hover:bg-[var(--accent-subtle)]">
                       <Percent className="h-5 w-5" />Размер скидки: {Math.min(85, Math.max(1, discountPercent))}%<ChevronRight className="h-5 w-5" />
                     </button>
+                  </div>
+                )}
+              </div>
+              {/* Video Game */}
+              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (isLootBox || streakMultiplierEnabled || isDiscountVoucher) && 'opacity-70')}>
+                <div className="flex items-center justify-between gap-3">
+                  <div><span className="font-medium text-[var(--fg)]">Видеоигра</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Докупка часов после покупки</p></div>
+                  <button type="button" role="switch" aria-checked={isVideoGame} disabled={isLootBox || streakMultiplierEnabled || isDiscountVoucher} onClick={() => { setIsVideoGame((v) => !v); if (!isVideoGame) { setIsLootBox(false); setStreakMultiplierEnabled(false); setIsDiscountVoucher(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isVideoGame ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                    <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', isVideoGame ? 'right-1 left-auto' : 'left-1 right-auto')} />
+                  </button>
+                </div>
+                {isVideoGame && (
+                  <div className="mt-4 pt-4 border-t border-[var(--border)] space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-[var(--fg-muted)]">Пакеты времени</label>
+                      <button
+                        type="button"
+                        onClick={() => setGameTimePackages((prev) => [...prev, { id: crypto.randomUUID(), hours: 1, cost: 15 }])}
+                        className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent-subtle)] transition-colors"
+                      >
+                        <Plus className="h-3.5 w-3.5" />Добавить
+                      </button>
+                    </div>
+                    {gameTimePackages.length === 0 && (
+                      <p className="text-xs text-[var(--fg-muted)] text-center py-2">Нет пакетов. Добавьте хотя бы один.</p>
+                    )}
+                    <div className="space-y-2">
+                      {gameTimePackages.map((pkg, idx) => (
+                        <div key={pkg.id} className="flex items-center gap-2 rounded-xl bg-[var(--surface-elevated)] p-2.5">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1">
+                                <label className="block text-[10px] text-[var(--fg-muted)] mb-1">Часов</label>
+                                <input
+                                  type="number"
+                                  min={0.5}
+                                  step={0.5}
+                                  value={pkg.hours}
+                                  onChange={(e) => {
+                                    const val = Math.max(0.5, Number(e.target.value) || 0.5)
+                                    setGameTimePackages((prev) => prev.map((p, i) => i === idx ? { ...p, hours: val } : p))
+                                  }}
+                                  className="input w-full h-8 py-0 text-center text-sm font-bold"
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <label className="block text-[10px] text-[var(--fg-muted)] mb-1">Монет</label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={pkg.cost}
+                                  onChange={(e) => {
+                                    const val = Math.max(0, Number(e.target.value) || 0)
+                                    setGameTimePackages((prev) => prev.map((p, i) => i === idx ? { ...p, cost: val } : p))
+                                  }}
+                                  className="input w-full h-8 py-0 text-center text-sm font-bold"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setGameTimePackages((prev) => prev.filter((_, i) => i !== idx))}
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-400 hover:bg-red-500/15 transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

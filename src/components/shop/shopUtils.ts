@@ -45,7 +45,7 @@ export const RARITY_ORDER: Record<ItemRarity, number> = {
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export type LootTableEntry = { id: string; weight: number; quantity?: number }
-export type ShopTypeFilter = 'all' | 'regular' | 'lootbox' | 'multiplier' | 'discount'
+export type ShopTypeFilter = 'all' | 'regular' | 'lootbox' | 'multiplier' | 'discount' | 'videogame'
 export type ShopSortField = 'default' | 'name' | 'price' | 'rarity'
 export type RecipeFilter = 'all' | 'active' | 'crafted'
 
@@ -53,6 +53,7 @@ export type ItemTypeBadge =
   | { type: 'lootbox'; label: string }
   | { type: 'multiplier'; label: string }
   | { type: 'discount'; label: string }
+  | { type: 'videogame'; label: string }
 
 // ─── Icon Constants (Lucide icon names) ─────────────────────────────────────
 
@@ -109,7 +110,7 @@ export function migrateIcon(raw: string | undefined, fallback = 'Sword'): string
 }
 
 export function getItemIcon(item: ShopItem): string {
-  const fallback = item.isLootBox ? 'Gift' : item.isDiscountVoucher ? 'Tag' : 'Sword'
+  const fallback = item.isLootBox ? 'Gift' : item.isDiscountVoucher ? 'Tag' : item.isVideoGame ? 'Gamepad2' : 'Sword'
   return migrateIcon(item.icon, fallback)
 }
 
@@ -117,6 +118,7 @@ export function getItemTypeBadge(item: ShopItem): ItemTypeBadge | null {
   if (item.isLootBox) return { type: 'lootbox', label: 'Лутбокс' }
   if (item.streakMultiplierEnabled) return { type: 'multiplier', label: 'Множитель' }
   if (item.isDiscountVoucher) return { type: 'discount', label: 'Скидочник' }
+  if (item.isVideoGame) return { type: 'videogame', label: 'Видеоигра' }
   return null
 }
 
@@ -144,8 +146,11 @@ export function filterShopItems(
       case 'discount':
         filtered = filtered.filter((i) => i.isDiscountVoucher)
         break
+      case 'videogame':
+        filtered = filtered.filter((i) => i.isVideoGame)
+        break
       case 'regular':
-        filtered = filtered.filter((i) => !i.isLootBox && !i.streakMultiplierEnabled && !i.isDiscountVoucher)
+        filtered = filtered.filter((i) => !i.isLootBox && !i.streakMultiplierEnabled && !i.isDiscountVoucher && !i.isVideoGame)
         break
     }
   }
