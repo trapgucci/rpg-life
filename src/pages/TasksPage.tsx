@@ -906,19 +906,21 @@ export default function TasksPage() {
       {/* Desktop right panel */}
       <div className="hidden md:block min-w-0 flex-1">
         {showForm ? (
-          <div className="glass-card flex h-full flex-col rounded-2xl p-6 overflow-hidden">
-            <div className="flex shrink-0 items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[var(--fg)]">Новая задача</h2>
+          <div className="glass-card relative flex h-full flex-col rounded-2xl overflow-hidden">
+            {/* Accent strip */}
+            <div className="absolute top-0 left-0 right-0 h-[3px] z-10" style={{ background: 'linear-gradient(90deg, var(--accent), var(--accent-hover))' }} />
+            <div className="flex shrink-0 items-center justify-between p-5 md:p-6 pb-0">
+              <h2 className="text-xl font-bold text-[var(--fg)]">Новая задача</h2>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="icon-btn h-9 w-9 shrink-0 rounded-full p-0 text-[var(--fg-muted)] hover:text-[var(--fg)]"
+                className="icon-btn"
                 title="Закрыть"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto p-5 md:p-6 pt-5">
               <TaskCreateForm
                 defaultGroupId={selectedGroupId === NO_GROUP_ID ? null : selectedGroupId}
                 onCreated={() => setShowForm(false)}
@@ -941,19 +943,21 @@ export default function TasksPage() {
       {/* Mobile detail overlay */}
       {showForm && (
         <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-habit-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
-          <div className="glass-card flex flex-col rounded-2xl p-4 overflow-hidden">
-            <div className="flex shrink-0 items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[var(--fg)]">Новая задача</h2>
+          <div className="glass-card relative flex flex-col rounded-2xl overflow-hidden">
+            {/* Accent strip */}
+            <div className="absolute top-0 left-0 right-0 h-[3px] z-10" style={{ background: 'linear-gradient(90deg, var(--accent), var(--accent-hover))' }} />
+            <div className="flex shrink-0 items-center justify-between p-5 pb-0">
+              <h2 className="text-xl font-bold text-[var(--fg)]">Новая задача</h2>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="icon-btn h-9 w-9 shrink-0 rounded-full p-0 text-[var(--fg-muted)] hover:text-[var(--fg)]"
+                className="icon-btn"
                 title="Закрыть"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="overflow-y-auto">
+            <div className="overflow-y-auto p-5 pt-5">
               <TaskCreateForm
                 defaultGroupId={selectedGroupId === NO_GROUP_ID ? null : selectedGroupId}
                 onCreated={() => setShowForm(false)}

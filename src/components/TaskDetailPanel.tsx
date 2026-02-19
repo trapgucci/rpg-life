@@ -455,38 +455,48 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   }
 
   return (
-    <div className="glass-card flex h-full flex-col rounded-2xl p-6 overflow-hidden">
+    <div className="glass-card relative flex h-full flex-col rounded-2xl overflow-hidden">
+      {/* Accent strip for edit mode */}
+      {isEditing && (
+        <div className="absolute top-0 left-0 right-0 h-[3px] z-10" style={{ background: 'linear-gradient(90deg, var(--accent), var(--accent-hover))' }} />
+      )}
       {/* Scrollable content */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto p-6">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 mb-6">
           {isEditing ? (
-            <div className="flex-1 flex flex-col gap-3">
-              <input
-                type="text"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                className="input text-xl font-semibold"
-                autoFocus
-              />
-              <textarea
-                value={editNotes}
-                onChange={(e) => setEditNotes(e.target.value)}
-                placeholder="Заметки..."
-                rows={3}
-                className="input resize-none"
-              />
+            <div className="flex-1 flex flex-col gap-5">
+              {/* Название и описание */}
+              <div className="glass rounded-2xl p-4">
+                <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Задача</label>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="input w-full text-xl font-semibold mb-3"
+                  autoFocus
+                />
+                <textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  placeholder="Заметки..."
+                  rows={3}
+                  className="input w-full resize-none"
+                />
+              </div>
 
               {/* Группа */}
-              <div>
-                <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Группа</label>
+              <div className="glass rounded-2xl p-4">
+                <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Группа</label>
                 <button
                   type="button"
                   onClick={() => setShowGroupModal(true)}
-                  className="flex w-full items-center gap-2 rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] px-3 py-2 text-left transition-colors hover:bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]"
+                  className="flex w-full items-center gap-2 rounded-xl bg-[var(--surface)] px-3 py-2.5 text-left transition-all hover:bg-[var(--surface-elevated)] ring-1 ring-inset ring-[var(--border)] hover:ring-[var(--accent)]/30 hover:scale-[1.01] active:scale-[0.99]"
                 >
-                  <Folder className="h-4 w-4 shrink-0 text-[var(--accent)]" />
-                  <span className="flex-1 text-sm">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10">
+                    <Folder className="h-4 w-4" />
+                  </div>
+                  <span className="flex-1 text-sm font-medium">
                     {editGroupId ? getTaskGroups().find((g) => g.id === editGroupId)?.name : 'Без группы'}
                   </span>
                   <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
@@ -494,12 +504,12 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
               </div>
 
               {/* Атрибуты и сложность */}
-              <div>
-                <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Атрибуты и сложность</label>
+              <div className="glass rounded-2xl p-4">
+                <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Атрибуты и сложность</label>
                 <button
                   type="button"
                   onClick={() => setShowAttributeModal(true)}
-                  className="group/attr flex w-full items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-left transition-all hover:border-[var(--accent)]/40 hover:shadow-sm"
+                  className="group/attr flex w-full items-center gap-3 rounded-xl bg-[var(--surface)] px-4 py-3 text-left transition-all hover:bg-[var(--surface-elevated)] ring-1 ring-inset ring-[var(--border)] hover:ring-[var(--accent)]/30 hover:scale-[1.01] active:scale-[0.99]"
                 >
                   <div className={cn(
                     'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-300',
@@ -558,14 +568,16 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
               </div>
 
               {/* Вознаграждения */}
-              <div>
-                <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Вознаграждения</label>
+              <div className="glass rounded-2xl p-4">
+                <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Вознаграждения</label>
                 <button
                   type="button"
                   onClick={() => setShowRewardsModal(true)}
-                  className="flex w-full items-center gap-3 rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] px-4 py-2.5 text-left transition-colors hover:bg-[var(--surface-elevated)]"
+                  className="group/reward flex w-full items-center gap-3 rounded-xl bg-[var(--surface)] px-4 py-2.5 text-left transition-all hover:bg-[var(--surface-elevated)] ring-1 ring-inset ring-[var(--border)] hover:ring-[var(--accent)]/30 hover:scale-[1.01] active:scale-[0.99]"
                 >
-                  <Gift className="h-4 w-4 text-[var(--accent)]" />
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-amber-500/15 to-amber-500/5 text-amber-500 ring-1 ring-inset ring-amber-400/20 shadow-sm shadow-amber-500/10">
+                    <Gift className="h-4.5 w-4.5" />
+                  </div>
                   <div className="flex-1">
                     {(editCoinReward > 0 || editGemReward > 0) ? (
                       <RewardBadge coins={editCoinReward} gems={editGemReward} />
@@ -573,13 +585,13 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                       <span className="text-sm text-[var(--fg-muted)]">Не назначено</span>
                     )}
                   </div>
-                  <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
+                  <ChevronRight className="h-4 w-4 text-[var(--fg-muted)] transition-transform duration-200 group-hover/reward:translate-x-0.5" />
                 </button>
               </div>
 
               {/* Приоритет */}
-              <div>
-                <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Приоритет</label>
+              <div className="glass rounded-2xl p-4">
+                <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Приоритет</label>
                 <div className="grid grid-cols-4 gap-2">
                   {(['none', 'low', 'medium', 'high'] as const).map((p) => {
                     const priorityStyle = PRIORITY_COLORS[p]
@@ -592,13 +604,13 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                           'flex flex-col items-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all',
                           editPriority === p
                             ? cn(
-                                'border-2',
-                                p === 'none' && 'bg-gray-500/10 text-gray-500 border-gray-500',
-                                p === 'low' && 'bg-emerald-500/10 text-emerald-500 border-emerald-500',
-                                p === 'medium' && 'bg-yellow-500/10 text-yellow-500 border-yellow-500',
-                                p === 'high' && 'bg-red-500/10 text-red-500 border-red-500'
+                                'border-2 shadow-md scale-105',
+                                p === 'none' && 'bg-gradient-to-b from-gray-500/20 to-gray-500/8 text-gray-500 border-gray-500 shadow-gray-500/15',
+                                p === 'low' && 'bg-gradient-to-b from-emerald-500/20 to-emerald-500/8 text-emerald-500 border-emerald-500 shadow-emerald-500/15',
+                                p === 'medium' && 'bg-gradient-to-b from-yellow-500/20 to-yellow-500/8 text-yellow-500 border-yellow-500 shadow-yellow-500/15',
+                                p === 'high' && 'bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 border-red-500 shadow-red-500/15'
                               )
-                            : 'border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:border-[var(--accent)]/30'
+                            : 'border-2 border-transparent bg-[var(--surface)] text-[var(--fg-muted)] hover:border-[var(--border)] hover:bg-[var(--surface-elevated)]'
                         )}
                       >
                         {p !== 'none' && <Flag className="h-4 w-4" />}
@@ -611,41 +623,38 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
               </div>
 
               {/* Правило повтора */}
-              <div>
-                <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Правило повтора</label>
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
-                  {/* Повтор */}
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => setShowRecurrenceModal(true)}
-                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-[var(--surface-elevated)]"
-                    >
-                      <span className="flex items-center gap-3">
-                        <Clock className="h-5 w-5 text-[var(--accent)]" />
-                        <div>
-                          <p className="font-semibold text-[var(--fg)]">Повтор</p>
-                          <p className="text-xs text-[var(--fg-muted)] mt-0.5">
-                            {RECURRENCE_LABELS[editRecurrence]}
-                            {editRecurrence === 'weekly' && editRecurrenceSettings.weeklyMode === 'timesPerWeek' && editRecurrenceSettings.weeklyTimesPerWeek
-                              ? ` (${editRecurrenceSettings.weeklyTimesPerWeek} ${editRecurrenceSettings.weeklyTimesPerWeek === 1 ? 'раз' : editRecurrenceSettings.weeklyTimesPerWeek < 5 ? 'раза' : 'раз'}/нед)`
-                              : editRecurrence === 'weekly' && editRecurrenceSettings.weeklyDays && editRecurrenceSettings.weeklyDays.length > 0 && editRecurrenceSettings.weeklyDays.length < 7
-                              ? ` (${editRecurrenceSettings.weeklyDays.length} ${editRecurrenceSettings.weeklyDays.length === 1 ? 'день' : editRecurrenceSettings.weeklyDays.length < 5 ? 'дня' : 'дней'})`
-                              : ''}
-                          </p>
-                        </div>
-                      </span>
-                      <ChevronRight className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" />
-                    </button>
-                  </div>
-                </div>
+              <div className="glass rounded-2xl p-4">
+                <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Правило повтора</label>
+                <button
+                  type="button"
+                  onClick={() => setShowRecurrenceModal(true)}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl bg-[var(--surface)] px-4 py-3 text-left text-sm transition-all hover:bg-[var(--surface-elevated)] ring-1 ring-inset ring-[var(--border)] hover:ring-[var(--accent)]/30 hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  <span className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10">
+                      <Clock className="h-4.5 w-4.5" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[var(--fg)]">Повтор</p>
+                      <p className="text-xs text-[var(--fg-muted)] mt-0.5">
+                        {RECURRENCE_LABELS[editRecurrence]}
+                        {editRecurrence === 'weekly' && editRecurrenceSettings.weeklyMode === 'timesPerWeek' && editRecurrenceSettings.weeklyTimesPerWeek
+                          ? ` (${editRecurrenceSettings.weeklyTimesPerWeek} ${editRecurrenceSettings.weeklyTimesPerWeek === 1 ? 'раз' : editRecurrenceSettings.weeklyTimesPerWeek < 5 ? 'раза' : 'раз'}/нед)`
+                          : editRecurrence === 'weekly' && editRecurrenceSettings.weeklyDays && editRecurrenceSettings.weeklyDays.length > 0 && editRecurrenceSettings.weeklyDays.length < 7
+                          ? ` (${editRecurrenceSettings.weeklyDays.length} ${editRecurrenceSettings.weeklyDays.length === 1 ? 'день' : editRecurrenceSettings.weeklyDays.length < 5 ? 'дня' : 'дней'})`
+                          : ''}
+                      </p>
+                    </div>
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" />
+                </button>
               </div>
 
               {/* Целевые показатели — для counter, checkbox (можно конвертировать) */}
               {task.kind !== 'nested' && (
-                <div>
-                  <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Целевые показатели</label>
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+                <div className="glass rounded-2xl p-4">
+                  <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Целевые показатели</label>
+                  <div className="rounded-xl bg-[var(--surface)] overflow-hidden ring-1 ring-inset ring-[var(--border)]">
                     {/* Toggle header */}
                     <button
                       type="button"
@@ -780,8 +789,8 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
 
               {/* Подзадачи — для nested и checkbox (можно добавить подзадачи и преобразовать в nested) */}
               {(task.kind === 'nested' || (task.kind === 'checkbox' && !editCounterEnabled)) && (
-                <div>
-                  <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">
+                <div className="glass rounded-2xl p-4">
+                  <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">
                     Подзадачи ({task.kind === 'nested' ? task.subtasks.length : 0})
                   </label>
                   {task.kind === 'nested' && task.subtasks.length > 0 && (
@@ -874,7 +883,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   <button
                     type="button"
                     onClick={() => { setEditingSubtask(null); setShowSubtaskModal(true) }}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--accent)] transition-colors hover:bg-[var(--accent-subtle)] hover:border-[var(--accent)]"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm font-medium text-[var(--accent)] transition-all hover:bg-gradient-to-b hover:from-[var(--accent)]/10 hover:to-[var(--accent)]/5 hover:border-[var(--accent)]/40 hover:shadow-sm hover:shadow-[var(--accent)]/10 active:scale-[0.98]"
                   >
                     <Plus className="h-4 w-4" />
                     Добавить подзадачу
@@ -882,20 +891,14 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 </div>
               )}
 
-              <div className="flex gap-2">
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => resetEditState(task)} className="btn-secondary flex-1">Отмена</button>
                 <button
                   type="button"
                   onClick={() => handleSaveEdit()}
-                  className="btn-primary flex-1"
+                  className="flex-1 flex items-center justify-center gap-2 rounded-2xl py-3 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-[var(--accent)] to-[var(--accent)]/80 shadow-lg shadow-[var(--accent)]/25 hover:shadow-xl hover:shadow-[var(--accent)]/35 hover:scale-[1.02] active:scale-[0.98]"
                 >
                   Сохранить
-                </button>
-                <button
-                  type="button"
-                  onClick={() => resetEditState(task)}
-                  className="btn-secondary flex-1"
-                >
-                  Отмена
                 </button>
               </div>
             </div>

@@ -75,27 +75,36 @@ export default function ItemGroupSelectModal({
           </button>
 
           {/* Группы */}
-          {groups.map((group) => (
-            <button
-              key={group.id}
-              type="button"
-              onClick={() => handleSelect(group.id)}
-              className={cn(
-                'flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all',
-                selectedGroupId === group.id
-                  ? 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-lg shadow-[var(--accent)]/10'
-                  : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-elevated)]'
-              )}
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--accent-subtle)]">
-                <Folder className="h-4 w-4 text-[var(--accent)]" />
-              </div>
-              <span className="flex-1 text-sm font-medium text-[var(--fg)]">{group.name}</span>
-              {selectedGroupId === group.id && (
-                <Check className="h-4 w-4 text-[var(--accent)] shrink-0" />
-              )}
-            </button>
-          ))}
+          {groups.map((group) => {
+            const gColor = group.color
+            return (
+              <button
+                key={group.id}
+                type="button"
+                onClick={() => handleSelect(group.id)}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all',
+                  selectedGroupId === group.id
+                    ? 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-lg shadow-[var(--accent)]/10'
+                    : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-elevated)]'
+                )}
+              >
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                  style={gColor
+                    ? { background: `linear-gradient(135deg, ${gColor}30, ${gColor}15)` }
+                    : { background: 'var(--accent-subtle)' }
+                  }
+                >
+                  <Folder className="h-4 w-4" style={gColor ? { color: gColor } : { color: 'var(--accent)' }} />
+                </div>
+                <span className="flex-1 text-sm font-medium text-[var(--fg)]">{group.name}</span>
+                {selectedGroupId === group.id && (
+                  <Check className="h-4 w-4 text-[var(--accent)] shrink-0" />
+                )}
+              </button>
+            )
+          })}
 
           {/* Добавить группу */}
           {showAddGroup ? (

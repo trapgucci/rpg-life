@@ -4,8 +4,16 @@ import { cn } from '../lib/cn'
 import {
   ShoppingBag, Plus, Search, X, ArrowUpDown, ArrowUp, ArrowDown,
   Folder, List, ChevronDown, Sparkles, History, Pencil, Trash2, CheckSquare,
-  Package, Puzzle,
+  Package, Puzzle, Palette,
 } from 'lucide-react'
+
+const GROUP_COLORS = [
+  '#ef4444', '#f97316', '#f59e0b', '#eab308',
+  '#84cc16', '#22c55e', '#10b981', '#14b8a6',
+  '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1',
+  '#8b5cf6', '#a855f7', '#d946ef', '#ec4899',
+  '#f43f5e', '#78716c', '#9ca3af', '#64748b',
+]
 import { useRpgStore } from '../store/useRpgStore'
 import ConfirmModal from '../components/ConfirmModal'
 
@@ -96,6 +104,7 @@ export default function ShopPage() {
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null)
   const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null)
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null)
+  const [colorPickerGroupId, setColorPickerGroupId] = useState<string | null>(null)
 
   // Modals
   const [showPurchaseHistory, setShowPurchaseHistory] = useState(false)
@@ -131,6 +140,7 @@ export default function ShopPage() {
         !groupButtonRef.current.contains(e.target as Node)
       ) {
         setShowGroupSelector(false)
+        setColorPickerGroupId(null)
       }
     }
     document.addEventListener('mousedown', handler)
@@ -460,12 +470,21 @@ export default function ShopPage() {
                       : 'text-[var(--fg-secondary)] hover:border-[var(--border-accent)] hover:bg-[var(--surface)]',
                   )}
                 >
-                  <div className={cn(
-                    'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-colors',
-                    showGroupSelector ? 'bg-[var(--accent)]/15' : 'bg-[var(--surface)]',
-                  )}>
-                    <Folder className="h-3.5 w-3.5 shrink-0" />
-                  </div>
+                  {(() => {
+                    const selectedGroup = groupFilter ? itemGroups.find((g) => g.id === groupFilter) : null
+                    const gColor = selectedGroup?.color
+                    return (
+                      <div
+                        className={cn(
+                          'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-colors',
+                          !gColor && (showGroupSelector ? 'bg-[var(--accent)]/15' : 'bg-[var(--surface)]'),
+                        )}
+                        style={gColor ? { background: `linear-gradient(135deg, ${gColor}30, ${gColor}15)` } : undefined}
+                      >
+                        <Folder className="h-3.5 w-3.5 shrink-0" style={gColor ? { color: gColor } : undefined} />
+                      </div>
+                    )
+                  })()}
                   <span className="flex-1 truncate font-medium">
                     {groupFilter === null
                       ? 'Все группы'
@@ -597,11 +616,15 @@ export default function ShopPage() {
                                   }}
                                   className="flex flex-1 items-center gap-2.5 px-2.5 py-2 min-w-0"
                                 >
-                                  <div className={cn(
-                                    'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg',
-                                    groupFilter === group.id ? 'bg-[var(--accent)]/15' : 'bg-[var(--surface)]',
-                                  )}>
-                                    <Folder className="h-3.5 w-3.5 shrink-0" />
+                                  <div
+                                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg"
+                                    style={{
+                                      background: group.color
+                                        ? `linear-gradient(135deg, ${group.color}30, ${group.color}15)`
+                                        : undefined,
+                                    }}
+                                  >
+                                    <Folder className="h-3.5 w-3.5 shrink-0" style={group.color ? { color: group.color } : undefined} />
                                   </div>
                                   <span className="truncate">{group.name}</span>
                                   <span className="shrink-0 rounded-md bg-[var(--surface)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--fg-muted)] tabular-nums">
@@ -609,6 +632,50 @@ export default function ShopPage() {
                                   </span>
                                 </button>
                                 <div className="flex gap-0.5 pr-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <div className="relative">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setColorPickerGroupId(colorPickerGroupId === group.id ? null : group.id)
+                                      }}
+                                      className={cn(
+                                        'icon-btn h-6 w-6 p-0 relative',
+                                        colorPickerGroupId === group.id && 'bg-[var(--accent-subtle)] text-[var(--accent)]',
+                                      )}
+                                      title="Цвет группы"
+                                    >
+                                      <Palette className="h-3 w-3" />
+                                      <span
+                                        className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[var(--surface-overlay)]"
+                                        style={{ backgroundColor: group.color ?? '#22c55e' }}
+                                      />
+                                    </button>
+                                    {colorPickerGroupId === group.id && (
+                                      <div
+                                        className="absolute right-0 top-full mt-1 z-50 rounded-xl border border-[var(--border)] bg-[var(--surface-overlay)] p-2 shadow-xl backdrop-blur-xl"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <div className="grid grid-cols-5 gap-1.5" style={{ width: 130 }}>
+                                          {GROUP_COLORS.map((c) => (
+                                            <button
+                                              key={c}
+                                              type="button"
+                                              onClick={() => {
+                                                updateItemGroup(group.id, (g) => ({ ...g, color: c }))
+                                                setColorPickerGroupId(null)
+                                              }}
+                                              className={cn(
+                                                'h-5 w-5 rounded-full transition-all hover:scale-125 active:scale-95',
+                                                group.color === c && 'ring-2 ring-offset-1 ring-[var(--fg)]',
+                                              )}
+                                              style={{ backgroundColor: c, ringOffset: 'var(--surface-overlay)' } as React.CSSProperties}
+                                            />
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
                                   <button
                                     type="button"
                                     onClick={(e) => {

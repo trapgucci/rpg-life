@@ -229,28 +229,23 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
 
   return (
     <>
-    <form onSubmit={handleSubmit} className={cn('flex flex-col gap-4', className)}>
+    <form onSubmit={handleSubmit} className={cn('flex flex-col gap-5', className)}>
       {error && (
-        <div className="rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-2.5 text-sm text-red-600 dark:text-red-400">
+        <div className="glass rounded-2xl border border-red-500/30 bg-gradient-to-r from-red-500/10 to-red-500/5 px-4 py-3 text-sm text-red-600 dark:text-red-400 shadow-sm shadow-red-500/10">
           {error}
         </div>
       )}
-      {/* 1. Название задачи */}
-      <div>
-        <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Название задачи</label>
+      {/* 1. Название и описание */}
+      <div className="glass rounded-2xl p-4">
+        <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Задача</label>
         <input
           type="text"
           placeholder="Введите название..."
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="input w-full text-base"
+          className="input w-full text-base mb-3"
           autoFocus
         />
-      </div>
-
-      {/* 2. Описание задачи */}
-      <div>
-        <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Описание задачи</label>
         <textarea
           placeholder="Описание (опционально)"
           value={description}
@@ -261,15 +256,17 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       </div>
 
       {/* 2.5. Группа задачи */}
-      <div>
-        <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Группа</label>
+      <div className="glass rounded-2xl p-4">
+        <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Группа</label>
         <button
           type="button"
           onClick={() => setShowGroupModal(true)}
-          className="flex w-full items-center gap-2 rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] px-3 py-2 text-left transition-colors hover:bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]"
+          className="flex w-full items-center gap-2 rounded-xl bg-[var(--surface)] px-3 py-2.5 text-left transition-all hover:bg-[var(--surface-elevated)] ring-1 ring-inset ring-[var(--border)] hover:ring-[var(--accent)]/30 hover:scale-[1.01] active:scale-[0.99]"
         >
-          <Folder className="h-4 w-4 shrink-0 text-[var(--accent)]" />
-          <span className="flex-1 text-sm text-[var(--fg)]">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10">
+            <Folder className="h-4 w-4" />
+          </div>
+          <span className="flex-1 text-sm font-medium text-[var(--fg)]">
             {selectedGroupId ? getTaskGroups().find((g) => g.id === selectedGroupId)?.name ?? 'Без группы' : 'Без группы'}
           </span>
           <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
@@ -278,8 +275,8 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
 
       {/* 3. Подзадачи */}
       {!countingTaskEnabled && (
-        <div>
-          <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Подзадачи ({subtasks.length})</label>
+        <div className="glass rounded-2xl p-4">
+          <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Подзадачи ({subtasks.length})</label>
           {subtasks.length > 0 && (
             <div className="mb-2 flex flex-col gap-2">
               {subtasks.map((s) => {
@@ -363,7 +360,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
           <button
             type="button"
             onClick={() => setShowSubtaskModal(true)}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--accent)] transition-colors hover:bg-[var(--accent-subtle)] hover:border-[var(--accent)]"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm font-medium text-[var(--accent)] transition-all hover:bg-gradient-to-b hover:from-[var(--accent)]/10 hover:to-[var(--accent)]/5 hover:border-[var(--accent)]/40 hover:shadow-sm hover:shadow-[var(--accent)]/10 active:scale-[0.98]"
           >
             <Plus className="h-4 w-4" />
             Добавить подзадачу
@@ -372,8 +369,8 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       )}
 
       {/* 4. Приоритет */}
-      <div>
-        <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Приоритет</label>
+      <div className="glass rounded-2xl p-4">
+        <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Приоритет</label>
         <div className="grid grid-cols-4 gap-2">
           {(['none', 'low', 'medium', 'high'] as const).map((p) => {
             const labels = { none: 'Без приоритета', low: 'Низкий', medium: 'Средний', high: 'Высокий' }
@@ -386,13 +383,13 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
                   'flex flex-col items-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all',
                   priority === p
                     ? cn(
-                        'border-2',
-                        p === 'none' && 'bg-gray-500/10 text-gray-500 border-gray-500',
-                        p === 'low' && 'bg-emerald-500/10 text-emerald-500 border-emerald-500',
-                        p === 'medium' && 'bg-yellow-500/10 text-yellow-500 border-yellow-500',
-                        p === 'high' && 'bg-red-500/10 text-red-500 border-red-500'
+                        'border-2 shadow-md scale-105',
+                        p === 'none' && 'bg-gradient-to-b from-gray-500/20 to-gray-500/8 text-gray-500 border-gray-500 shadow-gray-500/15',
+                        p === 'low' && 'bg-gradient-to-b from-emerald-500/20 to-emerald-500/8 text-emerald-500 border-emerald-500 shadow-emerald-500/15',
+                        p === 'medium' && 'bg-gradient-to-b from-yellow-500/20 to-yellow-500/8 text-yellow-500 border-yellow-500 shadow-yellow-500/15',
+                        p === 'high' && 'bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 border-red-500 shadow-red-500/15'
                       )
-                    : 'border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:border-[var(--accent)]/30'
+                    : 'border-2 border-transparent bg-[var(--surface)] text-[var(--fg-muted)] hover:border-[var(--border)] hover:bg-[var(--surface-elevated)]'
                 )}
               >
                 {p !== 'none' && <Flag className="h-4 w-4" />}
@@ -405,130 +402,126 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       </div>
 
       {/* 5. Правило повтора */}
-      <div>
-        <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Правило повтора</label>
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
-          {/* Повтор */}
-          <div>
-            <button
-              type="button"
-              onClick={() => setShowRecurrenceModal(true)}
-              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-[var(--surface-elevated)]"
-            >
-              <span className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-[var(--accent)]" />
-                <div>
-                  <p className="font-semibold text-[var(--fg)]">Повтор</p>
-                  <p className="text-xs text-[var(--fg-muted)] mt-0.5">
-                    {RECURRENCE_STATUS_LABEL[recurrence]}
-                    {recurrence === 'weekly' && recurrenceSettings.weeklyMode === 'timesPerWeek' && recurrenceSettings.weeklyTimesPerWeek
-                      ? ` (${recurrenceSettings.weeklyTimesPerWeek} ${recurrenceSettings.weeklyTimesPerWeek === 1 ? 'раз' : recurrenceSettings.weeklyTimesPerWeek < 5 ? 'раза' : 'раз'}/нед)`
-                      : recurrence === 'weekly' && recurrenceSettings.weeklyDays && recurrenceSettings.weeklyDays.length > 0 && recurrenceSettings.weeklyDays.length < 7
-                      ? ` (${recurrenceSettings.weeklyDays.length} ${recurrenceSettings.weeklyDays.length === 1 ? 'день' : recurrenceSettings.weeklyDays.length < 5 ? 'дня' : 'дней'})`
-                      : ''}
-                  </p>
-                </div>
-              </span>
-              <ChevronRight className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" />
-            </button>
-          </div>
-        </div>
+      <div className="glass rounded-2xl p-4">
+        <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Правило повтора</label>
+        <button
+          type="button"
+          onClick={() => setShowRecurrenceModal(true)}
+          className="flex w-full items-center justify-between gap-3 rounded-xl bg-[var(--surface)] px-4 py-3 text-left text-sm transition-all hover:bg-[var(--surface-elevated)] ring-1 ring-inset ring-[var(--border)] hover:ring-[var(--accent)]/30 hover:scale-[1.01] active:scale-[0.99]"
+        >
+          <span className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10">
+              <Calendar className="h-4.5 w-4.5" />
+            </div>
+            <div>
+              <p className="font-semibold text-[var(--fg)]">Повтор</p>
+              <p className="text-xs text-[var(--fg-muted)] mt-0.5">
+                {RECURRENCE_STATUS_LABEL[recurrence]}
+                {recurrence === 'weekly' && recurrenceSettings.weeklyMode === 'timesPerWeek' && recurrenceSettings.weeklyTimesPerWeek
+                  ? ` (${recurrenceSettings.weeklyTimesPerWeek} ${recurrenceSettings.weeklyTimesPerWeek === 1 ? 'раз' : recurrenceSettings.weeklyTimesPerWeek < 5 ? 'раза' : 'раз'}/нед)`
+                  : recurrence === 'weekly' && recurrenceSettings.weeklyDays && recurrenceSettings.weeklyDays.length > 0 && recurrenceSettings.weeklyDays.length < 7
+                  ? ` (${recurrenceSettings.weeklyDays.length} ${recurrenceSettings.weeklyDays.length === 1 ? 'день' : recurrenceSettings.weeklyDays.length < 5 ? 'дня' : 'дней'})`
+                  : ''}
+              </p>
+            </div>
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" />
+        </button>
       </div>
 
       {/* 6. Система вознаграждения */}
-      <div>
-        <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Система вознаграждения</label>
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+      <div className="glass rounded-2xl p-4">
+        <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Система вознаграждения</label>
+        <div className="flex flex-col gap-2">
           {/* а) Атрибуты и сложность */}
-          <div>
-            <button
-              type="button"
-              onClick={() => setShowAttributeModal(true)}
-              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-[var(--surface-elevated)]"
-            >
-              <span className="flex items-center gap-3">
-                <BarChart3 className="h-5 w-5 text-[var(--accent)]" />
-                <div>
-                  <p className="font-semibold text-[var(--fg)]">Атрибуты и сложность</p>
-                  {selectedAttrs.length > 0 ? (
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                      {selectedAttrs.map((a) => (
-                        <span key={a!.id} className="inline-flex items-center gap-1 rounded-lg bg-[var(--accent-subtle)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]">
-                          {a!.icon} {a!.name}
-                        </span>
-                      ))}
-                      {difficultyXp > 0 && (
-                        <span className={cn(
-                          'inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-semibold border',
-                          customXp != null
-                            ? 'bg-purple-500/10 text-purple-500 border-purple-500/30'
-                            : effectiveDifficulty === 'easy'
-                            ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
-                            : effectiveDifficulty === 'medium'
-                            ? 'bg-blue-500/10 text-blue-500 border-blue-500/30'
-                            : effectiveDifficulty === 'hard'
-                            ? 'bg-orange-500/10 text-orange-500 border-orange-500/30'
-                            : 'bg-red-500/10 text-red-500 border-red-500/30'
-                        )}>
-                          <Zap className="h-3 w-3" />
-                          {difficultyXp} XP
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-[var(--fg-muted)] mt-0.5">Не выбрано</p>
-                  )}
-                </div>
-              </span>
-              <ChevronRight className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" />
-            </button>
-          </div>
-          <div className="h-px bg-[var(--border)]" />
+          <button
+            type="button"
+            onClick={() => setShowAttributeModal(true)}
+            className="group/attr flex w-full items-center justify-between gap-3 rounded-xl bg-[var(--surface)] px-4 py-3 text-left text-sm transition-all hover:bg-[var(--surface-elevated)] ring-1 ring-inset ring-[var(--border)] hover:ring-[var(--accent)]/30 hover:scale-[1.01] active:scale-[0.99]"
+          >
+            <span className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10">
+                <BarChart3 className="h-4.5 w-4.5" />
+              </div>
+              <div>
+                <p className="font-semibold text-[var(--fg)]">Атрибуты и сложность</p>
+                {selectedAttrs.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    {selectedAttrs.map((a) => (
+                      <span key={a!.id} className="inline-flex items-center gap-1 rounded-lg bg-[var(--accent-subtle)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]">
+                        {a!.icon} {a!.name}
+                      </span>
+                    ))}
+                    {difficultyXp > 0 && (
+                      <span className={cn(
+                        'inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-semibold',
+                        customXp != null
+                          ? 'bg-gradient-to-b from-purple-500/20 to-purple-500/10 text-purple-500 ring-1 ring-inset ring-purple-400/25 shadow-sm shadow-purple-500/10'
+                          : effectiveDifficulty === 'easy'
+                          ? 'bg-gradient-to-b from-emerald-500/20 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10'
+                          : effectiveDifficulty === 'medium'
+                          ? 'bg-gradient-to-b from-blue-500/20 to-blue-500/10 text-blue-500 ring-1 ring-inset ring-blue-400/25 shadow-sm shadow-blue-500/10'
+                          : effectiveDifficulty === 'hard'
+                          ? 'bg-gradient-to-b from-orange-500/20 to-orange-500/10 text-orange-500 ring-1 ring-inset ring-orange-400/25 shadow-sm shadow-orange-500/10'
+                          : 'bg-gradient-to-b from-red-500/20 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/25 shadow-sm shadow-red-500/10'
+                      )}>
+                        <Zap className="h-3 w-3" />
+                        {difficultyXp} XP
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-[var(--fg-muted)] mt-0.5">Не выбрано</p>
+                )}
+              </div>
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-[var(--fg-muted)] transition-transform duration-200 group-hover/attr:translate-x-0.5" />
+          </button>
           {/* б) Предметы */}
-          <div>
-            <button
-              type="button"
-              onClick={() => setShowRewardsModal(true)}
-              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-[var(--surface-elevated)]"
-            >
-              <span className="flex items-center gap-3">
-                <Gift className="h-5 w-5 text-[var(--accent)]" />
-                <div>
-                  <p className="font-semibold text-[var(--fg)]">Предметы</p>
-                  {coinReward > 0 || gemReward > 0 ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-50 to-cyan-50 dark:from-amber-950/30 dark:to-cyan-950/30 px-2.5 py-0.5 text-xs font-semibold border border-amber-200 dark:border-amber-800 mt-0.5">
-                      {coinReward > 0 && (
-                        <>
-                          <Coins className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                          <span className="text-amber-600 dark:text-amber-400">{coinReward}</span>
-                        </>
-                      )}
-                      {coinReward > 0 && gemReward > 0 && (
-                        <span className="text-[var(--fg-muted)]">•</span>
-                      )}
-                      {gemReward > 0 && (
-                        <>
-                          <Gem className="h-4 w-4 text-cyan-600 dark:text-cyan-400" strokeWidth={2.5} />
-                          <span className="text-cyan-600 dark:text-cyan-400">{gemReward}</span>
-                        </>
-                      )}
-                    </span>
-                  ) : (
-                    <p className="text-xs text-[var(--fg-muted)] mt-0.5">Не назначено</p>
-                  )}
-                </div>
-              </span>
-              <ChevronRight className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setShowRewardsModal(true)}
+            className="group/reward flex w-full items-center justify-between gap-3 rounded-xl bg-[var(--surface)] px-4 py-3 text-left text-sm transition-all hover:bg-[var(--surface-elevated)] ring-1 ring-inset ring-[var(--border)] hover:ring-[var(--accent)]/30 hover:scale-[1.01] active:scale-[0.99]"
+          >
+            <span className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-amber-500/15 to-amber-500/5 text-amber-500 ring-1 ring-inset ring-amber-400/20 shadow-sm shadow-amber-500/10">
+                <Gift className="h-4.5 w-4.5" />
+              </div>
+              <div>
+                <p className="font-semibold text-[var(--fg)]">Предметы</p>
+                {coinReward > 0 || gemReward > 0 ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-50 to-cyan-50 dark:from-amber-950/30 dark:to-cyan-950/30 px-2.5 py-0.5 text-xs font-semibold border border-amber-200 dark:border-amber-800 mt-0.5">
+                    {coinReward > 0 && (
+                      <>
+                        <Coins className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                        <span className="text-amber-600 dark:text-amber-400">{coinReward}</span>
+                      </>
+                    )}
+                    {coinReward > 0 && gemReward > 0 && (
+                      <span className="text-[var(--fg-muted)]">•</span>
+                    )}
+                    {gemReward > 0 && (
+                      <>
+                        <Gem className="h-4 w-4 text-cyan-600 dark:text-cyan-400" strokeWidth={2.5} />
+                        <span className="text-cyan-600 dark:text-cyan-400">{gemReward}</span>
+                      </>
+                    )}
+                  </span>
+                ) : (
+                  <p className="text-xs text-[var(--fg-muted)] mt-0.5">Не назначено</p>
+                )}
+              </div>
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-[var(--fg-muted)] transition-transform duration-200 group-hover/reward:translate-x-0.5" />
+          </button>
         </div>
       </div>
 
       {/* 7. Целевые показатели */}
       {subtasks.length === 0 && (
-        <div>
-          <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Целевые показатели</label>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+        <div className="glass rounded-2xl p-4">
+          <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Целевые показатели</label>
+          <div className="rounded-xl bg-[var(--surface)] overflow-hidden ring-1 ring-inset ring-[var(--border)]">
             {/* Toggle header */}
             <button
               type="button"
@@ -671,9 +664,9 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       )}
 
       {/* 8. Настройки завершения */}
-      <div>
-        <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Настройки завершения</label>
-        <div className="rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] overflow-hidden">
+      <div className="glass rounded-2xl p-4">
+        <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Настройки завершения</label>
+        <div className="rounded-xl bg-[var(--surface)] overflow-hidden ring-1 ring-inset ring-[var(--border)]">
           <div
             role="button"
             tabIndex={0}
@@ -720,7 +713,10 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         </div>
       </div>
 
-      <button type="submit" className="btn-primary flex items-center justify-center gap-2">
+      <button
+        type="submit"
+        className="flex items-center justify-center gap-2 rounded-2xl py-3.5 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-[var(--accent)] to-[var(--accent)]/80 shadow-lg shadow-[var(--accent)]/25 hover:shadow-xl hover:shadow-[var(--accent)]/35 hover:scale-[1.02] active:scale-[0.98]"
+      >
         <Plus className="h-4 w-4" />
         Добавить задачу
       </button>
