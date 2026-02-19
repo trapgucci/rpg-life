@@ -9,7 +9,7 @@ import ItemGroupSelectModal from './ItemGroupSelectModal'
 import IconSourcePicker from './IconSourcePicker'
 import { HabitIcon } from '../HabitIcon'
 import { useRpgStore } from '../../store/useRpgStore'
-import type { ShopItem, ItemRarity } from '../../types/domain'
+import type { ShopItem } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
 import {
   getItemIcon, getItemTypeBadge, migrateIcon,
@@ -259,28 +259,28 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
         {/* ── HEADER ─────────────────────────────────────────────────────── */}
         <div className="flex items-start justify-between gap-4 mb-6">
           {isEditing ? (
-            /* ── EDIT MODE ─────────────────────────────────────────────── */
-            <div className="flex-1 flex flex-col gap-4">
+            /* ── EDIT MODE (Glassmorphic Neumorphism) ─────────────────── */
+            <div className="flex-1 flex flex-col gap-5">
 
-              {/* Name + icon avatar */}
-              <div>
-                <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Название предмета</label>
-                <div className="flex gap-2 items-stretch">
+              {/* ─── Name + icon ─── */}
+              <div className="glass rounded-2xl p-4">
+                <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Название предмета</label>
+                <div className="flex gap-3 items-stretch">
                   <button
                     type="button"
                     onClick={() => setShowIconSource(true)}
-                    className="relative shrink-0 group/preview flex items-center justify-center w-[42px] rounded-xl overflow-hidden ring-1 ring-inset shadow-sm hover:ring-[var(--accent)] transition-all cursor-pointer"
+                    className="relative shrink-0 group/preview flex items-center justify-center w-[48px] h-[48px] rounded-xl overflow-hidden transition-all cursor-pointer ring-1 ring-inset shadow-md hover:ring-[var(--accent)] hover:scale-105 active:scale-95"
                     style={{
-                      background: `linear-gradient(to bottom, ${iconBgColor}35, ${iconBgColor}18)`,
-                      boxShadow: `0 1px 3px ${iconBgColor}25`,
-                      '--tw-ring-color': `${iconBgColor}30`,
+                      background: `linear-gradient(to bottom, ${iconBgColor}35, ${iconBgColor}15)`,
+                      boxShadow: `0 2px 8px ${iconBgColor}25, inset 0 1px 0 ${iconBgColor}20`,
+                      '--tw-ring-color': `${iconBgColor}40`,
                     } as React.CSSProperties}
                     title="Изменить иконку"
                   >
                     {editIconImage ? (
                       <img src={editIconImage} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <HabitIcon iconName={editIcon || 'Scroll'} size={22} />
+                      <HabitIcon iconName={editIcon || 'Scroll'} size={24} />
                     )}
                     {editIconImage && (
                       <span
@@ -315,9 +315,9 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 </div>
               </div>
 
-              {/* Description */}
-              <div>
-                <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Описание предмета</label>
+              {/* ─── Description ─── */}
+              <div className="glass rounded-2xl p-4">
+                <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Описание</label>
                 <textarea
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
@@ -327,72 +327,45 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 />
               </div>
 
-              {/* Group selector (button + modal) */}
-              <div>
-                <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Группа</label>
+              {/* ─── Group ─── */}
+              <div className="glass rounded-2xl p-4">
+                <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Группа</label>
                 <button
                   type="button"
                   onClick={() => setShowGroupModal(true)}
-                  className="flex w-full items-center gap-2 rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] px-3 py-2 text-left transition-colors hover:bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]"
+                  className="flex w-full items-center gap-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-left transition-all hover:bg-[var(--surface-elevated)] hover:border-[var(--accent)]"
                 >
-                  <Folder className="h-4 w-4 shrink-0 text-[var(--accent)]" />
-                  <span className="flex-1 text-sm text-[var(--fg)]">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)]">
+                    <Folder className="h-4 w-4 text-[var(--accent)]" />
+                  </div>
+                  <span className="flex-1 text-sm font-medium text-[var(--fg)]">
                     {editGroupId ? itemGroups.find((g) => g.id === editGroupId)?.name ?? 'Без группы' : 'Без группы'}
                   </span>
                   <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
                 </button>
               </div>
 
-              {/* Availability toggles */}
-              <div>
-                <p className="text-sm font-medium text-[var(--fg-muted)] mb-3">Способ получения</p>
+              {/* ─── Availability ─── */}
+              <div className="glass rounded-2xl p-4">
+                <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Способ получения</label>
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
-                  {/* Available for purchase */}
                   <div className="flex items-center justify-between gap-3 px-4 py-3">
                     <span className="text-sm font-medium text-[var(--fg)]">Доступно для покупки</span>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={editAvailableForPurchase}
-                      onClick={() => setEditAvailableForPurchase((v) => !v)}
-                      className={cn(
-                        'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200',
-                        editAvailableForPurchase ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
-                      )}
-                    >
-                      <span className={cn(
-                        'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
-                        editAvailableForPurchase ? 'right-1 left-auto' : 'left-1 right-auto'
-                      )} />
+                    <button type="button" role="switch" aria-checked={editAvailableForPurchase} onClick={() => setEditAvailableForPurchase((v) => !v)} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200', editAvailableForPurchase ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                      <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', editAvailableForPurchase ? 'right-1 left-auto' : 'left-1 right-auto')} />
                     </button>
                   </div>
-
-                  {/* Free toggle */}
                   {editAvailableForPurchase && (
                     <>
                       {divider}
                       <div className="flex items-center justify-between gap-3 px-4 py-3">
                         <span className="text-sm font-medium text-[var(--fg)]">Можно получить бесплатно</span>
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={editCanGetForFree}
-                          onClick={() => setEditCanGetForFree((v) => !v)}
-                          className={cn(
-                            'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200',
-                            editCanGetForFree ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
-                          )}
-                        >
-                          <span className={cn(
-                            'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
-                            editCanGetForFree ? 'right-1 left-auto' : 'left-1 right-auto'
-                          )} />
+                        <button type="button" role="switch" aria-checked={editCanGetForFree} onClick={() => setEditCanGetForFree((v) => !v)} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200', editCanGetForFree ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                          <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', editCanGetForFree ? 'right-1 left-auto' : 'left-1 right-auto')} />
                         </button>
                       </div>
                     </>
                   )}
-
-                  {/* Not for sale info */}
                   {!editAvailableForPurchase && (
                     <>
                       {divider}
@@ -401,69 +374,6 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                       </p>
                     </>
                   )}
-
-                  {/* Cost steppers */}
-                  {editAvailableForPurchase && !editCanGetForFree && (
-                    <>
-                      {divider}
-                      <div className="grid grid-cols-2 gap-4 px-4 py-3">
-                        <div>
-                          <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Монеты</label>
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => setEditCoinCost((prev) => Math.max(0, prev - 1))}
-                              className="input-group-btn input-group-btn-minus"
-                            >
-                              −
-                            </button>
-                            <input
-                              type="number"
-                              min={0}
-                              value={editCoinCost}
-                              onChange={(e) => setEditCoinCost(Math.max(0, Number(e.target.value) || 0))}
-                              className="input w-full flex-1 min-w-0 h-9 py-0"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setEditCoinCost((prev) => prev + 1)}
-                              className="input-group-btn input-group-btn-plus"
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Гемы</label>
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => setEditGemCost((prev) => Math.max(0, prev - 1))}
-                              className="input-group-btn input-group-btn-minus"
-                            >
-                              −
-                            </button>
-                            <input
-                              type="number"
-                              min={0}
-                              value={editGemCost}
-                              onChange={(e) => setEditGemCost(Math.max(0, Number(e.target.value) || 0))}
-                              className="input w-full flex-1 min-w-0 h-9 py-0"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setEditGemCost((prev) => prev + 1)}
-                              className="input-group-btn input-group-btn-plus"
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Free info */}
                   {editAvailableForPurchase && editCanGetForFree && (
                     <>
                       {divider}
@@ -475,56 +385,81 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 </div>
               </div>
 
-              {/* Stock stepper */}
-              <div>
-                <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Запас</label>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setEditStock((prev) => {
-                        if (prev == null || prev <= 1) return undefined
-                        return prev - 1
-                      })
-                    }
-                    className="input-group-btn input-group-btn-minus"
-                  >
-                    −
-                  </button>
-                  <input
-                    type="number"
-                    min={1}
-                    value={editStock ?? ''}
-                    onChange={(e) => {
-                      const value = e.target.value
-                      setEditStock(value ? Math.max(1, Number(value) || 1) : undefined)
-                    }}
-                    placeholder="∞"
-                    className="input input-stock-infinite w-full flex-1 min-w-0 h-9 py-0"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setEditStock((prev) => (prev == null ? 1 : prev + 1))
-                    }
-                    className="input-group-btn input-group-btn-plus"
-                  >
-                    +
-                  </button>
+              {/* ─── Cost + Stock in one row (when purchasable & not free) ─── */}
+              {editAvailableForPurchase && !editCanGetForFree && (
+                <div className="glass rounded-2xl p-4">
+                  <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Стоимость и запас</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {/* Coins */}
+                    <div>
+                      <label className="block text-xs font-medium text-[var(--fg-muted)] mb-2">Монеты</label>
+                      <div className="flex items-center gap-1">
+                        <button type="button" onClick={() => setEditCoinCost((prev) => Math.max(0, prev - 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 shadow-sm shadow-red-500/10 hover:from-red-500/30 hover:to-red-500/15 hover:scale-105 active:scale-95">
+                          <span className="text-sm font-bold">−</span>
+                        </button>
+                        <input type="number" min={0} value={editCoinCost} onChange={(e) => setEditCoinCost(Math.max(0, Number(e.target.value) || 0))} className="input w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold" />
+                        <button type="button" onClick={() => setEditCoinCost((prev) => prev + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-emerald-400/25 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10 hover:from-emerald-400/35 hover:to-emerald-500/20 hover:scale-105 active:scale-95">
+                          <span className="text-sm font-bold">+</span>
+                        </button>
+                      </div>
+                    </div>
+                    {/* Gems */}
+                    <div>
+                      <label className="block text-xs font-medium text-[var(--fg-muted)] mb-2">Гемы</label>
+                      <div className="flex items-center gap-1">
+                        <button type="button" onClick={() => setEditGemCost((prev) => Math.max(0, prev - 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 shadow-sm shadow-red-500/10 hover:from-red-500/30 hover:to-red-500/15 hover:scale-105 active:scale-95">
+                          <span className="text-sm font-bold">−</span>
+                        </button>
+                        <input type="number" min={0} value={editGemCost} onChange={(e) => setEditGemCost(Math.max(0, Number(e.target.value) || 0))} className="input w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold" />
+                        <button type="button" onClick={() => setEditGemCost((prev) => prev + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-emerald-400/25 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10 hover:from-emerald-400/35 hover:to-emerald-500/20 hover:scale-105 active:scale-95">
+                          <span className="text-sm font-bold">+</span>
+                        </button>
+                      </div>
+                    </div>
+                    {/* Stock */}
+                    <div>
+                      <label className="block text-xs font-medium text-[var(--fg-muted)] mb-2">Запас</label>
+                      <div className="flex items-center gap-1">
+                        <button type="button" onClick={() => setEditStock((prev) => { if (prev == null || prev <= 1) return undefined; return prev - 1 })} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 shadow-sm shadow-red-500/10 hover:from-red-500/30 hover:to-red-500/15 hover:scale-105 active:scale-95">
+                          <span className="text-sm font-bold">−</span>
+                        </button>
+                        <input type="number" min={1} value={editStock ?? ''} onChange={(e) => { const value = e.target.value; setEditStock(value ? Math.max(1, Number(value) || 1) : undefined) }} placeholder="∞" className="input input-stock-infinite w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold" />
+                        <button type="button" onClick={() => setEditStock((prev) => (prev == null ? 1 : prev + 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-emerald-400/25 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10 hover:from-emerald-400/35 hover:to-emerald-500/20 hover:scale-105 active:scale-95">
+                          <span className="text-sm font-bold">+</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* ── Advanced settings (inline) ──────────────────────────── */}
-              <div>
+              {/* ─── Stock only (when free or not purchasable) ─── */}
+              {(!editAvailableForPurchase || editCanGetForFree) && (
+                <div className="glass rounded-2xl p-4">
+                  <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Запас</label>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setEditStock((prev) => { if (prev == null || prev <= 1) return undefined; return prev - 1 })} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 shadow-sm shadow-red-500/10 hover:from-red-500/30 hover:to-red-500/15 hover:scale-105 active:scale-95">
+                      <span className="text-lg font-bold">−</span>
+                    </button>
+                    <input type="number" min={1} value={editStock ?? ''} onChange={(e) => { const value = e.target.value; setEditStock(value ? Math.max(1, Number(value) || 1) : undefined) }} placeholder="∞" className="input input-stock-infinite w-full flex-1 min-w-0 h-11 py-0 text-center text-lg font-bold" />
+                    <button type="button" onClick={() => setEditStock((prev) => (prev == null ? 1 : prev + 1))} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-emerald-400/25 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10 hover:from-emerald-400/35 hover:to-emerald-500/20 hover:scale-105 active:scale-95">
+                      <span className="text-lg font-bold">+</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ─── Advanced settings ─── */}
+              <div className="glass rounded-2xl p-4">
                 <button
                   type="button"
                   onClick={() => setShowAdvancedSettings((v) => !v)}
-                  className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 flex items-center gap-3 hover:bg-[var(--surface-elevated)] transition-colors"
+                  className="flex w-full items-center gap-3 text-left"
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface-elevated)]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-b from-[var(--fg-muted)]/15 to-[var(--fg-muted)]/5 ring-1 ring-inset ring-[var(--fg-muted)]/15">
                     <Settings className="h-5 w-5 text-[var(--fg-muted)]" />
                   </div>
-                  <div className="flex-1 text-left">
+                  <div className="flex-1">
                     <p className="text-sm font-medium text-[var(--fg)]">Дополнительные настройки</p>
                     <p className="text-xs text-[var(--fg-muted)]">Лутбокс, заморозка стрика, скидочный талон</p>
                   </div>
@@ -534,10 +469,9 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                   )} />
                 </button>
 
-                {/* Advanced settings panel (inline, animated) */}
                 <div className={cn(
                   'overflow-hidden transition-all duration-300 ease-out',
-                  showAdvancedSettings ? 'max-h-[2000px] opacity-100 mt-3' : 'max-h-0 opacity-0'
+                  showAdvancedSettings ? 'max-h-[2000px] opacity-100 mt-4' : 'max-h-0 opacity-0'
                 )}>
                   <div className="space-y-3">
                     <p className="text-xs text-[var(--fg-muted)]">
@@ -545,166 +479,54 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                     </p>
 
                     {/* Lootbox */}
-                    <div className={cn(
-                      'rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4',
-                      (editStreakFreezeEnabled || editIsDiscountVoucher) && 'opacity-70'
-                    )}>
+                    <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (editStreakFreezeEnabled || editIsDiscountVoucher) && 'opacity-70')}>
                       <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <span className="font-medium text-[var(--fg)]">Лутбокс</span>
-                          <p className="text-xs text-[var(--fg-muted)] mt-0.5">
-                            Случайный предмет при открытии
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={editIsLootBox}
-                          disabled={editStreakFreezeEnabled || editIsDiscountVoucher}
-                          onClick={() => {
-                            setEditIsLootBox((v) => !v)
-                            if (!editIsLootBox) {
-                              setEditStreakFreezeEnabled(false)
-                              setEditIsDiscountVoucher(false)
-                            }
-                          }}
-                          className={cn(
-                            'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed',
-                            editIsLootBox ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
-                          )}
-                        >
-                          <span className={cn(
-                            'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
-                            editIsLootBox ? 'right-1 left-auto' : 'left-1 right-auto'
-                          )} />
+                        <div><span className="font-medium text-[var(--fg)]">Лутбокс</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Случайный предмет при открытии</p></div>
+                        <button type="button" role="switch" aria-checked={editIsLootBox} disabled={editStreakFreezeEnabled || editIsDiscountVoucher} onClick={() => { setEditIsLootBox((v) => !v); if (!editIsLootBox) { setEditStreakFreezeEnabled(false); setEditIsDiscountVoucher(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editIsLootBox ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                          <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', editIsLootBox ? 'right-1 left-auto' : 'left-1 right-auto')} />
                         </button>
                       </div>
                       {editIsLootBox && (
                         <div className="mt-4 pt-4 border-t border-[var(--border)]">
-                          <button
-                            type="button"
-                            onClick={() => setShowLootboxModal(true)}
-                            className="w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] py-3 text-sm font-medium text-[var(--accent)] hover:bg-[var(--accent-subtle)]"
-                          >
-                            <Gift className="h-5 w-5" />
-                            Настроить лутбокс
-                            <ChevronRight className="h-5 w-5" />
+                          <button type="button" onClick={() => setShowLootboxModal(true)} className="w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] py-3 text-sm font-medium text-[var(--accent)] hover:bg-[var(--accent-subtle)]">
+                            <Gift className="h-5 w-5" />Настроить лутбокс<ChevronRight className="h-5 w-5" />
                           </button>
                         </div>
                       )}
                     </div>
 
                     {/* Streak Freeze */}
-                    <div className={cn(
-                      'rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4',
-                      (editIsLootBox || editIsDiscountVoucher) && 'opacity-70'
-                    )}>
+                    <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (editIsLootBox || editIsDiscountVoucher) && 'opacity-70')}>
                       <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <span className="font-medium text-[var(--fg)]">Заморозка стрика</span>
-                          <p className="text-xs text-[var(--fg-muted)] mt-0.5">
-                            Позволяет пропустить выполнение привычек без потери текущего стрика в течение N дней
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={editStreakFreezeEnabled}
-                          disabled={editIsLootBox || editIsDiscountVoucher}
-                          onClick={() => {
-                            setEditStreakFreezeEnabled((v) => !v)
-                            if (!editStreakFreezeEnabled) {
-                              setEditIsLootBox(false)
-                              setEditIsDiscountVoucher(false)
-                            }
-                          }}
-                          className={cn(
-                            'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed',
-                            editStreakFreezeEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
-                          )}
-                        >
-                          <span className={cn(
-                            'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
-                            editStreakFreezeEnabled ? 'right-1 left-auto' : 'left-1 right-auto'
-                          )} />
+                        <div><span className="font-medium text-[var(--fg)]">Заморозка стрика</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Позволяет пропустить привычки без потери стрика</p></div>
+                        <button type="button" role="switch" aria-checked={editStreakFreezeEnabled} disabled={editIsLootBox || editIsDiscountVoucher} onClick={() => { setEditStreakFreezeEnabled((v) => !v); if (!editStreakFreezeEnabled) { setEditIsLootBox(false); setEditIsDiscountVoucher(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editStreakFreezeEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                          <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', editStreakFreezeEnabled ? 'right-1 left-auto' : 'left-1 right-auto')} />
                         </button>
                       </div>
                       {editStreakFreezeEnabled && (
                         <div className="mt-4 pt-4 border-t border-[var(--border)]">
                           <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Длительность (дней)</label>
                           <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => setEditStreakFreezeDays((prev) => Math.max(1, prev - 1))}
-                              className="input-group-btn input-group-btn-minus"
-                            >
-                              −
-                            </button>
-                            <input
-                              type="number"
-                              min={1}
-                              value={editStreakFreezeDays}
-                              onChange={(e) => setEditStreakFreezeDays(Math.max(1, Number(e.target.value) || 1))}
-                              className="input w-full flex-1 min-w-0 h-9 py-0"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setEditStreakFreezeDays((prev) => prev + 1)}
-                              className="input-group-btn input-group-btn-plus"
-                            >
-                              +
-                            </button>
+                            <button type="button" onClick={() => setEditStreakFreezeDays((prev) => Math.max(1, prev - 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 hover:from-red-500/30 hover:to-red-500/15"><span className="text-sm font-bold">−</span></button>
+                            <input type="number" min={1} value={editStreakFreezeDays} onChange={(e) => setEditStreakFreezeDays(Math.max(1, Number(e.target.value) || 1))} className="input w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold" />
+                            <button type="button" onClick={() => setEditStreakFreezeDays((prev) => prev + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-emerald-400/25 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 hover:from-emerald-400/35 hover:to-emerald-500/20"><span className="text-sm font-bold">+</span></button>
                           </div>
                         </div>
                       )}
                     </div>
 
                     {/* Discount Voucher */}
-                    <div className={cn(
-                      'rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4',
-                      (editIsLootBox || editStreakFreezeEnabled) && 'opacity-70'
-                    )}>
+                    <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (editIsLootBox || editStreakFreezeEnabled) && 'opacity-70')}>
                       <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <span className="font-medium text-[var(--fg)]">Скидочный талон</span>
-                          <p className="text-xs text-[var(--fg-muted)] mt-0.5">
-                            Снижает цены в магазине на N% на следующую покупку (только монеты)
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={editIsDiscountVoucher}
-                          disabled={editIsLootBox || editStreakFreezeEnabled}
-                          onClick={() => {
-                            setEditIsDiscountVoucher((v) => !v)
-                            if (!editIsDiscountVoucher) {
-                              setEditIsLootBox(false)
-                              setEditStreakFreezeEnabled(false)
-                              setShowDiscountModal(true)
-                            }
-                          }}
-                          className={cn(
-                            'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed',
-                            editIsDiscountVoucher ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
-                          )}
-                        >
-                          <span className={cn(
-                            'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
-                            editIsDiscountVoucher ? 'right-1 left-auto' : 'left-1 right-auto'
-                          )} />
+                        <div><span className="font-medium text-[var(--fg)]">Скидочный талон</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Снижает цены в магазине на N%</p></div>
+                        <button type="button" role="switch" aria-checked={editIsDiscountVoucher} disabled={editIsLootBox || editStreakFreezeEnabled} onClick={() => { setEditIsDiscountVoucher((v) => !v); if (!editIsDiscountVoucher) { setEditIsLootBox(false); setEditStreakFreezeEnabled(false); setShowDiscountModal(true) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editIsDiscountVoucher ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                          <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', editIsDiscountVoucher ? 'right-1 left-auto' : 'left-1 right-auto')} />
                         </button>
                       </div>
                       {editIsDiscountVoucher && (
                         <div className="mt-4 pt-4 border-t border-[var(--border)]">
-                          <button
-                            type="button"
-                            onClick={() => setShowDiscountModal(true)}
-                            className="w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] py-3 text-sm font-medium text-[var(--accent)] hover:bg-[var(--accent-subtle)]"
-                          >
-                            <Percent className="h-5 w-5" />
-                            Размер скидки: {Math.min(85, Math.max(1, editDiscountPercent))}%
-                            <ChevronRight className="h-5 w-5" />
+                          <button type="button" onClick={() => setShowDiscountModal(true)} className="w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] py-3 text-sm font-medium text-[var(--accent)] hover:bg-[var(--accent-subtle)]">
+                            <Percent className="h-5 w-5" />Размер скидки: {Math.min(85, Math.max(1, editDiscountPercent))}%<ChevronRight className="h-5 w-5" />
                           </button>
                         </div>
                       )}
@@ -713,21 +535,15 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 </div>
               </div>
 
-              {/* Save / Cancel buttons */}
-              <div className="flex gap-2 pt-1">
+              {/* ─── Save / Cancel buttons ─── */}
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => resetEditState(item)} className="btn-secondary flex-1">Отмена</button>
                 <button
                   type="button"
                   onClick={handleSave}
-                  className="btn-primary flex-1"
+                  className="flex-1 flex items-center justify-center gap-2 rounded-2xl py-3 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-[var(--accent)] to-[var(--accent)]/80 shadow-lg shadow-[var(--accent)]/25 hover:shadow-xl hover:shadow-[var(--accent)]/35 hover:scale-[1.02] active:scale-[0.98]"
                 >
                   Сохранить
-                </button>
-                <button
-                  type="button"
-                  onClick={() => resetEditState(item)}
-                  className="btn-secondary flex-1"
-                >
-                  Отмена
                 </button>
               </div>
             </div>
