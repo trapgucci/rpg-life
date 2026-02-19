@@ -45,13 +45,13 @@ export const RARITY_ORDER: Record<ItemRarity, number> = {
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export type LootTableEntry = { id: string; weight: number; quantity?: number }
-export type ShopTypeFilter = 'all' | 'regular' | 'lootbox' | 'freeze' | 'discount'
+export type ShopTypeFilter = 'all' | 'regular' | 'lootbox' | 'multiplier' | 'discount'
 export type ShopSortField = 'default' | 'name' | 'price' | 'rarity'
 export type RecipeFilter = 'all' | 'active' | 'crafted'
 
 export type ItemTypeBadge =
   | { type: 'lootbox'; label: string }
-  | { type: 'freeze'; label: string }
+  | { type: 'multiplier'; label: string }
   | { type: 'discount'; label: string }
 
 // ─── Icon Constants (Lucide icon names) ─────────────────────────────────────
@@ -115,7 +115,7 @@ export function getItemIcon(item: ShopItem): string {
 
 export function getItemTypeBadge(item: ShopItem): ItemTypeBadge | null {
   if (item.isLootBox) return { type: 'lootbox', label: 'Лутбокс' }
-  if (item.streakFreezeEnabled) return { type: 'freeze', label: 'Заморозка стрика' }
+  if (item.streakMultiplierEnabled) return { type: 'multiplier', label: 'Множитель' }
   if (item.isDiscountVoucher) return { type: 'discount', label: 'Скидочник' }
   return null
 }
@@ -138,14 +138,14 @@ export function filterShopItems(
       case 'lootbox':
         filtered = filtered.filter((i) => i.isLootBox)
         break
-      case 'freeze':
-        filtered = filtered.filter((i) => i.streakFreezeEnabled)
+      case 'multiplier':
+        filtered = filtered.filter((i) => i.streakMultiplierEnabled)
         break
       case 'discount':
         filtered = filtered.filter((i) => i.isDiscountVoucher)
         break
       case 'regular':
-        filtered = filtered.filter((i) => !i.isLootBox && !i.streakFreezeEnabled && !i.isDiscountVoucher)
+        filtered = filtered.filter((i) => !i.isLootBox && !i.streakMultiplierEnabled && !i.isDiscountVoucher)
         break
     }
   }

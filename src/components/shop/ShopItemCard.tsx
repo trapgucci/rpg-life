@@ -1,5 +1,5 @@
 import { cn } from '../../lib/cn'
-import { Coins, Gem, Gift, Percent, ShoppingCart } from 'lucide-react'
+import { Coins, Gem, Gift, Percent, ShoppingCart, TrendingUp } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
@@ -123,12 +123,12 @@ export default function ShopItemCard({ item, selected, onSelect }: ShopItemCardP
                 'shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.4)]',
                 'ring-2 ring-[var(--surface-card)] transition-transform group-hover:scale-110',
                 typeBadge.type === 'lootbox' && 'bg-gradient-to-br from-violet-400 to-violet-600',
-                typeBadge.type === 'freeze' && 'bg-gradient-to-br from-sky-400 to-blue-500',
+                typeBadge.type === 'multiplier' && 'bg-gradient-to-br from-amber-400 to-orange-500',
                 typeBadge.type === 'discount' && 'bg-gradient-to-br from-red-400 to-rose-600'
               )}
             >
               {typeBadge.type === 'lootbox' && <Gift className="h-3.5 w-3.5 text-white drop-shadow" />}
-              {typeBadge.type === 'freeze' && <HabitIcon iconName="Snowflake" size={14} className="drop-shadow" />}
+              {typeBadge.type === 'multiplier' && <TrendingUp className="h-3.5 w-3.5 text-white drop-shadow" />}
               {typeBadge.type === 'discount' && <Percent className="h-3.5 w-3.5 text-white drop-shadow" />}
             </div>
           )}

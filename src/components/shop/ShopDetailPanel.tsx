@@ -3,7 +3,7 @@ import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
 import {
   X, Pencil, Trash2, Coins, Gem, Gift, Percent, ShoppingCart,
-  ChevronRight, Settings, Folder,
+  ChevronRight, Settings, Folder, TrendingUp,
 } from 'lucide-react'
 import ItemGroupSelectModal from './ItemGroupSelectModal'
 import IconSourcePicker from './IconSourcePicker'
@@ -82,8 +82,9 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
   const [editStock, setEditStock] = useState<number | undefined>(item.stock)
   const [editIsLootBox, setEditIsLootBox] = useState(item.isLootBox)
   const [editLootTable, setEditLootTable] = useState<LootTableEntry[]>(item.lootTable ?? [])
-  const [editStreakFreezeEnabled, setEditStreakFreezeEnabled] = useState(item.streakFreezeEnabled ?? false)
-  const [editStreakFreezeDays, setEditStreakFreezeDays] = useState(item.streakFreezeDays ?? 3)
+  const [editStreakMultiplierEnabled, setEditStreakMultiplierEnabled] = useState(item.streakMultiplierEnabled ?? false)
+  const [editStreakMultiplierValue, setEditStreakMultiplierValue] = useState(item.streakMultiplierValue ?? 1.5)
+  const [editStreakMultiplierInterval, setEditStreakMultiplierInterval] = useState(item.streakMultiplierInterval ?? 3)
   const [editIsDiscountVoucher, setEditIsDiscountVoucher] = useState(item.isDiscountVoucher ?? false)
   const [editDiscountPercent, setEditDiscountPercent] = useState(item.discountPercent ?? 10)
 
@@ -117,8 +118,9 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
     setEditStock((i as any).stock)
     setEditIsLootBox(i.isLootBox)
     setEditLootTable(i.lootTable ?? [])
-    setEditStreakFreezeEnabled(i.streakFreezeEnabled ?? false)
-    setEditStreakFreezeDays(i.streakFreezeDays ?? 3)
+    setEditStreakMultiplierEnabled(i.streakMultiplierEnabled ?? false)
+    setEditStreakMultiplierValue(i.streakMultiplierValue ?? 1.5)
+    setEditStreakMultiplierInterval(i.streakMultiplierInterval ?? 3)
     setEditIsDiscountVoucher(i.isDiscountVoucher ?? false)
     setEditDiscountPercent(i.discountPercent ?? 10)
     setShowAdvancedSettings(false)
@@ -139,16 +141,17 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
       editStock !== (prev as any).stock ||
       editIsLootBox !== prev.isLootBox ||
       JSON.stringify(editLootTable) !== JSON.stringify(prev.lootTable ?? []) ||
-      editStreakFreezeEnabled !== (prev.streakFreezeEnabled ?? false) ||
-      editStreakFreezeDays !== (prev.streakFreezeDays ?? 3) ||
+      editStreakMultiplierEnabled !== (prev.streakMultiplierEnabled ?? false) ||
+      editStreakMultiplierValue !== (prev.streakMultiplierValue ?? 1.5) ||
+      editStreakMultiplierInterval !== (prev.streakMultiplierInterval ?? 3) ||
       editIsDiscountVoucher !== (prev.isDiscountVoucher ?? false) ||
       editDiscountPercent !== (prev.discountPercent ?? 10)
     )
   }, [
     editName, editDescription, editIcon, editIconImage, editGroupId,
     editAvailableForPurchase, editCanGetForFree, editCoinCost, editGemCost,
-    editStock, editIsLootBox, editLootTable, editStreakFreezeEnabled,
-    editStreakFreezeDays, editIsDiscountVoucher, editDiscountPercent,
+    editStock, editIsLootBox, editLootTable, editStreakMultiplierEnabled,
+    editStreakMultiplierValue, editStreakMultiplierInterval, editIsDiscountVoucher, editDiscountPercent,
   ])
 
   // Detect item switch while editing
@@ -209,8 +212,9 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
       availableForPurchase: editAvailableForPurchase,
       canGetForFree: editCanGetForFree,
       groupId: editGroupId,
-      streakFreezeEnabled: editStreakFreezeEnabled || undefined,
-      streakFreezeDays: editStreakFreezeEnabled ? editStreakFreezeDays : undefined,
+      streakMultiplierEnabled: editStreakMultiplierEnabled || undefined,
+      streakMultiplierValue: editStreakMultiplierEnabled ? editStreakMultiplierValue : undefined,
+      streakMultiplierInterval: editStreakMultiplierEnabled ? editStreakMultiplierInterval : undefined,
       isDiscountVoucher: editIsDiscountVoucher || undefined,
       discountPercent: editIsDiscountVoucher ? Math.min(85, Math.max(1, editDiscountPercent)) : undefined,
     } as ShopItem))
@@ -460,8 +464,8 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                     <Settings className="h-5 w-5 text-[var(--fg-muted)]" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-[var(--fg)]">Дополнительные настройки</p>
-                    <p className="text-xs text-[var(--fg-muted)]">Лутбокс, заморозка стрика, скидочный талон</p>
+                    <p className="text-sm font-medium text-[var(--fg)]">Свойства предмета</p>
+                    <p className="text-xs text-[var(--fg-muted)]">Лутбокс, множитель за стрик, скидочный талон</p>
                   </div>
                   <ChevronRight className={cn(
                     'h-4 w-4 text-[var(--fg-muted)] transition-transform duration-200',
@@ -475,14 +479,14 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 )}>
                   <div className="space-y-3">
                     <p className="text-xs text-[var(--fg-muted)]">
-                      Включить можно только одну опцию: лутбокс, заморозка стрика или скидочный талон.
+                      Включить можно только одну опцию: лутбокс, множитель за стрик или скидочный талон.
                     </p>
 
                     {/* Lootbox */}
-                    <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (editStreakFreezeEnabled || editIsDiscountVoucher) && 'opacity-70')}>
+                    <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (editStreakMultiplierEnabled || editIsDiscountVoucher) && 'opacity-70')}>
                       <div className="flex items-center justify-between gap-3">
                         <div><span className="font-medium text-[var(--fg)]">Лутбокс</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Случайный предмет при открытии</p></div>
-                        <button type="button" role="switch" aria-checked={editIsLootBox} disabled={editStreakFreezeEnabled || editIsDiscountVoucher} onClick={() => { setEditIsLootBox((v) => !v); if (!editIsLootBox) { setEditStreakFreezeEnabled(false); setEditIsDiscountVoucher(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editIsLootBox ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                        <button type="button" role="switch" aria-checked={editIsLootBox} disabled={editStreakMultiplierEnabled || editIsDiscountVoucher} onClick={() => { setEditIsLootBox((v) => !v); if (!editIsLootBox) { setEditStreakMultiplierEnabled(false); setEditIsDiscountVoucher(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editIsLootBox ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
                           <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', editIsLootBox ? 'right-1 left-auto' : 'left-1 right-auto')} />
                         </button>
                       </div>
@@ -495,31 +499,67 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                       )}
                     </div>
 
-                    {/* Streak Freeze */}
+                    {/* Streak Multiplier */}
                     <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (editIsLootBox || editIsDiscountVoucher) && 'opacity-70')}>
                       <div className="flex items-center justify-between gap-3">
-                        <div><span className="font-medium text-[var(--fg)]">Заморозка стрика</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Позволяет пропустить привычки без потери стрика</p></div>
-                        <button type="button" role="switch" aria-checked={editStreakFreezeEnabled} disabled={editIsLootBox || editIsDiscountVoucher} onClick={() => { setEditStreakFreezeEnabled((v) => !v); if (!editStreakFreezeEnabled) { setEditIsLootBox(false); setEditIsDiscountVoucher(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editStreakFreezeEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
-                          <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', editStreakFreezeEnabled ? 'right-1 left-auto' : 'left-1 right-auto')} />
+                        <div><span className="font-medium text-[var(--fg)]">Множитель за стрик</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Увеличивает награды за серию выполнений</p></div>
+                        <button type="button" role="switch" aria-checked={editStreakMultiplierEnabled} disabled={editIsLootBox || editIsDiscountVoucher} onClick={() => { setEditStreakMultiplierEnabled((v) => !v); if (!editStreakMultiplierEnabled) { setEditIsLootBox(false); setEditIsDiscountVoucher(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editStreakMultiplierEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                          <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', editStreakMultiplierEnabled ? 'right-1 left-auto' : 'left-1 right-auto')} />
                         </button>
                       </div>
-                      {editStreakFreezeEnabled && (
-                        <div className="mt-4 pt-4 border-t border-[var(--border)]">
-                          <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Длительность (дней)</label>
-                          <div className="flex items-center gap-1.5">
-                            <button type="button" onClick={() => setEditStreakFreezeDays((prev) => Math.max(1, prev - 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 hover:from-red-500/30 hover:to-red-500/15"><span className="text-sm font-bold">−</span></button>
-                            <input type="number" min={1} value={editStreakFreezeDays} onChange={(e) => setEditStreakFreezeDays(Math.max(1, Number(e.target.value) || 1))} className="input w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold" />
-                            <button type="button" onClick={() => setEditStreakFreezeDays((prev) => prev + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-emerald-400/25 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 hover:from-emerald-400/35 hover:to-emerald-500/20"><span className="text-sm font-bold">+</span></button>
+                      {editStreakMultiplierEnabled && (
+                        <div className="mt-4 pt-4 border-t border-[var(--border)] space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Множитель</label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {([{ value: 1.5, label: '1.5x', desc: 'Простой' }, { value: 2, label: '2x', desc: 'Средний' }, { value: 2.5, label: '2.5x', desc: 'Сложный' }] as const).map((opt) => (
+                                <button
+                                  key={opt.value}
+                                  type="button"
+                                  onClick={() => setEditStreakMultiplierValue(opt.value)}
+                                  className={cn(
+                                    'flex flex-col items-center gap-1 rounded-xl border py-2.5 px-2 text-center transition-all',
+                                    editStreakMultiplierValue === opt.value
+                                      ? 'border-[var(--accent)] bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]/30'
+                                      : 'border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
+                                  )}
+                                >
+                                  <span className={cn('text-sm font-bold', editStreakMultiplierValue === opt.value ? 'text-[var(--accent)]' : 'text-[var(--fg)]')}>{opt.label}</span>
+                                  <span className="text-[10px] text-[var(--fg-muted)]">{opt.desc}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Срабатывает каждые</label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {([{ value: 3, label: '3', desc: 'выполнения' }, { value: 5, label: '5', desc: 'выполнений' }, { value: 7, label: '7', desc: 'выполнений' }] as const).map((opt) => (
+                                <button
+                                  key={opt.value}
+                                  type="button"
+                                  onClick={() => setEditStreakMultiplierInterval(opt.value)}
+                                  className={cn(
+                                    'flex flex-col items-center gap-1 rounded-xl border py-2.5 px-2 text-center transition-all',
+                                    editStreakMultiplierInterval === opt.value
+                                      ? 'border-[var(--accent)] bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]/30'
+                                      : 'border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
+                                  )}
+                                >
+                                  <span className={cn('text-sm font-bold', editStreakMultiplierInterval === opt.value ? 'text-[var(--accent)]' : 'text-[var(--fg)]')}>{opt.label}</span>
+                                  <span className="text-[10px] text-[var(--fg-muted)]">{opt.desc}</span>
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         </div>
                       )}
                     </div>
 
                     {/* Discount Voucher */}
-                    <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (editIsLootBox || editStreakFreezeEnabled) && 'opacity-70')}>
+                    <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (editIsLootBox || editStreakMultiplierEnabled) && 'opacity-70')}>
                       <div className="flex items-center justify-between gap-3">
                         <div><span className="font-medium text-[var(--fg)]">Скидочный талон</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Снижает цены в магазине на N%</p></div>
-                        <button type="button" role="switch" aria-checked={editIsDiscountVoucher} disabled={editIsLootBox || editStreakFreezeEnabled} onClick={() => { setEditIsDiscountVoucher((v) => !v); if (!editIsDiscountVoucher) { setEditIsLootBox(false); setEditStreakFreezeEnabled(false); setShowDiscountModal(true) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editIsDiscountVoucher ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                        <button type="button" role="switch" aria-checked={editIsDiscountVoucher} disabled={editIsLootBox || editStreakMultiplierEnabled} onClick={() => { setEditIsDiscountVoucher((v) => !v); if (!editIsDiscountVoucher) { setEditIsLootBox(false); setEditStreakMultiplierEnabled(false); setShowDiscountModal(true) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editIsDiscountVoucher ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
                           <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', editIsDiscountVoucher ? 'right-1 left-auto' : 'left-1 right-auto')} />
                         </button>
                       </div>
@@ -587,11 +627,11 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                       <span className={cn(
                         'inline-flex items-center gap-1.5 rounded-2xl px-3.5 py-1.5 text-sm font-medium',
                         typeBadge.type === 'lootbox' && 'bg-gradient-to-b from-violet-500/20 to-violet-500/10 text-violet-500 ring-1 ring-inset ring-violet-400/25',
-                        typeBadge.type === 'freeze' && 'bg-gradient-to-b from-sky-500/20 to-sky-500/10 text-sky-500 ring-1 ring-inset ring-sky-400/25',
+                        typeBadge.type === 'multiplier' && 'bg-gradient-to-b from-amber-500/20 to-amber-500/10 text-amber-500 ring-1 ring-inset ring-amber-400/25',
                         typeBadge.type === 'discount' && 'bg-gradient-to-b from-red-500/20 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/25',
                       )}>
                         {typeBadge.type === 'lootbox' && <Gift className="h-3.5 w-3.5" />}
-                        {typeBadge.type === 'freeze' && <HabitIcon iconName="Snowflake" size={14} />}
+                        {typeBadge.type === 'multiplier' && <TrendingUp className="h-3.5 w-3.5" />}
                         {typeBadge.type === 'discount' && <Percent className="h-3.5 w-3.5" />}
                         {typeBadge.label}
                       </span>
@@ -751,18 +791,18 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                   <span className={cn(
                     'inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium',
                     typeBadge.type === 'lootbox' && 'bg-gradient-to-b from-violet-500/20 to-violet-500/10 text-violet-500 ring-1 ring-inset ring-violet-400/25',
-                    typeBadge.type === 'freeze' && 'bg-gradient-to-b from-sky-500/20 to-sky-500/10 text-sky-500 ring-1 ring-inset ring-sky-400/25',
+                    typeBadge.type === 'multiplier' && 'bg-gradient-to-b from-amber-500/20 to-amber-500/10 text-amber-500 ring-1 ring-inset ring-amber-400/25',
                     typeBadge.type === 'discount' && 'bg-gradient-to-b from-red-500/20 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/25',
                   )}>
                     {typeBadge.type === 'lootbox' && <Gift className="h-4 w-4" />}
-                    {typeBadge.type === 'freeze' && <HabitIcon iconName="Snowflake" size={14} />}
+                    {typeBadge.type === 'multiplier' && <TrendingUp className="h-3.5 w-3.5" />}
                     {typeBadge.type === 'discount' && <Percent className="h-4 w-4" />}
                     {typeBadge.label}
                   </span>
 
                   <p className="text-xs text-[var(--fg-muted)] mt-2">
                     {typeBadge.type === 'lootbox' && 'Открытие выдает случайный предмет из таблицы наград.'}
-                    {typeBadge.type === 'freeze' && `Заморозка стрика на ${item.streakFreezeDays ?? 3} дней. Защищает серию привычек от сброса.`}
+                    {typeBadge.type === 'multiplier' && `Множитель ${item.streakMultiplierValue ?? 1.5}x каждые ${item.streakMultiplierInterval ?? 3} выполнений. Увеличивает награды за серию.`}
                     {typeBadge.type === 'discount' && `Скидка ${item.discountPercent ?? 10}% на следующую покупку (только монеты).`}
                   </p>
                 </div>

@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react'
 import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
-import { X, Settings, Gift, ChevronRight, Percent, Folder } from 'lucide-react'
+import { X, Settings, Gift, ChevronRight, Percent, Folder, TrendingUp } from 'lucide-react'
 import { HabitIcon } from '../HabitIcon'
 import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem } from '../../types/domain'
@@ -47,8 +47,9 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
   const [stock, setStock] = useState<number | undefined>(undefined)
   const [isLootBox, setIsLootBox] = useState(false)
   const [lootTable, setLootTable] = useState<LootTableEntry[]>([])
-  const [streakFreezeEnabled, setStreakFreezeEnabled] = useState(false)
-  const [streakFreezeDays, setStreakFreezeDays] = useState(3)
+  const [streakMultiplierEnabled, setStreakMultiplierEnabled] = useState(false)
+  const [streakMultiplierValue, setStreakMultiplierValue] = useState(1.5)
+  const [streakMultiplierInterval, setStreakMultiplierInterval] = useState(3)
   const [isDiscountVoucher, setIsDiscountVoucher] = useState(false)
   const [discountPercent, setDiscountPercent] = useState(10)
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
@@ -78,8 +79,9 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
       availableForPurchase,
       canGetForFree,
       groupId,
-      streakFreezeEnabled: streakFreezeEnabled || undefined,
-      streakFreezeDays: streakFreezeEnabled ? streakFreezeDays : undefined,
+      streakMultiplierEnabled: streakMultiplierEnabled || undefined,
+      streakMultiplierValue: streakMultiplierEnabled ? streakMultiplierValue : undefined,
+      streakMultiplierInterval: streakMultiplierEnabled ? streakMultiplierInterval : undefined,
       isDiscountVoucher: isDiscountVoucher || undefined,
       discountPercent: isDiscountVoucher ? Math.min(85, Math.max(1, discountPercent)) : undefined,
     }
@@ -272,8 +274,8 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
               <Settings className="h-5 w-5 text-[var(--fg-muted)]" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-[var(--fg)]">Дополнительные настройки</p>
-              <p className="text-xs text-[var(--fg-muted)]">Лутбокс, заморозка стрика, скидочный талон</p>
+              <p className="text-sm font-medium text-[var(--fg)]">Свойства предмета</p>
+              <p className="text-xs text-[var(--fg-muted)]">Лутбокс, множитель за стрик, скидочный талон</p>
             </div>
             <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
           </button>
@@ -296,16 +298,16 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
         <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setShowAdvancedSettings(false)}>
           <div className="modal-content max-w-lg">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-[var(--fg)]">Дополнительные настройки</h3>
+              <h3 className="text-lg font-bold text-[var(--fg)]">Свойства предмета</h3>
               <button type="button" onClick={() => setShowAdvancedSettings(false)} className="icon-btn"><X className="h-5 w-5" /></button>
             </div>
             <div className="space-y-4">
-              <p className="text-xs text-[var(--fg-muted)] mb-2">Включить можно только одну опцию: лутбокс, заморозка стрика или скидочный талон.</p>
+              <p className="text-xs text-[var(--fg-muted)] mb-2">Включить можно только одну опцию: лутбокс, множитель за стрик или скидочный талон.</p>
               {/* Lootbox */}
-              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (streakFreezeEnabled || isDiscountVoucher) && 'opacity-70')}>
+              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (streakMultiplierEnabled || isDiscountVoucher) && 'opacity-70')}>
                 <div className="flex items-center justify-between gap-3">
                   <div><span className="font-medium text-[var(--fg)]">Лутбокс</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Случайный предмет при открытии</p></div>
-                  <button type="button" role="switch" aria-checked={isLootBox} disabled={streakFreezeEnabled || isDiscountVoucher} onClick={() => { setIsLootBox((v) => !v); if (!isLootBox) { setStreakFreezeEnabled(false); setIsDiscountVoucher(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isLootBox ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                  <button type="button" role="switch" aria-checked={isLootBox} disabled={streakMultiplierEnabled || isDiscountVoucher} onClick={() => { setIsLootBox((v) => !v); if (!isLootBox) { setStreakMultiplierEnabled(false); setIsDiscountVoucher(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isLootBox ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
                     <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', isLootBox ? 'right-1 left-auto' : 'left-1 right-auto')} />
                   </button>
                 </div>
@@ -317,30 +319,66 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                   </div>
                 )}
               </div>
-              {/* Streak Freeze */}
+              {/* Streak Multiplier */}
               <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (isLootBox || isDiscountVoucher) && 'opacity-70')}>
                 <div className="flex items-center justify-between gap-3">
-                  <div><span className="font-medium text-[var(--fg)]">Заморозка стрика</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Позволяет пропустить привычки без потери стрика</p></div>
-                  <button type="button" role="switch" aria-checked={streakFreezeEnabled} disabled={isLootBox || isDiscountVoucher} onClick={() => { setStreakFreezeEnabled((v) => !v); if (!streakFreezeEnabled) { setIsLootBox(false); setIsDiscountVoucher(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', streakFreezeEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
-                    <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', streakFreezeEnabled ? 'right-1 left-auto' : 'left-1 right-auto')} />
+                  <div><span className="font-medium text-[var(--fg)]">Множитель за стрик</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Увеличивает награды за серию выполнений</p></div>
+                  <button type="button" role="switch" aria-checked={streakMultiplierEnabled} disabled={isLootBox || isDiscountVoucher} onClick={() => { setStreakMultiplierEnabled((v) => !v); if (!streakMultiplierEnabled) { setIsLootBox(false); setIsDiscountVoucher(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', streakMultiplierEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                    <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', streakMultiplierEnabled ? 'right-1 left-auto' : 'left-1 right-auto')} />
                   </button>
                 </div>
-                {streakFreezeEnabled && (
-                  <div className="mt-4 pt-4 border-t border-[var(--border)]">
-                    <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Длительность (дней)</label>
-                    <div className="flex items-center gap-1.5">
-                      <button type="button" onClick={() => setStreakFreezeDays((p) => Math.max(1, p - 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 hover:from-red-500/30 hover:to-red-500/15"><span className="text-sm font-bold">−</span></button>
-                      <input type="number" min={1} value={streakFreezeDays} onChange={(e) => setStreakFreezeDays(Math.max(1, Number(e.target.value) || 1))} className="input w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold" />
-                      <button type="button" onClick={() => setStreakFreezeDays((p) => p + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-emerald-400/25 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 hover:from-emerald-400/35 hover:to-emerald-500/20"><span className="text-sm font-bold">+</span></button>
+                {streakMultiplierEnabled && (
+                  <div className="mt-4 pt-4 border-t border-[var(--border)] space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Множитель</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {([{ value: 1.5, label: '1.5x', desc: 'Простой' }, { value: 2, label: '2x', desc: 'Средний' }, { value: 2.5, label: '2.5x', desc: 'Сложный' }] as const).map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setStreakMultiplierValue(opt.value)}
+                            className={cn(
+                              'flex flex-col items-center gap-1 rounded-xl border py-2.5 px-2 text-center transition-all',
+                              streakMultiplierValue === opt.value
+                                ? 'border-[var(--accent)] bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]/30'
+                                : 'border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
+                            )}
+                          >
+                            <span className={cn('text-sm font-bold', streakMultiplierValue === opt.value ? 'text-[var(--accent)]' : 'text-[var(--fg)]')}>{opt.label}</span>
+                            <span className="text-[10px] text-[var(--fg-muted)]">{opt.desc}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Срабатывает каждые</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {([{ value: 3, label: '3', desc: 'выполнения' }, { value: 5, label: '5', desc: 'выполнений' }, { value: 7, label: '7', desc: 'выполнений' }] as const).map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setStreakMultiplierInterval(opt.value)}
+                            className={cn(
+                              'flex flex-col items-center gap-1 rounded-xl border py-2.5 px-2 text-center transition-all',
+                              streakMultiplierInterval === opt.value
+                                ? 'border-[var(--accent)] bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]/30'
+                                : 'border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
+                            )}
+                          >
+                            <span className={cn('text-sm font-bold', streakMultiplierInterval === opt.value ? 'text-[var(--accent)]' : 'text-[var(--fg)]')}>{opt.label}</span>
+                            <span className="text-[10px] text-[var(--fg-muted)]">{opt.desc}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
               {/* Discount Voucher */}
-              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (isLootBox || streakFreezeEnabled) && 'opacity-70')}>
+              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (isLootBox || streakMultiplierEnabled) && 'opacity-70')}>
                 <div className="flex items-center justify-between gap-3">
                   <div><span className="font-medium text-[var(--fg)]">Скидочный талон</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Снижает цены в магазине на N%</p></div>
-                  <button type="button" role="switch" aria-checked={isDiscountVoucher} disabled={isLootBox || streakFreezeEnabled} onClick={() => { setIsDiscountVoucher((v) => !v); if (!isDiscountVoucher) { setIsLootBox(false); setStreakFreezeEnabled(false); setShowDiscountModal(true) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isDiscountVoucher ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                  <button type="button" role="switch" aria-checked={isDiscountVoucher} disabled={isLootBox || streakMultiplierEnabled} onClick={() => { setIsDiscountVoucher((v) => !v); if (!isDiscountVoucher) { setIsLootBox(false); setStreakMultiplierEnabled(false); setShowDiscountModal(true) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isDiscountVoucher ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
                     <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', isDiscountVoucher ? 'right-1 left-auto' : 'left-1 right-auto')} />
                   </button>
                 </div>

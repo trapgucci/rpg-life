@@ -1697,19 +1697,7 @@ export const useRpgStore = create<RpgStoreState>()(
             return removeFromInventory(itemId, 1)
           }
 
-          const profile = getActiveProfile()
-          if (profile && item.streakFreezeEnabled && (item.streakFreezeDays ?? 1) > 0) {
-            const todayStart = getTodayStart()
-            const days = item.streakFreezeDays ?? 1
-            const endDate = new Date(todayStart)
-            endDate.setDate(endDate.getDate() + days - 1)
-            endDate.setHours(23, 59, 59, 999)
-            updateProfile(profile.id, (p) => ({
-              ...p,
-              streakFreezeFrom: todayStart,
-              streakFreezeUntil: endDate.getTime(),
-            }))
-          }
+          // Streak multiplier effect is applied by the habits system when checking streaks
           return removeFromInventory(itemId, 1)
         },
 

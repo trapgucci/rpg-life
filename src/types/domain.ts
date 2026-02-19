@@ -455,10 +455,12 @@ export interface ShopItem {
   availableForPurchase?: boolean
   /** When true, item costs nothing in shop (default false) */
   canGetForFree?: boolean
-  /** Заморозка стрика: при использовании предмета защищает серию от сброса N дней */
-  streakFreezeEnabled?: boolean
-  /** Длительность заморозки (дней) при streakFreezeEnabled */
-  streakFreezeDays?: number
+  /** Множитель за стрик: при использовании предмета увеличивает награды */
+  streakMultiplierEnabled?: boolean
+  /** Значение множителя: 1.5 (простой), 2 (средний), 2.5 (сложный) */
+  streakMultiplierValue?: number
+  /** Промежуток срабатывания множителя: каждые N выполнений (3, 5, 7) */
+  streakMultiplierInterval?: number
   /** Скидочный талон: при использовании в инвентаре даёт скидку на следующую покупку (только монеты) */
   isDiscountVoucher?: boolean
   /** Размер скидки в % (1–85) при isDiscountVoucher */
