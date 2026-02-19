@@ -1,5 +1,5 @@
 import { cn } from '../../lib/cn'
-import { Coins, Gem, Gift, Percent, ShoppingCart, TrendingUp, Gamepad2 } from 'lucide-react'
+import { Coins, Gem, Gift, Percent, ShoppingCart, TrendingUp, Gamepad2, Clapperboard } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
@@ -125,13 +125,15 @@ export default function ShopItemCard({ item, selected, onSelect }: ShopItemCardP
                 typeBadge.type === 'lootbox' && 'bg-gradient-to-br from-violet-400 to-violet-600',
                 typeBadge.type === 'multiplier' && 'bg-gradient-to-br from-amber-400 to-orange-500',
                 typeBadge.type === 'discount' && 'bg-gradient-to-br from-red-400 to-rose-600',
-                typeBadge.type === 'videogame' && 'bg-gradient-to-br from-cyan-400 to-cyan-600'
+                typeBadge.type === 'videogame' && 'bg-gradient-to-br from-cyan-400 to-cyan-600',
+                typeBadge.type === 'serial' && 'bg-gradient-to-br from-pink-400 to-rose-600'
               )}
             >
               {typeBadge.type === 'lootbox' && <Gift className="h-3.5 w-3.5 text-white drop-shadow" />}
               {typeBadge.type === 'multiplier' && <TrendingUp className="h-3.5 w-3.5 text-white drop-shadow" />}
               {typeBadge.type === 'discount' && <Percent className="h-3.5 w-3.5 text-white drop-shadow" />}
               {typeBadge.type === 'videogame' && <Gamepad2 className="h-3.5 w-3.5 text-white drop-shadow" />}
+              {typeBadge.type === 'serial' && <Clapperboard className="h-3.5 w-3.5 text-white drop-shadow" />}
             </div>
           )}
         </div>

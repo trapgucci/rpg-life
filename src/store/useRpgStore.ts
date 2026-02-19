@@ -311,6 +311,7 @@ interface RpgStoreState {
   purchaseItem: (itemId: ItemId) => boolean | { loot: { itemId: string; name: string } | null }
   openLootbox: (itemId: ItemId) => { itemId: string; name: string } | null
   purchaseGameTime: (itemId: ItemId, packageId: string) => boolean
+  purchaseEpisode: (itemId: ItemId, seasonId: string, episodeId: string) => boolean
 
   // Inventory actions
   getInventory: () => InventoryEntry[]
@@ -1664,6 +1665,32 @@ export const useRpgStore = create<RpgStoreState>()(
           updateShopItem(itemId, (prev) => ({
             ...prev,
             gameTimeTotalMinutes: (prev.gameTimeTotalMinutes ?? 0) + addMinutes,
+          }))
+          return true
+        },
+
+        purchaseEpisode: (itemId, seasonId, episodeId) => {
+          const { shopItems, deductCurrency, updateShopItem } = get()
+          const item = shopItems.find((i) => i.id === itemId)
+          if (!item || !item.isTvSerial || !item.serialSeasons) return false
+
+          const season = item.serialSeasons.find((s) => s.id === seasonId)
+          if (!season) return false
+
+          const episode = season.episodes.find((e) => e.id === episodeId)
+          if (!episode || episode.purchased) return false
+
+          const coinBalance = get().getCurrency(CURRENCY_IDS.COINS)
+          if (coinBalance < episode.cost) return false
+
+          deductCurrency(CURRENCY_IDS.COINS, episode.cost)
+          updateShopItem(itemId, (prev) => ({
+            ...prev,
+            serialSeasons: prev.serialSeasons?.map((s) =>
+              s.id === seasonId
+                ? { ...s, episodes: s.episodes.map((e) => e.id === episodeId ? { ...e, purchased: true } : e) }
+                : s
+            ),
           }))
           return true
         },

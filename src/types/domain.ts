@@ -471,6 +471,30 @@ export interface ShopItem {
   gameTimePackages?: GameTimePackage[]
   /** Суммарное накопленное время (в минутах) */
   gameTimeTotalMinutes?: number
+  /** Сериал: серии разбиты по сезонам с индивидуальной ценой за серию */
+  isTvSerial?: boolean
+  /** Настройки сезонов сериала */
+  serialSeasons?: SerialSeason[]
+}
+
+/** Сезон сериала */
+export interface SerialSeason {
+  id: string
+  /** Номер сезона (1-based) */
+  number: number
+  /** Серии в сезоне */
+  episodes: SerialEpisode[]
+}
+
+/** Серия внутри сезона */
+export interface SerialEpisode {
+  id: string
+  /** Номер серии (1-based) */
+  number: number
+  /** Стоимость серии в монетах */
+  cost: number
+  /** Куплена ли серия */
+  purchased?: boolean
 }
 
 /** Пакет времени для видеоигры */

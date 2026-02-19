@@ -1,10 +1,10 @@
 import { useState, useRef, useMemo } from 'react'
 import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
-import { X, Settings, Gift, ChevronRight, Percent, Folder, Plus, Trash2 } from 'lucide-react'
+import { X, Settings, Gift, ChevronRight, Percent, Folder, Plus, Trash2, Clapperboard, ChevronDown } from 'lucide-react'
 import { HabitIcon } from '../HabitIcon'
 import { useRpgStore } from '../../store/useRpgStore'
-import type { ShopItem, GameTimePackage } from '../../types/domain'
+import type { ShopItem, GameTimePackage, SerialSeason } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
 import type { LootTableEntry } from './shopUtils'
 import EmojiPickerModal from './EmojiPickerModal'
@@ -54,6 +54,9 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
   const [discountPercent, setDiscountPercent] = useState(10)
   const [isVideoGame, setIsVideoGame] = useState(false)
   const [gameTimePackages, setGameTimePackages] = useState<GameTimePackage[]>([])
+  const [isTvSerial, setIsTvSerial] = useState(false)
+  const [serialSeasons, setSerialSeasons] = useState<SerialSeason[]>([])
+  const [collapsedSeasons, setCollapsedSeasons] = useState<Set<string>>(new Set())
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
   const [showLootboxModal, setShowLootboxModal] = useState(false)
   const [showDiscountModal, setShowDiscountModal] = useState(false)
@@ -89,6 +92,8 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
       isVideoGame: isVideoGame || undefined,
       gameTimePackages: isVideoGame && gameTimePackages.length > 0 ? gameTimePackages : undefined,
       gameTimeTotalMinutes: isVideoGame ? 0 : undefined,
+      isTvSerial: isTvSerial || undefined,
+      serialSeasons: isTvSerial && serialSeasons.length > 0 ? serialSeasons : undefined,
     }
 
     const created = addItem(data)
@@ -280,7 +285,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-[var(--fg)]">Свойства предмета</p>
-              <p className="text-xs text-[var(--fg-muted)]">Лутбокс, множитель, скидочник, видеоигра</p>
+              <p className="text-xs text-[var(--fg-muted)]">Лутбокс, множитель, скидочник, видеоигра, сериал</p>
             </div>
             <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
           </button>
@@ -315,10 +320,10 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
             <div className="space-y-4">
               <p className="text-xs text-[var(--fg-muted)] mb-2">Включить можно только одну опцию.</p>
               {/* Lootbox */}
-              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (streakMultiplierEnabled || isDiscountVoucher || isVideoGame) && 'opacity-70')}>
+              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (streakMultiplierEnabled || isDiscountVoucher || isVideoGame || isTvSerial) && 'opacity-70')}>
                 <div className="flex items-center justify-between gap-3">
                   <div><span className="font-medium text-[var(--fg)]">Лутбокс</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Случайный предмет при открытии</p></div>
-                  <button type="button" role="switch" aria-checked={isLootBox} disabled={streakMultiplierEnabled || isDiscountVoucher || isVideoGame} onClick={() => { setIsLootBox((v) => !v); if (!isLootBox) { setStreakMultiplierEnabled(false); setIsDiscountVoucher(false); setIsVideoGame(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isLootBox ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                  <button type="button" role="switch" aria-checked={isLootBox} disabled={streakMultiplierEnabled || isDiscountVoucher || isVideoGame || isTvSerial} onClick={() => { setIsLootBox((v) => !v); if (!isLootBox) { setStreakMultiplierEnabled(false); setIsDiscountVoucher(false); setIsVideoGame(false); setIsTvSerial(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isLootBox ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
                     <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', isLootBox ? 'right-1 left-auto' : 'left-1 right-auto')} />
                   </button>
                 </div>
@@ -331,10 +336,10 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                 )}
               </div>
               {/* Streak Multiplier */}
-              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (isLootBox || isDiscountVoucher || isVideoGame) && 'opacity-70')}>
+              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (isLootBox || isDiscountVoucher || isVideoGame || isTvSerial) && 'opacity-70')}>
                 <div className="flex items-center justify-between gap-3">
                   <div><span className="font-medium text-[var(--fg)]">Множитель за стрик</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Увеличивает награды за серию выполнений</p></div>
-                  <button type="button" role="switch" aria-checked={streakMultiplierEnabled} disabled={isLootBox || isDiscountVoucher || isVideoGame} onClick={() => { setStreakMultiplierEnabled((v) => !v); if (!streakMultiplierEnabled) { setIsLootBox(false); setIsDiscountVoucher(false); setIsVideoGame(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', streakMultiplierEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                  <button type="button" role="switch" aria-checked={streakMultiplierEnabled} disabled={isLootBox || isDiscountVoucher || isVideoGame || isTvSerial} onClick={() => { setStreakMultiplierEnabled((v) => !v); if (!streakMultiplierEnabled) { setIsLootBox(false); setIsDiscountVoucher(false); setIsVideoGame(false); setIsTvSerial(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', streakMultiplierEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
                     <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', streakMultiplierEnabled ? 'right-1 left-auto' : 'left-1 right-auto')} />
                   </button>
                 </div>
@@ -386,10 +391,10 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                 )}
               </div>
               {/* Discount Voucher */}
-              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (isLootBox || streakMultiplierEnabled || isVideoGame) && 'opacity-70')}>
+              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (isLootBox || streakMultiplierEnabled || isVideoGame || isTvSerial) && 'opacity-70')}>
                 <div className="flex items-center justify-between gap-3">
                   <div><span className="font-medium text-[var(--fg)]">Скидочный талон</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Снижает цены в магазине на N%</p></div>
-                  <button type="button" role="switch" aria-checked={isDiscountVoucher} disabled={isLootBox || streakMultiplierEnabled || isVideoGame} onClick={() => { setIsDiscountVoucher((v) => !v); if (!isDiscountVoucher) { setIsLootBox(false); setStreakMultiplierEnabled(false); setIsVideoGame(false); setShowDiscountModal(true) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isDiscountVoucher ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                  <button type="button" role="switch" aria-checked={isDiscountVoucher} disabled={isLootBox || streakMultiplierEnabled || isVideoGame || isTvSerial} onClick={() => { setIsDiscountVoucher((v) => !v); if (!isDiscountVoucher) { setIsLootBox(false); setStreakMultiplierEnabled(false); setIsVideoGame(false); setIsTvSerial(false); setShowDiscountModal(true) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isDiscountVoucher ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
                     <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', isDiscountVoucher ? 'right-1 left-auto' : 'left-1 right-auto')} />
                   </button>
                 </div>
@@ -402,10 +407,10 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                 )}
               </div>
               {/* Video Game */}
-              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (isLootBox || streakMultiplierEnabled || isDiscountVoucher) && 'opacity-70')}>
+              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (isLootBox || streakMultiplierEnabled || isDiscountVoucher || isTvSerial) && 'opacity-70')}>
                 <div className="flex items-center justify-between gap-3">
                   <div><span className="font-medium text-[var(--fg)]">Видеоигра</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Докупка часов после покупки</p></div>
-                  <button type="button" role="switch" aria-checked={isVideoGame} disabled={isLootBox || streakMultiplierEnabled || isDiscountVoucher} onClick={() => { setIsVideoGame((v) => !v); if (!isVideoGame) { setIsLootBox(false); setStreakMultiplierEnabled(false); setIsDiscountVoucher(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isVideoGame ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                  <button type="button" role="switch" aria-checked={isVideoGame} disabled={isLootBox || streakMultiplierEnabled || isDiscountVoucher || isTvSerial} onClick={() => { setIsVideoGame((v) => !v); if (!isVideoGame) { setIsLootBox(false); setStreakMultiplierEnabled(false); setIsDiscountVoucher(false); setIsTvSerial(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isVideoGame ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
                     <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', isVideoGame ? 'right-1 left-auto' : 'left-1 right-auto')} />
                   </button>
                 </div>
@@ -467,6 +472,171 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                           </button>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              {/* TV Serial */}
+              <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (isLootBox || streakMultiplierEnabled || isDiscountVoucher || isVideoGame) && 'opacity-70')}>
+                <div className="flex items-center justify-between gap-3">
+                  <div><span className="font-medium text-[var(--fg)]">Сериал</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Покупка серий по сезонам (напр. «Во все тяжкие»)</p></div>
+                  <button type="button" role="switch" aria-checked={isTvSerial} disabled={isLootBox || streakMultiplierEnabled || isDiscountVoucher || isVideoGame} onClick={() => { setIsTvSerial((v) => !v); if (!isTvSerial) { setIsLootBox(false); setStreakMultiplierEnabled(false); setIsDiscountVoucher(false); setIsVideoGame(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isTvSerial ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                    <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', isTvSerial ? 'right-1 left-auto' : 'left-1 right-auto')} />
+                  </button>
+                </div>
+                {isTvSerial && (
+                  <div className="mt-4 pt-4 border-t border-[var(--border)] space-y-3">
+                    <p className="text-xs text-[var(--fg-muted)]">
+                      Например: «Во все тяжкие» — 5 сезонов. Каждый сезон содержит набор серий, каждая со своей ценой. Покупайте серии по мере просмотра.
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-[var(--fg-muted)]">Сезоны</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const num = serialSeasons.length + 1
+                          setSerialSeasons((prev) => [...prev, {
+                            id: crypto.randomUUID(),
+                            number: num,
+                            episodes: Array.from({ length: 10 }, (_, i) => ({
+                              id: crypto.randomUUID(),
+                              number: i + 1,
+                              cost: 15,
+                            })),
+                          }])
+                        }}
+                        className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent-subtle)] transition-colors"
+                      >
+                        <Plus className="h-3.5 w-3.5" />Добавить сезон
+                      </button>
+                    </div>
+                    {serialSeasons.length === 0 && (
+                      <p className="text-xs text-[var(--fg-muted)] text-center py-2">Нет сезонов. Добавьте хотя бы один.</p>
+                    )}
+                    <div className="space-y-2">
+                      {serialSeasons.map((season, sIdx) => {
+                        const isCollapsed = collapsedSeasons.has(season.id)
+                        return (
+                          <div key={season.id} className="rounded-xl bg-[var(--surface-elevated)] overflow-hidden">
+                            {/* Season header */}
+                            <div className="flex items-center gap-2 px-3 py-2.5">
+                              <button
+                                type="button"
+                                onClick={() => setCollapsedSeasons((prev) => {
+                                  const next = new Set(prev)
+                                  if (next.has(season.id)) next.delete(season.id)
+                                  else next.add(season.id)
+                                  return next
+                                })}
+                                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg hover:bg-[var(--surface)] transition-colors"
+                              >
+                                <ChevronDown className={cn('h-3.5 w-3.5 text-[var(--fg-muted)] transition-transform', isCollapsed && '-rotate-90')} />
+                              </button>
+                              <Clapperboard className="h-4 w-4 text-[var(--fg-muted)] shrink-0" />
+                              <span className="text-sm font-bold text-[var(--fg)] flex-1">Сезон {season.number}</span>
+                              <span className="text-[10px] text-[var(--fg-muted)]">{season.episodes.length} серий</span>
+                              {/* Add episode */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSerialSeasons((prev) => prev.map((s, i) => i === sIdx ? {
+                                    ...s,
+                                    episodes: [...s.episodes, { id: crypto.randomUUID(), number: s.episodes.length + 1, cost: 15 }],
+                                  } : s))
+                                }}
+                                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[var(--accent)] hover:bg-[var(--accent-subtle)] transition-colors"
+                                title="Добавить серию"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </button>
+                              {/* Delete season */}
+                              <button
+                                type="button"
+                                onClick={() => setSerialSeasons((prev) => prev.filter((_, i) => i !== sIdx).map((s, i) => ({ ...s, number: i + 1 })))}
+                                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-red-400 hover:bg-red-500/15 transition-colors"
+                                title="Удалить сезон"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                            {/* Episodes */}
+                            {!isCollapsed && (
+                              <div className="px-3 pb-2.5 space-y-1">
+                                {/* Bulk price setter */}
+                                <div className="flex items-center gap-2 mb-2 px-1">
+                                  <span className="text-[10px] text-[var(--fg-muted)]">Цена для всех серий:</span>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    placeholder="15"
+                                    className="input h-6 w-16 py-0 text-center text-[10px] font-bold"
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault()
+                                        const val = Math.max(0, Number((e.target as HTMLInputElement).value) || 0)
+                                        setSerialSeasons((prev) => prev.map((s, i) => i === sIdx ? {
+                                          ...s,
+                                          episodes: s.episodes.map((ep) => ({ ...ep, cost: val })),
+                                        } : s))
+                                      }
+                                    }}
+                                    onBlur={(e) => {
+                                      const val = e.target.value
+                                      if (val) {
+                                        const num = Math.max(0, Number(val) || 0)
+                                        setSerialSeasons((prev) => prev.map((s, i) => i === sIdx ? {
+                                          ...s,
+                                          episodes: s.episodes.map((ep) => ({ ...ep, cost: num })),
+                                        } : s))
+                                      }
+                                    }}
+                                  />
+                                </div>
+                                {season.episodes.map((ep, eIdx) => (
+                                  <div key={ep.id} className="flex items-center gap-2 rounded-lg bg-[var(--surface)] px-2.5 py-1.5">
+                                    <span className="text-xs text-[var(--fg-muted)] w-16 shrink-0">Серия {ep.number}</span>
+                                    <div className="flex items-center gap-1 flex-1">
+                                      <button type="button" onClick={() => {
+                                        setSerialSeasons((prev) => prev.map((s, si) => si === sIdx ? {
+                                          ...s, episodes: s.episodes.map((e, ei) => ei === eIdx ? { ...e, cost: Math.max(0, e.cost - 1) } : e),
+                                        } : s))
+                                      }} className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 text-[10px] font-bold hover:scale-105 active:scale-95 transition-all">−</button>
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        value={ep.cost}
+                                        onChange={(e) => {
+                                          const val = Math.max(0, Number(e.target.value) || 0)
+                                          setSerialSeasons((prev) => prev.map((s, si) => si === sIdx ? {
+                                            ...s, episodes: s.episodes.map((ep2, ei) => ei === eIdx ? { ...ep2, cost: val } : ep2),
+                                          } : s))
+                                        }}
+                                        className="input w-full flex-1 min-w-0 h-6 py-0 text-center text-xs font-bold"
+                                      />
+                                      <button type="button" onClick={() => {
+                                        setSerialSeasons((prev) => prev.map((s, si) => si === sIdx ? {
+                                          ...s, episodes: s.episodes.map((e, ei) => ei === eIdx ? { ...e, cost: e.cost + 1 } : e),
+                                        } : s))
+                                      }} className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-b from-emerald-400/25 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 text-[10px] font-bold hover:scale-105 active:scale-95 transition-all">+</button>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSerialSeasons((prev) => prev.map((s, si) => si === sIdx ? {
+                                          ...s, episodes: s.episodes.filter((_, ei) => ei !== eIdx).map((e, i) => ({ ...e, number: i + 1 })),
+                                        } : s))
+                                      }}
+                                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-red-400 hover:bg-red-500/15 transition-colors"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 )}

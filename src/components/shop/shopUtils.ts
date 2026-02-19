@@ -45,7 +45,7 @@ export const RARITY_ORDER: Record<ItemRarity, number> = {
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export type LootTableEntry = { id: string; weight: number; quantity?: number }
-export type ShopTypeFilter = 'all' | 'regular' | 'lootbox' | 'multiplier' | 'discount' | 'videogame'
+export type ShopTypeFilter = 'all' | 'regular' | 'lootbox' | 'multiplier' | 'discount' | 'videogame' | 'serial'
 export type ShopSortField = 'default' | 'name' | 'price' | 'rarity'
 export type RecipeFilter = 'all' | 'active' | 'crafted'
 
@@ -54,6 +54,7 @@ export type ItemTypeBadge =
   | { type: 'multiplier'; label: string }
   | { type: 'discount'; label: string }
   | { type: 'videogame'; label: string }
+  | { type: 'serial'; label: string }
 
 // ─── Icon Constants (Lucide icon names) ─────────────────────────────────────
 
@@ -76,6 +77,8 @@ export const ITEM_ICON_OPTIONS = [
   'Coffee', 'Dumbbell', 'Music', 'Camera', 'Palette', 'Gamepad2',
   // Finance
   'Wallet', 'PiggyBank', 'CreditCard', 'TrendingUp',
+  // Media
+  'Clapperboard', 'Film', 'Tv',
   // Misc
   'Tag', 'Bookmark', 'Flag', 'MapPin', 'Compass', 'Globe',
   'Lock', 'Eye', 'Footprints', 'Puzzle', 'Dice5', 'Cat', 'Dog',
@@ -110,7 +113,7 @@ export function migrateIcon(raw: string | undefined, fallback = 'Sword'): string
 }
 
 export function getItemIcon(item: ShopItem): string {
-  const fallback = item.isLootBox ? 'Gift' : item.isDiscountVoucher ? 'Tag' : item.isVideoGame ? 'Gamepad2' : 'Sword'
+  const fallback = item.isLootBox ? 'Gift' : item.isDiscountVoucher ? 'Tag' : item.isVideoGame ? 'Gamepad2' : item.isTvSerial ? 'Clapperboard' : 'Sword'
   return migrateIcon(item.icon, fallback)
 }
 
@@ -119,6 +122,7 @@ export function getItemTypeBadge(item: ShopItem): ItemTypeBadge | null {
   if (item.streakMultiplierEnabled) return { type: 'multiplier', label: 'Множитель' }
   if (item.isDiscountVoucher) return { type: 'discount', label: 'Скидочник' }
   if (item.isVideoGame) return { type: 'videogame', label: 'Видеоигра' }
+  if (item.isTvSerial) return { type: 'serial', label: 'Сериал' }
   return null
 }
 
@@ -149,8 +153,11 @@ export function filterShopItems(
       case 'videogame':
         filtered = filtered.filter((i) => i.isVideoGame)
         break
+      case 'serial':
+        filtered = filtered.filter((i) => i.isTvSerial)
+        break
       case 'regular':
-        filtered = filtered.filter((i) => !i.isLootBox && !i.streakMultiplierEnabled && !i.isDiscountVoucher && !i.isVideoGame)
+        filtered = filtered.filter((i) => !i.isLootBox && !i.streakMultiplierEnabled && !i.isDiscountVoucher && !i.isVideoGame && !i.isTvSerial)
         break
     }
   }
