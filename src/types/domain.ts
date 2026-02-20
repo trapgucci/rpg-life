@@ -627,6 +627,8 @@ export interface CraftRecipe {
   resultRarity: ItemRarity
   /** Иконка результата */
   resultIcon: string
+  /** Стоимость крафта (по валютам). Если не задано или всё 0 — крафт бесплатный */
+  craftCost?: Record<CurrencyId, number>
   /** Источники фрагментов */
   sources?: FragmentSource[]
   /** Скрафчен ли предмет */

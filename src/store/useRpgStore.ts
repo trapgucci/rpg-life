@@ -1520,12 +1520,25 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         craftItem: (recipeId) => {
-          const { craftRecipes, addToInventory, checkAchievements } = get()
+          const { craftRecipes, addToInventory, deductCurrency, getCurrency, checkAchievements } = get()
           const recipe = craftRecipes.find((r) => r.id === recipeId)
           if (!recipe || recipe.crafted || recipe.fragmentsCollected < recipe.fragmentsRequired) return false
 
-          // Add item to inventory
-          addToInventory(recipe.resultItemId)
+          // Deduct craft cost if any
+          const craftCost = (recipe as any).craftCost as Record<string, number> | undefined
+          if (craftCost) {
+            for (const [currId, amount] of Object.entries(craftCost)) {
+              if (amount > 0 && getCurrency(currId) < amount) return false
+            }
+            for (const [currId, amount] of Object.entries(craftCost)) {
+              if (amount > 0) deductCurrency(currId, amount)
+            }
+          }
+
+          // Add item to inventory (only if resultItemId is set)
+          if (recipe.resultItemId) {
+            addToInventory(recipe.resultItemId)
+          }
 
           // Mark as crafted
           get().updateCraftRecipe(recipeId, (r) => ({ ...r, crafted: true, craftedAt: now() }))

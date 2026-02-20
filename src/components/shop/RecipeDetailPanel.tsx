@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
-import { X, Pencil, Trash2, Sparkles, CheckCircle2, Plus, Minus, Dice5, Crosshair, Flame } from 'lucide-react'
+import { X, Pencil, Trash2, Sparkles, CheckCircle2, Plus, Minus, Dice5, Crosshair, Flame, Search, Package, Folder } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
 import type { CraftRecipe, ItemRarity, FragmentSourceType } from '../../types/domain'
 import { RARITY_LABELS, RARITY_COLORS, RARITY_BADGE_CLASSES, migrateIcon } from './shopUtils'
@@ -23,6 +23,11 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
   const allTasks = useRpgStore((s) => s.tasks)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const tasks = activeProfileId ? allTasks.filter((t) => t.profileId === activeProfileId && !t.archived && !t.isCompleted) : []
+  const allShopItems = useRpgStore((s) => s.shopItems)
+  const allItemGroups = useRpgStore((s) => s.itemGroups)
+  const getCurrency = useRpgStore((s) => s.getCurrency)
+  const itemGroups = useMemo(() => activeProfileId ? allItemGroups.filter((g) => g.profileId === activeProfileId).sort((a, b) => a.sortOrder - b.sortOrder) : [], [allItemGroups, activeProfileId])
+  const profileItems = useMemo(() => activeProfileId ? allShopItems.filter((i) => (i as any).profileId === activeProfileId || !(i as any).profileId) : allShopItems, [allShopItems, activeProfileId])
 
   // --- Fragment source (runtime extended field) ---
   const rawSource = (recipe as any).fragmentSource
@@ -33,6 +38,14 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
   // Migrate old habit_linked to random_drop
   const rawType = fragmentSource?.type ?? 'random_drop'
   const sourceType = (rawType === 'habit_linked' ? 'random_drop' : rawType) as FragmentSourceType
+
+  // --- Result item ---
+  const resultItem = useMemo(() => recipe.resultItemId ? allShopItems.find((i) => i.id === recipe.resultItemId) : null, [recipe.resultItemId, allShopItems])
+  const craftCost = (recipe as any).craftCost as Record<string, number> | undefined
+  const coinCost = craftCost?.coins ?? 0
+  const gemCost = craftCost?.gems ?? 0
+  const hasCost = coinCost > 0 || gemCost > 0
+  const canAfford = getCurrency('coins') >= coinCost && getCurrency('gems') >= gemCost
 
   // --- Progress ---
   const progress = recipe.fragmentsRequired > 0
@@ -48,6 +61,9 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
   const [showTaskPicker, setShowTaskPicker] = useState(false)
   const [showIconSource, setShowIconSource] = useState(false)
   const [showIconPicker, setShowIconPicker] = useState(false)
+  const [showItemPicker, setShowItemPicker] = useState(false)
+  const [itemGroupFilter, setItemGroupFilter] = useState<string | null>(null)
+  const [itemSearch, setItemSearch] = useState('')
   const iconFileInputRef = useRef<HTMLInputElement>(null)
 
   // --- Edit state ---
@@ -60,6 +76,21 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
   const [editDropChance, setEditDropChance] = useState(fragmentSource?.dropChance ?? 15)
   const [editLinkedTaskIds, setEditLinkedTaskIds] = useState<string[]>(fragmentSource?.linkedTaskIds ?? [])
   const [editStreakRequired, setEditStreakRequired] = useState(fragmentSource?.streakRequired ?? 7)
+  const [editResultItemId, setEditResultItemId] = useState<string | null>(recipe.resultItemId || null)
+  const [editCraftCostCoins, setEditCraftCostCoins] = useState(coinCost)
+  const [editCraftCostGems, setEditCraftCostGems] = useState(gemCost)
+
+  const editSelectedItem = useMemo(() => editResultItemId ? allShopItems.find((i) => i.id === editResultItemId) : null, [editResultItemId, allShopItems])
+
+  const filteredPickerItems = useMemo(() => {
+    let items = profileItems
+    if (itemGroupFilter) items = items.filter((i) => i.groupId === itemGroupFilter)
+    if (itemSearch.trim()) {
+      const q = itemSearch.trim().toLowerCase()
+      items = items.filter((i) => i.name.toLowerCase().includes(q))
+    }
+    return items
+  }, [profileItems, itemGroupFilter, itemSearch])
 
   // --- Unsaved changes detection ---
   const prevRecipeRef = useRef(recipe)
@@ -70,6 +101,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
     const fs: { type?: string; dropChance?: number; linkedTaskIds?: string[]; streakRequired?: number } =
       src != null && typeof src === 'object' ? src : { type: 'random_drop', dropChance: 0 }
     const fsType = fs?.type ?? 'random_drop'
+    const cc = (r as any).craftCost as Record<string, number> | undefined
 
     setIsEditing(false)
     setEditFragmentName(r.fragmentName)
@@ -81,9 +113,14 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
     setEditDropChance(fs?.dropChance ?? 15)
     setEditLinkedTaskIds(fs?.linkedTaskIds ?? [])
     setEditStreakRequired(fs?.streakRequired ?? 7)
+    setEditResultItemId(r.resultItemId || null)
+    setEditCraftCostCoins(cc?.coins ?? 0)
+    setEditCraftCostGems(cc?.gems ?? 0)
     setShowTaskPicker(false)
     setShowIconSource(false)
     setShowIconPicker(false)
+    setShowItemPicker(false)
+    setItemSearch('')
   }
 
   useEffect(() => {
@@ -150,6 +187,8 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
           ? { type: 'streak_reward' as const, streakRequired: editStreakRequired }
           : { type: 'random_drop' as const, dropChance: editDropChance }
 
+    const selItem = editResultItemId ? allShopItems.find((i) => i.id === editResultItemId) : null
+
     const data = {
       fragmentName: editFragmentName.trim(),
       fragmentIcon: editFragmentIcon,
@@ -157,6 +196,10 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
       fragmentsRequired: editFragmentsRequired,
       resultRarity: editResultRarity,
       fragmentSource: fragmentSourceData,
+      resultItemId: editResultItemId ?? '',
+      resultName: selItem?.name ?? '',
+      resultIcon: selItem?.icon ?? '',
+      craftCost: { coins: editCraftCostCoins, gems: editCraftCostGems },
     }
     updateRecipe(id, (r) => ({ ...r, ...data }))
   }
@@ -282,6 +325,48 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                 )}
               </div>
             </div>
+
+            {/* Result item (view) */}
+            {resultItem && (
+              <div className="glass rounded-2xl p-4">
+                <h3 className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Результат крафта</h3>
+                <div className="flex items-center gap-3">
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden ring-1 ring-inset shadow-sm"
+                    style={{
+                      background: `linear-gradient(to bottom, ${RARITY_COLORS[resultItem.rarity]}35, ${RARITY_COLORS[resultItem.rarity]}15)`,
+                      '--tw-ring-color': `${RARITY_COLORS[resultItem.rarity]}40`,
+                    } as React.CSSProperties}
+                  >
+                    {resultItem.iconImage ? (
+                      <img src={resultItem.iconImage} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <HabitIcon iconName={migrateIcon(resultItem.icon, 'Package')} size={20} />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-[var(--fg)] truncate">{resultItem.name}</p>
+                    <span className={cn('inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-bold mt-0.5', RARITY_BADGE_CLASSES[resultItem.rarity])}>
+                      {RARITY_LABELS[resultItem.rarity]}
+                    </span>
+                  </div>
+                </div>
+                {hasCost && (
+                  <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-[var(--border)]">
+                    {coinCost > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-600 ring-1 ring-inset ring-amber-400/20">
+                        🪙 {coinCost}
+                      </span>
+                    )}
+                    {gemCost > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-blue-500/10 px-2.5 py-1 text-xs font-bold text-blue-500 ring-1 ring-inset ring-blue-400/20">
+                        💎 {gemCost}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Progress Section with manual controls */}
             <div className="glass rounded-2xl p-5">
@@ -465,6 +550,78 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
               </div>
             </div>
 
+            {/* Result item (edit) */}
+            <div className="glass rounded-2xl p-4">
+              <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Результат крафта</label>
+              {editSelectedItem ? (
+                <div className="flex items-center gap-3">
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden ring-1 ring-inset shadow-sm"
+                    style={{
+                      background: `linear-gradient(to bottom, ${RARITY_COLORS[editSelectedItem.rarity]}35, ${RARITY_COLORS[editSelectedItem.rarity]}15)`,
+                      '--tw-ring-color': `${RARITY_COLORS[editSelectedItem.rarity]}40`,
+                    } as React.CSSProperties}
+                  >
+                    {editSelectedItem.iconImage ? (
+                      <img src={editSelectedItem.iconImage} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <HabitIcon iconName={migrateIcon(editSelectedItem.icon, 'Package')} size={20} />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-[var(--fg)] truncate">{editSelectedItem.name}</p>
+                    <span className={cn('inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-bold mt-0.5', RARITY_BADGE_CLASSES[editSelectedItem.rarity])}>
+                      {RARITY_LABELS[editSelectedItem.rarity]}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowItemPicker(true)}
+                    className="text-xs font-medium text-[var(--accent)] hover:underline shrink-0"
+                  >
+                    Изменить
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowItemPicker(true)}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--border)] py-3 text-sm font-medium text-[var(--fg-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
+                >
+                  <Package className="h-4 w-4" />
+                  Выбрать предмет
+                </button>
+              )}
+            </div>
+
+            {/* Craft cost (edit) */}
+            <div className="glass rounded-2xl p-4">
+              <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Стоимость крафта</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--fg-muted)] uppercase tracking-wider mb-1.5">🪙 Монеты</label>
+                  <input
+                    type="number"
+                    value={editCraftCostCoins}
+                    onChange={(e) => setEditCraftCostCoins(Math.max(0, Number(e.target.value) || 0))}
+                    min={0}
+                    className="input w-full h-10 py-0 text-center text-sm font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--fg-muted)] uppercase tracking-wider mb-1.5">💎 Кристаллы</label>
+                  <input
+                    type="number"
+                    value={editCraftCostGems}
+                    onChange={(e) => setEditCraftCostGems(Math.max(0, Number(e.target.value) || 0))}
+                    min={0}
+                    className="input w-full h-10 py-0 text-center text-sm font-bold"
+                  />
+                </div>
+              </div>
+              <p className="text-[10px] text-[var(--fg-muted)] mt-2">Оставьте 0 для бесплатного крафта</p>
+            </div>
+
             {/* Source type */}
             <div className="glass rounded-2xl p-4">
               <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Источник фрагментов</label>
@@ -566,16 +723,31 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
         )}
       </div>
 
-      {/* Bottom action bar */}
+      {/* Bottom action bar — Craft button */}
       {!isEditing && canCraft && (
         <div className="shrink-0 border-t border-[var(--border)] p-4">
+          {hasCost && !canAfford && (
+            <p className="text-xs text-red-500 text-center mb-2 font-medium">Недостаточно средств для крафта</p>
+          )}
           <button
             type="button"
             onClick={handleCraft}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98]"
+            disabled={hasCost && !canAfford}
+            className={cn(
+              'w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-semibold text-white transition-all duration-200',
+              hasCost && !canAfford
+                ? 'bg-gray-400 cursor-not-allowed opacity-60'
+                : 'bg-gradient-to-r from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98]'
+            )}
           >
             <Sparkles className="h-5 w-5" />
             Крафтить!
+            {hasCost && (
+              <span className="ml-1 flex items-center gap-2 text-sm opacity-90">
+                {coinCost > 0 && <span>🪙 {coinCost}</span>}
+                {gemCost > 0 && <span>💎 {gemCost}</span>}
+              </span>
+            )}
           </button>
         </div>
       )}
@@ -601,6 +773,108 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
         cancelText="Отменить"
         variant="save"
       />
+
+      {/* Item picker modal (for edit mode) */}
+      {showItemPicker && (
+        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setShowItemPicker(false)}>
+          <div className="modal-content max-w-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-[var(--fg)]">Выбрать предмет</h3>
+              <button type="button" onClick={() => setShowItemPicker(false)} className="icon-btn"><X className="h-5 w-5" /></button>
+            </div>
+
+            {/* Search */}
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--fg-muted)]" />
+              <input
+                type="text"
+                value={itemSearch}
+                onChange={(e) => setItemSearch(e.target.value)}
+                placeholder="Поиск предмета..."
+                className="input w-full pl-9 h-9 text-sm"
+              />
+            </div>
+
+            {/* Group filter tabs */}
+            {itemGroups.length > 0 && (
+              <div className="flex gap-1.5 flex-wrap mb-3">
+                <button
+                  type="button"
+                  onClick={() => setItemGroupFilter(null)}
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all',
+                    !itemGroupFilter
+                      ? 'bg-[var(--accent-subtle)] text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20'
+                      : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)]'
+                  )}
+                >
+                  Все
+                </button>
+                {itemGroups.map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setItemGroupFilter(g.id)}
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all',
+                      itemGroupFilter === g.id
+                        ? 'bg-[var(--accent-subtle)] text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20'
+                        : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)]'
+                    )}
+                  >
+                    <Folder className="h-3 w-3" style={{ color: g.color || undefined }} />
+                    {g.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Item list */}
+            <div className="max-h-72 overflow-y-auto rounded-xl bg-[var(--surface)] p-2 mb-4">
+              {filteredPickerItems.map((item) => {
+                const group = itemGroups.find((g) => g.id === item.groupId)
+                const iconBg = group?.color ?? RARITY_COLORS[item.rarity]
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => { setEditResultItemId(item.id); setShowItemPicker(false); setItemSearch('') }}
+                    className={cn(
+                      'flex items-center gap-3 w-full rounded-lg p-2 text-left hover:bg-[var(--surface-elevated)] transition-colors',
+                      editResultItemId === item.id && 'bg-[var(--accent-subtle)]'
+                    )}
+                  >
+                    <div
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg overflow-hidden ring-1 ring-inset"
+                      style={{
+                        background: `linear-gradient(to bottom, ${iconBg}35, ${iconBg}15)`,
+                        '--tw-ring-color': `${iconBg}40`,
+                      } as React.CSSProperties}
+                    >
+                      {item.iconImage ? (
+                        <img src={item.iconImage} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <HabitIcon iconName={migrateIcon(item.icon, 'Package')} size={16} />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-[var(--fg)] truncate">{item.name}</p>
+                    </div>
+                    <span className={cn('inline-flex items-center rounded-lg px-2 py-0.5 text-[9px] font-bold shrink-0', RARITY_BADGE_CLASSES[item.rarity])}>
+                      {RARITY_LABELS[item.rarity]}
+                    </span>
+                  </button>
+                )
+              })}
+              {filteredPickerItems.length === 0 && (
+                <p className="text-sm text-[var(--fg-muted)] text-center py-4">Нет предметов</p>
+              )}
+            </div>
+
+            <button type="button" onClick={() => setShowItemPicker(false)} className="btn-secondary w-full">Закрыть</button>
+          </div>
+        </div>
+      )}
 
       {showTaskPicker && (
         <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setShowTaskPicker(false)}>

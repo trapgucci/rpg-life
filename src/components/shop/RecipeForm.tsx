@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
-import { X, Dice5, Crosshair, Flame } from 'lucide-react'
+import { X, Dice5, Crosshair, Flame, Search, Package, Folder } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
 import type { CraftRecipe, ItemRarity, FragmentSourceType } from '../../types/domain'
 import { RARITY_LABELS, RARITY_BADGE_CLASSES, RARITY_COLORS, migrateIcon } from './shopUtils'
@@ -21,12 +21,27 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
   const allTasks = useRpgStore((s) => s.tasks)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const tasks = activeProfileId ? allTasks.filter((t) => t.profileId === activeProfileId && !t.archived && !t.isCompleted) : []
+  const allShopItems = useRpgStore((s) => s.shopItems)
+  const allItemGroups = useRpgStore((s) => s.itemGroups)
+  const itemGroups = useMemo(() => activeProfileId ? allItemGroups.filter((g) => g.profileId === activeProfileId).sort((a, b) => a.sortOrder - b.sortOrder) : [], [allItemGroups, activeProfileId])
+  const profileItems = useMemo(() => activeProfileId ? allShopItems.filter((i) => (i as any).profileId === activeProfileId || !(i as any).profileId) : allShopItems, [allShopItems, activeProfileId])
 
   const [fragmentName, setFragmentName] = useState(recipe?.fragmentName ?? '')
   const [fragmentIcon, setFragmentIcon] = useState(migrateIcon(recipe?.fragmentIcon, 'Puzzle'))
   const [fragmentIconImage, setFragmentIconImage] = useState((recipe as any)?.fragmentIconImage ?? '')
   const [fragmentsRequired, setFragmentsRequired] = useState(recipe?.fragmentsRequired ?? 5)
   const [resultRarity, setResultRarity] = useState<ItemRarity>(recipe?.resultRarity ?? 'common')
+
+  // Result item
+  const [resultItemId, setResultItemId] = useState<string | null>(recipe?.resultItemId ?? null)
+  const [showItemPicker, setShowItemPicker] = useState(false)
+  const [itemGroupFilter, setItemGroupFilter] = useState<string | null>(null)
+  const [itemSearch, setItemSearch] = useState('')
+
+  // Craft cost
+  const existingCraftCost = (recipe as any)?.craftCost as Record<string, number> | undefined
+  const [craftCostCoins, setCraftCostCoins] = useState(existingCraftCost?.coins ?? 0)
+  const [craftCostGems, setCraftCostGems] = useState(existingCraftCost?.gems ?? 0)
 
   // Migrate old habit_linked to random_drop
   const rawSourceType = (recipe as any)?.fragmentSource?.type ?? 'random_drop'
@@ -44,6 +59,18 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
   const [showIconPicker, setShowIconPicker] = useState(false)
   const iconFileInputRef = useRef<HTMLInputElement>(null)
 
+  const selectedItem = useMemo(() => resultItemId ? allShopItems.find((i) => i.id === resultItemId) : null, [resultItemId, allShopItems])
+
+  const filteredPickerItems = useMemo(() => {
+    let items = profileItems
+    if (itemGroupFilter) items = items.filter((i) => i.groupId === itemGroupFilter)
+    if (itemSearch.trim()) {
+      const q = itemSearch.trim().toLowerCase()
+      items = items.filter((i) => i.name.toLowerCase().includes(q))
+    }
+    return items
+  }, [profileItems, itemGroupFilter, itemSearch])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!fragmentName.trim()) return
@@ -55,13 +82,17 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
           ? { type: 'streak_reward' as const, streakRequired }
           : { type: 'random_drop' as const, dropChance }
 
-    const data = {
+    const data: any = {
       fragmentName: fragmentName.trim(),
       fragmentIcon,
       fragmentIconImage: fragmentIconImage || undefined,
       fragmentsRequired,
       resultRarity,
       fragmentSource,
+      resultItemId: resultItemId ?? '',
+      resultName: selectedItem?.name ?? '',
+      resultIcon: selectedItem?.icon ?? '',
+      craftCost: { coins: craftCostCoins, gems: craftCostGems },
     }
 
     if (recipe) {
@@ -198,6 +229,78 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
               </button>
             ))}
           </div>
+        </div>
+
+        {/* ─── Result item (Результат крафта) ─── */}
+        <div className="glass rounded-2xl p-4">
+          <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Результат крафта</label>
+          {selectedItem ? (
+            <div className="flex items-center gap-3">
+              <div
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden ring-1 ring-inset shadow-sm"
+                style={{
+                  background: `linear-gradient(to bottom, ${RARITY_COLORS[selectedItem.rarity]}35, ${RARITY_COLORS[selectedItem.rarity]}15)`,
+                  '--tw-ring-color': `${RARITY_COLORS[selectedItem.rarity]}40`,
+                } as React.CSSProperties}
+              >
+                {selectedItem.iconImage ? (
+                  <img src={selectedItem.iconImage} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <HabitIcon iconName={migrateIcon(selectedItem.icon, 'Package')} size={20} />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-[var(--fg)] truncate">{selectedItem.name}</p>
+                <span className={cn('inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-bold mt-0.5', RARITY_BADGE_CLASSES[selectedItem.rarity])}>
+                  {RARITY_LABELS[selectedItem.rarity]}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowItemPicker(true)}
+                className="text-xs font-medium text-[var(--accent)] hover:underline shrink-0"
+              >
+                Изменить
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowItemPicker(true)}
+              className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--border)] py-3 text-sm font-medium text-[var(--fg-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
+            >
+              <Package className="h-4 w-4" />
+              Выбрать предмет
+            </button>
+          )}
+        </div>
+
+        {/* ─── Craft cost ─── */}
+        <div className="glass rounded-2xl p-4">
+          <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Стоимость крафта</label>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-bold text-[var(--fg-muted)] uppercase tracking-wider mb-1.5">🪙 Монеты</label>
+              <input
+                type="number"
+                value={craftCostCoins}
+                onChange={(e) => setCraftCostCoins(Math.max(0, Number(e.target.value) || 0))}
+                min={0}
+                className="input w-full h-10 py-0 text-center text-sm font-bold"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-[var(--fg-muted)] uppercase tracking-wider mb-1.5">💎 Кристаллы</label>
+              <input
+                type="number"
+                value={craftCostGems}
+                onChange={(e) => setCraftCostGems(Math.max(0, Number(e.target.value) || 0))}
+                min={0}
+                className="input w-full h-10 py-0 text-center text-sm font-bold"
+              />
+            </div>
+          </div>
+          <p className="text-[10px] text-[var(--fg-muted)] mt-2">Оставьте 0 для бесплатного крафта</p>
         </div>
 
         {/* ─── Source type ─── */}
@@ -376,6 +479,108 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
           </button>
         </div>
       </form>
+
+      {/* ─── Item picker modal ─── */}
+      {showItemPicker && (
+        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setShowItemPicker(false)}>
+          <div className="modal-content max-w-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-[var(--fg)]">Выбрать предмет</h3>
+              <button type="button" onClick={() => setShowItemPicker(false)} className="icon-btn"><X className="h-5 w-5" /></button>
+            </div>
+
+            {/* Search */}
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--fg-muted)]" />
+              <input
+                type="text"
+                value={itemSearch}
+                onChange={(e) => setItemSearch(e.target.value)}
+                placeholder="Поиск предмета..."
+                className="input w-full pl-9 h-9 text-sm"
+              />
+            </div>
+
+            {/* Group filter tabs */}
+            {itemGroups.length > 0 && (
+              <div className="flex gap-1.5 flex-wrap mb-3">
+                <button
+                  type="button"
+                  onClick={() => setItemGroupFilter(null)}
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all',
+                    !itemGroupFilter
+                      ? 'bg-[var(--accent-subtle)] text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20'
+                      : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)]'
+                  )}
+                >
+                  Все
+                </button>
+                {itemGroups.map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setItemGroupFilter(g.id)}
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all',
+                      itemGroupFilter === g.id
+                        ? 'bg-[var(--accent-subtle)] text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20'
+                        : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)]'
+                    )}
+                  >
+                    <Folder className="h-3 w-3" style={{ color: g.color || undefined }} />
+                    {g.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Item list */}
+            <div className="max-h-72 overflow-y-auto rounded-xl bg-[var(--surface)] p-2 mb-4">
+              {filteredPickerItems.map((item) => {
+                const group = itemGroups.find((g) => g.id === item.groupId)
+                const iconBg = group?.color ?? RARITY_COLORS[item.rarity]
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => { setResultItemId(item.id); setShowItemPicker(false); setItemSearch('') }}
+                    className={cn(
+                      'flex items-center gap-3 w-full rounded-lg p-2 text-left hover:bg-[var(--surface-elevated)] transition-colors',
+                      resultItemId === item.id && 'bg-[var(--accent-subtle)]'
+                    )}
+                  >
+                    <div
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg overflow-hidden ring-1 ring-inset"
+                      style={{
+                        background: `linear-gradient(to bottom, ${iconBg}35, ${iconBg}15)`,
+                        '--tw-ring-color': `${iconBg}40`,
+                      } as React.CSSProperties}
+                    >
+                      {item.iconImage ? (
+                        <img src={item.iconImage} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <HabitIcon iconName={migrateIcon(item.icon, 'Package')} size={16} />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-[var(--fg)] truncate">{item.name}</p>
+                    </div>
+                    <span className={cn('inline-flex items-center rounded-lg px-2 py-0.5 text-[9px] font-bold shrink-0', RARITY_BADGE_CLASSES[item.rarity])}>
+                      {RARITY_LABELS[item.rarity]}
+                    </span>
+                  </button>
+                )
+              })}
+              {filteredPickerItems.length === 0 && (
+                <p className="text-sm text-[var(--fg-muted)] text-center py-4">Нет предметов</p>
+              )}
+            </div>
+
+            <button type="button" onClick={() => setShowItemPicker(false)} className="btn-secondary w-full">Закрыть</button>
+          </div>
+        </div>
+      )}
 
       {/* ─── Task picker modal ─── */}
       {showTaskPicker && (
