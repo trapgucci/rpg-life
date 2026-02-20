@@ -58,31 +58,92 @@ export type ItemTypeBadge =
 
 // ─── Icon Constants (Lucide icon names) ─────────────────────────────────────
 
-export const ITEM_ICON_OPTIONS = [
-  // RPG / Combat
-  'Sword', 'Shield', 'Crosshair', 'Flame', 'Zap', 'Crown', 'Trophy',
-  // Items & Loot
-  'Gift', 'Package', 'Key', 'Gem', 'Coins', 'Star', 'Sparkles',
-  // Tools & Craft
-  'Wrench', 'Cog', 'Hammer', 'Pickaxe', 'FlaskConical', 'Wand2',
-  // Nature & Elements
-  'Leaf', 'Flower', 'Snowflake', 'Droplet', 'Sun', 'Moon', 'Cloud',
-  // Status & Buffs
-  'Heart', 'HeartPulse', 'ShieldCheck', 'Timer', 'Hourglass', 'Rocket',
-  // Knowledge & Skills
-  'BookOpen', 'GraduationCap', 'Brain', 'Lightbulb', 'Scroll',
-  // Social
-  'Users', 'Handshake', 'MessageSquare', 'Bell',
-  // Lifestyle
-  'Coffee', 'Dumbbell', 'Music', 'Camera', 'Palette', 'Gamepad2',
-  // Finance
-  'Wallet', 'PiggyBank', 'CreditCard', 'TrendingUp',
-  // Media
-  'Clapperboard', 'Film', 'Tv',
-  // Misc
-  'Tag', 'Bookmark', 'Flag', 'MapPin', 'Compass', 'Globe',
-  'Lock', 'Eye', 'Footprints', 'Puzzle', 'Dice5', 'Cat', 'Dog',
+export interface IconCategory {
+  label: string
+  icons: string[]
+}
+
+export const ITEM_ICON_CATEGORIES: IconCategory[] = [
+  {
+    label: 'RPG / Бой',
+    icons: ['Sword', 'Swords', 'Shield', 'ShieldCheck', 'ShieldHalf', 'Crosshair', 'Flame', 'Zap', 'Crown', 'Trophy', 'Medal', 'Award', 'Skull', 'Wand2', 'WandSparkles', 'Ghost'],
+  },
+  {
+    label: 'Предметы и лут',
+    icons: ['Gift', 'Package', 'Key', 'Gem', 'Coins', 'Star', 'Sparkles', 'Sparkle', 'Diamond', 'Tag', 'Bookmark', 'Ticket', 'Backpack'],
+  },
+  {
+    label: 'Еда и напитки',
+    icons: ['Coffee', 'Pizza', 'Cake', 'Wine', 'Beer', 'Apple', 'Cherry', 'Grape', 'Banana', 'Citrus', 'Carrot', 'Egg', 'Croissant', 'Cookie', 'Candy', 'Lollipop', 'IceCream', 'Sandwich', 'Salad', 'Soup', 'Beef', 'Ham', 'Milk', 'CupSoda', 'GlassWater', 'Martini', 'ChefHat', 'UtensilsCrossed', 'CookingPot'],
+  },
+  {
+    label: 'Развлечения и медиа',
+    icons: ['Clapperboard', 'Film', 'Tv', 'MonitorPlay', 'Popcorn', 'Drama', 'Theater', 'Headphones', 'Music', 'Radio', 'Mic', 'Guitar', 'Drum', 'Disc3', 'Gamepad2', 'Joystick', 'Dice5', 'Dices', 'Puzzle', 'ToyBrick', 'Origami'],
+  },
+  {
+    label: 'Спорт и здоровье',
+    icons: ['Dumbbell', 'Footprints', 'Heart', 'HeartPulse', 'Activity', 'Bike', 'Volleyball', 'Stethoscope', 'Pill', 'Syringe', 'Bandage', 'Accessibility', 'Brain'],
+  },
+  {
+    label: 'Природа и животные',
+    icons: ['Leaf', 'Flower', 'TreePine', 'TreeDeciduous', 'TreePalm', 'Trees', 'Clover', 'Sprout', 'Wheat', 'Palmtree', 'Mountain', 'MountainSnow', 'Waves', 'Dog', 'Cat', 'Fish', 'Bird', 'Rabbit', 'Squirrel', 'Bug', 'Snail', 'Turtle', 'PawPrint', 'Bone', 'Feather'],
+  },
+  {
+    label: 'Погода и стихии',
+    icons: ['Sun', 'Moon', 'Cloud', 'Sunrise', 'Snowflake', 'Droplet', 'Rainbow', 'Wind', 'Umbrella', 'CloudRain', 'CloudSnow', 'CloudSun', 'CloudLightning', 'Tornado', 'Thermometer'],
+  },
+  {
+    label: 'Дом и быт',
+    icons: ['Home', 'Bed', 'BedSingle', 'Armchair', 'Sofa', 'Lamp', 'Bath', 'ShowerHead', 'WashingMachine', 'Refrigerator', 'Fan', 'DoorOpen', 'Blinds', 'Lightbulb'],
+  },
+  {
+    label: 'Работа и продуктивность',
+    icons: ['Briefcase', 'Laptop', 'Code', 'FileText', 'Clipboard', 'BookOpen', 'NotebookPen', 'PenTool', 'Pen', 'Pencil', 'Eraser', 'Highlighter', 'FolderOpen', 'Archive', 'Database', 'Ruler', 'Scissors'],
+  },
+  {
+    label: 'Образование и наука',
+    icons: ['GraduationCap', 'BookMarked', 'School', 'Library', 'Notebook', 'Newspaper', 'Microscope', 'Telescope', 'Atom', 'Dna', 'TestTube', 'Beaker', 'FlaskConical', 'Languages'],
+  },
+  {
+    label: 'Финансы',
+    icons: ['Wallet', 'PiggyBank', 'CreditCard', 'TrendingUp', 'Banknote', 'CircleDollarSign', 'BadgeDollarSign', 'Receipt', 'ShoppingCart', 'Store', 'Bitcoin', 'HandCoins', 'ChartCandlestick'],
+  },
+  {
+    label: 'Транспорт и путешествия',
+    icons: ['Car', 'Train', 'Bus', 'Ship', 'Sailboat', 'Plane', 'Rocket', 'MapPin', 'Globe', 'Compass', 'Map', 'Signpost', 'Navigation', 'Tent', 'Luggage', 'Binoculars'],
+  },
+  {
+    label: 'Технологии',
+    icons: ['Smartphone', 'Monitor', 'Keyboard', 'Mouse', 'Printer', 'Cpu', 'HardDrive', 'Wifi', 'Bluetooth', 'Cable', 'Router', 'Usb', 'BatteryCharging', 'Plug', 'QrCode'],
+  },
+  {
+    label: 'Общение',
+    icons: ['Mail', 'Phone', 'MessageSquare', 'MessageCircle', 'MessagesSquare', 'Bell', 'Megaphone', 'Users', 'Handshake', 'HeartHandshake', 'PartyPopper', 'Baby', 'CircleUser'],
+  },
+  {
+    label: 'Творчество',
+    icons: ['Palette', 'Paintbrush', 'Camera', 'Image', 'Brush', 'Sticker', 'Stamp', 'Pipette'],
+  },
+  {
+    label: 'Инструменты',
+    icons: ['Wrench', 'Cog', 'Settings', 'Hammer', 'Pickaxe', 'Scale', 'Gavel'],
+  },
+  {
+    label: 'Безопасность',
+    icons: ['Lock', 'Eye', 'ScanFace', 'Fingerprint'],
+  },
+  {
+    label: 'Время',
+    icons: ['Calendar', 'Clock', 'Timer', 'Hourglass', 'Watch'],
+  },
+  {
+    label: 'Разное',
+    icons: ['Smile', 'Laugh', 'Meh', 'Frown', 'ThumbsUp', 'HandMetal', 'Flag', 'Infinity', 'Power', 'Ban', 'AlertTriangle', 'Link', 'Cigarette', 'Hand'],
+  },
 ]
+
+/** Flat array of all icon names (for backwards compat & search) */
+export const ITEM_ICON_OPTIONS = ITEM_ICON_CATEGORIES.flatMap((c) => c.icons)
 
 export const FRAGMENT_ICON_OPTIONS = [
   'Puzzle', 'Gem', 'Zap', 'Wand2', 'Star', 'Flame', 'Snowflake', 'Droplet',

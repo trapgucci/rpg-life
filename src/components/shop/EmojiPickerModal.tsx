@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { cn } from '../../lib/cn'
 import { X, Search } from 'lucide-react'
-import { ITEM_ICON_OPTIONS } from './shopUtils'
+import { ITEM_ICON_CATEGORIES } from './shopUtils'
 import { HabitIcon } from '../HabitIcon'
 
 interface IconPickerModalProps {
@@ -18,9 +18,16 @@ export default function EmojiPickerModal({ currentIcon, onSelect, onClose }: Ico
     onClose()
   }
 
-  const filtered = search.trim()
-    ? ITEM_ICON_OPTIONS.filter((name) => name.toLowerCase().includes(search.toLowerCase()))
-    : ITEM_ICON_OPTIONS
+  const filteredCategories = useMemo(() => {
+    if (!search.trim()) return ITEM_ICON_CATEGORIES
+    const q = search.toLowerCase()
+    return ITEM_ICON_CATEGORIES
+      .map((cat) => ({
+        ...cat,
+        icons: cat.icons.filter((name) => name.toLowerCase().includes(q)),
+      }))
+      .filter((cat) => cat.icons.length > 0)
+  }, [search])
 
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -44,26 +51,35 @@ export default function EmojiPickerModal({ currentIcon, onSelect, onClose }: Ico
           />
         </div>
 
-        {/* Icon grid */}
-        <div className="grid grid-cols-7 gap-1.5 mb-3 max-h-52 overflow-y-auto">
-          {filtered.map((iconName) => (
-            <button
-              key={iconName}
-              type="button"
-              onClick={() => handlePick(iconName)}
-              className={cn(
-                'flex h-10 w-10 items-center justify-center rounded-xl transition-all',
-                currentIcon === iconName
-                  ? 'bg-[var(--accent)] text-white scale-110 shadow-md'
-                  : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)]'
-              )}
-              title={iconName}
-            >
-              <HabitIcon iconName={iconName} size={20} />
-            </button>
+        {/* Icon grid by category */}
+        <div className="max-h-64 overflow-y-auto space-y-3 mb-3">
+          {filteredCategories.map((cat) => (
+            <div key={cat.label}>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-1.5 px-0.5">
+                {cat.label}
+              </p>
+              <div className="grid grid-cols-7 gap-1.5">
+                {cat.icons.map((iconName) => (
+                  <button
+                    key={iconName}
+                    type="button"
+                    onClick={() => handlePick(iconName)}
+                    className={cn(
+                      'flex h-10 w-10 items-center justify-center rounded-xl transition-all',
+                      currentIcon === iconName
+                        ? 'bg-[var(--accent)] text-white scale-110 shadow-md'
+                        : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)]'
+                    )}
+                    title={iconName}
+                  >
+                    <HabitIcon iconName={iconName} size={20} />
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
-          {filtered.length === 0 && (
-            <p className="col-span-7 text-center text-sm text-[var(--fg-muted)] py-4">
+          {filteredCategories.length === 0 && (
+            <p className="text-center text-sm text-[var(--fg-muted)] py-4">
               Ничего не найдено
             </p>
           )}
