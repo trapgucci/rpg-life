@@ -62,6 +62,9 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
   const [showDiscountModal, setShowDiscountModal] = useState(false)
   const [showGroupModal, setShowGroupModal] = useState(false)
 
+  const selectedGroup = groupId ? itemGroups.find((g) => g.id === groupId) : null
+  const iconBgColor = selectedGroup?.color ?? '#9ca3af'
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim() || !activeProfileId || !groupId) return
@@ -126,7 +129,12 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
             <button
               type="button"
               onClick={() => setShowIconSource(true)}
-              className="relative shrink-0 group/preview flex items-center justify-center w-[48px] h-[48px] rounded-xl overflow-hidden transition-all cursor-pointer ring-1 ring-inset ring-[var(--border)] shadow-md hover:ring-[var(--accent)] hover:scale-105 active:scale-95 bg-[var(--surface)]"
+              className="relative shrink-0 group/preview flex items-center justify-center w-[48px] h-[48px] rounded-xl overflow-hidden transition-all cursor-pointer ring-1 ring-inset shadow-md hover:ring-[var(--accent)] hover:scale-105 active:scale-95"
+              style={{
+                background: `linear-gradient(to bottom, ${iconBgColor}35, ${iconBgColor}15)`,
+                boxShadow: `0 2px 8px ${iconBgColor}25, inset 0 1px 0 ${iconBgColor}20`,
+                '--tw-ring-color': `${iconBgColor}40`,
+              } as React.CSSProperties}
               title="Изменить иконку"
             >
               {iconImage ? (
@@ -218,11 +226,11 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
               <div>
                 <label className="block text-xs font-medium text-[var(--fg-muted)] mb-2">Монеты</label>
                 <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => setCoinCost((p) => Math.max(0, p - 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 shadow-sm shadow-red-500/10 hover:from-red-500/30 hover:to-red-500/15 hover:scale-105 active:scale-95">
+                  <button type="button" onClick={() => setCoinCost((p) => Math.max(0, p - 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-300/30 to-gray-400/10 text-gray-400 ring-1 ring-inset ring-gray-300/25 shadow-sm shadow-gray-400/10 hover:from-gray-300/40 hover:to-gray-400/20 hover:scale-105 active:scale-95">
                     <span className="text-sm font-bold">−</span>
                   </button>
-                  <input type="number" min={0} value={coinCost} onChange={(e) => setCoinCost(Math.max(0, Number(e.target.value) || 0))} className="input w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold" />
-                  <button type="button" onClick={() => setCoinCost((p) => p + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-emerald-400/25 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10 hover:from-emerald-400/35 hover:to-emerald-500/20 hover:scale-105 active:scale-95">
+                  <input type="number" min={0} value={coinCost || ''} placeholder="0" onChange={(e) => setCoinCost(e.target.value === '' ? 0 : Math.max(0, Number(e.target.value)))} onBlur={(e) => { if (e.target.value === '') setCoinCost(0) }} className="input w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold placeholder:text-[var(--fg-muted)]/40" />
+                  <button type="button" onClick={() => setCoinCost((p) => p + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
                     <span className="text-sm font-bold">+</span>
                   </button>
                 </div>
@@ -231,11 +239,11 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
               <div>
                 <label className="block text-xs font-medium text-[var(--fg-muted)] mb-2">Гемы</label>
                 <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => setGemCost((p) => Math.max(0, p - 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 shadow-sm shadow-red-500/10 hover:from-red-500/30 hover:to-red-500/15 hover:scale-105 active:scale-95">
+                  <button type="button" onClick={() => setGemCost((p) => Math.max(0, p - 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-300/30 to-gray-400/10 text-gray-400 ring-1 ring-inset ring-gray-300/25 shadow-sm shadow-gray-400/10 hover:from-gray-300/40 hover:to-gray-400/20 hover:scale-105 active:scale-95">
                     <span className="text-sm font-bold">−</span>
                   </button>
-                  <input type="number" min={0} value={gemCost} onChange={(e) => setGemCost(Math.max(0, Number(e.target.value) || 0))} className="input w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold" />
-                  <button type="button" onClick={() => setGemCost((p) => p + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-emerald-400/25 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10 hover:from-emerald-400/35 hover:to-emerald-500/20 hover:scale-105 active:scale-95">
+                  <input type="number" min={0} value={gemCost || ''} placeholder="0" onChange={(e) => setGemCost(e.target.value === '' ? 0 : Math.max(0, Number(e.target.value)))} onBlur={(e) => { if (e.target.value === '') setGemCost(0) }} className="input w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold placeholder:text-[var(--fg-muted)]/40" />
+                  <button type="button" onClick={() => setGemCost((p) => p + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
                     <span className="text-sm font-bold">+</span>
                   </button>
                 </div>
@@ -244,11 +252,11 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
               <div>
                 <label className="block text-xs font-medium text-[var(--fg-muted)] mb-2">Запас</label>
                 <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => setStock((p) => { if (p == null || p <= 1) return undefined; return p - 1 })} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 shadow-sm shadow-red-500/10 hover:from-red-500/30 hover:to-red-500/15 hover:scale-105 active:scale-95">
+                  <button type="button" onClick={() => setStock((p) => { if (p == null || p <= 1) return undefined; return p - 1 })} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-300/30 to-gray-400/10 text-gray-400 ring-1 ring-inset ring-gray-300/25 shadow-sm shadow-gray-400/10 hover:from-gray-300/40 hover:to-gray-400/20 hover:scale-105 active:scale-95">
                     <span className="text-sm font-bold">−</span>
                   </button>
                   <input type="number" min={1} value={stock ?? ''} onChange={(e) => { const v = e.target.value; setStock(v ? Math.max(1, Number(v) || 1) : undefined) }} placeholder="∞" className="input input-stock-infinite w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold" />
-                  <button type="button" onClick={() => setStock((p) => (p == null ? 1 : p + 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-emerald-400/25 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10 hover:from-emerald-400/35 hover:to-emerald-500/20 hover:scale-105 active:scale-95">
+                  <button type="button" onClick={() => setStock((p) => (p == null ? 1 : p + 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
                     <span className="text-sm font-bold">+</span>
                   </button>
                 </div>
@@ -262,11 +270,11 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
           <div className="glass rounded-2xl p-4">
             <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Запас</label>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setStock((p) => { if (p == null || p <= 1) return undefined; return p - 1 })} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 shadow-sm shadow-red-500/10 hover:from-red-500/30 hover:to-red-500/15 hover:scale-105 active:scale-95">
+              <button type="button" onClick={() => setStock((p) => { if (p == null || p <= 1) return undefined; return p - 1 })} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-300/30 to-gray-400/10 text-gray-400 ring-1 ring-inset ring-gray-300/25 shadow-sm shadow-gray-400/10 hover:from-gray-300/40 hover:to-gray-400/20 hover:scale-105 active:scale-95">
                 <span className="text-lg font-bold">−</span>
               </button>
               <input type="number" min={1} value={stock ?? ''} onChange={(e) => { const v = e.target.value; setStock(v ? Math.max(1, Number(v) || 1) : undefined) }} placeholder="∞" className="input input-stock-infinite w-full flex-1 min-w-0 h-11 py-0 text-center text-lg font-bold" />
-              <button type="button" onClick={() => setStock((p) => (p == null ? 1 : p + 1))} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-emerald-400/25 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10 hover:from-emerald-400/35 hover:to-emerald-500/20 hover:scale-105 active:scale-95">
+              <button type="button" onClick={() => setStock((p) => (p == null ? 1 : p + 1))} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
                 <span className="text-lg font-bold">+</span>
               </button>
             </div>
@@ -440,12 +448,16 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                                   type="number"
                                   min={0.5}
                                   step={0.5}
-                                  value={pkg.hours}
+                                  value={pkg.hours || ''}
+                                  placeholder="0"
                                   onChange={(e) => {
-                                    const val = Math.max(0.5, Number(e.target.value) || 0.5)
+                                    const val = e.target.value === '' ? 0 : Math.max(0.5, Number(e.target.value))
                                     setGameTimePackages((prev) => prev.map((p, i) => i === idx ? { ...p, hours: val } : p))
                                   }}
-                                  className="input w-full h-8 py-0 text-center text-sm font-bold"
+                                  onBlur={(e) => {
+                                    if (e.target.value === '') setGameTimePackages((prev) => prev.map((p, i) => i === idx ? { ...p, hours: 0.5 } : p))
+                                  }}
+                                  className="input w-full h-8 py-0 text-center text-sm font-bold placeholder:text-[var(--fg-muted)]/40"
                                 />
                               </div>
                               <div className="flex-1">
@@ -453,12 +465,16 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                                 <input
                                   type="number"
                                   min={0}
-                                  value={pkg.cost}
+                                  value={pkg.cost || ''}
+                                  placeholder="0"
                                   onChange={(e) => {
-                                    const val = Math.max(0, Number(e.target.value) || 0)
+                                    const val = e.target.value === '' ? 0 : Math.max(0, Number(e.target.value))
                                     setGameTimePackages((prev) => prev.map((p, i) => i === idx ? { ...p, cost: val } : p))
                                   }}
-                                  className="input w-full h-8 py-0 text-center text-sm font-bold"
+                                  onBlur={(e) => {
+                                    if (e.target.value === '') setGameTimePackages((prev) => prev.map((p, i) => i === idx ? { ...p, cost: 0 } : p))
+                                  }}
+                                  className="input w-full h-8 py-0 text-center text-sm font-bold placeholder:text-[var(--fg-muted)]/40"
                                 />
                               </div>
                             </div>
@@ -600,24 +616,32 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                                         setSerialSeasons((prev) => prev.map((s, si) => si === sIdx ? {
                                           ...s, episodes: s.episodes.map((e, ei) => ei === eIdx ? { ...e, cost: Math.max(0, e.cost - 1) } : e),
                                         } : s))
-                                      }} className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 text-[10px] font-bold hover:scale-105 active:scale-95 transition-all">−</button>
+                                      }} className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-b from-gray-300/30 to-gray-400/10 text-gray-400 ring-1 ring-inset ring-gray-300/25 text-[10px] font-bold hover:scale-105 active:scale-95 transition-all">−</button>
                                       <input
                                         type="number"
                                         min={0}
-                                        value={ep.cost}
+                                        value={ep.cost || ''}
+                                        placeholder="0"
                                         onChange={(e) => {
-                                          const val = Math.max(0, Number(e.target.value) || 0)
+                                          const val = e.target.value === '' ? 0 : Math.max(0, Number(e.target.value))
                                           setSerialSeasons((prev) => prev.map((s, si) => si === sIdx ? {
                                             ...s, episodes: s.episodes.map((ep2, ei) => ei === eIdx ? { ...ep2, cost: val } : ep2),
                                           } : s))
                                         }}
-                                        className="input w-full flex-1 min-w-0 h-6 py-0 text-center text-xs font-bold"
+                                        onBlur={(e) => {
+                                          if (e.target.value === '') {
+                                            setSerialSeasons((prev) => prev.map((s, si) => si === sIdx ? {
+                                              ...s, episodes: s.episodes.map((ep2, ei) => ei === eIdx ? { ...ep2, cost: 0 } : ep2),
+                                            } : s))
+                                          }
+                                        }}
+                                        className="input w-full flex-1 min-w-0 h-6 py-0 text-center text-xs font-bold placeholder:text-[var(--fg-muted)]/40"
                                       />
                                       <button type="button" onClick={() => {
                                         setSerialSeasons((prev) => prev.map((s, si) => si === sIdx ? {
                                           ...s, episodes: s.episodes.map((e, ei) => ei === eIdx ? { ...e, cost: e.cost + 1 } : e),
                                         } : s))
-                                      }} className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-b from-emerald-400/25 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 text-[10px] font-bold hover:scale-105 active:scale-95 transition-all">+</button>
+                                      }} className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 text-[10px] font-bold hover:scale-105 active:scale-95 transition-all">+</button>
                                     </div>
                                     <button
                                       type="button"
