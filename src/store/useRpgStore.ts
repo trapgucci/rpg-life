@@ -1631,6 +1631,18 @@ export const useRpgStore = create<RpgStoreState>()(
             const loot = openLootbox(itemId)
             return { loot }
           }
+
+          // Videogame / Serial: mark as base-purchased, don't add to inventory
+          if (item.isVideoGame || item.isTvSerial) {
+            const { updateShopItem } = get()
+            updateShopItem(itemId, (prev) => ({
+              ...prev,
+              basePurchased: true,
+              stock: 0,
+            }))
+            return true
+          }
+
           addToInventory(itemId)
           return true
         },
@@ -1666,6 +1678,7 @@ export const useRpgStore = create<RpgStoreState>()(
           const { shopItems, deductCurrency, updateShopItem } = get()
           const item = shopItems.find((i) => i.id === itemId)
           if (!item || !item.isVideoGame || !item.gameTimePackages) return false
+          if (!item.basePurchased) return false
 
           const pkg = item.gameTimePackages.find((p) => p.id === packageId)
           if (!pkg) return false
@@ -1686,6 +1699,7 @@ export const useRpgStore = create<RpgStoreState>()(
           const { shopItems, deductCurrency, updateShopItem } = get()
           const item = shopItems.find((i) => i.id === itemId)
           if (!item || !item.isTvSerial || !item.serialSeasons) return false
+          if (!item.basePurchased) return false
 
           const season = item.serialSeasons.find((s) => s.id === seasonId)
           if (!season) return false

@@ -69,7 +69,9 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
   const canAfford = coins >= effectiveCoinCost && gems >= gemCostRaw
   const availableForPurchase = item.availableForPurchase !== false
   const canGetForFree = item.canGetForFree === true
-  const showBuyButton = availableForPurchase && item.stock !== 0
+  const isMediaItem = item.isVideoGame || item.isTvSerial
+  const basePurchased = item.basePurchased === true
+  const showBuyButton = availableForPurchase && item.stock !== 0 && !(isMediaItem && basePurchased)
 
   // ── Edit state ───────────────────────────────────────────────────────────
   const [isEditing, setIsEditing] = useState(false)
@@ -226,7 +228,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
       cost,
       isLootBox: editIsLootBox,
       lootTable: editIsLootBox ? editLootTable : undefined,
-      stock: editStock,
+      stock: (editIsVideoGame || editIsTvSerial) ? (prev.basePurchased ? 0 : 1) : editStock,
       availableForPurchase: editAvailableForPurchase,
       canGetForFree: editCanGetForFree,
       groupId: editGroupId,
@@ -446,15 +448,19 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                     {/* Stock */}
                     <div>
                       <label className="block text-xs font-medium text-[var(--fg-muted)] mb-2">Запас</label>
-                      <div className="flex items-center gap-1">
-                        <button type="button" onClick={() => setEditStock((prev) => { if (prev == null || prev <= 1) return undefined; return prev - 1 })} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-300/30 to-gray-400/10 text-gray-400 ring-1 ring-inset ring-gray-300/25 shadow-sm shadow-gray-400/10 hover:from-gray-300/40 hover:to-gray-400/20 hover:scale-105 active:scale-95">
-                          <span className="text-sm font-bold">−</span>
-                        </button>
-                        <input type="number" min={1} value={editStock ?? ''} onChange={(e) => { const value = e.target.value; setEditStock(value ? Math.max(1, Number(value) || 1) : undefined) }} placeholder="∞" className="input input-stock-infinite w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold" />
-                        <button type="button" onClick={() => setEditStock((prev) => (prev == null ? 1 : prev + 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
-                          <span className="text-sm font-bold">+</span>
-                        </button>
-                      </div>
+                      {(editIsVideoGame || editIsTvSerial) ? (
+                        <div className="flex h-9 items-center justify-center rounded-xl bg-[var(--surface-elevated)] text-sm font-bold text-[var(--fg-muted)]">1</div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <button type="button" onClick={() => setEditStock((prev) => { if (prev == null || prev <= 1) return undefined; return prev - 1 })} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-300/30 to-gray-400/10 text-gray-400 ring-1 ring-inset ring-gray-300/25 shadow-sm shadow-gray-400/10 hover:from-gray-300/40 hover:to-gray-400/20 hover:scale-105 active:scale-95">
+                            <span className="text-sm font-bold">−</span>
+                          </button>
+                          <input type="number" min={1} value={editStock ?? ''} onChange={(e) => { const value = e.target.value; setEditStock(value ? Math.max(1, Number(value) || 1) : undefined) }} placeholder="∞" className="input input-stock-infinite w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold" />
+                          <button type="button" onClick={() => setEditStock((prev) => (prev == null ? 1 : prev + 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
+                            <span className="text-sm font-bold">+</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -464,15 +470,19 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
               {(!editAvailableForPurchase || editCanGetForFree) && (
                 <div className="glass rounded-2xl p-4">
                   <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Запас</label>
-                  <div className="flex items-center gap-2">
-                    <button type="button" onClick={() => setEditStock((prev) => { if (prev == null || prev <= 1) return undefined; return prev - 1 })} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-300/30 to-gray-400/10 text-gray-400 ring-1 ring-inset ring-gray-300/25 shadow-sm shadow-gray-400/10 hover:from-gray-300/40 hover:to-gray-400/20 hover:scale-105 active:scale-95">
-                      <span className="text-lg font-bold">−</span>
-                    </button>
-                    <input type="number" min={1} value={editStock ?? ''} onChange={(e) => { const value = e.target.value; setEditStock(value ? Math.max(1, Number(value) || 1) : undefined) }} placeholder="∞" className="input input-stock-infinite w-full flex-1 min-w-0 h-11 py-0 text-center text-lg font-bold" />
-                    <button type="button" onClick={() => setEditStock((prev) => (prev == null ? 1 : prev + 1))} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
-                      <span className="text-lg font-bold">+</span>
-                    </button>
-                  </div>
+                  {(editIsVideoGame || editIsTvSerial) ? (
+                    <div className="flex h-11 items-center justify-center rounded-xl bg-[var(--surface-elevated)] text-lg font-bold text-[var(--fg-muted)]">1</div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => setEditStock((prev) => { if (prev == null || prev <= 1) return undefined; return prev - 1 })} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-300/30 to-gray-400/10 text-gray-400 ring-1 ring-inset ring-gray-300/25 shadow-sm shadow-gray-400/10 hover:from-gray-300/40 hover:to-gray-400/20 hover:scale-105 active:scale-95">
+                        <span className="text-lg font-bold">−</span>
+                      </button>
+                      <input type="number" min={1} value={editStock ?? ''} onChange={(e) => { const value = e.target.value; setEditStock(value ? Math.max(1, Number(value) || 1) : undefined) }} placeholder="∞" className="input input-stock-infinite w-full flex-1 min-w-0 h-11 py-0 text-center text-lg font-bold" />
+                      <button type="button" onClick={() => setEditStock((prev) => (prev == null ? 1 : prev + 1))} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
+                        <span className="text-lg font-bold">+</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -599,7 +609,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                     <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (editIsLootBox || editStreakMultiplierEnabled || editIsDiscountVoucher || editIsTvSerial) && 'opacity-70')}>
                       <div className="flex items-center justify-between gap-3">
                         <div><span className="font-medium text-[var(--fg)]">Видеоигра</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Докупка часов после покупки</p></div>
-                        <button type="button" role="switch" aria-checked={editIsVideoGame} disabled={editIsLootBox || editStreakMultiplierEnabled || editIsDiscountVoucher || editIsTvSerial} onClick={() => { setEditIsVideoGame((v) => !v); if (!editIsVideoGame) { setEditIsLootBox(false); setEditStreakMultiplierEnabled(false); setEditIsDiscountVoucher(false); setEditIsTvSerial(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editIsVideoGame ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                        <button type="button" role="switch" aria-checked={editIsVideoGame} disabled={editIsLootBox || editStreakMultiplierEnabled || editIsDiscountVoucher || editIsTvSerial} onClick={() => { setEditIsVideoGame((v) => !v); if (!editIsVideoGame) { setEditIsLootBox(false); setEditStreakMultiplierEnabled(false); setEditIsDiscountVoucher(false); setEditIsTvSerial(false); setEditStock(1) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editIsVideoGame ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
                           <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', editIsVideoGame ? 'right-1 left-auto' : 'left-1 right-auto')} />
                         </button>
                       </div>
@@ -678,7 +688,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                     <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (editIsLootBox || editStreakMultiplierEnabled || editIsDiscountVoucher || editIsVideoGame) && 'opacity-70')}>
                       <div className="flex items-center justify-between gap-3">
                         <div><span className="font-medium text-[var(--fg)]">Сериал</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Покупка серий по сезонам (напр. «Во все тяжкие»)</p></div>
-                        <button type="button" role="switch" aria-checked={editIsTvSerial} disabled={editIsLootBox || editStreakMultiplierEnabled || editIsDiscountVoucher || editIsVideoGame} onClick={() => { setEditIsTvSerial((v) => !v); if (!editIsTvSerial) { setEditIsLootBox(false); setEditStreakMultiplierEnabled(false); setEditIsDiscountVoucher(false); setEditIsVideoGame(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editIsTvSerial ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                        <button type="button" role="switch" aria-checked={editIsTvSerial} disabled={editIsLootBox || editStreakMultiplierEnabled || editIsDiscountVoucher || editIsVideoGame} onClick={() => { setEditIsTvSerial((v) => !v); if (!editIsTvSerial) { setEditIsLootBox(false); setEditStreakMultiplierEnabled(false); setEditIsDiscountVoucher(false); setEditIsVideoGame(false); setEditStock(1) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', editIsTvSerial ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
                           <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', editIsTvSerial ? 'right-1 left-auto' : 'left-1 right-auto')} />
                         </button>
                       </div>
@@ -962,10 +972,10 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
               <h3 className="text-sm font-semibold text-[var(--fg)] mb-3">Стоимость</h3>
 
               {/* Cost badges */}
-              <div className="flex flex-wrap items-center gap-3 mb-4">
+              <div className="flex flex-wrap items-stretch gap-3 mb-4">
                 {availableForPurchase && !canGetForFree && coinCostRaw > 0 && (
-                  <div className="flex items-center gap-2 rounded-2xl bg-gradient-to-b from-amber-500/15 to-amber-500/5 px-4 py-2.5 ring-1 ring-inset ring-amber-400/20 shadow-sm shadow-amber-500/10">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-amber-500/25 to-amber-500/10 ring-1 ring-inset ring-amber-400/30">
+                  <div className="flex flex-1 min-w-0 items-center gap-2 rounded-2xl bg-gradient-to-b from-amber-500/15 to-amber-500/5 px-4 py-2.5 ring-1 ring-inset ring-amber-400/20 shadow-sm shadow-amber-500/10">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-amber-500/25 to-amber-500/10 ring-1 ring-inset ring-amber-400/30">
                       <Coins className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                     </div>
                     <div>
@@ -983,8 +993,8 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 )}
 
                 {availableForPurchase && !canGetForFree && gemCostRaw > 0 && (
-                  <div className="flex items-center gap-2 rounded-2xl bg-gradient-to-b from-purple-500/15 to-purple-500/5 px-4 py-2.5 ring-1 ring-inset ring-purple-400/20 shadow-sm shadow-purple-500/10">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-purple-500/25 to-purple-500/10 ring-1 ring-inset ring-purple-400/30">
+                  <div className="flex flex-1 min-w-0 items-center gap-2 rounded-2xl bg-gradient-to-b from-purple-500/15 to-purple-500/5 px-4 py-2.5 ring-1 ring-inset ring-purple-400/20 shadow-sm shadow-purple-500/10">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-purple-500/25 to-purple-500/10 ring-1 ring-inset ring-purple-400/30">
                       <Gem className="h-4 w-4 text-purple-600 dark:text-purple-400" strokeWidth={2.5} />
                     </div>
                     <div>
@@ -995,8 +1005,8 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 )}
 
                 {availableForPurchase && canGetForFree && (
-                  <div className="flex items-center gap-2 rounded-2xl bg-gradient-to-b from-emerald-500/15 to-emerald-500/5 px-4 py-2.5 ring-1 ring-inset ring-emerald-400/20 shadow-sm shadow-emerald-500/10">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-emerald-500/25 to-emerald-500/10 ring-1 ring-inset ring-emerald-400/30">
+                  <div className="flex flex-1 min-w-0 items-center gap-2 rounded-2xl bg-gradient-to-b from-emerald-500/15 to-emerald-500/5 px-4 py-2.5 ring-1 ring-inset ring-emerald-400/20 shadow-sm shadow-emerald-500/10">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-emerald-500/25 to-emerald-500/10 ring-1 ring-inset ring-emerald-400/30">
                       <Gift className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                     </div>
                     <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">Бесплатно</p>
@@ -1004,7 +1014,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 )}
 
                 {!availableForPurchase && (
-                  <div className="flex items-center gap-2 rounded-2xl bg-gradient-to-b from-gray-400/15 to-gray-400/5 px-4 py-2.5 ring-1 ring-inset ring-gray-400/20 shadow-sm shadow-gray-400/10">
+                  <div className="flex flex-1 min-w-0 items-center gap-2 rounded-2xl bg-gradient-to-b from-gray-400/15 to-gray-400/5 px-4 py-2.5 ring-1 ring-inset ring-gray-400/20 shadow-sm shadow-gray-400/10">
                     <p className="text-sm font-medium text-[var(--fg-muted)]">Не для продажи</p>
                   </div>
                 )}
@@ -1017,6 +1027,14 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                   </span>
                 )}
               </div>
+
+              {/* "Purchased" badge for media items */}
+              {isMediaItem && basePurchased && (
+                <div className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 bg-gradient-to-r from-emerald-500/15 to-emerald-500/5 ring-1 ring-inset ring-emerald-400/20">
+                  <Check className="h-5 w-5 text-emerald-500" />
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">Куплено</span>
+                </div>
+              )}
 
               {/* Buy button */}
               {showBuyButton && (
@@ -1139,6 +1157,12 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
               <div className="glass rounded-2xl p-4 mb-6">
                 <h3 className="text-sm font-semibold text-[var(--fg)] mb-3">Игровое время</h3>
 
+                {!basePurchased && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-xl px-3 py-2 mb-3 ring-1 ring-inset ring-amber-400/20">
+                    Докупить часы можно только после покупки товара
+                  </p>
+                )}
+
                 {/* Current balance */}
                 <div className="flex items-center gap-3 rounded-xl bg-[var(--surface-elevated)] px-4 py-3 mb-4">
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-b from-cyan-500/15 to-cyan-500/5 text-cyan-500 ring-1 ring-inset ring-cyan-400/20 shadow-sm shadow-cyan-500/10">
@@ -1167,11 +1191,11 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                         <button
                           key={pkg.id}
                           type="button"
-                          disabled={!canAffordPkg}
+                          disabled={!basePurchased || !canAffordPkg}
                           onClick={() => purchaseGameTime(item.id, pkg.id)}
                           className={cn(
                             'w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-all',
-                            canAffordPkg
+                            basePurchased && canAffordPkg
                               ? 'bg-[var(--surface-elevated)] hover:bg-[var(--accent-subtle)] hover:ring-1 hover:ring-[var(--accent)]/30 active:scale-[0.98]'
                               : 'bg-[var(--surface-elevated)] opacity-50 cursor-not-allowed'
                           )}
@@ -1204,6 +1228,12 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
             {item.isTvSerial && item.serialSeasons && item.serialSeasons.length > 0 && (
               <div className="glass rounded-2xl p-4 mb-6">
                 <h3 className="text-sm font-semibold text-[var(--fg)] mb-3">Серии</h3>
+
+                {!basePurchased && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-xl px-3 py-2 mb-3 ring-1 ring-inset ring-amber-400/20">
+                    Докупить серии можно только после покупки товара
+                  </p>
+                )}
 
                 {/* Progress summary */}
                 {(() => {
@@ -1265,11 +1295,11 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                                 ) : (
                                   <button
                                     type="button"
-                                    disabled={!canAffordEp}
+                                    disabled={!basePurchased || !canAffordEp}
                                     onClick={() => purchaseEpisode(item.id, season.id, ep.id)}
                                     className={cn(
                                       'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all',
-                                      canAffordEp
+                                      basePurchased && canAffordEp
                                         ? 'bg-gradient-to-b from-amber-500/20 to-amber-500/10 text-amber-600 dark:text-amber-400 ring-1 ring-inset ring-amber-400/25 hover:scale-105 active:scale-95'
                                         : 'bg-[var(--surface)] text-[var(--fg-muted)] opacity-50 cursor-not-allowed'
                                     )}

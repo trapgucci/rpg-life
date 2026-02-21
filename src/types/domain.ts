@@ -475,6 +475,10 @@ export interface ShopItem {
   isTvSerial?: boolean
   /** Настройки сезонов сериала */
   serialSeasons?: SerialSeason[]
+  /** Запас: undefined = бесконечный, 0 = кнопка покупки скрыта, >0 = ограничено */
+  stock?: number
+  /** Базовая покупка сделана (для isVideoGame / isTvSerial — после покупки открываются сессии/серии) */
+  basePurchased?: boolean
 }
 
 /** Сезон сериала */

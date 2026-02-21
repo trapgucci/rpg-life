@@ -1,9 +1,9 @@
 import { cn } from '../../lib/cn'
-import { Coins, Gem, Gift, Percent, ShoppingCart, TrendingUp, Gamepad2, Clapperboard } from 'lucide-react'
+import { Coins, Gem, Gift, Percent, ShoppingCart, TrendingUp, Gamepad2, Clapperboard, Check } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
-import { getItemIcon, getItemTypeBadge, RARITY_LABELS, RARITY_BADGE_CLASSES, RARITY_COLORS } from './shopUtils'
+import { getItemIcon, getItemTypeBadge, RARITY_COLORS } from './shopUtils'
 import { HabitIcon } from '../HabitIcon'
 
 interface ShopItemCardProps {
@@ -34,10 +34,11 @@ export default function ShopItemCard({ item, selected, onSelect }: ShopItemCardP
   const canAfford = coins >= effectiveCoinCost && gems >= gemCost
   const availableForPurchase = item.availableForPurchase !== false
   const canGetForFree = item.canGetForFree === true
-  const showBuyButton = availableForPurchase && (item as any).stock !== 0
+  const isMediaItem = item.isVideoGame || item.isTvSerial
+  const basePurchased = item.basePurchased === true
+  const showBuyButton = availableForPurchase && item.stock !== 0 && !(isMediaItem && basePurchased)
 
   const typeBadge = getItemTypeBadge(item)
-  const rarityColor = RARITY_COLORS[item.rarity]
 
   const handleQuickBuy = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -63,25 +64,6 @@ export default function ShopItemCard({ item, selected, onSelect }: ShopItemCardP
         !availableForPurchase && 'opacity-50 saturate-50'
       )}
     >
-      {/* Rarity glow overlay */}
-      <div
-        className={cn(
-          'absolute inset-0 opacity-0 transition-opacity duration-300',
-          'bg-gradient-to-br pointer-events-none',
-          'group-hover:opacity-[0.04]',
-          selected && 'opacity-[0.06]',
-          item.rarity === 'legendary' && 'from-amber-500/30 to-orange-500/20',
-          item.rarity === 'epic' && 'from-purple-500/30 to-violet-500/20',
-          item.rarity === 'rare' && 'from-blue-500/30 to-indigo-500/20',
-          item.rarity === 'uncommon' && 'from-green-500/30 to-emerald-500/20'
-        )}
-      />
-
-      {/* Rarity accent strip */}
-      <div
-        className="absolute top-0 left-0 right-0 h-[3px] rounded-t-2xl"
-        style={{ background: `linear-gradient(90deg, ${rarityColor}60, ${rarityColor}20)` }}
-      />
 
       <div className="relative flex items-start gap-3 p-4">
         {/* Neumorphic icon with rarity accent */}
@@ -146,16 +128,6 @@ export default function ShopItemCard({ item, selected, onSelect }: ShopItemCardP
 
           {/* Badges grid */}
           <div className="flex flex-wrap items-center gap-1.5">
-            {/* Rarity badge */}
-            <span
-              className={cn(
-                'inline-flex items-center rounded-xl px-2.5 py-1 text-xs font-bold tracking-wide',
-                RARITY_BADGE_CLASSES[item.rarity],
-              )}
-            >
-              {RARITY_LABELS[item.rarity]}
-            </span>
-
             {/* Cost badges */}
             {availableForPurchase && !canGetForFree && coinCost > 0 && (
               <span
@@ -202,9 +174,17 @@ export default function ShopItemCard({ item, selected, onSelect }: ShopItemCardP
             )}
 
             {/* Stock badge */}
-            {(item as any).stock !== undefined && (item as any).stock > 0 && (
+            {item.stock !== undefined && item.stock > 0 && (
               <span className="inline-flex items-center rounded-xl px-2.5 py-1 text-xs font-bold bg-gradient-to-b from-[var(--accent)]/20 to-[var(--accent)]/10 text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/25">
-                ×{(item as any).stock}
+                ×{item.stock}
+              </span>
+            )}
+
+            {/* Purchased badge for media items */}
+            {isMediaItem && basePurchased && (
+              <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-bold bg-gradient-to-b from-emerald-500/20 to-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10">
+                <Check className="h-3 w-3" />
+                Куплено
               </span>
             )}
           </div>

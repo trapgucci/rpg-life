@@ -27,7 +27,10 @@
       "Bash(printf:*)",
       "Bash(cat:*)",
       "Bash(\"c:/Users/Jahseh/Desktop/rpg-life/src/components/shop/RecipeDetailPanel.tsx\":*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(git status:*)",
+      "Bash(node:*)",
+      "Bash(xattr:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Jahseh\\Desktop\\rpg-life"

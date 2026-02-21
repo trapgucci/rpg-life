@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
 import { X, Settings, Gift, ChevronRight, Percent, Folder, Plus, Trash2, Clapperboard, ChevronDown } from 'lucide-react'
@@ -83,7 +84,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
       cost,
       isLootBox,
       lootTable: isLootBox ? lootTable : undefined,
-      stock,
+      stock: (isVideoGame || isTvSerial) ? 1 : stock,
       availableForPurchase,
       canGetForFree,
       groupId,
@@ -251,15 +252,19 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
               {/* Stock */}
               <div>
                 <label className="block text-xs font-medium text-[var(--fg-muted)] mb-2">Запас</label>
-                <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => setStock((p) => { if (p == null || p <= 1) return undefined; return p - 1 })} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-300/30 to-gray-400/10 text-gray-400 ring-1 ring-inset ring-gray-300/25 shadow-sm shadow-gray-400/10 hover:from-gray-300/40 hover:to-gray-400/20 hover:scale-105 active:scale-95">
-                    <span className="text-sm font-bold">−</span>
-                  </button>
-                  <input type="number" min={1} value={stock ?? ''} onChange={(e) => { const v = e.target.value; setStock(v ? Math.max(1, Number(v) || 1) : undefined) }} placeholder="∞" className="input input-stock-infinite w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold" />
-                  <button type="button" onClick={() => setStock((p) => (p == null ? 1 : p + 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
-                    <span className="text-sm font-bold">+</span>
-                  </button>
-                </div>
+                {(isVideoGame || isTvSerial) ? (
+                  <div className="flex h-9 items-center justify-center rounded-xl bg-[var(--surface-elevated)] text-sm font-bold text-[var(--fg-muted)]">1</div>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <button type="button" onClick={() => setStock((p) => { if (p == null || p <= 1) return undefined; return p - 1 })} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-300/30 to-gray-400/10 text-gray-400 ring-1 ring-inset ring-gray-300/25 shadow-sm shadow-gray-400/10 hover:from-gray-300/40 hover:to-gray-400/20 hover:scale-105 active:scale-95">
+                      <span className="text-sm font-bold">−</span>
+                    </button>
+                    <input type="number" min={1} value={stock ?? ''} onChange={(e) => { const v = e.target.value; setStock(v ? Math.max(1, Number(v) || 1) : undefined) }} placeholder="∞" className="input input-stock-infinite w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold" />
+                    <button type="button" onClick={() => setStock((p) => (p == null ? 1 : p + 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
+                      <span className="text-sm font-bold">+</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -269,15 +274,19 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
         {(!availableForPurchase || canGetForFree) && (
           <div className="glass rounded-2xl p-4">
             <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Запас</label>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setStock((p) => { if (p == null || p <= 1) return undefined; return p - 1 })} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-300/30 to-gray-400/10 text-gray-400 ring-1 ring-inset ring-gray-300/25 shadow-sm shadow-gray-400/10 hover:from-gray-300/40 hover:to-gray-400/20 hover:scale-105 active:scale-95">
-                <span className="text-lg font-bold">−</span>
-              </button>
-              <input type="number" min={1} value={stock ?? ''} onChange={(e) => { const v = e.target.value; setStock(v ? Math.max(1, Number(v) || 1) : undefined) }} placeholder="∞" className="input input-stock-infinite w-full flex-1 min-w-0 h-11 py-0 text-center text-lg font-bold" />
-              <button type="button" onClick={() => setStock((p) => (p == null ? 1 : p + 1))} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
-                <span className="text-lg font-bold">+</span>
-              </button>
-            </div>
+            {(isVideoGame || isTvSerial) ? (
+              <div className="flex h-11 items-center justify-center rounded-xl bg-[var(--surface-elevated)] text-lg font-bold text-[var(--fg-muted)]">1</div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => setStock((p) => { if (p == null || p <= 1) return undefined; return p - 1 })} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-300/30 to-gray-400/10 text-gray-400 ring-1 ring-inset ring-gray-300/25 shadow-sm shadow-gray-400/10 hover:from-gray-300/40 hover:to-gray-400/20 hover:scale-105 active:scale-95">
+                  <span className="text-lg font-bold">−</span>
+                </button>
+                <input type="number" min={1} value={stock ?? ''} onChange={(e) => { const v = e.target.value; setStock(v ? Math.max(1, Number(v) || 1) : undefined) }} placeholder="∞" className="input input-stock-infinite w-full flex-1 min-w-0 h-11 py-0 text-center text-lg font-bold" />
+                <button type="button" onClick={() => setStock((p) => (p == null ? 1 : p + 1))} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
+                  <span className="text-lg font-bold">+</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -317,8 +326,8 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
         </div>
       </form>
 
-      {/* Modals */}
-      {showAdvancedSettings && (
+      {/* Modals (portaled to body to escape glass-card containing block) */}
+      {showAdvancedSettings && createPortal(
         <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setShowAdvancedSettings(false)}>
           <div className="modal-content max-w-lg">
             <div className="flex items-center justify-between mb-4">
@@ -418,7 +427,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
               <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (isLootBox || streakMultiplierEnabled || isDiscountVoucher || isTvSerial) && 'opacity-70')}>
                 <div className="flex items-center justify-between gap-3">
                   <div><span className="font-medium text-[var(--fg)]">Видеоигра</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Докупка часов после покупки</p></div>
-                  <button type="button" role="switch" aria-checked={isVideoGame} disabled={isLootBox || streakMultiplierEnabled || isDiscountVoucher || isTvSerial} onClick={() => { setIsVideoGame((v) => !v); if (!isVideoGame) { setIsLootBox(false); setStreakMultiplierEnabled(false); setIsDiscountVoucher(false); setIsTvSerial(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isVideoGame ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                  <button type="button" role="switch" aria-checked={isVideoGame} disabled={isLootBox || streakMultiplierEnabled || isDiscountVoucher || isTvSerial} onClick={() => { setIsVideoGame((v) => !v); if (!isVideoGame) { setIsLootBox(false); setStreakMultiplierEnabled(false); setIsDiscountVoucher(false); setIsTvSerial(false); setStock(1) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isVideoGame ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
                     <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', isVideoGame ? 'right-1 left-auto' : 'left-1 right-auto')} />
                   </button>
                 </div>
@@ -496,7 +505,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
               <div className={cn('rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4', (isLootBox || streakMultiplierEnabled || isDiscountVoucher || isVideoGame) && 'opacity-70')}>
                 <div className="flex items-center justify-between gap-3">
                   <div><span className="font-medium text-[var(--fg)]">Сериал</span><p className="text-xs text-[var(--fg-muted)] mt-0.5">Покупка серий по сезонам (напр. «Во все тяжкие»)</p></div>
-                  <button type="button" role="switch" aria-checked={isTvSerial} disabled={isLootBox || streakMultiplierEnabled || isDiscountVoucher || isVideoGame} onClick={() => { setIsTvSerial((v) => !v); if (!isTvSerial) { setIsLootBox(false); setStreakMultiplierEnabled(false); setIsDiscountVoucher(false); setIsVideoGame(false) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isTvSerial ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
+                  <button type="button" role="switch" aria-checked={isTvSerial} disabled={isLootBox || streakMultiplierEnabled || isDiscountVoucher || isVideoGame} onClick={() => { setIsTvSerial((v) => !v); if (!isTvSerial) { setIsLootBox(false); setStreakMultiplierEnabled(false); setIsDiscountVoucher(false); setIsVideoGame(false); setStock(1) } }} className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed', isTvSerial ? 'bg-[var(--accent)]' : 'bg-[var(--border)]')}>
                     <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', isTvSerial ? 'right-1 left-auto' : 'left-1 right-auto')} />
                   </button>
                 </div>
@@ -667,24 +676,29 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-      {showDiscountModal && <DiscountVoucherModal value={discountPercent} onSave={(p) => setDiscountPercent(p)} onClose={() => setShowDiscountModal(false)} />}
-      {showLootboxModal && <LootboxEffectModal lootTable={lootTable} shopItems={shopItems} onSave={setLootTable} onClose={() => setShowLootboxModal(false)} />}
-      {showIconSource && (
+      {showDiscountModal && createPortal(<DiscountVoucherModal value={discountPercent} onSave={(p) => setDiscountPercent(p)} onClose={() => setShowDiscountModal(false)} />, document.body)}
+      {showLootboxModal && createPortal(<LootboxEffectModal lootTable={lootTable} shopItems={shopItems} onSave={setLootTable} onClose={() => setShowLootboxModal(false)} />, document.body)}
+      {showIconSource && createPortal(
         <IconSourcePicker
           onSelectIcon={() => { setShowIconSource(false); setShowIconPicker(true) }}
           onSelectPhoto={() => { setShowIconSource(false); iconFileInputRef.current?.click() }}
           onClose={() => setShowIconSource(false)}
-        />
+        />,
+        document.body
       )}
-      {showIconPicker && <EmojiPickerModal currentIcon={icon} onSelect={setIcon} onClose={() => setShowIconPicker(false)} />}
-      <ItemGroupSelectModal
-        isOpen={showGroupModal}
-        selectedGroupId={groupId}
-        onSelect={setGroupId}
-        onClose={() => setShowGroupModal(false)}
-      />
+      {showIconPicker && createPortal(<EmojiPickerModal currentIcon={icon} onSelect={setIcon} onClose={() => setShowIconPicker(false)} />, document.body)}
+      {createPortal(
+        <ItemGroupSelectModal
+          isOpen={showGroupModal}
+          selectedGroupId={groupId}
+          onSelect={setGroupId}
+          onClose={() => setShowGroupModal(false)}
+        />,
+        document.body
+      )}
     </div>
   )
 }
