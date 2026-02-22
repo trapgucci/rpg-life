@@ -37,16 +37,23 @@ export default function InventoryDetailPanel({
   })
 
   return (
-    <div className="glass-card relative flex h-full flex-col rounded-2xl overflow-hidden">
+    <div
+      className="glass-card relative h-full w-full rounded-2xl overflow-hidden"
+      style={{ minHeight: 0 }}
+    >
       {/* Accent strip */}
       <div
-        className="absolute top-0 left-0 right-0 h-[3px] z-10"
+        className="absolute top-0 left-0 right-0 h-[3px] z-10 pointer-events-none"
         style={{
           background: `linear-gradient(90deg, ${iconBgColor}, ${iconBgColor}40)`,
         }}
       />
 
-      <div className="flex-1 min-h-0 overflow-y-auto p-5 md:p-6">
+      {/* Прокручиваемая область — absolute для надёжного скролла колёсиком */}
+      <div
+        className="absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain p-5 md:p-6"
+        style={{ top: 3 }}
+      >
         {/* Header */}
         <div className="flex items-start justify-between gap-4 mb-6">
           <div className="flex items-center gap-3 min-w-0">
