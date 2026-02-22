@@ -176,7 +176,7 @@ export default function InventoryPage() {
   const hasGroups = nonEmptyGroupIds.length > 1
 
   return (
-    <div className="flex h-full min-h-0 gap-4">
+    <div className="flex h-full min-h-0 overflow-hidden gap-4">
       {/* ─── LEFT PANEL ─────────────────────────────────────────────────── */}
       <div className="flex w-full md:basis-[42%] md:max-w-[560px] md:min-w-[420px] md:shrink-0 flex-col gap-4">
         {/* Header */}
@@ -349,16 +349,18 @@ export default function InventoryPage() {
       </div>
 
       {/* ─── RIGHT PANEL (desktop) ──────────────────────────────────────── */}
-      <div className="hidden md:block min-w-0 flex-1">
+      <div className="hidden md:block md:min-w-0 md:flex-1 md:min-h-0 relative">
         {selectedEntry ? (
-          <InventoryDetailPanel
-            item={selectedEntry.item}
-            quantity={selectedEntry.entry.quantity}
-            acquiredAt={selectedEntry.entry.acquiredAt}
-            onDeselect={() => setSelectedItemId(null)}
-            onUse={handleUse}
-            onDelete={() => setDeletingItemId(selectedEntry.item.id)}
-          />
+          <div className="absolute inset-0">
+            <InventoryDetailPanel
+              item={selectedEntry.item}
+              quantity={selectedEntry.entry.quantity}
+              acquiredAt={selectedEntry.entry.acquiredAt}
+              onDeselect={() => setSelectedItemId(null)}
+              onUse={handleUse}
+              onDelete={() => setDeletingItemId(selectedEntry.item.id)}
+            />
+          </div>
         ) : (
           <div className="glass-card flex h-full flex-col items-center justify-center rounded-2xl">
             <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-[var(--surface)] mb-4">
