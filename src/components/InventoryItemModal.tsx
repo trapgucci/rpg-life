@@ -1,7 +1,7 @@
-import { memo, useMemo } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { cn } from '../lib/cn'
 import {
-  X, Trash2, Zap, Folder, Clock, Check,
+  X, Trash2, Zap, Folder, Clock, Check, Minus, Plus,
   Gift, TrendingUp, Percent, Gamepad2, Clapperboard,
 } from 'lucide-react'
 import Modal from './Modal'
@@ -228,28 +228,31 @@ const ModalContent = memo(function ModalContent({
         {/* Game time balance for video games */}
         {item.isVideoGame && <GameTimeBlock item={item} />}
 
-        {/* Purchased episodes for serials */}
+        {/* Episodes for serials */}
         {item.isTvSerial && item.serialSeasons && item.serialSeasons.length > 0 && (
-          <PurchasedEpisodesBlock seasons={item.serialSeasons} />
+          <SerialEpisodesBlock itemId={item.id} seasons={item.serialSeasons} />
         )}
 
         {/* Action buttons */}
         <div className="flex flex-col gap-3">
-          <button
-            type="button"
-            onClick={onUse}
-            className={cn(
-              'w-full rounded-2xl py-4 font-semibold transition-all duration-200',
-              'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] text-white',
-              'shadow-lg shadow-[var(--accent)]/25',
-              'hover:shadow-xl hover:scale-[1.01] active:scale-[0.98]',
-            )}
-          >
-            <span className="flex items-center justify-center gap-2">
-              <Zap className="h-5 w-5" />
-              {item.isLootBox ? 'Открыть' : 'Использовать'}
-            </span>
-          </button>
+          {/* Hide "Use" button for serials and video games — interaction is inline */}
+          {!item.isTvSerial && !item.isVideoGame && (
+            <button
+              type="button"
+              onClick={onUse}
+              className={cn(
+                'w-full rounded-2xl py-4 font-semibold transition-all duration-200',
+                'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] text-white',
+                'shadow-lg shadow-[var(--accent)]/25',
+                'hover:shadow-xl hover:scale-[1.01] active:scale-[0.98]',
+              )}
+            >
+              <span className="flex items-center justify-center gap-2">
+                <Zap className="h-5 w-5" />
+                {item.isLootBox ? 'Открыть' : 'Использовать'}
+              </span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -363,60 +366,136 @@ const PropertiesBlock = memo(function PropertiesBlock({ item }: { item: ShopItem
   )
 })
 
-const GameTimeBlock = memo(function GameTimeBlock({ item }: { item: ShopItem }) {
+function GameTimeBlock({ item }: { item: ShopItem }) {
+  const useGameTime = useRpgStore((s) => s.useGameTime)
   const total = item.gameTimeTotalMinutes ?? 0
   const h = Math.floor(total / 60)
   const m = total % 60
   const timeStr = h > 0 ? `${h} ч ${m > 0 ? `${m} мин` : ''}` : `${m} мин`
 
+  const [hoursInput, setHoursInput] = useState('')
+  const parsedHours = parseFloat(hoursInput.replace(',', '.'))
+  const minutesToUse = !isNaN(parsedHours) && parsedHours > 0 ? Math.round(parsedHours * 60) : 0
+  const canUse = minutesToUse > 0 && minutesToUse <= total
+
+  const handleUse = () => {
+    if (!canUse) return
+    useGameTime(item.id, minutesToUse)
+    setHoursInput('')
+  }
+
   return (
     <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-4 mb-6">
       <h3 className="text-sm font-semibold text-[var(--fg)] mb-3">Игровое время</h3>
-      <div className="flex items-center gap-3 rounded-xl bg-[var(--surface-card)] px-4 py-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-b from-cyan-500/15 to-cyan-500/5 text-cyan-500 ring-1 ring-inset ring-cyan-400/20 shadow-sm shadow-cyan-500/10">
+
+      {/* Balance */}
+      <div className="flex items-center gap-3 rounded-xl bg-[var(--surface-card)] px-4 py-3 mb-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-cyan-500/15 to-cyan-500/5 text-cyan-500 ring-1 ring-inset ring-cyan-400/20 shadow-sm shadow-cyan-500/10">
           <Clock className="h-4 w-4" />
         </div>
         <div>
           <p className="text-lg font-bold text-[var(--fg)]">{timeStr}</p>
-          <p className="text-xs text-[var(--fg-muted)]">Накоплено</p>
+          <p className="text-xs text-[var(--fg-muted)]">В запасе</p>
         </div>
       </div>
+
+      {/* Use game time */}
+      {total > 0 && (
+        <div className="rounded-xl bg-[var(--surface-card)] p-3">
+          <p className="text-xs font-medium text-[var(--fg-muted)] mb-2">Использовать часы</p>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={hoursInput}
+                onChange={(e) => setHoursInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleUse()}
+                placeholder="0"
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 pr-8 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all tabular-nums"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--fg-muted)]">ч</span>
+            </div>
+            <button
+              type="button"
+              disabled={!canUse}
+              onClick={handleUse}
+              className={cn(
+                'flex h-10 items-center gap-1.5 rounded-xl px-4 text-sm font-semibold transition-all',
+                canUse
+                  ? 'bg-gradient-to-b from-cyan-500 to-cyan-600 text-white shadow-sm shadow-cyan-500/25 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]'
+                  : 'bg-[var(--surface)] text-[var(--fg-muted)] opacity-50 cursor-not-allowed',
+              )}
+            >
+              <Gamepad2 className="h-4 w-4" />
+              Играть
+            </button>
+          </div>
+          {minutesToUse > total && (
+            <p className="text-[10px] text-red-500 mt-1.5">Недостаточно часов в запасе</p>
+          )}
+        </div>
+      )}
+
+      {total === 0 && (
+        <p className="text-xs text-[var(--fg-muted)] text-center py-2">Купите пакеты времени в магазине</p>
+      )}
     </div>
   )
-})
+}
 
-const PurchasedEpisodesBlock = memo(function PurchasedEpisodesBlock({ seasons }: { seasons: SerialSeason[] }) {
+const SerialEpisodesBlock = memo(function SerialEpisodesBlock({ itemId, seasons }: { itemId: string; seasons: SerialSeason[] }) {
+  const useEpisode = useRpgStore((s) => s.useEpisode)
+
   const purchasedSeasons = seasons.filter((s) => s.episodes.some((e) => e.purchased))
   if (purchasedSeasons.length === 0) return null
 
   const totalEp = seasons.reduce((sum, s) => sum + s.episodes.length, 0)
   const purchasedEp = seasons.reduce((sum, s) => sum + s.episodes.filter((e) => e.purchased).length, 0)
+  const usedEp = seasons.reduce((sum, s) => sum + s.episodes.filter((e) => e.purchased && e.used).length, 0)
 
   return (
     <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-4 mb-6">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-[var(--fg)]">Купленные серии</h3>
-        <span className="text-xs text-[var(--fg-muted)]">{purchasedEp} / {totalEp}</span>
+        <h3 className="text-sm font-semibold text-[var(--fg)]">Серии</h3>
+        <span className="text-xs text-[var(--fg-muted)]">
+          {usedEp > 0 && <span className="text-emerald-500">{usedEp} просм.</span>}
+          {usedEp > 0 && ' · '}
+          {purchasedEp} / {totalEp} купл.
+        </span>
       </div>
       <div className="space-y-2">
         {purchasedSeasons.map((season) => {
           const purchased = season.episodes.filter((e) => e.purchased)
+          const usedInSeason = purchased.filter((e) => e.used).length
           return (
             <div key={season.id} className="rounded-xl bg-[var(--surface-card)] p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Clapperboard className="h-4 w-4 text-pink-500" />
                 <span className="text-sm font-medium text-[var(--fg)]">Сезон {season.number}</span>
-                <span className="text-[10px] text-[var(--fg-muted)]">{purchased.length}/{season.episodes.length}</span>
+                <span className="text-[10px] text-[var(--fg-muted)]">{usedInSeason}/{purchased.length}</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {purchased.map((ep) => (
-                  <span
-                    key={ep.id}
-                    className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10px] font-semibold text-pink-500 bg-pink-500/10 ring-1 ring-inset ring-pink-400/20"
-                  >
-                    <Check className="h-3 w-3" />
-                    Серия {ep.number}
-                  </span>
+                  ep.used ? (
+                    <span
+                      key={ep.id}
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-emerald-500 bg-emerald-500/10 ring-1 ring-inset ring-emerald-400/20"
+                    >
+                      <Check className="h-3 w-3" />
+                      Серия {ep.number}
+                    </span>
+                  ) : (
+                    <button
+                      key={ep.id}
+                      type="button"
+                      onClick={() => useEpisode(itemId, season.id, ep.id)}
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-pink-500 bg-pink-500/10 ring-1 ring-inset ring-pink-400/20 hover:bg-pink-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                    >
+                      <Zap className="h-3 w-3" />
+                      Серия {ep.number}
+                    </button>
+                  )
                 ))}
               </div>
             </div>

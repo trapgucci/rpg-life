@@ -29,6 +29,7 @@ import type {
   TaskCompletionRecord,
   CompletedSubtaskRecord,
   TaskArchiveReason,
+  RecurrenceSettings,
 } from '../types/domain'
 import {
   TASK_XP_BY_DIFFICULTY,
@@ -314,13 +315,15 @@ interface RpgStoreState {
   purchaseItem: (itemId: ItemId) => boolean | { loot: { itemId: string; name: string } | null }
   openLootbox: (itemId: ItemId) => { itemId: string; name: string } | null
   purchaseGameTime: (itemId: ItemId, packageId: string) => boolean
+  useGameTime: (itemId: ItemId, minutes: number) => boolean
   purchaseEpisode: (itemId: ItemId, seasonId: string, episodeId: string) => boolean
+  useEpisode: (itemId: ItemId, seasonId: string, episodeId: string) => boolean
 
   // Inventory actions
   getInventory: () => InventoryEntry[]
   addToInventory: (itemId: ItemId, quantity?: number) => void
   removeFromInventory: (itemId: ItemId, quantity?: number) => boolean
-  useItem: (itemId: ItemId) => boolean | { loot: { itemId: string; name: string } | null } | { multiplier: true; itemId: ItemId }
+  useItem: (itemId: ItemId) => boolean | { loot: { itemId: string; name: string } | null } | { multiplier: true; itemId: ItemId } | { serial: true; itemId: ItemId } | { videogame: true; itemId: ItemId }
 
   // Streak multiplier
   applyStreakMultiplier: (taskId: TaskId, itemId: ItemId) => boolean
@@ -1010,6 +1013,10 @@ export const useRpgStore = create<RpgStoreState>()(
           const isOnce = task.recurrence === 'once'
           const archiveFields = isOnce ? { canceledAt: now(), archiveReason: 'failed' as TaskArchiveReason } : {}
 
+          // Для timesPerWeek — пропуск считается использованным действием, но не завершает цикл до исчерпания лимита
+          const rs = task.recurrenceSettings
+          const isTimesPerWeek = rs?.weeklyMode === 'timesPerWeek' && rs.weeklyTimesPerWeek
+
           get().updateTask(id, (t) => {
             if (isOnce) {
               // Once-задача провалена — НЕ помечаем как выполненную
@@ -1018,7 +1025,33 @@ export const useRpgStore = create<RpgStoreState>()(
               if (t.kind === 'nested') return { ...t, ...skipHistoryFields, ...archiveFields }
               return t
             }
-            // Recurring-задача — помечаем isCompleted для сброса цикла
+
+            // Режим «N раз в неделю»: пропуск расходует одно действие, но задача остаётся активной пока не исчерпан лимит
+            if (isTimesPerWeek && t.recurrenceSettings) {
+              const currentWeekStart = getStartOfWeek(now())
+              const prevDone = t.recurrenceSettings.weeklyCompletedThisWeek ?? 0
+              const newDone = (t.recurrenceSettings.weeklyWeekStart === currentWeekStart)
+                ? prevDone + 1
+                : 1
+              const updatedSettings: RecurrenceSettings = {
+                ...t.recurrenceSettings,
+                weeklyCompletedThisWeek: newDone,
+                weeklyWeekStart: currentWeekStart,
+              }
+              const allDone = newDone >= (updatedSettings.weeklyTimesPerWeek ?? 0)
+              const base = {
+                ...skipHistoryFields,
+                recurrenceSettings: updatedSettings,
+                isCompleted: allDone,
+                completedAt: allDone ? now() : undefined,
+              }
+              if (t.kind === 'checkbox') return { ...t, ...base }
+              if (t.kind === 'counter') return { ...t, ...base, ...(allDone ? { current: t.target } : { current: 0 }) }
+              if (t.kind === 'nested') return { ...t, ...base }
+              return t
+            }
+
+            // Recurring-задача (обычная) — помечаем isCompleted для сброса цикла
             if (t.kind === 'checkbox') return { ...t, ...skipHistoryFields, isCompleted: true, completedAt: now() }
             if (t.kind === 'counter') return { ...t, ...skipHistoryFields, isCompleted: true, current: t.target, completedAt: now() }
             if (t.kind === 'nested') return { ...t, ...skipHistoryFields, isCompleted: true, completedAt: now() }
@@ -1665,9 +1698,13 @@ export const useRpgStore = create<RpgStoreState>()(
           const gemCost = item.cost[CURRENCY_IDS.GEMS] ?? 0
           const effectiveCoinCost =
             activeShopDiscountPercent != null && coinCost > 0
-              ? Math.ceil(coinCost * (1 - activeShopDiscountPercent / 100))
+              ? Math.round(coinCost * (1 - activeShopDiscountPercent / 100))
               : coinCost
-          const effectiveCosts = { ...item.cost, [CURRENCY_IDS.COINS]: effectiveCoinCost }
+          const effectiveGemCost =
+            activeShopDiscountPercent != null && gemCost > 0
+              ? Math.round(gemCost * (1 - activeShopDiscountPercent / 100))
+              : gemCost
+          const effectiveCosts = { ...item.cost, [CURRENCY_IDS.COINS]: effectiveCoinCost, [CURRENCY_IDS.GEMS]: effectiveGemCost }
 
           for (const [currencyId, cost] of Object.entries(effectiveCosts)) {
             if (get().getCurrency(currencyId as CurrencyId) < cost) return false
@@ -1809,6 +1846,31 @@ export const useRpgStore = create<RpgStoreState>()(
           return true
         },
 
+        useGameTime: (itemId, minutes) => {
+          const { shopItems, updateShopItem, activeProfileId } = get()
+          const item = shopItems.find((i) => i.id === itemId)
+          if (!item || !item.isVideoGame) return false
+
+          const available = item.gameTimeTotalMinutes ?? 0
+          if (minutes <= 0 || minutes > available) return false
+
+          updateShopItem(itemId, (prev) => ({
+            ...prev,
+            gameTimeTotalMinutes: (prev.gameTimeTotalMinutes ?? 0) - minutes,
+          }))
+
+          if (activeProfileId) {
+            set((s) => ({
+              usageHistory: [
+                ...s.usageHistory,
+                { profileId: activeProfileId, itemId, itemName: item.name, timestamp: now(), action: 'used' as const },
+              ].slice(-500),
+            }))
+          }
+
+          return true
+        },
+
         purchaseEpisode: (itemId, seasonId, episodeId) => {
           const { shopItems, deductCurrency, updateShopItem, activeProfileId } = get()
           const item = shopItems.find((i) => i.id === itemId)
@@ -1863,6 +1925,39 @@ export const useRpgStore = create<RpgStoreState>()(
           return true
         },
 
+        useEpisode: (itemId, seasonId, episodeId) => {
+          const { shopItems, updateShopItem, activeProfileId } = get()
+          const item = shopItems.find((i) => i.id === itemId)
+          if (!item || !item.isTvSerial || !item.serialSeasons) return false
+
+          const season = item.serialSeasons.find((s) => s.id === seasonId)
+          if (!season) return false
+
+          const episode = season.episodes.find((e) => e.id === episodeId)
+          if (!episode || !episode.purchased || episode.used) return false
+
+          updateShopItem(itemId, (prev) => ({
+            ...prev,
+            serialSeasons: (prev.serialSeasons ?? []).map((s) =>
+              s.id === seasonId
+                ? { ...s, episodes: s.episodes.map((e) => e.id === episodeId ? { ...e, used: true } : e) }
+                : s
+            ),
+          }))
+
+          // Log usage
+          if (activeProfileId) {
+            set((s) => ({
+              usageHistory: [
+                ...s.usageHistory,
+                { profileId: activeProfileId, itemId, itemName: item.name, timestamp: now(), action: 'used' as const },
+              ].slice(-500),
+            }))
+          }
+
+          return true
+        },
+
         // ─── Inventory ────────────────────────────────────────────────────
         getInventory: () => {
           return get().inventory
@@ -1906,6 +2001,16 @@ export const useRpgStore = create<RpgStoreState>()(
           const { shopItems, getActiveProfile, updateProfile, removeFromInventory, openLootbox, activeProfileId } = get()
           const item = shopItems.find((i) => i.id === itemId)
           if (!item) return false
+
+          // Serial: don't consume, don't log — return signal to show episode list in inventory modal
+          if (item.isTvSerial) {
+            return { serial: true as const, itemId }
+          }
+
+          // Video game: don't consume — return signal to show game time usage in inventory modal
+          if (item.isVideoGame) {
+            return { videogame: true as const, itemId }
+          }
 
           // Determine action type for usage history
           let action: UsageHistoryEntry['action'] = 'used'

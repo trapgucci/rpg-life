@@ -52,12 +52,17 @@ export default function CartModal({ cart, onRemove, onClear, onCheckout, onClose
     let totalGems = 0
     for (const e of enriched) {
       const coinCost = e.item.cost[CURRENCY_IDS.COINS] ?? 0
+      const gemCost = e.item.cost[CURRENCY_IDS.GEMS] ?? 0
       const effectiveCoinCost =
         activeShopDiscountPercent != null && coinCost > 0
-          ? Math.ceil(coinCost * (1 - activeShopDiscountPercent / 100))
+          ? Math.round(coinCost * (1 - activeShopDiscountPercent / 100))
           : coinCost
+      const effectiveGemCost =
+        activeShopDiscountPercent != null && gemCost > 0
+          ? Math.round(gemCost * (1 - activeShopDiscountPercent / 100))
+          : gemCost
       totalCoins += effectiveCoinCost * e.quantity
-      totalGems += (e.item.cost[CURRENCY_IDS.GEMS] ?? 0) * e.quantity
+      totalGems += effectiveGemCost * e.quantity
     }
     return { totalCoins, totalGems }
   }, [enriched, activeShopDiscountPercent])
@@ -101,16 +106,20 @@ export default function CartModal({ cart, onRemove, onClear, onCheckout, onClose
                 const gemCost = e.item.cost[CURRENCY_IDS.GEMS] ?? 0
                 const effectiveCoinCost =
                   activeShopDiscountPercent != null && coinCost > 0
-                    ? Math.ceil(coinCost * (1 - activeShopDiscountPercent / 100))
+                    ? Math.round(coinCost * (1 - activeShopDiscountPercent / 100))
                     : coinCost
+                const effectiveGemCost =
+                  activeShopDiscountPercent != null && gemCost > 0
+                    ? Math.round(gemCost * (1 - activeShopDiscountPercent / 100))
+                    : gemCost
                 const typeBadge = getItemTypeBadge(e.item)
                 const group = e.item.groupId ? allItemGroups.find((g) => g.id === e.item.groupId) : null
                 const bgColor = group?.color ?? (typeBadge ? TYPE_COLORS[typeBadge.type] : '#9ca3af')
 
                 const totalItemCoins = effectiveCoinCost * e.quantity
-                const totalItemGems = gemCost * e.quantity
+                const totalItemGems = effectiveGemCost * e.quantity
                 const hasCoins = effectiveCoinCost > 0
-                const hasGems = gemCost > 0
+                const hasGems = effectiveGemCost > 0
 
                 // Max quantity = stock (if limited) or unlimited
                 const maxQty = e.item.stock !== undefined ? e.item.stock : Infinity

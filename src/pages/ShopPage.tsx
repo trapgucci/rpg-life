@@ -138,11 +138,20 @@ export default function ShopPage() {
     setCart((prev) => prev.map((c) => c.itemId === itemId ? { ...c, quantity: Math.min(quantity, maxQty) } : c))
   }
   const checkoutCart = () => {
+    // Скидка действует на ОДНУ покупку — весь чекаут корзины считается одной покупкой.
+    // purchaseItem сбрасывает скидку после каждого вызова, поэтому сохраняем/восстанавливаем вручную.
+    const savedDiscount = useRpgStore.getState().activeShopDiscountPercent
     for (const entry of cart) {
       for (let i = 0; i < entry.quantity; i++) {
+        // Восстанавливаем скидку перед каждым предметом в рамках одной покупки
+        if (savedDiscount != null) {
+          useRpgStore.setState({ activeShopDiscountPercent: savedDiscount })
+        }
         purchaseItem(entry.itemId)
       }
     }
+    // Гарантируем сброс скидки после чекаута
+    useRpgStore.setState({ activeShopDiscountPercent: null })
     setCart([])
     setShowCart(false)
   }

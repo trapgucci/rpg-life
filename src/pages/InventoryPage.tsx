@@ -210,6 +210,14 @@ export default function InventoryPage() {
       setMultiplierItemId(result.itemId)
       return
     }
+    // Handle serial — modal stays open, episodes are used inline
+    if (result && typeof result === 'object' && 'serial' in result) {
+      return
+    }
+    // Handle video game — modal stays open, game time is used inline
+    if (result && typeof result === 'object' && 'videogame' in result) {
+      return
+    }
     // Close modal if item is fully consumed
     const entry = inventory.find((e) => e.itemId === itemId)
     if (entry && entry.quantity <= 1) {

@@ -64,9 +64,13 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
   const gemCostRaw = item.cost[CURRENCY_IDS.GEMS] ?? 0
   const effectiveCoinCost =
     activeShopDiscountPercent != null && coinCostRaw > 0
-      ? Math.ceil(coinCostRaw * (1 - activeShopDiscountPercent / 100))
+      ? Math.round(coinCostRaw * (1 - activeShopDiscountPercent / 100))
       : coinCostRaw
-  const canAfford = coins >= effectiveCoinCost && gems >= gemCostRaw
+  const effectiveGemCost =
+    activeShopDiscountPercent != null && gemCostRaw > 0
+      ? Math.round(gemCostRaw * (1 - activeShopDiscountPercent / 100))
+      : gemCostRaw
+  const canAfford = coins >= effectiveCoinCost && gems >= effectiveGemCost
   const availableForPurchase = item.availableForPurchase !== false
   const canGetForFree = item.canGetForFree === true
   const isMediaItem = item.isVideoGame || item.isTvSerial
@@ -1006,7 +1010,14 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                       <Gem className="h-4 w-4 text-purple-600 dark:text-purple-400" strokeWidth={2.5} />
                     </div>
                     <div>
-                      <p className="text-lg font-bold text-purple-600 dark:text-purple-400">{gemCostRaw}</p>
+                      {activeShopDiscountPercent != null && effectiveGemCost < gemCostRaw ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-bold text-purple-600 dark:text-purple-400 line-through opacity-60">{gemCostRaw}</span>
+                          <span className="text-lg font-bold text-purple-600 dark:text-purple-400">{effectiveGemCost}</span>
+                        </div>
+                      ) : (
+                        <p className="text-lg font-bold text-purple-600 dark:text-purple-400">{gemCostRaw}</p>
+                      )}
                       <p className="text-xs text-[var(--fg-muted)]">Кристаллов</p>
                     </div>
                   </div>
@@ -1028,7 +1039,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 )}
 
                 {/* Discount indicator */}
-                {activeShopDiscountPercent != null && availableForPurchase && !canGetForFree && coinCostRaw > 0 && (
+                {activeShopDiscountPercent != null && availableForPurchase && !canGetForFree && (coinCostRaw > 0 || gemCostRaw > 0) && (
                   <span className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-b from-red-500/20 to-red-500/10 px-2 py-1 text-xs font-semibold text-red-500 ring-1 ring-inset ring-red-400/25">
                     <Percent className="h-3 w-3" />
                     -{activeShopDiscountPercent}%

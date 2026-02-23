@@ -514,6 +514,8 @@ export interface SerialEpisode {
   cost: number
   /** Куплена ли серия */
   purchased?: boolean
+  /** Использована ли серия (просмотрена) */
+  used?: boolean
 }
 
 /** Пакет времени для видеоигры */
