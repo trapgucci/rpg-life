@@ -596,28 +596,6 @@ export default function ShopPage() {
                       </span>
                     </button>
 
-                    {/* No group */}
-                    <button
-                      type="button"
-                      onClick={() => { setGroupFilter('__no_group__'); setShowGroupSelector(false) }}
-                      className={cn(
-                        'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-all',
-                        groupFilter === '__no_group__'
-                          ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium'
-                          : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)] hover:text-[var(--fg)]',
-                      )}
-                    >
-                      <div className={cn(
-                        'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg',
-                        groupFilter === '__no_group__' ? 'bg-[var(--accent)]/15' : 'bg-[var(--surface)]',
-                      )}>
-                        <Folder className="h-3.5 w-3.5" />
-                      </div>
-                      <span className="flex-1 truncate">Без группы</span>
-                      <span className="shrink-0 rounded-md bg-[var(--surface)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--fg-muted)] tabular-nums">
-                        {countNoGroup}
-                      </span>
-                    </button>
                   </div>
 
                   {/* Custom groups */}

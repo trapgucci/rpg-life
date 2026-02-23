@@ -1,10 +1,18 @@
 import { useMemo } from 'react'
-import { X, Trash2, Coins, Gem, ShoppingCart, Plus, Minus } from 'lucide-react'
+import { X, Trash2, Coins, Gem, ShoppingCart, Plus, Minus, Gift, TrendingUp, Percent, Gamepad2, Clapperboard } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { useRpgStore } from '../../store/useRpgStore'
 import { CURRENCY_IDS } from '../../types/domain'
-import { getItemIcon } from './shopUtils'
+import { getItemIcon, getItemTypeBadge } from './shopUtils'
 import { HabitIcon } from '../HabitIcon'
+
+const TYPE_COLORS: Record<string, string> = {
+  lootbox: '#8b5cf6',
+  multiplier: '#f59e0b',
+  discount: '#ef4444',
+  videogame: '#06b6d4',
+  serial: '#ec4899',
+}
 
 export interface CartEntry {
   itemId: string
@@ -25,6 +33,7 @@ export default function CartModal({ cart, onRemove, onClear, onCheckout, onClose
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const activeShopDiscountPercent = useRpgStore((s) => s.activeShopDiscountPercent)
+  const allItemGroups = useRpgStore((s) => s.itemGroups)
 
   const profile = profiles.find((p) => p.id === activeProfileId)
   const coins = profile?.currencies[CURRENCY_IDS.COINS] ?? 0
@@ -94,9 +103,9 @@ export default function CartModal({ cart, onRemove, onClear, onCheckout, onClose
                   activeShopDiscountPercent != null && coinCost > 0
                     ? Math.ceil(coinCost * (1 - activeShopDiscountPercent / 100))
                     : coinCost
-                const display = e.item.iconImage
-                  ? { type: 'image' as const, value: e.item.iconImage }
-                  : { type: 'icon' as const, value: getItemIcon(e.item) }
+                const typeBadge = getItemTypeBadge(e.item)
+                const group = e.item.groupId ? allItemGroups.find((g) => g.id === e.item.groupId) : null
+                const bgColor = group?.color ?? (typeBadge ? TYPE_COLORS[typeBadge.type] : '#9ca3af')
 
                 const totalItemCoins = effectiveCoinCost * e.quantity
                 const totalItemGems = gemCost * e.quantity
@@ -111,13 +120,40 @@ export default function CartModal({ cart, onRemove, onClear, onCheckout, onClose
                     key={e.itemId}
                     className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5"
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-elevated)] overflow-hidden text-[var(--fg-muted)]">
-                      {display.type === 'image' ? (
-                        <img src={display.value} alt="" className="h-6 w-6 rounded object-cover" />
-                      ) : (
-                        <HabitIcon iconName={display.value} size={18} />
+                    <div className="relative shrink-0">
+                      <div
+                        className="flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden ring-1 ring-inset"
+                        style={{
+                          background: `linear-gradient(135deg, ${bgColor}35, ${bgColor}15)`,
+                          '--tw-ring-color': `${bgColor}30`,
+                        } as React.CSSProperties}
+                      >
+                        {e.item.iconImage ? (
+                          <img src={e.item.iconImage} alt="" className="h-full w-full object-cover" style={{ imageRendering: 'auto' }} />
+                        ) : (
+                          <HabitIcon iconName={getItemIcon(e.item)} size={18} />
+                        )}
+                      </div>
+                      {typeBadge && (
+                        <div
+                          className={cn(
+                            'absolute -top-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-md',
+                            'shadow-sm ring-1.5 ring-[var(--surface)]',
+                            typeBadge.type === 'lootbox' && 'bg-gradient-to-br from-violet-400 to-violet-600',
+                            typeBadge.type === 'multiplier' && 'bg-gradient-to-br from-amber-400 to-orange-500',
+                            typeBadge.type === 'discount' && 'bg-gradient-to-br from-red-400 to-rose-600',
+                            typeBadge.type === 'videogame' && 'bg-gradient-to-br from-cyan-400 to-cyan-600',
+                            typeBadge.type === 'serial' && 'bg-gradient-to-br from-pink-400 to-rose-600',
+                          )}
+                        >
+                          {typeBadge.type === 'lootbox' && <Gift className="h-2.5 w-2.5 text-white" />}
+                          {typeBadge.type === 'multiplier' && <TrendingUp className="h-2.5 w-2.5 text-white" />}
+                          {typeBadge.type === 'discount' && <Percent className="h-2.5 w-2.5 text-white" />}
+                          {typeBadge.type === 'videogame' && <Gamepad2 className="h-2.5 w-2.5 text-white" />}
+                          {typeBadge.type === 'serial' && <Clapperboard className="h-2.5 w-2.5 text-white" />}
+                        </div>
                       )}
-                    </span>
+                    </div>
 
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-medium text-[var(--fg)] truncate block">

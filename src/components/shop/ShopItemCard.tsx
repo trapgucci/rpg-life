@@ -3,7 +3,7 @@ import { Coins, Gem, Gift, Percent, ShoppingCart, TrendingUp, Gamepad2, Clapperb
 import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
-import { getItemIcon, getItemTypeBadge, RARITY_COLORS } from './shopUtils'
+import { getItemIcon, getItemTypeBadge } from './shopUtils'
 import { HabitIcon } from '../HabitIcon'
 
 interface ShopItemCardProps {
@@ -23,7 +23,11 @@ export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: 
   const coins = profile?.currencies[CURRENCY_IDS.COINS] ?? 0
   const gems = profile?.currencies[CURRENCY_IDS.GEMS] ?? 0
   const group = item.groupId ? allItemGroups.find((g) => g.id === item.groupId) : null
-  const iconBgColor = group?.color ?? RARITY_COLORS[item.rarity]
+  const typeBadge = getItemTypeBadge(item)
+  const typeColor = typeBadge
+    ? ({ lootbox: '#8b5cf6', multiplier: '#f59e0b', discount: '#ef4444', videogame: '#06b6d4', serial: '#ec4899' })[typeBadge.type]
+    : '#9ca3af'
+  const iconBgColor = group?.color ?? typeColor
 
   const coinCost = item.cost[CURRENCY_IDS.COINS] ?? 0
   const gemCost = item.cost[CURRENCY_IDS.GEMS] ?? 0
@@ -37,8 +41,6 @@ export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: 
   const isMediaItem = item.isVideoGame || item.isTvSerial
   const basePurchased = item.basePurchased === true
   const showBuyButton = availableForPurchase && item.stock !== 0 && !(isMediaItem && basePurchased)
-
-  const typeBadge = getItemTypeBadge(item)
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation()

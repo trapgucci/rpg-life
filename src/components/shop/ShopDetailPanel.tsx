@@ -14,7 +14,6 @@ import type { ShopItem, GameTimePackage, SerialSeason } from '../../types/domain
 import { CURRENCY_IDS } from '../../types/domain'
 import {
   getItemIcon, getItemTypeBadge, migrateIcon,
-  RARITY_LABELS, RARITY_BADGE_CLASSES, RARITY_COLORS,
 } from './shopUtils'
 import type { LootTableEntry } from './shopUtils'
 import ConfirmModal from '../ConfirmModal'
@@ -283,10 +282,10 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
 
   return (
     <div className="glass-card relative flex h-full flex-col rounded-2xl overflow-hidden">
-      {/* Rarity accent strip at top */}
+      {/* Type accent strip at top */}
       <div
         className="absolute top-0 left-0 right-0 h-[3px] z-10"
-        style={{ background: `linear-gradient(90deg, ${RARITY_COLORS[item.rarity]}, ${RARITY_COLORS[item.rarity]}40)` }}
+        style={{ background: `linear-gradient(90deg, ${typeBadge ? ({ lootbox: '#8b5cf6', multiplier: '#f59e0b', discount: '#ef4444', videogame: '#06b6d4', serial: '#ec4899' })[typeBadge.type] : '#9ca3af'}, ${typeBadge ? ({ lootbox: '#8b5cf640', multiplier: '#f59e0b40', discount: '#ef444440', videogame: '#06b6d440', serial: '#ec489940' })[typeBadge.type] : '#9ca3af40'})` }}
       />
 
       <div className="flex-1 min-h-0 overflow-y-auto p-6">
@@ -906,44 +905,31 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 </div>
 
                 {/* Badges row */}
-                <div className="flex flex-wrap items-center gap-2 mb-3">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
                   <span className={cn(
-                    'inline-flex items-center rounded-2xl px-3.5 py-1.5 text-sm font-medium',
-                    RARITY_BADGE_CLASSES[item.rarity]
+                    'inline-flex items-center gap-1.5 rounded-2xl px-3.5 py-1.5 text-sm font-medium',
+                    typeBadge
+                      ? typeBadge.type === 'lootbox' && 'bg-gradient-to-b from-violet-500/20 to-violet-500/10 text-violet-500 ring-1 ring-inset ring-violet-400/25'
+                      : 'bg-gradient-to-b from-gray-400/20 to-gray-400/10 text-gray-500 ring-1 ring-inset ring-gray-400/25 shadow-sm shadow-gray-400/10',
+                    typeBadge?.type === 'multiplier' && 'bg-gradient-to-b from-amber-500/20 to-amber-500/10 text-amber-500 ring-1 ring-inset ring-amber-400/25',
+                    typeBadge?.type === 'discount' && 'bg-gradient-to-b from-red-500/20 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/25',
+                    typeBadge?.type === 'videogame' && 'bg-gradient-to-b from-cyan-500/20 to-cyan-500/10 text-cyan-500 ring-1 ring-inset ring-cyan-400/25',
+                    typeBadge?.type === 'serial' && 'bg-gradient-to-b from-pink-500/20 to-pink-500/10 text-pink-500 ring-1 ring-inset ring-pink-400/25',
                   )}>
-                    {RARITY_LABELS[item.rarity]}
-                  </span>
-
-                  {typeBadge && (
-                    <>
-                      <span className="w-px h-5 bg-[var(--border)] rounded-full self-center select-none" />
-                      <span className={cn(
-                        'inline-flex items-center gap-1.5 rounded-2xl px-3.5 py-1.5 text-sm font-medium',
-                        typeBadge.type === 'lootbox' && 'bg-gradient-to-b from-violet-500/20 to-violet-500/10 text-violet-500 ring-1 ring-inset ring-violet-400/25',
-                        typeBadge.type === 'multiplier' && 'bg-gradient-to-b from-amber-500/20 to-amber-500/10 text-amber-500 ring-1 ring-inset ring-amber-400/25',
-                        typeBadge.type === 'discount' && 'bg-gradient-to-b from-red-500/20 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/25',
-                        typeBadge.type === 'videogame' && 'bg-gradient-to-b from-cyan-500/20 to-cyan-500/10 text-cyan-500 ring-1 ring-inset ring-cyan-400/25',
-                        typeBadge.type === 'serial' && 'bg-gradient-to-b from-pink-500/20 to-pink-500/10 text-pink-500 ring-1 ring-inset ring-pink-400/25',
-                      )}>
+                    {typeBadge ? (
+                      <>
                         {typeBadge.type === 'lootbox' && <Gift className="h-3.5 w-3.5" />}
                         {typeBadge.type === 'multiplier' && <TrendingUp className="h-3.5 w-3.5" />}
                         {typeBadge.type === 'discount' && <Percent className="h-3.5 w-3.5" />}
                         {typeBadge.type === 'videogame' && <Gamepad2 className="h-3.5 w-3.5" />}
                         {typeBadge.type === 'serial' && <Clapperboard className="h-3.5 w-3.5" />}
                         {typeBadge.label}
-                      </span>
-                    </>
-                  )}
+                      </>
+                    ) : (
+                      'Обычный предмет'
+                    )}
+                  </span>
 
-                  {group && (
-                    <>
-                      <span className="w-px h-5 bg-[var(--border)] rounded-full self-center select-none" />
-                      <span className="inline-flex items-center gap-1.5 rounded-2xl px-3.5 py-1.5 text-sm font-medium bg-[var(--surface)] text-[var(--fg-secondary)] border border-[var(--border)]">
-                        <Folder className="h-3.5 w-3.5 shrink-0" />
-                        {group.name}
-                      </span>
-                    </>
-                  )}
                 </div>
 
                 {/* Description */}
