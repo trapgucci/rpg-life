@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { X, Trash2, Coins, Gem, ShoppingCart } from 'lucide-react'
+import { X, Trash2, Coins, Gem, ShoppingCart, Plus, Minus } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { useRpgStore } from '../../store/useRpgStore'
 import { CURRENCY_IDS } from '../../types/domain'
@@ -17,9 +17,10 @@ interface CartModalProps {
   onClear: () => void
   onCheckout: () => void
   onClose: () => void
+  onUpdateQuantity: (itemId: string, quantity: number) => void
 }
 
-export default function CartModal({ cart, onRemove, onClear, onCheckout, onClose }: CartModalProps) {
+export default function CartModal({ cart, onRemove, onClear, onCheckout, onClose, onUpdateQuantity }: CartModalProps) {
   const shopItems = useRpgStore((s) => s.shopItems)
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
@@ -97,6 +98,14 @@ export default function CartModal({ cart, onRemove, onClear, onCheckout, onClose
                   ? { type: 'image' as const, value: e.item.iconImage }
                   : { type: 'icon' as const, value: getItemIcon(e.item) }
 
+                const totalItemCoins = effectiveCoinCost * e.quantity
+                const totalItemGems = gemCost * e.quantity
+                const hasCoins = effectiveCoinCost > 0
+                const hasGems = gemCost > 0
+
+                // Max quantity = stock (if limited) or unlimited
+                const maxQty = e.item.stock !== undefined ? e.item.stock : Infinity
+
                 return (
                   <li
                     key={e.itemId}
@@ -114,26 +123,73 @@ export default function CartModal({ cart, onRemove, onClear, onCheckout, onClose
                       <span className="text-sm font-medium text-[var(--fg)] truncate block">
                         {e.item.name}
                       </span>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {effectiveCoinCost > 0 && (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                            <Coins className="h-3 w-3" />
-                            {(effectiveCoinCost * e.quantity).toLocaleString('ru-RU')}
-                          </span>
-                        )}
-                        {gemCost > 0 && (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-purple-600 dark:text-purple-400">
-                            <Gem className="h-3 w-3" />
-                            {(gemCost * e.quantity).toLocaleString('ru-RU')}
+
+                      {/* Currency badges */}
+                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                        {(hasCoins || hasGems) && !e.item.canGetForFree && (
+                          <span
+                            className={cn(
+                              'inline-flex items-center gap-1.5 rounded-xl shadow-sm',
+                              hasCoins && hasGems
+                                ? 'bg-gradient-to-r from-amber-500/15 via-amber-500/8 to-purple-500/15 ring-1 ring-inset ring-amber-400/15 shadow-amber-500/5'
+                                : hasGems
+                                ? 'bg-gradient-to-b from-purple-500/15 to-purple-500/5 ring-1 ring-inset ring-purple-400/20 shadow-purple-500/10'
+                                : 'bg-gradient-to-b from-amber-500/15 to-amber-500/5 ring-1 ring-inset ring-amber-400/20 shadow-amber-500/10',
+                              'px-2 py-0.5 text-xs font-semibold'
+                            )}
+                          >
+                            {hasCoins && (
+                              <>
+                                <Coins className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                                <span className="text-amber-600 dark:text-amber-400 tabular-nums">
+                                  {totalItemCoins.toLocaleString('ru-RU')}
+                                </span>
+                              </>
+                            )}
+                            {hasCoins && hasGems && (
+                              <span className="w-px h-3 bg-[var(--border)] rounded-full self-center" />
+                            )}
+                            {hasGems && (
+                              <>
+                                <Gem className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" strokeWidth={2.5} />
+                                <span className="text-purple-600 dark:text-purple-400 tabular-nums">
+                                  {totalItemGems.toLocaleString('ru-RU')}
+                                </span>
+                              </>
+                            )}
                           </span>
                         )}
                         {e.item.canGetForFree && (
                           <span className="text-[10px] font-bold text-emerald-500">Бесплатно</span>
                         )}
-                        {e.quantity > 1 && (
-                          <span className="text-[10px] text-[var(--fg-muted)]">×{e.quantity}</span>
-                        )}
                       </div>
+                    </div>
+
+                    {/* Quantity controls */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => onUpdateQuantity(e.itemId, e.quantity - 1)}
+                        className="flex h-6 w-6 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] transition-colors"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </button>
+                      <span className="w-6 text-center text-sm font-bold text-[var(--fg)] tabular-nums">
+                        {e.quantity}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onUpdateQuantity(e.itemId, e.quantity + 1)}
+                        disabled={e.quantity >= maxQty}
+                        className={cn(
+                          'flex h-6 w-6 items-center justify-center rounded-lg border border-[var(--border)] transition-colors',
+                          e.quantity >= maxQty
+                            ? 'text-[var(--fg-muted)] opacity-30 cursor-not-allowed'
+                            : 'text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)]',
+                        )}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
                     </div>
 
                     <button
@@ -156,23 +212,37 @@ export default function CartModal({ cart, onRemove, onClear, onCheckout, onClose
             {/* Totals */}
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-semibold text-[var(--fg)]">Итого:</span>
-              <div className="flex items-center gap-3">
-                {totals.totalCoins > 0 && (
-                  <span className={cn(
-                    'inline-flex items-center gap-1 text-sm font-bold',
-                    coins >= totals.totalCoins ? 'text-amber-600 dark:text-amber-400' : 'text-red-500',
-                  )}>
-                    <Coins className="h-4 w-4" />
-                    {totals.totalCoins.toLocaleString('ru-RU')}
-                  </span>
-                )}
-                {totals.totalGems > 0 && (
-                  <span className={cn(
-                    'inline-flex items-center gap-1 text-sm font-bold',
-                    gems >= totals.totalGems ? 'text-purple-600 dark:text-purple-400' : 'text-red-500',
-                  )}>
-                    <Gem className="h-4 w-4" />
-                    {totals.totalGems.toLocaleString('ru-RU')}
+              <div className="flex items-center gap-2">
+                {(totals.totalCoins > 0 || totals.totalGems > 0) && (
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-sm font-bold shadow-sm',
+                      totals.totalCoins > 0 && totals.totalGems > 0
+                        ? 'bg-gradient-to-r from-amber-500/15 via-amber-500/8 to-purple-500/15 ring-1 ring-inset ring-amber-400/15'
+                        : totals.totalGems > 0
+                        ? 'bg-gradient-to-b from-purple-500/15 to-purple-500/5 ring-1 ring-inset ring-purple-400/20'
+                        : 'bg-gradient-to-b from-amber-500/15 to-amber-500/5 ring-1 ring-inset ring-amber-400/20',
+                    )}
+                  >
+                    {totals.totalCoins > 0 && (
+                      <>
+                        <Coins className={cn('h-4 w-4', coins >= totals.totalCoins ? 'text-amber-600 dark:text-amber-400' : 'text-red-500')} />
+                        <span className={cn('tabular-nums', coins >= totals.totalCoins ? 'text-amber-600 dark:text-amber-400' : 'text-red-500')}>
+                          {totals.totalCoins.toLocaleString('ru-RU')}
+                        </span>
+                      </>
+                    )}
+                    {totals.totalCoins > 0 && totals.totalGems > 0 && (
+                      <span className="w-px h-4 bg-[var(--border)] rounded-full self-center" />
+                    )}
+                    {totals.totalGems > 0 && (
+                      <>
+                        <Gem className={cn('h-4 w-4', gems >= totals.totalGems ? 'text-purple-600 dark:text-purple-400' : 'text-red-500')} strokeWidth={2.5} />
+                        <span className={cn('tabular-nums', gems >= totals.totalGems ? 'text-purple-600 dark:text-purple-400' : 'text-red-500')}>
+                          {totals.totalGems.toLocaleString('ru-RU')}
+                        </span>
+                      </>
+                    )}
                   </span>
                 )}
               </div>

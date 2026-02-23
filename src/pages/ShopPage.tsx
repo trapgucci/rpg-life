@@ -116,14 +116,27 @@ export default function ShopPage() {
   const purchaseItem = useRpgStore((s) => s.purchaseItem)
 
   const addToCart = (itemId: string) => {
+    const item = shopItems.find((i) => i.id === itemId)
     setCart((prev) => {
       const existing = prev.find((c) => c.itemId === itemId)
+      const currentQty = existing?.quantity ?? 0
+      // If item has limited stock, don't exceed it
+      if (item?.stock !== undefined && currentQty >= item.stock) return prev
       if (existing) return prev.map((c) => c.itemId === itemId ? { ...c, quantity: c.quantity + 1 } : c)
       return [...prev, { itemId, quantity: 1 }]
     })
   }
   const removeFromCart = (itemId: string) => setCart((prev) => prev.filter((c) => c.itemId !== itemId))
   const clearCart = () => setCart([])
+  const updateCartQuantity = (itemId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(itemId)
+      return
+    }
+    const item = shopItems.find((i) => i.id === itemId)
+    const maxQty = item?.stock !== undefined ? item.stock : Infinity
+    setCart((prev) => prev.map((c) => c.itemId === itemId ? { ...c, quantity: Math.min(quantity, maxQty) } : c))
+  }
   const checkoutCart = () => {
     for (const entry of cart) {
       for (let i = 0; i < entry.quantity; i++) {
@@ -992,6 +1005,7 @@ export default function ShopPage() {
           onClear={clearCart}
           onCheckout={checkoutCart}
           onClose={() => setShowCart(false)}
+          onUpdateQuantity={updateCartQuantity}
         />
       )}
       <ConfirmModal
