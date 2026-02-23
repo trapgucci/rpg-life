@@ -1632,12 +1632,20 @@ export const useRpgStore = create<RpgStoreState>()(
           }
 
           if (item.isLootBox) {
+            // Decrement stock for limited lootboxes
+            if (item.stock !== undefined && item.stock > 0) {
+              const { updateShopItem } = get()
+              updateShopItem(itemId, (prev) => ({
+                ...prev,
+                stock: (prev.stock ?? 1) - 1,
+              }))
+            }
             const loot = openLootbox(itemId)
             return { loot }
           }
 
-          // Videogame / Serial: mark as base-purchased, don't add to inventory
-          if (item.isVideoGame || item.isTvSerial) {
+          // Videogame: mark as base-purchased, hide from shop
+          if (item.isVideoGame) {
             const { updateShopItem } = get()
             updateShopItem(itemId, (prev) => ({
               ...prev,
@@ -1645,6 +1653,26 @@ export const useRpgStore = create<RpgStoreState>()(
               stock: 0,
             }))
             return true
+          }
+
+          // Serial: mark as base-purchased, add to inventory, keep in shop for episode purchases
+          if (item.isTvSerial) {
+            const { updateShopItem, addToInventory: addInv } = get()
+            updateShopItem(itemId, (prev) => ({
+              ...prev,
+              basePurchased: true,
+            }))
+            addInv(itemId)
+            return true
+          }
+
+          // Decrement stock for limited items
+          if (item.stock !== undefined && item.stock > 0) {
+            const { updateShopItem } = get()
+            updateShopItem(itemId, (prev) => ({
+              ...prev,
+              stock: (prev.stock ?? 1) - 1,
+            }))
           }
 
           addToInventory(itemId)
@@ -1715,13 +1743,23 @@ export const useRpgStore = create<RpgStoreState>()(
           if (coinBalance < episode.cost) return false
 
           deductCurrency(CURRENCY_IDS.COINS, episode.cost)
+
+          // Mark episode as purchased
+          const updatedSeasons = item.serialSeasons.map((s) =>
+            s.id === seasonId
+              ? { ...s, episodes: s.episodes.map((e) => e.id === episodeId ? { ...e, purchased: true } : e) }
+              : s
+          )
+
+          // Check if all episodes are now purchased
+          const allEpisodesPurchased = updatedSeasons.every((s) =>
+            s.episodes.every((e) => e.purchased)
+          )
+
           updateShopItem(itemId, (prev) => ({
             ...prev,
-            serialSeasons: prev.serialSeasons?.map((s) =>
-              s.id === seasonId
-                ? { ...s, episodes: s.episodes.map((e) => e.id === episodeId ? { ...e, purchased: true } : e) }
-                : s
-            ),
+            serialSeasons: updatedSeasons,
+            ...(allEpisodesPurchased ? { stock: 0 } : {}),
           }))
           return true
         },

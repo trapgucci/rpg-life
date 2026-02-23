@@ -1,13 +1,13 @@
 import { memo, useMemo } from 'react'
 import { cn } from '../lib/cn'
 import {
-  X, Trash2, Zap, Folder, Clock,
+  X, Trash2, Zap, Folder, Clock, Check,
   Gift, TrendingUp, Percent, Gamepad2, Clapperboard,
 } from 'lucide-react'
 import Modal from './Modal'
 import { HabitIcon } from './HabitIcon'
 import { useRpgStore } from '../store/useRpgStore'
-import type { ShopItem, ItemGroup } from '../types/domain'
+import type { ShopItem, ItemGroup, SerialSeason } from '../types/domain'
 import {
   getItemIcon, getItemTypeBadge,
   RARITY_LABELS, RARITY_BADGE_CLASSES, RARITY_COLORS,
@@ -227,6 +227,11 @@ const ModalContent = memo(function ModalContent({
         {/* Properties block */}
         {typeBadge && <PropertiesBlock item={item} />}
 
+        {/* Purchased episodes for serials */}
+        {item.isTvSerial && item.serialSeasons && item.serialSeasons.length > 0 && (
+          <PurchasedEpisodesBlock seasons={item.serialSeasons} />
+        )}
+
         {/* Action buttons */}
         <div className="flex flex-col gap-3">
           {isUsable && (
@@ -350,6 +355,48 @@ const PropertiesBlock = memo(function PropertiesBlock({ item }: { item: ShopItem
             <p className="text-xs text-[var(--fg-muted)]">{description}</p>
           </div>
         ))}
+      </div>
+    </div>
+  )
+})
+
+const PurchasedEpisodesBlock = memo(function PurchasedEpisodesBlock({ seasons }: { seasons: SerialSeason[] }) {
+  const purchasedSeasons = seasons.filter((s) => s.episodes.some((e) => e.purchased))
+  if (purchasedSeasons.length === 0) return null
+
+  const totalEp = seasons.reduce((sum, s) => sum + s.episodes.length, 0)
+  const purchasedEp = seasons.reduce((sum, s) => sum + s.episodes.filter((e) => e.purchased).length, 0)
+
+  return (
+    <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-4 mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-[var(--fg)]">Купленные серии</h3>
+        <span className="text-xs text-[var(--fg-muted)]">{purchasedEp} / {totalEp}</span>
+      </div>
+      <div className="space-y-2">
+        {purchasedSeasons.map((season) => {
+          const purchased = season.episodes.filter((e) => e.purchased)
+          return (
+            <div key={season.id} className="rounded-xl bg-[var(--surface-card)] p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Clapperboard className="h-4 w-4 text-pink-500" />
+                <span className="text-sm font-medium text-[var(--fg)]">Сезон {season.number}</span>
+                <span className="text-[10px] text-[var(--fg-muted)]">{purchased.length}/{season.episodes.length}</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {purchased.map((ep) => (
+                  <span
+                    key={ep.id}
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10px] font-semibold text-emerald-500 bg-emerald-500/10 ring-1 ring-inset ring-emerald-400/20"
+                  >
+                    <Check className="h-3 w-3" />
+                    Серия {ep.number}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

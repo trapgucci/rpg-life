@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '../lib/cn'
 import {
-  ShoppingBag, Plus, Search, X, ArrowUpDown, ArrowUp, ArrowDown,
+  ShoppingBag, ShoppingCart, Plus, Search, X, ArrowUpDown, ArrowUp, ArrowDown,
   Folder, List, ChevronDown, Sparkles, History, Pencil, Trash2, CheckSquare,
   Package, Puzzle, Palette,
 } from 'lucide-react'
@@ -24,6 +24,7 @@ import RecipeCard from '../components/shop/RecipeCard'
 import RecipeDetailPanel from '../components/shop/RecipeDetailPanel'
 import RecipeForm from '../components/shop/RecipeForm'
 import PurchaseHistoryModal from '../components/shop/PurchaseHistoryModal'
+import CartModal, { type CartEntry } from '../components/shop/CartModal'
 
 import {
   filterShopItems, sortShopItems, filterRecipes,
@@ -108,6 +109,30 @@ export default function ShopPage() {
 
   // Modals
   const [showPurchaseHistory, setShowPurchaseHistory] = useState(false)
+  const [showCart, setShowCart] = useState(false)
+
+  // Cart
+  const [cart, setCart] = useState<CartEntry[]>([])
+  const purchaseItem = useRpgStore((s) => s.purchaseItem)
+
+  const addToCart = (itemId: string) => {
+    setCart((prev) => {
+      const existing = prev.find((c) => c.itemId === itemId)
+      if (existing) return prev.map((c) => c.itemId === itemId ? { ...c, quantity: c.quantity + 1 } : c)
+      return [...prev, { itemId, quantity: 1 }]
+    })
+  }
+  const removeFromCart = (itemId: string) => setCart((prev) => prev.filter((c) => c.itemId !== itemId))
+  const clearCart = () => setCart([])
+  const checkoutCart = () => {
+    for (const entry of cart) {
+      for (let i = 0; i < entry.quantity; i++) {
+        purchaseItem(entry.itemId)
+      }
+    }
+    setCart([])
+    setShowCart(false)
+  }
 
   // ── Close sort menu on outside click ─────────────────────────────────────
   useEffect(() => {
@@ -150,7 +175,7 @@ export default function ShopPage() {
   // ── Derived data ─────────────────────────────────────────────────────────
 
   const profileItems = useMemo(
-    () => activeProfileId ? shopItems.filter((i) => i.profileId === activeProfileId) : [],
+    () => activeProfileId ? shopItems.filter((i) => i.profileId === activeProfileId && i.stock !== 0) : [],
     [shopItems, activeProfileId],
   )
 
@@ -294,6 +319,27 @@ export default function ShopPage() {
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Cart */}
+              {tab === 'shop' && (
+                <button
+                  type="button"
+                  onClick={() => setShowCart(true)}
+                  className={cn(
+                    'relative flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
+                    'border border-[var(--border)] text-[var(--fg-muted)]',
+                    'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
+                  )}
+                  title="Корзина"
+                >
+                  <ShoppingCart className="h-4 w-4" />
+                  {cart.length > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] text-white text-[9px] font-bold px-0.5 leading-none">
+                      {cart.reduce((s, c) => s + c.quantity, 0)}
+                    </span>
+                  )}
+                </button>
+              )}
+
               {/* History */}
               {tab === 'shop' && (
                 <button
@@ -816,6 +862,7 @@ export default function ShopPage() {
                       setSelectedItemId(item.id)
                       setShowItemForm(false)
                     }}
+                    onAddToCart={addToCart}
                   />
                 ))}
               </div>
@@ -938,6 +985,15 @@ export default function ShopPage() {
 
       {/* ─── MODALS ─────────────────────────────────────────────────────── */}
       {showPurchaseHistory && <PurchaseHistoryModal onClose={() => setShowPurchaseHistory(false)} />}
+      {showCart && (
+        <CartModal
+          cart={cart}
+          onRemove={removeFromCart}
+          onClear={clearCart}
+          onCheckout={checkoutCart}
+          onClose={() => setShowCart(false)}
+        />
+      )}
       <ConfirmModal
         isOpen={deletingGroupId !== null}
         title="Удалить группу?"

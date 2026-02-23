@@ -107,6 +107,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
   const [showDiscountModal, setShowDiscountModal] = useState(false)
   const [showGroupModal, setShowGroupModal] = useState(false)
   const [showIconSource, setShowIconSource] = useState(false)
+  const [showPurchaseConfirm, setShowPurchaseConfirm] = useState(false)
 
   const iconFileInputRef = useRef<HTMLInputElement>(null)
 
@@ -257,6 +258,11 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
 
   // ── Purchase handler ─────────────────────────────────────────────────────
   const handlePurchase = () => {
+    setShowPurchaseConfirm(true)
+  }
+
+  const handleConfirmPurchase = () => {
+    setShowPurchaseConfirm(false)
     const result = purchaseItem(item.id)
     if (result && typeof result === 'object' && 'loot' in result) {
       if (result.loot) alert(`Вы получили: ${result.loot.name}!`)
@@ -1061,6 +1067,9 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                   </span>
                 </button>
               )}
+              {showBuyButton && item.stock === undefined && (
+                <p className="text-center text-xs text-[var(--fg-muted)] mt-3">Неограниченно</p>
+              )}
 
               {!showBuyButton && !availableForPurchase && (
                 <button
@@ -1319,24 +1328,42 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
               </div>
             )}
 
-            {/* ── Stats section ─────────────────────────────────────────── */}
-            <div className="glass rounded-2xl p-4">
-              <h3 className="text-sm font-semibold text-[var(--fg)] mb-3">Статистика</h3>
-              <div className="flex items-center gap-3 rounded-xl bg-[var(--surface-elevated)] px-4 py-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10">
-                  <ShoppingCart className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-[var(--fg)]">{totalPurchases}</p>
-                  <p className="text-xs text-[var(--fg-muted)]">Всего покупок</p>
+            {/* ── Stats section (hidden for single-stock items) ────────── */}
+            {!(item.stock !== undefined && item.stock <= 1) && (
+              <div className="glass rounded-2xl p-4">
+                <h3 className="text-sm font-semibold text-[var(--fg)] mb-3">Статистика</h3>
+                <div className="flex items-center gap-3 rounded-xl bg-[var(--surface-elevated)] px-4 py-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10">
+                    <ShoppingCart className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-[var(--fg)]">{totalPurchases}</p>
+                    <p className="text-xs text-[var(--fg-muted)]">Всего покупок</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </>
         )}
       </div>
 
       {/* ── MODALS ──────────────────────────────────────────────────────── */}
+
+      {/* Purchase confirmation */}
+      <ConfirmModal
+        isOpen={showPurchaseConfirm}
+        onConfirm={handleConfirmPurchase}
+        onCancel={() => setShowPurchaseConfirm(false)}
+        title={`Купить «${item.name}»?`}
+        message={
+          canGetForFree
+            ? 'Получить бесплатно'
+            : `Стоимость: ${effectiveCoinCost > 0 ? `${effectiveCoinCost} монет` : ''}${effectiveCoinCost > 0 && gemCostRaw > 0 ? ' + ' : ''}${gemCostRaw > 0 ? `${gemCostRaw} гемов` : ''}`
+        }
+        confirmText="Купить"
+        cancelText="Отмена"
+        variant="info"
+      />
 
       {/* Delete confirmation */}
       <ConfirmModal

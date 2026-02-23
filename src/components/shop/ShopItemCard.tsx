@@ -10,14 +10,14 @@ interface ShopItemCardProps {
   item: ShopItem
   selected?: boolean
   onSelect: () => void
+  onAddToCart?: (itemId: string) => void
 }
 
-export default function ShopItemCard({ item, selected, onSelect }: ShopItemCardProps) {
+export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: ShopItemCardProps) {
   const activeShopDiscountPercent = useRpgStore((s) => s.activeShopDiscountPercent)
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const allItemGroups = useRpgStore((s) => s.itemGroups)
-  const purchaseItem = useRpgStore((s) => s.purchaseItem)
 
   const profile = profiles.find((p) => p.id === activeProfileId)
   const coins = profile?.currencies[CURRENCY_IDS.COINS] ?? 0
@@ -40,15 +40,10 @@ export default function ShopItemCard({ item, selected, onSelect }: ShopItemCardP
 
   const typeBadge = getItemTypeBadge(item)
 
-  const handleQuickBuy = (e: React.MouseEvent) => {
+  const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (!showBuyButton) return
-    if (!canGetForFree && !canAfford) return
-    const result = purchaseItem(item.id)
-    if (result && typeof result === 'object' && 'loot' in result) {
-      if (result.loot) alert(`Вы получили: ${result.loot.name}!`)
-      else alert('Ничего не выпало.')
-    }
+    onAddToCart?.(item.id)
   }
 
   return (
@@ -128,8 +123,8 @@ export default function ShopItemCard({ item, selected, onSelect }: ShopItemCardP
 
           {/* Badges grid */}
           <div className="flex flex-wrap items-center gap-1.5">
-            {/* Cost badges */}
-            {availableForPurchase && !canGetForFree && coinCost > 0 && (
+            {/* Cost badges (hide for purchased serials — episodes have their own cost) */}
+            {availableForPurchase && !canGetForFree && coinCost > 0 && !(item.isTvSerial && basePurchased) && (
               <span
                 className={cn(
                   'inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-bold',
@@ -151,7 +146,7 @@ export default function ShopItemCard({ item, selected, onSelect }: ShopItemCardP
               </span>
             )}
 
-            {availableForPurchase && !canGetForFree && gemCost > 0 && (
+            {availableForPurchase && !canGetForFree && gemCost > 0 && !(item.isTvSerial && basePurchased) && (
               <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-bold bg-gradient-to-b from-purple-500/20 to-purple-500/10 text-purple-600 dark:text-purple-400 ring-1 ring-inset ring-purple-400/25 shadow-sm shadow-purple-500/10">
                 <Gem className="h-3.5 w-3.5" />
                 <span className="font-black">{gemCost.toLocaleString('ru-RU')}</span>
@@ -180,11 +175,19 @@ export default function ShopItemCard({ item, selected, onSelect }: ShopItemCardP
               </span>
             )}
 
-            {/* Purchased badge for media items */}
-            {isMediaItem && basePurchased && (
+            {/* Purchased badge for video games */}
+            {item.isVideoGame && basePurchased && (
               <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-bold bg-gradient-to-b from-emerald-500/20 to-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10">
                 <Check className="h-3 w-3" />
                 Куплено
+              </span>
+            )}
+
+            {/* Serial: can buy episodes badge */}
+            {item.isTvSerial && basePurchased && (
+              <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-bold bg-gradient-to-b from-pink-500/20 to-pink-500/10 text-pink-600 dark:text-pink-400 ring-1 ring-inset ring-pink-400/25 shadow-sm shadow-pink-500/10">
+                <Clapperboard className="h-3 w-3" />
+                Можно купить серию
               </span>
             )}
           </div>
@@ -192,20 +195,15 @@ export default function ShopItemCard({ item, selected, onSelect }: ShopItemCardP
 
         {/* Quick buy button */}
         {showBuyButton && (
-          <div className="shrink-0 self-center">
+          <div className="shrink-0 self-center flex flex-col items-center">
             <button
-              onClick={handleQuickBuy}
+              onClick={handleAddToCart}
               className={cn(
                 'relative flex h-11 w-11 items-center justify-center rounded-2xl transition-all duration-300',
                 'shadow-[0_4px_12px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.6),inset_0_-2px_0_rgba(0,0,0,0.1)]',
                 'active:translate-y-0.5 active:shadow-[0_2px_6px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.4)]',
-                canGetForFree
-                  ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white hover:from-emerald-500 hover:to-emerald-700 hover:shadow-[0_6px_20px_rgba(16,185,129,0.35)] hover:scale-110'
-                  : canAfford
-                    ? 'bg-gradient-to-br from-[var(--accent)] to-[var(--accent-hover)] text-white hover:from-[var(--accent-light)] hover:to-[var(--accent)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.4)] hover:scale-110'
-                    : 'bg-gradient-to-br from-gray-300 to-gray-400 text-gray-500 cursor-not-allowed opacity-60'
+                'bg-gradient-to-br from-[var(--accent)] to-[var(--accent-hover)] text-white hover:from-[var(--accent-light)] hover:to-[var(--accent)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.4)] hover:scale-110',
               )}
-              disabled={!canGetForFree && !canAfford}
             >
               <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/40 via-transparent to-transparent opacity-60 pointer-events-none" />
               <ShoppingCart className="relative h-5 w-5 drop-shadow-sm z-10" />
