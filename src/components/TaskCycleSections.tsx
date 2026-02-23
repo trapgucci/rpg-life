@@ -305,6 +305,135 @@ export function TaskNextCycleBlock({ task }: TaskBlockProps) {
   return null
 }
 
+// ─── 2b. Блок множителя ─────────────────────────────────────────────────
+
+export function TaskMultiplierBlock({ task }: TaskBlockProps) {
+  const sm = task.streakMultiplier
+  if (!sm) return null
+
+  const currentStreak = task.currentStreak ?? 0
+
+  if (sm.mode === 'streak') {
+    // Сколько выполнений осталось до следующего срабатывания
+    const completedInCycle = currentStreak % sm.interval
+    const untilNext = sm.interval - completedInCycle
+    const timesTriggered = Math.floor(currentStreak / sm.interval)
+
+    return (
+      <CollapsibleBlock
+        icon={<TrendingUp className="h-4.5 w-4.5" />}
+        title="Множитель"
+        defaultOpen
+      >
+        <div className="mt-3 space-y-3">
+          {/* Множитель и режим */}
+          <div className="flex items-center gap-3 rounded-xl bg-gradient-to-b from-amber-500/18 to-amber-500/6 p-3 ring-1 ring-inset ring-amber-400/20 shadow-sm shadow-amber-500/10">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-b from-amber-500/25 to-amber-500/10 ring-1 ring-inset ring-amber-400/30">
+              <TrendingUp className="h-5 w-5 text-amber-500" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-amber-500">x{sm.value} множитель</p>
+              <p className="text-xs text-[var(--fg-muted)]">Срабатывает каждые {sm.interval} выполнений стрика</p>
+            </div>
+          </div>
+
+          <InfoRow label="Режим" value="За стрик" />
+          <InfoRow label="Текущий стрик" value={
+            <span className="inline-flex items-center gap-1">
+              <Flame className="h-3.5 w-3.5 text-orange-500" />
+              {currentStreak}
+            </span>
+          } />
+
+          {/* Прогресс до следующего срабатывания */}
+          <div className="py-2.5 border-b border-[var(--border)]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-[var(--fg-muted)]">До следующего бонуса</span>
+              <span className="text-sm font-semibold text-amber-500">
+                {untilNext === sm.interval && currentStreak === 0
+                  ? `${sm.interval} выполнений`
+                  : untilNext === 0
+                    ? 'Сейчас!'
+                    : `${untilNext} выполнений`}
+              </span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--border)]">
+              <div
+                className="h-full rounded-full transition-all duration-500 ease-out"
+                style={{
+                  width: `${(completedInCycle / sm.interval) * 100}%`,
+                  background: 'linear-gradient(90deg, #f59e0b, #f97316)',
+                }}
+              />
+            </div>
+          </div>
+
+          <InfoRow
+            label="Бонусов получено"
+            value={timesTriggered}
+          />
+
+          {/* Предупреждение */}
+          <div className="rounded-xl bg-red-500/8 border border-red-500/15 p-3">
+            <p className="text-xs text-red-500">
+              При сбросе стрика множитель будет утерян навсегда.
+            </p>
+          </div>
+        </div>
+      </CollapsibleBlock>
+    )
+  }
+
+  // Mode: instant
+  const remaining = sm.remainingUses ?? 0
+
+  return (
+    <CollapsibleBlock
+      icon={<TrendingUp className="h-4.5 w-4.5" />}
+      title="Множитель"
+      defaultOpen
+    >
+      <div className="mt-3 space-y-3">
+        {/* Множитель и режим */}
+        <div className="flex items-center gap-3 rounded-xl bg-gradient-to-b from-amber-500/18 to-amber-500/6 p-3 ring-1 ring-inset ring-amber-400/20 shadow-sm shadow-amber-500/10">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-b from-amber-500/25 to-amber-500/10 ring-1 ring-inset ring-amber-400/30">
+            <TrendingUp className="h-5 w-5 text-amber-500" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-amber-500">x{sm.value} множитель</p>
+            <p className="text-xs text-[var(--fg-muted)]">Действует на следующие выполнения</p>
+          </div>
+        </div>
+
+        <InfoRow label="Режим" value="Для инстант задачи" />
+
+        {/* Осталось выполнений */}
+        <div className="py-2.5 border-b border-[var(--border)]">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-[var(--fg-muted)]">Осталось выполнений</span>
+            <span className="text-sm font-semibold text-amber-500">{remaining} / {sm.interval}</span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--border)]">
+            <div
+              className="h-full rounded-full transition-all duration-500 ease-out"
+              style={{
+                width: `${(remaining / sm.interval) * 100}%`,
+                background: 'linear-gradient(90deg, #f59e0b, #f97316)',
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-blue-500/8 border border-blue-500/15 p-3">
+          <p className="text-xs text-blue-500">
+            После {sm.interval} выполнений множитель исчезнет автоматически.
+          </p>
+        </div>
+      </div>
+    </CollapsibleBlock>
+  )
+}
+
 // ─── 3. Статистика задачи ────────────────────────────────────────────────
 
 export function TaskStatsBlock({ task }: TaskBlockProps) {

@@ -110,8 +110,6 @@ const ModalContent = memo(function ModalContent({
 }: ModalContentProps) {
   const iconBgColor = group?.color ?? RARITY_COLORS[item.rarity]
   const typeBadge = getItemTypeBadge(item)
-  const isUsable = item.isDiscountVoucher || item.streakMultiplierEnabled || item.isLootBox
-
   const acquiredDate = useMemo(
     () =>
       new Date(acquiredAt).toLocaleDateString('ru-RU', {
@@ -237,23 +235,21 @@ const ModalContent = memo(function ModalContent({
 
         {/* Action buttons */}
         <div className="flex flex-col gap-3">
-          {isUsable && (
-            <button
-              type="button"
-              onClick={onUse}
-              className={cn(
-                'w-full rounded-2xl py-4 font-semibold transition-all duration-200',
-                'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] text-white',
-                'shadow-lg shadow-[var(--accent)]/25',
-                'hover:shadow-xl hover:scale-[1.01] active:scale-[0.98]',
-              )}
-            >
-              <span className="flex items-center justify-center gap-2">
-                <Zap className="h-5 w-5" />
-                {item.isLootBox ? 'Открыть' : 'Использовать'}
-              </span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={onUse}
+            className={cn(
+              'w-full rounded-2xl py-4 font-semibold transition-all duration-200',
+              'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] text-white',
+              'shadow-lg shadow-[var(--accent)]/25',
+              'hover:shadow-xl hover:scale-[1.01] active:scale-[0.98]',
+            )}
+          >
+            <span className="flex items-center justify-center gap-2">
+              <Zap className="h-5 w-5" />
+              {item.isLootBox ? 'Открыть' : 'Использовать'}
+            </span>
+          </button>
 
           <button
             type="button"
@@ -311,8 +307,12 @@ const PropertiesBlock = memo(function PropertiesBlock({ item }: { item: ShopItem
       key: 'multiplier',
       Icon: TrendingUp,
       colorCls: PROPERTY_ICON_COLORS.multiplier,
-      title: `Множитель x${item.streakMultiplierValue ?? 1.5}`,
-      description: `Увеличивает награды за серию каждые ${item.streakMultiplierInterval ?? 3} выполнения.`,
+      title: item.streakMultiplierMode === 'instant'
+        ? `Множитель x${item.streakMultiplierValue ?? 1.5} (инстант)`
+        : `Множитель x${item.streakMultiplierValue ?? 1.5}`,
+      description: item.streakMultiplierMode === 'instant'
+        ? `Действует на следующие ${item.streakMultiplierInterval ?? 3} выполнений мгновенной задачи.`
+        : `Увеличивает награды за серию каждые ${item.streakMultiplierInterval ?? 3} выполнения.`,
     })
   }
   if (item.isDiscountVoucher) {

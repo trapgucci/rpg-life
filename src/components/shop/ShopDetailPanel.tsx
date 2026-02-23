@@ -88,6 +88,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
   const [editIsLootBox, setEditIsLootBox] = useState(item.isLootBox)
   const [editLootTable, setEditLootTable] = useState<LootTableEntry[]>(item.lootTable ?? [])
   const [editStreakMultiplierEnabled, setEditStreakMultiplierEnabled] = useState(item.streakMultiplierEnabled ?? false)
+  const [editStreakMultiplierMode, setEditStreakMultiplierMode] = useState<'streak' | 'instant'>(item.streakMultiplierMode ?? 'streak')
   const [editStreakMultiplierValue, setEditStreakMultiplierValue] = useState(item.streakMultiplierValue ?? 1.5)
   const [editStreakMultiplierInterval, setEditStreakMultiplierInterval] = useState(item.streakMultiplierInterval ?? 3)
   const [editIsDiscountVoucher, setEditIsDiscountVoucher] = useState(item.isDiscountVoucher ?? false)
@@ -130,6 +131,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
     setEditIsLootBox(i.isLootBox)
     setEditLootTable(i.lootTable ?? [])
     setEditStreakMultiplierEnabled(i.streakMultiplierEnabled ?? false)
+    setEditStreakMultiplierMode(i.streakMultiplierMode ?? 'streak')
     setEditStreakMultiplierValue(i.streakMultiplierValue ?? 1.5)
     setEditStreakMultiplierInterval(i.streakMultiplierInterval ?? 3)
     setEditIsDiscountVoucher(i.isDiscountVoucher ?? false)
@@ -158,6 +160,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
       editIsLootBox !== prev.isLootBox ||
       JSON.stringify(editLootTable) !== JSON.stringify(prev.lootTable ?? []) ||
       editStreakMultiplierEnabled !== (prev.streakMultiplierEnabled ?? false) ||
+      editStreakMultiplierMode !== (prev.streakMultiplierMode ?? 'streak') ||
       editStreakMultiplierValue !== (prev.streakMultiplierValue ?? 1.5) ||
       editStreakMultiplierInterval !== (prev.streakMultiplierInterval ?? 3) ||
       editIsDiscountVoucher !== (prev.isDiscountVoucher ?? false) ||
@@ -170,7 +173,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
   }, [
     editName, editDescription, editIcon, editIconImage, editGroupId,
     editAvailableForPurchase, editCanGetForFree, editCoinCost, editGemCost,
-    editStock, editIsLootBox, editLootTable, editStreakMultiplierEnabled,
+    editStock, editIsLootBox, editLootTable, editStreakMultiplierEnabled, editStreakMultiplierMode,
     editStreakMultiplierValue, editStreakMultiplierInterval, editIsDiscountVoucher, editDiscountPercent,
     editIsVideoGame, editGameTimePackages, editIsTvSerial, editSerialSeasons,
   ])
@@ -234,6 +237,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
       canGetForFree: editCanGetForFree,
       groupId: editGroupId,
       streakMultiplierEnabled: editStreakMultiplierEnabled || undefined,
+      streakMultiplierMode: editStreakMultiplierEnabled ? editStreakMultiplierMode : undefined,
       streakMultiplierValue: editStreakMultiplierEnabled ? editStreakMultiplierValue : undefined,
       streakMultiplierInterval: editStreakMultiplierEnabled ? editStreakMultiplierInterval : undefined,
       isDiscountVoucher: editIsDiscountVoucher || undefined,
@@ -263,11 +267,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
 
   const handleConfirmPurchase = () => {
     setShowPurchaseConfirm(false)
-    const result = purchaseItem(item.id)
-    if (result && typeof result === 'object' && 'loot' in result) {
-      if (result.loot) alert(`Вы получили: ${result.loot.name}!`)
-      else alert('Ничего не выпало.')
-    }
+    purchaseItem(item.id)
   }
 
   // ── Stats ────────────────────────────────────────────────────────────────
@@ -548,6 +548,38 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                       </div>
                       {editStreakMultiplierEnabled && (
                         <div className="mt-4 pt-4 border-t border-[var(--border)] space-y-4">
+                          {/* Mode selector */}
+                          <div>
+                            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Режим</label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setEditStreakMultiplierMode('streak')}
+                                className={cn(
+                                  'flex flex-col items-center gap-1 rounded-xl border py-2.5 px-2 text-center transition-all',
+                                  editStreakMultiplierMode === 'streak'
+                                    ? 'border-[var(--accent)] bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]/30'
+                                    : 'border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
+                                )}
+                              >
+                                <span className={cn('text-sm font-bold', editStreakMultiplierMode === 'streak' ? 'text-[var(--accent)]' : 'text-[var(--fg)]')}>За стрик</span>
+                                <span className="text-[10px] text-[var(--fg-muted)]">Классический режим</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditStreakMultiplierMode('instant')}
+                                className={cn(
+                                  'flex flex-col items-center gap-1 rounded-xl border py-2.5 px-2 text-center transition-all',
+                                  editStreakMultiplierMode === 'instant'
+                                    ? 'border-[var(--accent)] bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]/30'
+                                    : 'border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
+                                )}
+                              >
+                                <span className={cn('text-sm font-bold', editStreakMultiplierMode === 'instant' ? 'text-[var(--accent)]' : 'text-[var(--fg)]')}>Для инстант</span>
+                                <span className="text-[10px] text-[var(--fg-muted)]">Ограничен N выполнениями</span>
+                              </button>
+                            </div>
+                          </div>
                           <div>
                             <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Множитель</label>
                             <div className="grid grid-cols-3 gap-2">
@@ -570,9 +602,15 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                             </div>
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Срабатывает каждые</label>
+                            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">
+                              {editStreakMultiplierMode === 'streak' ? 'Срабатывает каждые' : 'Действует на'}
+                            </label>
                             <div className="grid grid-cols-3 gap-2">
-                              {([{ value: 3, label: '3', desc: 'выполнения' }, { value: 5, label: '5', desc: 'выполнений' }, { value: 7, label: '7', desc: 'выполнений' }] as const).map((opt) => (
+                              {([
+                                { value: 3, label: '3', desc: editStreakMultiplierMode === 'streak' ? 'выполнения' : 'выполнения' },
+                                { value: 5, label: '5', desc: 'выполнений' },
+                                { value: 7, label: '7', desc: 'выполнений' },
+                              ] as const).map((opt) => (
                                 <button
                                   key={opt.value}
                                   type="button"
@@ -590,6 +628,11 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                               ))}
                             </div>
                           </div>
+                          {editStreakMultiplierMode === 'instant' && (
+                            <p className="text-xs text-[var(--fg-muted)] bg-[var(--surface-elevated)] rounded-lg p-2.5">
+                              Множитель будет действовать на следующие {editStreakMultiplierInterval} выполнений мгновенной задачи. Инстант задачу нельзя пропустить, поэтому множитель не теряется.
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1081,7 +1124,9 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
 
                   <p className="text-xs text-[var(--fg-muted)] mt-2">
                     {typeBadge.type === 'lootbox' && 'Открытие выдает случайный предмет из таблицы наград.'}
-                    {typeBadge.type === 'multiplier' && `Множитель ${item.streakMultiplierValue ?? 1.5}x каждые ${item.streakMultiplierInterval ?? 3} выполнений. Увеличивает награды за серию.`}
+                    {typeBadge.type === 'multiplier' && (item.streakMultiplierMode === 'instant'
+                      ? `Множитель ${item.streakMultiplierValue ?? 1.5}x на ${item.streakMultiplierInterval ?? 3} выполнений инстант задачи.`
+                      : `Множитель ${item.streakMultiplierValue ?? 1.5}x каждые ${item.streakMultiplierInterval ?? 3} выполнений. Увеличивает награды за серию.`)}
                     {typeBadge.type === 'discount' && `Скидка ${item.discountPercent ?? 10}% на следующую покупку (только монеты).`}
                     {typeBadge.type === 'videogame' && 'Видеоигра — после покупки можно докупать часы.'}
                     {typeBadge.type === 'serial' && 'Сериал — покупайте серии по мере просмотра.'}

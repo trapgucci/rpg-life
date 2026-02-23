@@ -1,13 +1,15 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { cn } from '../lib/cn'
-import { Package, Search, X, Clock } from 'lucide-react'
+import { Package, Search, X, Clock, Gift, Frown } from 'lucide-react'
 import { useRpgStore } from '../store/useRpgStore'
 import InventoryItemCard from '../components/InventoryItemCard'
 import InventoryItemModal from '../components/InventoryItemModal'
 import InventoryHistorySidebar from '../components/InventoryHistorySidebar'
 import ConfirmModal from '../components/ConfirmModal'
+import StreakMultiplierModal from '../components/StreakMultiplierModal'
 import Modal from '../components/Modal'
 import type { ShopItem, InventoryEntry, ItemGroup } from '../types/domain'
+import { CURRENCY_IDS } from '../types/domain'
 
 /* ─── Types ─────────────────────────────────────────────────────────────────── */
 
@@ -40,6 +42,8 @@ export default function InventoryPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
   const [showMobileHistory, setShowMobileHistory] = useState(false)
+  const [lootResult, setLootResult] = useState<{ itemId: string; itemName: string } | 'empty' | null>(null)
+  const [multiplierItemId, setMultiplierItemId] = useState<string | null>(null)
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -189,7 +193,23 @@ export default function InventoryPage() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleUse = useCallback((itemId: string) => {
-    useItem(itemId)
+    const result = useItem(itemId)
+    // Handle lootbox result
+    if (result && typeof result === 'object' && 'loot' in result) {
+      setDetailModalItemId(null)
+      if (result.loot) {
+        setLootResult({ itemId: result.loot.itemId, itemName: result.loot.name })
+      } else {
+        setLootResult('empty')
+      }
+      return
+    }
+    // Handle streak multiplier — open task selection modal
+    if (result && typeof result === 'object' && 'multiplier' in result) {
+      setDetailModalItemId(null)
+      setMultiplierItemId(result.itemId)
+      return
+    }
     // Close modal if item is fully consumed
     const entry = inventory.find((e) => e.itemId === itemId)
     if (entry && entry.quantity <= 1) {
@@ -421,6 +441,14 @@ export default function InventoryPage() {
         onDelete={handleDelete}
       />
 
+      {/* Streak multiplier task selection */}
+      <StreakMultiplierModal
+        isOpen={multiplierItemId !== null}
+        itemId={multiplierItemId}
+        onClose={() => setMultiplierItemId(null)}
+        onApplied={() => setMultiplierItemId(null)}
+      />
+
       {/* Delete confirmation */}
       <ConfirmModal
         isOpen={deletingItemId !== null}
@@ -432,6 +460,46 @@ export default function InventoryPage() {
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}
       />
+
+      {/* Lootbox result modal */}
+      {lootResult !== null && (
+        <Modal
+          isOpen
+          onClose={() => setLootResult(null)}
+          size="sm"
+          showCloseButton={false}
+        >
+          <div className="p-6 flex flex-col items-center text-center">
+            <div className={cn(
+              'flex h-14 w-14 items-center justify-center rounded-2xl mb-4',
+              lootResult === 'empty' ? 'bg-gray-500/15' : 'bg-violet-500/15',
+            )}>
+              {lootResult === 'empty'
+                ? <Frown className="h-7 w-7 text-gray-500" />
+                : <Gift className="h-7 w-7 text-violet-500" />
+              }
+            </div>
+            <h3 className="text-lg font-bold text-[var(--fg)] mb-1">
+              {lootResult === 'empty' ? 'Ничего не выпало' : 'Вы получили!'}
+            </h3>
+            <p className="text-sm text-[var(--fg-muted)] mb-6 max-w-[280px]">
+              {lootResult === 'empty'
+                ? 'В этот раз не повезло, попробуйте ещё раз!'
+                : lootResult.itemId === CURRENCY_IDS.COINS || lootResult.itemId === CURRENCY_IDS.GEMS
+                  ? `${lootResult.itemName} добавлены к балансу`
+                  : `${lootResult.itemName} добавлен в инвентарь`
+              }
+            </p>
+            <button
+              type="button"
+              onClick={() => setLootResult(null)}
+              className="btn-primary w-full py-2.5"
+            >
+              Понятно
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {/* Mobile history modal */}
       <Modal

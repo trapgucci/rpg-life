@@ -14,7 +14,7 @@ import SubtaskCreateModal, { type SubtaskEditData, type SubtaskFormData } from '
 import RecurrenceSelectModal from './RecurrenceSelectModal'
 import ConfirmModal from './ConfirmModal'
 import RewardBadge from './RewardBadge'
-import { TaskCurrentCycleBlock, TaskStatsBlock, TaskHistoryBlock } from './TaskCycleSections'
+import { TaskCurrentCycleBlock, TaskMultiplierBlock, TaskStatsBlock, TaskHistoryBlock } from './TaskCycleSections'
 import { getNextAvailableDate, getRelativeTimeRu, getSubtaskXp, isTodayScheduled } from '../lib/taskCycleUtils'
 
 const DIFFICULTY_LABELS: Record<TaskDifficulty, string> = {
@@ -1431,6 +1431,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
             {(task.recurrence !== 'once' || (task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate)) && (
               <TaskCurrentCycleBlock task={task} nowMs={debugNow} />
             )}
+            <TaskMultiplierBlock task={task} />
             {task.recurrence !== 'once' && <TaskStatsBlock task={task} />}
             <TaskHistoryBlock task={task} nowMs={debugNow} />
           </div>

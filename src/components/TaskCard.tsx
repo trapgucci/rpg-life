@@ -1,4 +1,4 @@
-import { CheckSquare, Hash, ListChecks, Clock, Repeat, Flag, Archive, CalendarClock, Timer, Award, XCircle, AlertTriangle } from 'lucide-react'
+import { CheckSquare, Hash, ListChecks, Clock, Repeat, Flag, Archive, CalendarClock, Timer, Award, XCircle, AlertTriangle, TrendingUp } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRpg } from '../types/domain'
 import RewardBadge from './RewardBadge'
@@ -39,7 +39,7 @@ interface TaskCardProps {
   selected?: boolean
   onSelect: () => void
   /** Предвычисленные награды (для оптимизации) */
-  rewards?: { xp: number; coins: number; gems: number }
+  rewards?: { xp: number; coins: number; gems: number; multiplierActive?: boolean }
 }
 
 export default function TaskCard({ task, selected, onSelect, rewards }: TaskCardProps) {
@@ -165,6 +165,14 @@ export default function TaskCard({ task, selected, onSelect, rewards }: TaskCard
               <span className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-b from-blue-500/20 to-blue-500/10 px-2.5 py-1 text-xs font-semibold text-blue-500 ring-1 ring-inset ring-blue-400/25 shadow-sm shadow-blue-500/10">
                 <Repeat className="h-3.5 w-3.5" />
                 {task.recurrence === 'daily' ? 'Ежедневно' : task.recurrence === 'weekly' ? 'Еженедельно' : task.recurrence === 'monthly' ? 'Ежемесячно' : task.recurrence === 'yearly' ? 'Ежегодно' : task.recurrence === 'instant' ? 'Инстант' : 'Повтор'}
+              </span>
+            )}
+
+            {/* Streak multiplier badge */}
+            {task.streakMultiplier && (
+              <span className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-b from-amber-500/20 to-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-500 ring-1 ring-inset ring-amber-400/25 shadow-sm shadow-amber-500/10">
+                <TrendingUp className="h-3.5 w-3.5" />
+                x{task.streakMultiplier.value}
               </span>
             )}
 

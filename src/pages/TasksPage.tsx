@@ -195,7 +195,7 @@ export default function TasksPage() {
 
   // Вычисляем награды один раз, затем сортируем используя уже вычисленные значения
   const tasksWithRewards = useMemo(() => {
-    const rewardMap = new Map<string, { xp: number; coins: number; gems: number }>()
+    const rewardMap = new Map<string, { xp: number; coins: number; gems: number; multiplierActive?: boolean }>()
     for (const task of filteredTasks) {
       rewardMap.set(task.id, getTaskRewardPreview(task))
     }

@@ -277,7 +277,7 @@ interface RpgStoreState {
   getDebugNow: () => number
   decrementCounter: (id: TaskId) => void
   toggleSubtask: (taskId: TaskId, subtaskId: string) => void
-  getTaskRewardPreview: (task: TaskRpg) => { xp: number; coins: number; gems: number }
+  getTaskRewardPreview: (task: TaskRpg) => { xp: number; coins: number; gems: number; multiplierActive?: boolean }
   getTaskPenaltyPreview: (task: TaskRpg) => { xp: number; coins: number }
 
   // Habit actions
@@ -320,7 +320,10 @@ interface RpgStoreState {
   getInventory: () => InventoryEntry[]
   addToInventory: (itemId: ItemId, quantity?: number) => void
   removeFromInventory: (itemId: ItemId, quantity?: number) => boolean
-  useItem: (itemId: ItemId) => boolean
+  useItem: (itemId: ItemId) => boolean | { loot: { itemId: string; name: string } | null } | { multiplier: true; itemId: ItemId }
+
+  // Streak multiplier
+  applyStreakMultiplier: (taskId: TaskId, itemId: ItemId) => boolean
 
   // Export/Import
   exportData: () => string
@@ -619,12 +622,34 @@ export const useRpgStore = create<RpgStoreState>()(
           const { settings } = get()
           // Если атрибуты не выбраны, XP = 0
           const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
-          const xp = attrIds.length > 0
+          const baseXp = attrIds.length > 0
             ? (task.customXp ?? settings.taskDifficultyXp?.[task.difficulty] ?? TASK_XP_BY_DIFFICULTY[task.difficulty])
             : 0
-          const coins = task.coinReward
-          const gems = task.gemReward ?? 0
-          return { xp, coins, gems }
+          const baseCoins = task.coinReward
+          const baseGems = task.gemReward ?? 0
+
+          // Apply streak multiplier preview
+          const sm = task.streakMultiplier
+          let factor = 1
+          if (sm) {
+            if (sm.mode === 'instant') {
+              // Instant mode always applies
+              factor = sm.value
+            } else if (sm.mode === 'streak') {
+              // Streak mode: show multiplied reward when next completion hits interval
+              const nextStreak = (task.currentStreak ?? 0) + 1
+              if (nextStreak > 0 && nextStreak % sm.interval === 0) {
+                factor = sm.value
+              }
+            }
+          }
+
+          return {
+            xp: Math.round(baseXp * factor),
+            coins: Math.round(baseCoins * factor),
+            gems: Math.round(baseGems * factor),
+            multiplierActive: factor > 1,
+          }
         },
 
         getTaskPenaltyPreview: (task) => {
@@ -675,12 +700,26 @@ export const useRpgStore = create<RpgStoreState>()(
 
           // Add XP to all selected attributes
           const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
+
+          // ─── Streak multiplier factor ─────────────────────────────────────
+          const sm = task.streakMultiplier
+          const newStreakForMultiplier = (task.currentStreak ?? 0) + 1
+          let multiplierFactor = 1
+          if (sm) {
+            if (sm.mode === 'streak' && newStreakForMultiplier > 0 && newStreakForMultiplier % sm.interval === 0) {
+              multiplierFactor = sm.value
+            } else if (sm.mode === 'instant') {
+              multiplierFactor = sm.value
+            }
+          }
+
           // XP начисляется только если есть атрибуты
-          const xpGain = attrIds.length > 0
+          const baseXp = attrIds.length > 0
             ? (task.customXp ?? settings.taskDifficultyXp?.[task.difficulty] ?? TASK_XP_BY_DIFFICULTY[task.difficulty])
             : 0
-          const coinGain = task.coinReward
-          const gemGain = task.gemReward ?? 0
+          const xpGain = Math.round(baseXp * multiplierFactor)
+          const coinGain = Math.round(task.coinReward * multiplierFactor)
+          const gemGain = Math.round((task.gemReward ?? 0) * multiplierFactor)
 
           if (attrIds.length > 0 && xpGain > 0) {
             let currentAttrs = profile.attributes
@@ -732,6 +771,16 @@ export const useRpgStore = create<RpgStoreState>()(
                 })
               : undefined
 
+          // ─── Streak multiplier: compute updated state after this completion ──
+          const smUpdate: { streakMultiplier?: typeof task.streakMultiplier } = {}
+          if (sm) {
+            if (sm.mode === 'instant' && sm.remainingUses != null) {
+              const left = sm.remainingUses - 1
+              smUpdate.streakMultiplier = left <= 0 ? undefined : { ...sm, remainingUses: left }
+            }
+            // streak mode: multiplier persists (removed only on streak break)
+          }
+
           // Instant recurrence: награды выданы — сбрасываем задачу для повторного выполнения
           // Награды за подзадачи НЕ забираются — игрок их заработал
           if (task.recurrence === 'instant') {
@@ -766,7 +815,7 @@ export const useRpgStore = create<RpgStoreState>()(
 
             // Если лимит достигнут — помечаем задачу как завершенную и архивируем
             if (isRecurrenceCompleted || (updatedSettings && updatedSettings.endMode === 'byCount' && updatedSettings.endCount && newCompletedCount >= updatedSettings.endCount)) {
-              updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), canceledAt: now(), archiveReason: 'completed' as TaskArchiveReason, recurrenceSettings: updatedSettings, ...historyFields }))
+              updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), canceledAt: now(), archiveReason: 'completed' as TaskArchiveReason, recurrenceSettings: updatedSettings, ...historyFields, ...smUpdate }))
               return
             }
 
@@ -787,13 +836,14 @@ export const useRpgStore = create<RpgStoreState>()(
                   completedAt: undefined,
                   subtasks: resetSubtasks,
                   currentCycleStart: now(),
-                  ...historyFields
+                  ...historyFields,
+                  ...smUpdate,
                 }
               })
             } else {
               // Для checkbox и counter задач
               updateTask(id, (t) => {
-                const base = { recurrenceSettings: updatedSettings, currentCycleStart: now(), ...historyFields }
+                const base = { recurrenceSettings: updatedSettings, currentCycleStart: now(), ...historyFields, ...smUpdate }
                 if (t.kind === 'checkbox') return { ...t, ...base, isCompleted: false, completedAt: undefined }
                 if (t.kind === 'counter') return { ...t, ...base, isCompleted: false, current: 0, completedAt: undefined }
                 return { ...t, ...base }
@@ -847,7 +897,7 @@ export const useRpgStore = create<RpgStoreState>()(
 
             // Если лимит достигнут — помечаем задачу как завершенную и архивируем
             if (isRecurrenceCompleted || (updatedSettings && updatedSettings.endMode === 'byCount' && updatedSettings.endCount && newCompletedCount >= updatedSettings.endCount)) {
-              updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), canceledAt: now(), archiveReason: 'completed' as TaskArchiveReason, lastCompletedAt: now(), recurrenceSettings: updatedSettings, ...historyFields }))
+              updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), canceledAt: now(), archiveReason: 'completed' as TaskArchiveReason, lastCompletedAt: now(), recurrenceSettings: updatedSettings, ...historyFields, ...smUpdate }))
               return
             }
 
@@ -863,6 +913,7 @@ export const useRpgStore = create<RpgStoreState>()(
                 lastCompletedAt: now(),
                 recurrenceSettings: updatedSettings,
                 ...historyFields,
+                ...smUpdate,
                 // Для nested — сбрасываем подзадачи после каждого выполнения
                 ...(t.kind === 'nested' ? {
                   subtasks: t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
@@ -881,6 +932,7 @@ export const useRpgStore = create<RpgStoreState>()(
               lastCompletedAt: now(),
               recurrenceSettings: updatedSettings,
               ...historyFields,
+              ...smUpdate,
               ...(t.kind === 'nested' ? {
                 subtasks: t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
               } : {})
@@ -935,6 +987,8 @@ export const useRpgStore = create<RpgStoreState>()(
             completionHistory: [...(task.completionHistory ?? []), skipRecord].slice(-365),
             currentStreak: 0,
             totalSkipped: (task.totalSkipped ?? 0) + 1,
+            // При сбросе стрика снимаем множитель за стрик (streak mode)
+            ...(task.streakMultiplier?.mode === 'streak' ? { streakMultiplier: undefined } : {}),
           }
 
           // Для instant — сбрасываем задачу (без наград), чтобы можно было выполнить снова
@@ -1006,6 +1060,7 @@ export const useRpgStore = create<RpgStoreState>()(
                 currentStreak: 0,
                 totalSkipped: (t.totalSkipped ?? 0) + 1,
                 completionHistory: [...(t.completionHistory ?? []), missedRecord].slice(-365),
+                ...(t.streakMultiplier?.mode === 'streak' ? { streakMultiplier: undefined } : {}),
               }))
               return
             }
@@ -1022,6 +1077,7 @@ export const useRpgStore = create<RpgStoreState>()(
                   cycleEnd: endDate,
                   status: 'missed' as const,
                 }].slice(-365),
+                ...(task.streakMultiplier?.mode === 'streak' ? { streakMultiplier: undefined } : {}),
               } : {}
               // Определяем причину архивации:
               // - completed: все циклы выполнены (byCount и completedCount >= endCount, или задача выполнена в последнем цикле)
@@ -1060,6 +1116,7 @@ export const useRpgStore = create<RpgStoreState>()(
                   completionHistory: [...(t.completionHistory ?? []), missedRecord].slice(-365),
                   currentCycleStart: nowTime,
                   lastCompletedAt: undefined,
+                  ...(t.streakMultiplier?.mode === 'streak' ? { streakMultiplier: undefined } : {}),
                   ...(t.kind === 'counter' ? { current: 0 } : {}),
                   ...(t.kind === 'nested' ? {
                     subtasks: t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
@@ -1640,8 +1697,8 @@ export const useRpgStore = create<RpgStoreState>()(
                 stock: (prev.stock ?? 1) - 1,
               }))
             }
-            const loot = openLootbox(itemId)
-            return { loot }
+            addToInventory(itemId)
+            return true
           }
 
           // Videogame: mark as base-purchased, keep in shop, add to inventory
@@ -1698,8 +1755,15 @@ export const useRpgStore = create<RpgStoreState>()(
               } else {
                 addToInventory(entry.id, qty)
               }
-              const resultItem = get().shopItems.find((i) => i.id === entry.id)
-              return { itemId: entry.id, name: resultItem?.name ?? 'Награда' }
+              let name: string
+              if (entry.id === CURRENCY_IDS.COINS) name = `Монеты x${qty}`
+              else if (entry.id === CURRENCY_IDS.GEMS) name = `Кристаллы x${qty}`
+              else {
+                const resultItem = get().shopItems.find((i) => i.id === entry.id)
+                name = resultItem?.name ?? 'Награда'
+                if (qty > 1) name += ` x${qty}`
+              }
+              return { itemId: entry.id, name }
             }
           }
 
@@ -1839,7 +1903,7 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         useItem: (itemId) => {
-          const { shopItems, getActiveProfile, updateProfile, removeFromInventory, activeProfileId } = get()
+          const { shopItems, getActiveProfile, updateProfile, removeFromInventory, openLootbox, activeProfileId } = get()
           const item = shopItems.find((i) => i.id === itemId)
           if (!item) return false
 
@@ -1859,14 +1923,69 @@ export const useRpgStore = create<RpgStoreState>()(
             }))
           }
 
+          // Lootbox: open and return loot result
+          if (item.isLootBox) {
+            const loot = openLootbox(itemId)
+            removeFromInventory(itemId, 1)
+            return { loot }
+          }
+
           if (item.isDiscountVoucher && (item.discountPercent ?? 0) > 0) {
             const percent = Math.min(85, Math.max(1, item.discountPercent ?? 0))
             set((s) => ({ activeShopDiscountPercent: percent }))
             return removeFromInventory(itemId, 1)
           }
 
-          // Streak multiplier effect is applied by the habits system when checking streaks
+          // Streak multiplier: don't consume yet — return signal to open task selection modal
+          if (item.streakMultiplierEnabled) {
+            return { multiplier: true as const, itemId }
+          }
+
           return removeFromInventory(itemId, 1)
+        },
+
+        applyStreakMultiplier: (taskId, itemId) => {
+          const { tasks, shopItems, updateTask, removeFromInventory, activeProfileId } = get()
+          const task = tasks.find((t) => t.id === taskId)
+          const item = shopItems.find((i) => i.id === itemId)
+          if (!task || !item || !item.streakMultiplierEnabled) return false
+
+          // Validate mode compatibility
+          const mode = item.streakMultiplierMode ?? 'streak'
+          if (mode === 'streak' && (task.recurrence === 'once' || task.recurrence === 'instant')) return false
+          if (mode === 'instant' && task.recurrence !== 'instant') return false
+
+          // Don't apply if task already has active multiplier
+          if (task.streakMultiplier) return false
+
+          const multiplierValue = item.streakMultiplierValue ?? 1.5
+          const interval = item.streakMultiplierInterval ?? 3
+
+          // Attach multiplier to task
+          updateTask(taskId, (t) => ({
+            ...t,
+            streakMultiplier: {
+              value: multiplierValue,
+              interval,
+              mode,
+              ...(mode === 'instant' ? { remainingUses: interval } : {}),
+              appliedAt: now(),
+            },
+          }))
+
+          // Log usage
+          if (activeProfileId) {
+            set((s) => ({
+              usageHistory: [
+                ...s.usageHistory,
+                { profileId: activeProfileId, itemId, itemName: item.name, timestamp: now(), action: 'activated_multiplier' as const },
+              ].slice(-500),
+            }))
+          }
+
+          // Remove item from inventory
+          removeFromInventory(itemId, 1)
+          return true
         },
 
         // ─── Debug Mode ───────────────────────────────────────────────────

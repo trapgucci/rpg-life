@@ -49,6 +49,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
   const [isLootBox, setIsLootBox] = useState(false)
   const [lootTable, setLootTable] = useState<LootTableEntry[]>([])
   const [streakMultiplierEnabled, setStreakMultiplierEnabled] = useState(false)
+  const [streakMultiplierMode, setStreakMultiplierMode] = useState<'streak' | 'instant'>('streak')
   const [streakMultiplierValue, setStreakMultiplierValue] = useState(1.5)
   const [streakMultiplierInterval, setStreakMultiplierInterval] = useState(3)
   const [isDiscountVoucher, setIsDiscountVoucher] = useState(false)
@@ -89,6 +90,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
       canGetForFree,
       groupId,
       streakMultiplierEnabled: streakMultiplierEnabled || undefined,
+      streakMultiplierMode: streakMultiplierEnabled ? streakMultiplierMode : undefined,
       streakMultiplierValue: streakMultiplierEnabled ? streakMultiplierValue : undefined,
       streakMultiplierInterval: streakMultiplierEnabled ? streakMultiplierInterval : undefined,
       isDiscountVoucher: isDiscountVoucher || undefined,
@@ -362,6 +364,38 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                 </div>
                 {streakMultiplierEnabled && (
                   <div className="mt-4 pt-4 border-t border-[var(--border)] space-y-4">
+                    {/* Mode selector */}
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Режим</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setStreakMultiplierMode('streak')}
+                          className={cn(
+                            'flex flex-col items-center gap-1 rounded-xl border py-2.5 px-2 text-center transition-all',
+                            streakMultiplierMode === 'streak'
+                              ? 'border-[var(--accent)] bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]/30'
+                              : 'border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
+                          )}
+                        >
+                          <span className={cn('text-sm font-bold', streakMultiplierMode === 'streak' ? 'text-[var(--accent)]' : 'text-[var(--fg)]')}>За стрик</span>
+                          <span className="text-[10px] text-[var(--fg-muted)]">Классический режим</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setStreakMultiplierMode('instant')}
+                          className={cn(
+                            'flex flex-col items-center gap-1 rounded-xl border py-2.5 px-2 text-center transition-all',
+                            streakMultiplierMode === 'instant'
+                              ? 'border-[var(--accent)] bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]/30'
+                              : 'border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
+                          )}
+                        >
+                          <span className={cn('text-sm font-bold', streakMultiplierMode === 'instant' ? 'text-[var(--accent)]' : 'text-[var(--fg)]')}>Для инстант</span>
+                          <span className="text-[10px] text-[var(--fg-muted)]">Ограничен N выполнениями</span>
+                        </button>
+                      </div>
+                    </div>
                     <div>
                       <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Множитель</label>
                       <div className="grid grid-cols-3 gap-2">
@@ -384,9 +418,15 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Срабатывает каждые</label>
+                      <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">
+                        {streakMultiplierMode === 'streak' ? 'Срабатывает каждые' : 'Действует на'}
+                      </label>
                       <div className="grid grid-cols-3 gap-2">
-                        {([{ value: 3, label: '3', desc: 'выполнения' }, { value: 5, label: '5', desc: 'выполнений' }, { value: 7, label: '7', desc: 'выполнений' }] as const).map((opt) => (
+                        {([
+                          { value: 3, label: '3', desc: streakMultiplierMode === 'streak' ? 'выполнения' : 'выполнения' },
+                          { value: 5, label: '5', desc: 'выполнений' },
+                          { value: 7, label: '7', desc: 'выполнений' },
+                        ] as const).map((opt) => (
                           <button
                             key={opt.value}
                             type="button"
@@ -404,6 +444,11 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                         ))}
                       </div>
                     </div>
+                    {streakMultiplierMode === 'instant' && (
+                      <p className="text-xs text-[var(--fg-muted)] bg-[var(--surface-elevated)] rounded-lg p-2.5">
+                        Множитель будет действовать на следующие {streakMultiplierInterval} выполнений мгновенной задачи. Инстант задачу нельзя пропустить, поэтому множитель не теряется.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

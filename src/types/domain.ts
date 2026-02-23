@@ -137,6 +137,19 @@ export interface TaskBase {
   totalSkipped?: number
   coinReward: number
   gemReward: number
+  /** Активный множитель за стрик (привязан к задаче через предмет из инвентаря) */
+  streakMultiplier?: {
+    /** Значение множителя (1.5, 2, 2.5) */
+    value: number
+    /** Каждые N выполнений срабатывает множитель */
+    interval: number
+    /** Режим: streak (для циклических) | instant (для инстант задач) */
+    mode: 'streak' | 'instant'
+    /** Оставшееся количество выполнений (для instant режима) */
+    remainingUses?: number
+    /** Timestamp привязки */
+    appliedAt: number
+  }
 }
 
 /** Simple checkbox: done or not */
@@ -457,6 +470,8 @@ export interface ShopItem {
   canGetForFree?: boolean
   /** Множитель за стрик: при использовании предмета увеличивает награды */
   streakMultiplierEnabled?: boolean
+  /** Режим множителя: 'streak' (классический стрик) | 'instant' (для мгновенных задач, ограничен N выполнениями) */
+  streakMultiplierMode?: 'streak' | 'instant'
   /** Значение множителя: 1.5 (простой), 2 (средний), 2.5 (сложный) */
   streakMultiplierValue?: number
   /** Промежуток срабатывания множителя: каждые N выполнений (3, 5, 7) */
