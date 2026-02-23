@@ -30,7 +30,10 @@
       "Bash(git merge:*)",
       "Bash(git status:*)",
       "Bash(node:*)",
-      "Bash(xattr:*)"
+      "Bash(xattr:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(git stash pop:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Jahseh\\Desktop\\rpg-life"

@@ -524,6 +524,15 @@ export interface PurchaseHistoryEntry {
   timestamp: number
 }
 
+/** Запись в истории использования предмета из инвентаря */
+export interface UsageHistoryEntry {
+  profileId: ProfileId
+  itemId: ItemId
+  itemName: string
+  timestamp: number
+  action: 'used' | 'opened_lootbox' | 'activated_discount' | 'activated_multiplier'
+}
+
 /** Currencies (e.g. Gold, Diamonds) */
 export interface Currency {
   id: CurrencyId

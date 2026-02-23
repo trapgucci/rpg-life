@@ -304,6 +304,14 @@ html.dark,
     background: var(--scrollbar-hover);
   }
 
+  /* Hidden scrollbar (scroll still works) */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Focus styles */
   *:focus-visible {
     outline: 2px solid var(--accent);

@@ -102,7 +102,7 @@ export default function Modal({
       {/* Backdrop */}
       <div
         className={cn(
-          'absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200',
+          'absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200 pointer-events-none',
           isAnimating ? 'opacity-100' : 'opacity-0'
         )}
       />
@@ -111,7 +111,7 @@ export default function Modal({
       <div
         ref={modalRef}
         className={cn(
-          'relative w-full rounded-2xl bg-white dark:bg-[var(--surface)] shadow-2xl',
+          'relative flex flex-col w-full max-h-[85vh] rounded-2xl bg-white dark:bg-[var(--surface)] shadow-2xl',
           'border border-[var(--border)] transition-all duration-200 ease-out',
           sizeClasses[size],
           isAnimating
@@ -148,7 +148,7 @@ export default function Modal({
         )}
 
         {/* Content */}
-        <div className={cn(!title && !showCloseButton && 'rounded-2xl overflow-hidden')}>
+        <div className={cn('flex-1 min-h-0 overflow-y-auto', !title && !showCloseButton && 'rounded-2xl')}>
           {children}
         </div>
       </div>

@@ -23,6 +23,7 @@ import type {
   ItemId,
   InventoryEntry,
   PurchaseHistoryEntry,
+  UsageHistoryEntry,
   AppSettings,
   CurrencyId,
   TaskCompletionRecord,
@@ -202,6 +203,8 @@ interface RpgStoreState {
   inventory: InventoryEntry[]
   /** История покупок в магазине (по профилям) */
   purchaseHistory: PurchaseHistoryEntry[]
+  /** История использования предметов из инвентаря (по профилям) */
+  usageHistory: UsageHistoryEntry[]
   /** Активная скидка в магазине в % (только на монеты), сбрасывается после одной покупки */
   activeShopDiscountPercent: number | null
   settings: AppSettings
@@ -348,6 +351,7 @@ export const useRpgStore = create<RpgStoreState>()(
         shopItems: [],
         inventory: [],
         purchaseHistory: [],
+        usageHistory: [],
         activeShopDiscountPercent: null,
         settings: { ...DEFAULT_SETTINGS },
         debugDaysOffset: 0,
@@ -1762,9 +1766,25 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         useItem: (itemId) => {
-          const { shopItems, getActiveProfile, updateProfile, removeFromInventory } = get()
+          const { shopItems, getActiveProfile, updateProfile, removeFromInventory, activeProfileId } = get()
           const item = shopItems.find((i) => i.id === itemId)
           if (!item) return false
+
+          // Determine action type for usage history
+          let action: UsageHistoryEntry['action'] = 'used'
+          if (item.isLootBox) action = 'opened_lootbox'
+          else if (item.isDiscountVoucher) action = 'activated_discount'
+          else if (item.streakMultiplierEnabled) action = 'activated_multiplier'
+
+          // Log usage history
+          if (activeProfileId) {
+            set((s) => ({
+              usageHistory: [
+                ...s.usageHistory,
+                { profileId: activeProfileId, itemId, itemName: item.name, timestamp: now(), action },
+              ].slice(-500),
+            }))
+          }
 
           if (item.isDiscountVoucher && (item.discountPercent ?? 0) > 0) {
             const percent = Math.min(85, Math.max(1, item.discountPercent ?? 0))
@@ -1808,6 +1828,8 @@ export const useRpgStore = create<RpgStoreState>()(
             craftRecipes: state.craftRecipes,
             shopItems: state.shopItems,
             inventory: state.inventory,
+            purchaseHistory: state.purchaseHistory,
+            usageHistory: state.usageHistory,
             activeShopDiscountPercent: state.activeShopDiscountPercent,
             settings: state.settings,
             stats: state.stats,
@@ -1830,6 +1852,8 @@ export const useRpgStore = create<RpgStoreState>()(
               craftRecipes: data.craftRecipes ?? [],
               shopItems: data.shopItems ?? [],
               inventory: data.inventory ?? [],
+              purchaseHistory: data.purchaseHistory ?? [],
+              usageHistory: data.usageHistory ?? [],
               activeShopDiscountPercent: data.activeShopDiscountPercent ?? null,
               settings: { ...DEFAULT_SETTINGS, ...data.settings },
               stats: data.stats ?? get().stats,
@@ -1881,6 +1905,7 @@ export const useRpgStore = create<RpgStoreState>()(
         shopItems: s.shopItems,
         inventory: s.inventory,
         purchaseHistory: s.purchaseHistory,
+        usageHistory: s.usageHistory,
         activeShopDiscountPercent: s.activeShopDiscountPercent,
         settings: s.settings,
         stats: s.stats,
@@ -1889,6 +1914,7 @@ export const useRpgStore = create<RpgStoreState>()(
         if (!state) return
         if (state.activeShopDiscountPercent === undefined) useRpgStore.setState({ activeShopDiscountPercent: null })
         if (!state.purchaseHistory) useRpgStore.setState({ purchaseHistory: [] })
+        if (!state.usageHistory) useRpgStore.setState({ usageHistory: [] })
         if (!state.taskGroups) useRpgStore.setState({ taskGroups: [] })
         if (!state.itemGroups) useRpgStore.setState({ itemGroups: [] })
         if (!state.tasks) useRpgStore.setState({ tasks: [] })

@@ -1,11 +1,28 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { cn } from '../lib/cn'
-import { Package, Search, X } from 'lucide-react'
+import { Package, Search, X, Clock } from 'lucide-react'
 import { useRpgStore } from '../store/useRpgStore'
 import InventoryItemCard from '../components/InventoryItemCard'
-import InventoryDetailPanel from '../components/InventoryDetailPanel'
+import InventoryItemModal from '../components/InventoryItemModal'
+import InventoryHistorySidebar from '../components/InventoryHistorySidebar'
 import ConfirmModal from '../components/ConfirmModal'
+import Modal from '../components/Modal'
 import type { ShopItem, InventoryEntry, ItemGroup } from '../types/domain'
+
+/* ─── Types ─────────────────────────────────────────────────────────────────── */
+
+interface EnrichedEntry {
+  entry: InventoryEntry
+  item: ShopItem
+  group: ItemGroup | null
+}
+
+interface GroupBucket {
+  group: ItemGroup | null
+  items: EnrichedEntry[]
+}
+
+/* ─── Component ─────────────────────────────────────────────────────────────── */
 
 export default function InventoryPage() {
   // ── Store ──────────────────────────────────────────────────────────────────
@@ -17,17 +34,18 @@ export default function InventoryPage() {
   const useItem = useRpgStore((s) => s.useItem)
 
   // ── Local state ────────────────────────────────────────────────────────────
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
+  const [detailModalItemId, setDetailModalItemId] = useState<string | null>(null)
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null)
   const [showSearch, setShowSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
+  const [showMobileHistory, setShowMobileHistory] = useState(false)
 
-  // ── Refs ────────────────────────────────────────────────────────────────────
+  // ── Refs ──────────────────────────────────────────────────────────────────
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
-  // ── Derived data ───────────────────────────────────────────────────────────
+  // ── Derived data ─────────────────────────────────────────────────────────
   const itemGroups = useMemo(
     () =>
       activeProfileId
@@ -39,18 +57,35 @@ export default function InventoryPage() {
     [allItemGroups, activeProfileId],
   )
 
+  const groupMap = useMemo(() => {
+    const map = new Map<string, ItemGroup>()
+    for (const g of itemGroups) map.set(g.id, g)
+    return map
+  }, [itemGroups])
+
+  const shopItemMap = useMemo(() => {
+    const map = new Map<string, ShopItem>()
+    for (const item of shopItems) map.set(item.id, item)
+    return map
+  }, [shopItems])
+
   const enrichedInventory = useMemo(() => {
-    return inventory
-      .map((entry) => ({
+    const query = searchQuery.trim().toLowerCase()
+    const result: EnrichedEntry[] = []
+
+    for (const entry of inventory) {
+      const item = shopItemMap.get(entry.itemId)
+      if (!item) continue
+      if (query && !item.name.toLowerCase().includes(query)) continue
+      result.push({
         entry,
-        item: shopItems.find((i) => i.id === entry.itemId) as ShopItem | undefined,
-      }))
-      .filter((x): x is { entry: InventoryEntry; item: ShopItem } => x.item != null)
-      .filter((x) => {
-        if (!searchQuery.trim()) return true
-        return x.item.name.toLowerCase().includes(searchQuery.toLowerCase())
+        item,
+        group: item.groupId ? groupMap.get(item.groupId) ?? null : null,
       })
-  }, [inventory, shopItems, searchQuery])
+    }
+
+    return result
+  }, [inventory, shopItemMap, groupMap, searchQuery])
 
   const orderedGroupIds = useMemo(() => {
     const ids = itemGroups.map((g) => g.id)
@@ -59,7 +94,7 @@ export default function InventoryPage() {
   }, [itemGroups])
 
   const groupedInventory = useMemo(() => {
-    const groups = new Map<string, { group: ItemGroup | null; items: typeof enrichedInventory }>()
+    const groups = new Map<string, GroupBucket>()
 
     for (const g of itemGroups) {
       groups.set(g.id, { group: g, items: [] })
@@ -79,26 +114,30 @@ export default function InventoryPage() {
     return groups
   }, [enrichedInventory, itemGroups])
 
-  const totalUniqueItems = enrichedInventory.length
-  const totalQuantity = enrichedInventory.reduce((sum, x) => sum + x.entry.quantity, 0)
+  const nonEmptyGroupIds = useMemo(
+    () => orderedGroupIds.filter((id) => (groupedInventory.get(id)?.items.length ?? 0) > 0),
+    [orderedGroupIds, groupedInventory],
+  )
 
-  // Selected entry lookup (across all inventory, not just filtered)
-  const selectedEntry = useMemo(() => {
-    if (!selectedItemId) return null
-    const entry = inventory.find((e) => e.itemId === selectedItemId)
-    if (!entry) return null
-    const item = shopItems.find((i) => i.id === entry.itemId)
-    if (!item) return null
-    return { entry, item }
-  }, [selectedItemId, inventory, shopItems])
+  const { totalUniqueItems, totalQuantity } = useMemo(() => {
+    let unique = 0
+    let qty = 0
+    for (const e of enrichedInventory) {
+      unique++
+      qty += e.entry.quantity
+    }
+    return { totalUniqueItems: unique, totalQuantity: qty }
+  }, [enrichedInventory])
 
-  // ── Section refs ───────────────────────────────────────────────────────────
+  const hasGroups = nonEmptyGroupIds.length > 1
+
+  // ── Section refs ─────────────────────────────────────────────────────────
   const setSectionRef = useCallback((groupId: string, el: HTMLDivElement | null) => {
     if (el) sectionRefs.current.set(groupId, el)
     else sectionRefs.current.delete(groupId)
   }, [])
 
-  // ── IntersectionObserver ───────────────────────────────────────────────────
+  // ── IntersectionObserver ─────────────────────────────────────────────────
   useEffect(() => {
     const container = scrollContainerRef.current
     if (!container) return
@@ -134,9 +173,9 @@ export default function InventoryPage() {
     }
 
     return () => observer.disconnect()
-  }, [orderedGroupIds, enrichedInventory])
+  }, [orderedGroupIds])
 
-  // ── Scroll to group ────────────────────────────────────────────────────────
+  // ── Scroll to group ──────────────────────────────────────────────────────
   const scrollToGroup = useCallback((groupId: string) => {
     setActiveGroupId(groupId)
     const el = sectionRefs.current.get(groupId)
@@ -148,105 +187,127 @@ export default function InventoryPage() {
     }
   }, [])
 
-  // ── Handlers ───────────────────────────────────────────────────────────────
-  const handleUse = useCallback(() => {
-    if (!selectedItemId) return
-    useItem(selectedItemId)
-  }, [selectedItemId, useItem])
+  // ── Handlers ─────────────────────────────────────────────────────────────
+  const handleUse = useCallback((itemId: string) => {
+    useItem(itemId)
+    // Close modal if item is fully consumed
+    const entry = inventory.find((e) => e.itemId === itemId)
+    if (entry && entry.quantity <= 1) {
+      setDetailModalItemId(null)
+    }
+  }, [useItem, inventory])
+
+  const handleDelete = useCallback((itemId: string) => {
+    setDeletingItemId(itemId)
+  }, [])
 
   const handleConfirmDelete = useCallback(() => {
     if (!deletingItemId) return
-    const entry = inventory.find((e) => e.itemId === deletingItemId)
     removeFromInventory(deletingItemId, 1)
-    if (selectedItemId === deletingItemId && entry && entry.quantity <= 1) {
-      setSelectedItemId(null)
+    // Close modal if removing last unit
+    if (detailModalItemId === deletingItemId) {
+      const entry = inventory.find((e) => e.itemId === deletingItemId)
+      if (entry && entry.quantity <= 1) {
+        setDetailModalItemId(null)
+      }
     }
     setDeletingItemId(null)
-  }, [deletingItemId, selectedItemId, inventory, removeFromInventory])
+  }, [deletingItemId, detailModalItemId, inventory, removeFromInventory])
+
+  const handleCancelDelete = useCallback(() => setDeletingItemId(null), [])
+  const handleCloseModal = useCallback(() => setDetailModalItemId(null), [])
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ─── RENDER ────────────────────────────────────────────────────────────────
   // ═══════════════════════════════════════════════════════════════════════════
 
-  const nonEmptyGroupIds = useMemo(
-    () => orderedGroupIds.filter((id) => (groupedInventory.get(id)?.items.length ?? 0) > 0),
-    [orderedGroupIds, groupedInventory],
-  )
-
-  const hasGroups = nonEmptyGroupIds.length > 1
-
   return (
-    <div className="flex h-full min-h-0 overflow-hidden gap-4">
-      {/* ─── LEFT PANEL ─────────────────────────────────────────────────── */}
-      <div className="flex w-full md:basis-[42%] md:max-w-[560px] md:min-w-[420px] md:shrink-0 flex-col gap-4">
-        {/* Header */}
-        <div className="glass-card rounded-2xl p-3 md:p-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 md:gap-3 min-w-0">
-              <div className="flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 shadow-lg shadow-purple-500/30">
-                <Package className="h-4.5 w-4.5 md:h-5 md:w-5 text-white" />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-base md:text-lg font-bold text-[var(--fg)]">Инвентарь</h1>
-                <p className="text-[10px] md:text-xs text-[var(--fg-muted)]">
-                  {totalUniqueItems} предметов, {totalQuantity} шт.
-                </p>
-              </div>
+    <div className="flex h-full min-h-0 flex-col gap-4">
+      {/* ─── HEADER ─────────────────────────────────────────────────────── */}
+      <div className="glass-card rounded-2xl p-3 md:p-4 shrink-0">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 md:gap-3 min-w-0">
+            <div className="flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 shadow-lg shadow-purple-500/30">
+              <Package className="h-4.5 w-4.5 md:h-5 md:w-5 text-white" />
             </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowSearch(!showSearch)}
-                className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
-                  'border border-[var(--border)] text-[var(--fg-muted)]',
-                  'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
-                  showSearch && 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-subtle)]',
-                )}
-                title="Поиск"
-              >
-                <Search className="h-4 w-4" />
-              </button>
+            <div className="min-w-0">
+              <h1 className="text-base md:text-lg font-bold text-[var(--fg)]">Инвентарь</h1>
+              <p className="text-[10px] md:text-xs text-[var(--fg-muted)]">
+                {totalUniqueItems} предметов, {totalQuantity} шт.
+              </p>
             </div>
           </div>
 
-          {/* Search input */}
-          {showSearch && (
-            <div className="relative mt-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--fg-muted)] pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    setSearchQuery('')
-                    setShowSearch(false)
-                  }
-                }}
-                placeholder="Поиск по предметам..."
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-9 pr-9 py-2.5 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all"
-                autoFocus
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-md text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] transition-colors"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+          <div className="flex items-center gap-2">
+            {/* Mobile history button */}
+            <button
+              type="button"
+              onClick={() => setShowMobileHistory(true)}
+              className={cn(
+                'md:hidden flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
+                'border border-[var(--border)] text-[var(--fg-muted)]',
+                'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
               )}
-            </div>
-          )}
+              title="История"
+            >
+              <Clock className="h-4 w-4" />
+            </button>
+
+            {/* Search button */}
+            <button
+              type="button"
+              onClick={() => setShowSearch(!showSearch)}
+              className={cn(
+                'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
+                'border border-[var(--border)] text-[var(--fg-muted)]',
+                'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
+                showSearch && 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-subtle)]',
+              )}
+              title="Поиск"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
-        {/* ─── Scrollable content ────────────────────────────────────────── */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto thin-scrollbar pr-3">
+        {/* Search input */}
+        {showSearch && (
+          <div className="relative mt-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--fg-muted)] pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setSearchQuery('')
+                  setShowSearch(false)
+                }
+              }}
+              placeholder="Поиск по предметам..."
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-9 pr-9 py-2.5 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all"
+              autoFocus
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-md text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ─── MAIN CONTENT: CARDS + HISTORY SIDEBAR ──────────────────────── */}
+      <div className="flex flex-1 min-h-0 gap-2 md:gap-3">
+        {/* Cards area */}
+        <div ref={scrollContainerRef} className="flex-1 min-w-0 overflow-y-auto no-scrollbar">
           {/* Sticky group navigation */}
           {hasGroups && (
-            <div className="sticky top-0 z-10 pb-2 pt-1 px-1" style={{ background: 'linear-gradient(to bottom, var(--bg-solid) 60%, transparent)' }}>
+            <div className="sticky top-0 z-10 pb-2 pt-1 px-1">
               <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
                 {nonEmptyGroupIds.map((groupId) => {
                   const groupData = groupedInventory.get(groupId)
@@ -266,9 +327,7 @@ export default function InventoryPage() {
                         'flex items-center gap-1.5',
                         isActive
                           ? 'bg-[var(--accent)] text-white shadow-md'
-                          : itemCount === 0
-                            ? 'bg-[var(--surface)] text-[var(--fg-muted)] opacity-50'
-                            : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]',
+                          : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]',
                       )}
                     >
                       {groupName}
@@ -287,7 +346,7 @@ export default function InventoryPage() {
             </div>
           )}
 
-          {/* Empty state (no items at all) */}
+          {/* Empty state */}
           {enrichedInventory.length === 0 ? (
             <div className="glass-card flex flex-col items-center justify-center rounded-2xl py-16">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-500/10">
@@ -305,9 +364,8 @@ export default function InventoryPage() {
             <div className="space-y-6 pb-4">
               {nonEmptyGroupIds.map((groupId) => {
                 const groupData = groupedInventory.get(groupId)
-                if (!groupData) return null
+                if (!groupData || groupData.items.length === 0) return null
                 const { group, items } = groupData
-                if (items.length === 0) return null
                 const groupName = groupId === '__no_group__'
                   ? 'Без группы'
                   : group?.name ?? 'Группа'
@@ -319,7 +377,6 @@ export default function InventoryPage() {
                     ref={(el) => setSectionRef(groupId, el)}
                     data-group-id={groupId}
                   >
-                    {/* Section header */}
                     <div className="flex items-center gap-2 mb-3 px-1">
                       <div
                         className="h-1 w-6 rounded-full"
@@ -329,14 +386,14 @@ export default function InventoryPage() {
                       <span className="text-xs text-[var(--fg-muted)]">({items.length})</span>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {items.map(({ entry, item }) => (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
+                      {items.map(({ entry, item, group: itemGroup }) => (
                         <InventoryItemCard
                           key={entry.itemId}
                           item={item}
                           quantity={entry.quantity}
-                          selected={entry.itemId === selectedItemId}
-                          onSelect={() => setSelectedItemId(entry.itemId)}
+                          group={itemGroup}
+                          onClick={() => setDetailModalItemId(entry.itemId)}
                         />
                       ))}
                     </div>
@@ -346,50 +403,25 @@ export default function InventoryPage() {
             </div>
           )}
         </div>
-      </div>
 
-      {/* ─── RIGHT PANEL (desktop) ──────────────────────────────────────── */}
-      <div className="hidden md:block md:min-w-0 md:flex-1 md:min-h-0 relative">
-        {selectedEntry ? (
-          <div className="absolute inset-0">
-            <InventoryDetailPanel
-              item={selectedEntry.item}
-              quantity={selectedEntry.entry.quantity}
-              acquiredAt={selectedEntry.entry.acquiredAt}
-              onDeselect={() => setSelectedItemId(null)}
-              onUse={handleUse}
-              onDelete={() => setDeletingItemId(selectedEntry.item.id)}
-            />
-          </div>
-        ) : (
-          <div className="glass-card flex h-full flex-col items-center justify-center rounded-2xl">
-            <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-[var(--surface)] mb-4">
-              <Package className="h-10 w-10 text-[var(--fg-muted)]" />
-            </div>
-            <p className="font-medium text-[var(--fg)]">Выберите предмет</p>
-            <p className="mt-1 text-sm text-[var(--fg-muted)]">из инвентаря слева</p>
-          </div>
-        )}
-      </div>
-
-      {/* ─── MOBILE OVERLAY ─────────────────────────────────────────────── */}
-      {selectedEntry && (
-        <div
-          className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-habit-slide-up"
-          style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}
-        >
-          <InventoryDetailPanel
-            item={selectedEntry.item}
-            quantity={selectedEntry.entry.quantity}
-            acquiredAt={selectedEntry.entry.acquiredAt}
-            onDeselect={() => setSelectedItemId(null)}
-            onUse={handleUse}
-            onDelete={() => setDeletingItemId(selectedEntry.item.id)}
-          />
+        {/* ─── HISTORY SIDEBAR (desktop) ──────────────────────────────── */}
+        <div className="hidden md:flex md:w-[300px] shrink-0 min-h-0">
+          <InventoryHistorySidebar />
         </div>
-      )}
+      </div>
 
       {/* ─── MODALS ─────────────────────────────────────────────────────── */}
+
+      {/* Item detail modal */}
+      <InventoryItemModal
+        isOpen={detailModalItemId !== null}
+        itemId={detailModalItemId}
+        onClose={handleCloseModal}
+        onUse={handleUse}
+        onDelete={handleDelete}
+      />
+
+      {/* Delete confirmation */}
       <ConfirmModal
         isOpen={deletingItemId !== null}
         title="Удалить предмет?"
@@ -398,8 +430,20 @@ export default function InventoryPage() {
         cancelText="Отмена"
         variant="danger"
         onConfirm={handleConfirmDelete}
-        onCancel={() => setDeletingItemId(null)}
+        onCancel={handleCancelDelete}
       />
+
+      {/* Mobile history modal */}
+      <Modal
+        isOpen={showMobileHistory}
+        onClose={() => setShowMobileHistory(false)}
+        size="md"
+        title="История"
+      >
+        <div className="h-[60vh]">
+          <InventoryHistorySidebar />
+        </div>
+      </Modal>
     </div>
   )
 }
