@@ -227,6 +227,9 @@ const ModalContent = memo(function ModalContent({
         {/* Properties block */}
         {typeBadge && <PropertiesBlock item={item} />}
 
+        {/* Game time balance for video games */}
+        {item.isVideoGame && <GameTimeBlock item={item} />}
+
         {/* Purchased episodes for serials */}
         {item.isTvSerial && item.serialSeasons && item.serialSeasons.length > 0 && (
           <PurchasedEpisodesBlock seasons={item.serialSeasons} />
@@ -360,6 +363,28 @@ const PropertiesBlock = memo(function PropertiesBlock({ item }: { item: ShopItem
   )
 })
 
+const GameTimeBlock = memo(function GameTimeBlock({ item }: { item: ShopItem }) {
+  const total = item.gameTimeTotalMinutes ?? 0
+  const h = Math.floor(total / 60)
+  const m = total % 60
+  const timeStr = h > 0 ? `${h} ч ${m > 0 ? `${m} мин` : ''}` : `${m} мин`
+
+  return (
+    <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-4 mb-6">
+      <h3 className="text-sm font-semibold text-[var(--fg)] mb-3">Игровое время</h3>
+      <div className="flex items-center gap-3 rounded-xl bg-[var(--surface-card)] px-4 py-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-b from-cyan-500/15 to-cyan-500/5 text-cyan-500 ring-1 ring-inset ring-cyan-400/20 shadow-sm shadow-cyan-500/10">
+          <Clock className="h-4 w-4" />
+        </div>
+        <div>
+          <p className="text-lg font-bold text-[var(--fg)]">{timeStr}</p>
+          <p className="text-xs text-[var(--fg-muted)]">Накоплено</p>
+        </div>
+      </div>
+    </div>
+  )
+})
+
 const PurchasedEpisodesBlock = memo(function PurchasedEpisodesBlock({ seasons }: { seasons: SerialSeason[] }) {
   const purchasedSeasons = seasons.filter((s) => s.episodes.some((e) => e.purchased))
   if (purchasedSeasons.length === 0) return null
@@ -387,7 +412,7 @@ const PurchasedEpisodesBlock = memo(function PurchasedEpisodesBlock({ seasons }:
                 {purchased.map((ep) => (
                   <span
                     key={ep.id}
-                    className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10px] font-semibold text-emerald-500 bg-emerald-500/10 ring-1 ring-inset ring-emerald-400/20"
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10px] font-semibold text-pink-500 bg-pink-500/10 ring-1 ring-inset ring-pink-400/20"
                   >
                     <Check className="h-3 w-3" />
                     Серия {ep.number}

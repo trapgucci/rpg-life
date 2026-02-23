@@ -4,7 +4,7 @@ import { cn } from '../../lib/cn'
 import {
   X, Pencil, Trash2, Coins, Gem, Gift, Percent, ShoppingCart,
   ChevronRight, Settings, Folder, TrendingUp, Gamepad2, Plus, Clock,
-  Clapperboard, ChevronDown, Check,
+  Clapperboard, ChevronDown, Check, Package,
 } from 'lucide-react'
 import ItemGroupSelectModal from './ItemGroupSelectModal'
 import IconSourcePicker from './IconSourcePicker'
@@ -17,6 +17,7 @@ import {
 } from './shopUtils'
 import type { LootTableEntry } from './shopUtils'
 import ConfirmModal from '../ConfirmModal'
+import RewardBadge from '../RewardBadge'
 import EmojiPickerModal from './EmojiPickerModal'
 import LootboxEffectModal from './LootboxEffectModal'
 import DiscountVoucherModal from './DiscountVoucherModal'
@@ -904,34 +905,6 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                   </h2>
                 </div>
 
-                {/* Badges row */}
-                <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <span className={cn(
-                    'inline-flex items-center gap-1.5 rounded-2xl px-3.5 py-1.5 text-sm font-medium',
-                    typeBadge
-                      ? typeBadge.type === 'lootbox' && 'bg-gradient-to-b from-violet-500/20 to-violet-500/10 text-violet-500 ring-1 ring-inset ring-violet-400/25'
-                      : 'bg-gradient-to-b from-gray-400/20 to-gray-400/10 text-gray-500 ring-1 ring-inset ring-gray-400/25 shadow-sm shadow-gray-400/10',
-                    typeBadge?.type === 'multiplier' && 'bg-gradient-to-b from-amber-500/20 to-amber-500/10 text-amber-500 ring-1 ring-inset ring-amber-400/25',
-                    typeBadge?.type === 'discount' && 'bg-gradient-to-b from-red-500/20 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/25',
-                    typeBadge?.type === 'videogame' && 'bg-gradient-to-b from-cyan-500/20 to-cyan-500/10 text-cyan-500 ring-1 ring-inset ring-cyan-400/25',
-                    typeBadge?.type === 'serial' && 'bg-gradient-to-b from-pink-500/20 to-pink-500/10 text-pink-500 ring-1 ring-inset ring-pink-400/25',
-                  )}>
-                    {typeBadge ? (
-                      <>
-                        {typeBadge.type === 'lootbox' && <Gift className="h-3.5 w-3.5" />}
-                        {typeBadge.type === 'multiplier' && <TrendingUp className="h-3.5 w-3.5" />}
-                        {typeBadge.type === 'discount' && <Percent className="h-3.5 w-3.5" />}
-                        {typeBadge.type === 'videogame' && <Gamepad2 className="h-3.5 w-3.5" />}
-                        {typeBadge.type === 'serial' && <Clapperboard className="h-3.5 w-3.5" />}
-                        {typeBadge.label}
-                      </>
-                    ) : (
-                      'Обычный предмет'
-                    )}
-                  </span>
-
-                </div>
-
                 {/* Description */}
                 {item.description && (
                   <p className="text-[var(--fg-muted)] text-sm leading-relaxed break-words overflow-hidden">
@@ -1020,11 +993,19 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 )}
               </div>
 
-              {/* "Purchased" badge for media items */}
-              {isMediaItem && basePurchased && (
-                <div className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 bg-gradient-to-r from-emerald-500/15 to-emerald-500/5 ring-1 ring-inset ring-emerald-400/20">
-                  <Check className="h-5 w-5 text-emerald-500" />
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">Куплено</span>
+              {/* "Purchased" badge for video games — cyan themed */}
+              {item.isVideoGame && basePurchased && (
+                <div className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 bg-gradient-to-r from-cyan-500/15 to-cyan-500/5 ring-1 ring-inset ring-cyan-400/20">
+                  <Gamepad2 className="h-5 w-5 text-cyan-500" />
+                  <span className="font-semibold text-cyan-600 dark:text-cyan-400">Игра приобретена</span>
+                </div>
+              )}
+
+              {/* "Purchased" badge for serials — pink themed */}
+              {item.isTvSerial && basePurchased && (
+                <div className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 bg-gradient-to-r from-pink-500/15 to-pink-500/5 ring-1 ring-inset ring-pink-400/20">
+                  <Clapperboard className="h-5 w-5 text-pink-500" />
+                  <span className="font-semibold text-pink-600 dark:text-pink-400">Сериал приобретен</span>
                 </div>
               )}
 
@@ -1067,8 +1048,8 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 </button>
               )}
 
-              {/* Stock remaining */}
-              {item.stock !== undefined && item.stock > 0 && (
+              {/* Stock remaining (hide for serials and video games — stock=1 is obvious) */}
+              {item.stock !== undefined && item.stock > 0 && !item.isTvSerial && !item.isVideoGame && (
                 <p className="text-center text-xs text-[var(--fg-muted)] mt-3">
                   Осталось: {item.stock}
                 </p>
@@ -1109,7 +1090,13 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
               )}
 
               {!typeBadge && (
-                <p className="text-xs text-[var(--fg-muted)] mb-3">Обычный предмет</p>
+                <div className="mb-3">
+                  <span className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium bg-gradient-to-b from-gray-400/20 to-gray-400/10 text-gray-500 ring-1 ring-inset ring-gray-400/25">
+                    <Package className="h-4 w-4" />
+                    Обычный предмет
+                  </span>
+                  <p className="text-xs text-[var(--fg-muted)] mt-2">Стандартный предмет без особых свойств.</p>
+                </div>
               )}
 
               {/* Loot table preview */}
@@ -1264,7 +1251,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                         <div className="flex items-center gap-2 px-3 py-2.5">
                           <Clapperboard className="h-4 w-4 text-pink-500 shrink-0" />
                           <span className="text-sm font-bold text-[var(--fg)] flex-1">Сезон {season.number}</span>
-                          <span className={cn('text-[10px] font-medium', allPurchased ? 'text-emerald-500' : 'text-[var(--fg-muted)]')}>
+                          <span className={cn('text-[10px] font-medium', allPurchased ? 'text-pink-500' : 'text-[var(--fg-muted)]')}>
                             {purchasedInSeason}/{season.episodes.length}
                           </span>
                         </div>
@@ -1276,15 +1263,15 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                                 key={ep.id}
                                 className={cn(
                                   'flex items-center gap-2 rounded-lg px-2.5 py-2 transition-all',
-                                  ep.purchased ? 'bg-emerald-500/8' : 'bg-[var(--surface)]'
+                                  ep.purchased ? 'bg-pink-500/8' : 'bg-[var(--surface)]'
                                 )}
                               >
-                                <span className={cn('text-xs w-14 shrink-0', ep.purchased ? 'text-emerald-500 font-medium' : 'text-[var(--fg-muted)]')}>
+                                <span className={cn('text-xs w-14 shrink-0', ep.purchased ? 'text-pink-500 font-medium' : 'text-[var(--fg-muted)]')}>
                                   Серия {ep.number}
                                 </span>
                                 <div className="flex-1" />
                                 {ep.purchased ? (
-                                  <span className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10px] font-semibold text-emerald-500 bg-emerald-500/10 ring-1 ring-inset ring-emerald-400/20">
+                                  <span className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10px] font-semibold text-pink-500 bg-pink-500/10 ring-1 ring-inset ring-pink-400/20">
                                     <Check className="h-3 w-3" />Куплено
                                   </span>
                                 ) : (
@@ -1344,7 +1331,9 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
         message={
           canGetForFree
             ? 'Получить бесплатно'
-            : `Стоимость: ${effectiveCoinCost > 0 ? `${effectiveCoinCost} монет` : ''}${effectiveCoinCost > 0 && gemCostRaw > 0 ? ' + ' : ''}${gemCostRaw > 0 ? `${gemCostRaw} гемов` : ''}`
+            : (
+              <RewardBadge coins={effectiveCoinCost} gems={gemCostRaw} className="justify-center" />
+            )
         }
         confirmText="Купить"
         cancelText="Отмена"

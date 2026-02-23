@@ -1644,14 +1644,14 @@ export const useRpgStore = create<RpgStoreState>()(
             return { loot }
           }
 
-          // Videogame: mark as base-purchased, hide from shop
+          // Videogame: mark as base-purchased, keep in shop, add to inventory
           if (item.isVideoGame) {
-            const { updateShopItem } = get()
+            const { updateShopItem, addToInventory: addInv } = get()
             updateShopItem(itemId, (prev) => ({
               ...prev,
               basePurchased: true,
-              stock: 0,
             }))
+            addInv(itemId)
             return true
           }
 
@@ -1707,7 +1707,7 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         purchaseGameTime: (itemId, packageId) => {
-          const { shopItems, deductCurrency, updateShopItem } = get()
+          const { shopItems, deductCurrency, updateShopItem, activeProfileId } = get()
           const item = shopItems.find((i) => i.id === itemId)
           if (!item || !item.isVideoGame || !item.gameTimePackages) return false
           if (!item.basePurchased) return false
@@ -1724,11 +1724,29 @@ export const useRpgStore = create<RpgStoreState>()(
             ...prev,
             gameTimeTotalMinutes: (prev.gameTimeTotalMinutes ?? 0) + addMinutes,
           }))
+
+          // Add to purchase history
+          if (activeProfileId) {
+            const pkgLabel = pkg.hours % 1 === 0 ? `${pkg.hours} ч` : `${pkg.hours} ч`
+            set((s) => ({
+              purchaseHistory: [
+                ...s.purchaseHistory,
+                {
+                  profileId: activeProfileId,
+                  itemId: item.id,
+                  itemName: item.name,
+                  timestamp: now(),
+                  packageName: pkgLabel,
+                },
+              ].slice(-500),
+            }))
+          }
+
           return true
         },
 
         purchaseEpisode: (itemId, seasonId, episodeId) => {
-          const { shopItems, deductCurrency, updateShopItem } = get()
+          const { shopItems, deductCurrency, updateShopItem, activeProfileId } = get()
           const item = shopItems.find((i) => i.id === itemId)
           if (!item || !item.isTvSerial || !item.serialSeasons) return false
           if (!item.basePurchased) return false
@@ -1743,6 +1761,23 @@ export const useRpgStore = create<RpgStoreState>()(
           if (coinBalance < episode.cost) return false
 
           deductCurrency(CURRENCY_IDS.COINS, episode.cost)
+
+          // Add to purchase history
+          if (activeProfileId) {
+            set((s) => ({
+              purchaseHistory: [
+                ...s.purchaseHistory,
+                {
+                  profileId: activeProfileId,
+                  itemId: item.id,
+                  itemName: item.name,
+                  timestamp: now(),
+                  seasonNumber: season.number,
+                  episodeNumber: episode.number,
+                },
+              ].slice(-500),
+            }))
+          }
 
           // Mark episode as purchased
           const updatedSeasons = item.serialSeasons.map((s) =>

@@ -125,8 +125,8 @@ export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: 
 
           {/* Badges grid */}
           <div className="flex flex-wrap items-center gap-1.5">
-            {/* Cost badges (hide for purchased serials — episodes have their own cost) */}
-            {availableForPurchase && !canGetForFree && coinCost > 0 && !(item.isTvSerial && basePurchased) && (
+            {/* Cost badges (hide for purchased serials/videogames) */}
+            {availableForPurchase && !canGetForFree && coinCost > 0 && !(item.isTvSerial && basePurchased) && !(item.isVideoGame && basePurchased) && (
               <span
                 className={cn(
                   'inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-bold',
@@ -148,7 +148,7 @@ export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: 
               </span>
             )}
 
-            {availableForPurchase && !canGetForFree && gemCost > 0 && !(item.isTvSerial && basePurchased) && (
+            {availableForPurchase && !canGetForFree && gemCost > 0 && !(item.isTvSerial && basePurchased) && !(item.isVideoGame && basePurchased) && (
               <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-bold bg-gradient-to-b from-purple-500/20 to-purple-500/10 text-purple-600 dark:text-purple-400 ring-1 ring-inset ring-purple-400/25 shadow-sm shadow-purple-500/10">
                 <Gem className="h-3.5 w-3.5" />
                 <span className="font-black">{gemCost.toLocaleString('ru-RU')}</span>
@@ -170,18 +170,18 @@ export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: 
               </span>
             )}
 
-            {/* Stock badge */}
-            {item.stock !== undefined && item.stock > 0 && (
+            {/* Stock badge (hide for serials and video games — stock=1 is obvious) */}
+            {item.stock !== undefined && item.stock > 0 && !item.isTvSerial && !item.isVideoGame && (
               <span className="inline-flex items-center rounded-xl px-2.5 py-1 text-xs font-bold bg-gradient-to-b from-[var(--accent)]/20 to-[var(--accent)]/10 text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/25">
                 ×{item.stock}
               </span>
             )}
 
-            {/* Purchased badge for video games */}
+            {/* Video game: can buy time packages badge */}
             {item.isVideoGame && basePurchased && (
-              <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-bold bg-gradient-to-b from-emerald-500/20 to-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10">
-                <Check className="h-3 w-3" />
-                Куплено
+              <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-bold bg-gradient-to-b from-cyan-500/20 to-cyan-500/10 text-cyan-600 dark:text-cyan-400 ring-1 ring-inset ring-cyan-400/25 shadow-sm shadow-cyan-500/10">
+                <Gamepad2 className="h-3 w-3" />
+                Можно докупить пакеты
               </span>
             )}
 

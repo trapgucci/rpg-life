@@ -522,6 +522,12 @@ export interface PurchaseHistoryEntry {
   itemId: ItemId
   itemName: string
   timestamp: number
+  /** Номер сезона (для покупки серии сериала) */
+  seasonNumber?: number
+  /** Номер серии (для покупки серии сериала) */
+  episodeNumber?: number
+  /** Название купленного пакета времени (для видеоигр) */
+  packageName?: string
 }
 
 /** Запись в истории использования предмета из инвентаря */

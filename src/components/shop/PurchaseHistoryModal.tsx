@@ -127,9 +127,21 @@ export default function PurchaseHistoryModal({ onClose }: PurchaseHistoryModalPr
                               </div>
                             )}
                           </div>
-                          <span className="flex-1 min-w-0 text-sm font-medium text-[var(--fg)] truncate">
-                            {e.itemName}
-                          </span>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium text-[var(--fg)] truncate block">
+                              {e.itemName}
+                            </span>
+                            {e.seasonNumber != null && e.episodeNumber != null && (
+                              <span className="text-[10px] text-pink-500 font-medium">
+                                Сезон {e.seasonNumber}, Серия {e.episodeNumber}
+                              </span>
+                            )}
+                            {e.packageName && (
+                              <span className="text-[10px] text-cyan-500 font-medium">
+                                Пакет: {e.packageName}
+                              </span>
+                            )}
+                          </div>
                           <span className="text-xs text-[var(--fg-muted)] shrink-0">
                             {new Date(e.timestamp).toLocaleTimeString('ru-RU', {
                               hour: '2-digit',
