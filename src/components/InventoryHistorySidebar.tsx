@@ -1,17 +1,13 @@
 import { memo, useMemo } from 'react'
-import { Clock, ShoppingCart, Zap } from 'lucide-react'
+import { Clock, Zap, XCircle, Gamepad2, Tv, Timer, Gift, Percent, Trash2 } from 'lucide-react'
 import { useRpgStore } from '../store/useRpgStore'
 import { HabitIcon } from './HabitIcon'
 import { getItemIcon } from './shop/shopUtils'
-import type { ShopItem } from '../types/domain'
+import type { ShopItem, UsageHistoryEntry } from '../types/domain'
 
 /* ─── Action labels ─────────────────────────────────────────────────────────── */
 
 const ACTION_LABELS: Record<string, { label: string; cls: string }> = {
-  purchased: {
-    label: 'Покупка',
-    cls: 'bg-emerald-500/15 text-emerald-500',
-  },
   used: {
     label: 'Использовано',
     cls: 'bg-blue-500/15 text-blue-500',
@@ -28,6 +24,21 @@ const ACTION_LABELS: Record<string, { label: string; cls: string }> = {
     label: 'Множитель',
     cls: 'bg-amber-500/15 text-amber-500',
   },
+  deactivated_multiplier: {
+    label: 'Множитель снят',
+    cls: 'bg-red-500/15 text-red-500',
+  },
+  deleted: {
+    label: 'Удалено',
+    cls: 'bg-zinc-500/15 text-zinc-400',
+  },
+}
+
+const DEACTIVATION_REASONS: Record<string, string> = {
+  streak_break: 'Стрик сброшен',
+  uses_exhausted: 'Все использования',
+  task_expired: 'Задача истекла',
+  task_missed: 'Цикл пропущен',
 }
 
 /* ─── Relative time helper ──────────────────────────────────────────────────── */
@@ -54,13 +65,22 @@ interface TimelineEntry {
   itemName: string
   timestamp: number
   action: string
+  gameHoursUsed?: number
+  seasonNumber?: number
+  episodeNumber?: number
+  taskName?: string
+  taskId?: string
+  multiplierValue?: number
+  deactivationReason?: string
+  lootResultName?: string | null
+  discountPercent?: number
+  deletedQuantity?: number
 }
 
 /* ─── Component ─────────────────────────────────────────────────────────────── */
 
 export default function InventoryHistorySidebar() {
   const usageHistory = useRpgStore((s) => s.usageHistory)
-  const purchaseHistory = useRpgStore((s) => s.purchaseHistory)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const shopItems = useRpgStore((s) => s.shopItems)
 
@@ -73,28 +93,27 @@ export default function InventoryHistorySidebar() {
   const timeline = useMemo(() => {
     if (!activeProfileId) return []
 
-    const usage: TimelineEntry[] = usageHistory
+    return usageHistory
       .filter((e) => e.profileId === activeProfileId)
       .map((e) => ({
         itemId: e.itemId,
         itemName: e.itemName,
         timestamp: e.timestamp,
         action: e.action,
+        gameHoursUsed: e.gameHoursUsed,
+        seasonNumber: e.seasonNumber,
+        episodeNumber: e.episodeNumber,
+        taskName: e.taskName,
+        taskId: e.taskId,
+        multiplierValue: e.multiplierValue,
+        deactivationReason: e.deactivationReason,
+        lootResultName: e.lootResultName,
+        discountPercent: e.discountPercent,
+        deletedQuantity: e.deletedQuantity,
       }))
-
-    const purchases: TimelineEntry[] = purchaseHistory
-      .filter((e) => e.profileId === activeProfileId)
-      .map((e) => ({
-        itemId: e.itemId,
-        itemName: e.itemName,
-        timestamp: e.timestamp,
-        action: 'purchased',
-      }))
-
-    return [...usage, ...purchases]
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 50)
-  }, [usageHistory, purchaseHistory, activeProfileId])
+  }, [usageHistory, activeProfileId])
 
   return (
     <div className="glass-card flex h-full w-full flex-col rounded-2xl overflow-hidden">
@@ -118,7 +137,7 @@ export default function InventoryHistorySidebar() {
             </div>
             <p className="text-xs text-[var(--fg-muted)]">Пока нет записей</p>
             <p className="text-[10px] text-[var(--fg-muted)] mt-1">
-              Покупки и использование предметов появятся здесь
+              Использование предметов появится здесь
             </p>
           </div>
         ) : (
@@ -128,6 +147,7 @@ export default function InventoryHistorySidebar() {
                 key={`${event.timestamp}-${event.itemId}-${idx}`}
                 event={event}
                 shopItemMap={shopItemMap}
+                usageHistory={usageHistory}
               />
             ))}
           </div>
@@ -137,18 +157,128 @@ export default function InventoryHistorySidebar() {
   )
 }
 
+/* ─── Detail line ──────────────────────────────────────────────────────────── */
+
+const DetailLine = memo(function DetailLine({ event }: { event: TimelineEntry }) {
+  // Game hours
+  if (event.action === 'used' && event.gameHoursUsed) {
+    return (
+      <p className="flex items-center gap-1 text-[10px] text-[var(--fg-muted)] truncate mt-0.5">
+        <Gamepad2 className="h-2.5 w-2.5 shrink-0" />
+        Сеанс {event.gameHoursUsed} ч
+      </p>
+    )
+  }
+
+  // Serial episode
+  if (event.action === 'used' && event.seasonNumber && event.episodeNumber) {
+    return (
+      <p className="flex items-center gap-1 text-[10px] text-[var(--fg-muted)] truncate mt-0.5">
+        <Tv className="h-2.5 w-2.5 shrink-0" />
+        Сезон {event.seasonNumber}, Серия {event.episodeNumber}
+      </p>
+    )
+  }
+
+  // Lootbox opened
+  if (event.action === 'opened_lootbox') {
+    return (
+      <p className="flex items-center gap-1 text-[10px] text-[var(--fg-muted)] truncate mt-0.5">
+        <Gift className="h-2.5 w-2.5 shrink-0" />
+        {event.lootResultName
+          ? <span className="truncate text-violet-400">{event.lootResultName}</span>
+          : <span className="text-zinc-400">Ничего не выпало</span>
+        }
+      </p>
+    )
+  }
+
+  // Discount activated
+  if (event.action === 'activated_discount') {
+    return (
+      <p className="flex items-center gap-1 text-[10px] text-[var(--fg-muted)] truncate mt-0.5">
+        <Percent className="h-2.5 w-2.5 shrink-0" />
+        Скидка {event.discountPercent ?? '?'}% на следующую покупку
+      </p>
+    )
+  }
+
+  // Multiplier activated
+  if (event.action === 'activated_multiplier' && event.taskName) {
+    return (
+      <p className="flex items-center gap-1 text-[10px] text-[var(--fg-muted)] truncate mt-0.5">
+        <Timer className="h-2.5 w-2.5 shrink-0" />
+        <span className="truncate">{event.taskName}</span>
+        {event.multiplierValue && (
+          <span className="shrink-0 font-medium text-amber-500">x{event.multiplierValue}</span>
+        )}
+      </p>
+    )
+  }
+
+  // Multiplier deactivated
+  if (event.action === 'deactivated_multiplier' && event.taskName) {
+    return (
+      <p className="flex items-center gap-1 text-[10px] text-[var(--fg-muted)] truncate mt-0.5">
+        <XCircle className="h-2.5 w-2.5 shrink-0 text-red-400" />
+        <span className="truncate">{event.taskName}</span>
+        {event.deactivationReason && (
+          <span className="shrink-0 text-red-400">{DEACTIVATION_REASONS[event.deactivationReason] ?? ''}</span>
+        )}
+      </p>
+    )
+  }
+
+  // Deleted from inventory — badge is enough, no detail line needed
+
+  return null
+})
+
+/* ─── Multiplier status badge ──────────────────────────────────────────────── */
+
+const MultiplierStatusBadge = memo(function MultiplierStatusBadge({
+  event,
+  usageHistory,
+}: {
+  event: TimelineEntry
+  usageHistory: UsageHistoryEntry[]
+}) {
+  const isActive = useMemo(() => {
+    if (!event.taskId) return true
+    return !usageHistory.some(
+      (e) =>
+        e.action === 'deactivated_multiplier' &&
+        e.taskId === event.taskId &&
+        e.timestamp > event.timestamp,
+    )
+  }, [event.taskId, event.timestamp, usageHistory])
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-medium ${
+        isActive
+          ? 'bg-emerald-500/15 text-emerald-500'
+          : 'bg-zinc-500/15 text-zinc-400'
+      }`}
+    >
+      {isActive ? 'Активен' : 'Неактивен'}
+    </span>
+  )
+})
+
 /* ─── History entry row ─────────────────────────────────────────────────────── */
 
 const HistoryEntry = memo(function HistoryEntry({
   event,
   shopItemMap,
+  usageHistory,
 }: {
   event: TimelineEntry
   shopItemMap: Map<string, ShopItem>
+  usageHistory: UsageHistoryEntry[]
 }) {
   const shopItem = shopItemMap.get(event.itemId)
   const actionInfo = ACTION_LABELS[event.action] ?? ACTION_LABELS.used
-  const isPurchase = event.action === 'purchased'
 
   const iconDisplay = useMemo(() => {
     if (!shopItem) return { type: 'icon' as const, value: 'Package' }
@@ -157,9 +287,9 @@ const HistoryEntry = memo(function HistoryEntry({
   }, [shopItem])
 
   return (
-    <div className="flex items-center gap-2 rounded-xl px-2 py-2 hover:bg-[var(--surface)] transition-colors">
+    <div className="flex items-start gap-2 rounded-xl px-2 py-2 hover:bg-[var(--surface)] transition-colors">
       {/* Icon */}
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-elevated)] overflow-hidden text-[var(--fg-muted)]">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-elevated)] overflow-hidden text-[var(--fg-muted)] mt-0.5">
         {iconDisplay.type === 'image' ? (
           <img src={iconDisplay.value} alt="" className="h-5 w-5 rounded object-cover" />
         ) : (
@@ -172,15 +302,17 @@ const HistoryEntry = memo(function HistoryEntry({
         <p className="text-[11px] font-medium text-[var(--fg)] truncate leading-tight">
           {event.itemName}
         </p>
-        <div className="flex items-center gap-1.5 mt-0.5">
+
+        <DetailLine event={event} />
+
+        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
           <span className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[9px] font-medium ${actionInfo.cls}`}>
-            {isPurchase ? (
-              <ShoppingCart className="h-2.5 w-2.5" />
-            ) : (
-              <Zap className="h-2.5 w-2.5" />
-            )}
+            <Zap className="h-2.5 w-2.5" />
             {actionInfo.label}
           </span>
+          {event.action === 'activated_multiplier' && (
+            <MultiplierStatusBadge event={event} usageHistory={usageHistory} />
+          )}
           <span className="text-[9px] text-[var(--fg-muted)] tabular-nums">
             {formatRelativeTime(event.timestamp)}
           </span>

@@ -553,7 +553,27 @@ export interface UsageHistoryEntry {
   itemId: ItemId
   itemName: string
   timestamp: number
-  action: 'used' | 'opened_lootbox' | 'activated_discount' | 'activated_multiplier'
+  action: 'used' | 'opened_lootbox' | 'activated_discount' | 'activated_multiplier' | 'deactivated_multiplier' | 'deleted'
+  /** Для игр: сколько часов использовано */
+  gameHoursUsed?: number
+  /** Для сериалов: номер сезона */
+  seasonNumber?: number
+  /** Для сериалов: номер серии */
+  episodeNumber?: number
+  /** Для множителей: ID задачи */
+  taskId?: string
+  /** Для множителей: название задачи (снимок) */
+  taskName?: string
+  /** Для множителей: значение (1.5, 2, 2.5) */
+  multiplierValue?: number
+  /** Для деактивации: причина */
+  deactivationReason?: 'streak_break' | 'uses_exhausted' | 'task_expired' | 'task_missed'
+  /** Для лутбокса: что выпало (имя предмета/валюты, или null = ничего) */
+  lootResultName?: string | null
+  /** Для скидки: процент скидки */
+  discountPercent?: number
+  /** Для удаления: количество удалённых */
+  deletedQuantity?: number
 }
 
 /** Currencies (e.g. Gold, Diamonds) */
@@ -714,6 +734,8 @@ export interface AppSettings {
     hard: number
     veryHard: number
   }
+  /** Хранить историю инвентаря за N дней (0 = без ограничений) */
+  historyRetentionDays: number
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -729,6 +751,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     hard: 100,
     veryHard: 300,
   },
+  historyRetentionDays: 30,
 }
 
 // ─── Database schema (SQLite-ready) ─────────────────────────────────────────

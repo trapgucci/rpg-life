@@ -55,12 +55,13 @@ interface InventoryItemModalProps {
   onClose: () => void
   onUse: (itemId: string) => void
   onDelete: (itemId: string) => void
+  onOpenAll?: (itemId: string, quantity: number) => void
 }
 
 /* ─── Component ─────────────────────────────────────────────────────────────── */
 
 export default function InventoryItemModal({
-  isOpen, itemId, onClose, onUse, onDelete,
+  isOpen, itemId, onClose, onUse, onDelete, onOpenAll,
 }: InventoryItemModalProps) {
   const inventory = useRpgStore((s) => s.inventory)
   const shopItems = useRpgStore((s) => s.shopItems)
@@ -88,6 +89,7 @@ export default function InventoryItemModal({
         onClose={onClose}
         onUse={() => onUse(resolved.item.id)}
         onDelete={() => onDelete(resolved.item.id)}
+        onOpenAll={onOpenAll ? () => onOpenAll(resolved.item.id, resolved.entry.quantity) : undefined}
       />
     </Modal>
   )
@@ -103,10 +105,11 @@ interface ModalContentProps {
   onClose: () => void
   onUse: () => void
   onDelete: () => void
+  onOpenAll?: () => void
 }
 
 const ModalContent = memo(function ModalContent({
-  item, quantity, acquiredAt, group, onClose, onUse, onDelete,
+  item, quantity, acquiredAt, group, onClose, onUse, onDelete, onOpenAll,
 }: ModalContentProps) {
   const iconBgColor = group?.color ?? RARITY_COLORS[item.rarity]
   const typeBadge = getItemTypeBadge(item)
@@ -237,21 +240,58 @@ const ModalContent = memo(function ModalContent({
         <div className="flex flex-col gap-3">
           {/* Hide "Use" button for serials and video games — interaction is inline */}
           {!item.isTvSerial && !item.isVideoGame && (
-            <button
-              type="button"
-              onClick={onUse}
-              className={cn(
-                'w-full rounded-2xl py-4 font-semibold transition-all duration-200',
-                'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] text-white',
-                'shadow-lg shadow-[var(--accent)]/25',
-                'hover:shadow-xl hover:scale-[1.01] active:scale-[0.98]',
-              )}
-            >
-              <span className="flex items-center justify-center gap-2">
-                <Zap className="h-5 w-5" />
-                {item.isLootBox ? 'Открыть' : 'Использовать'}
-              </span>
-            </button>
+            item.isLootBox ? (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={onUse}
+                  className={cn(
+                    'flex-1 rounded-2xl py-4 font-semibold transition-all duration-200',
+                    'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] text-white',
+                    'shadow-lg shadow-[var(--accent)]/25',
+                    'hover:shadow-xl hover:scale-[1.01] active:scale-[0.98]',
+                  )}
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <Gift className="h-5 w-5" />
+                    Открыть
+                  </span>
+                </button>
+                {quantity > 1 && onOpenAll && (
+                  <button
+                    type="button"
+                    onClick={onOpenAll}
+                    className={cn(
+                      'flex-1 rounded-2xl py-4 font-semibold transition-all duration-200',
+                      'bg-gradient-to-r from-violet-500 to-violet-600 text-white',
+                      'shadow-lg shadow-violet-500/25',
+                      'hover:shadow-xl hover:scale-[1.01] active:scale-[0.98]',
+                    )}
+                  >
+                    <span className="flex items-center justify-center gap-2">
+                      <Gift className="h-5 w-5" />
+                      Открыть все ({quantity})
+                    </span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={onUse}
+                className={cn(
+                  'w-full rounded-2xl py-4 font-semibold transition-all duration-200',
+                  'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] text-white',
+                  'shadow-lg shadow-[var(--accent)]/25',
+                  'hover:shadow-xl hover:scale-[1.01] active:scale-[0.98]',
+                )}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <Zap className="h-5 w-5" />
+                  Использовать
+                </span>
+              </button>
+            )
           )}
 
           <button

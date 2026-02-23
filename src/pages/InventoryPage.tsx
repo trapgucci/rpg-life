@@ -43,6 +43,7 @@ export default function InventoryPage() {
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
   const [showMobileHistory, setShowMobileHistory] = useState(false)
   const [lootResult, setLootResult] = useState<{ itemId: string; itemName: string } | 'empty' | null>(null)
+  const [batchLootResults, setBatchLootResults] = useState<Array<{ itemId: string; itemName: string } | 'empty'> | null>(null)
   const [multiplierItemId, setMultiplierItemId] = useState<string | null>(null)
 
   // ── Refs ──────────────────────────────────────────────────────────────────
@@ -225,12 +226,49 @@ export default function InventoryPage() {
     }
   }, [useItem, inventory])
 
+  const handleOpenAll = useCallback((itemId: string, quantity: number) => {
+    setDetailModalItemId(null)
+    const results: Array<{ itemId: string; itemName: string } | 'empty'> = []
+    for (let i = 0; i < quantity; i++) {
+      const result = useItem(itemId)
+      if (result && typeof result === 'object' && 'loot' in result) {
+        if (result.loot) {
+          results.push({ itemId: result.loot.itemId, itemName: result.loot.name })
+        } else {
+          results.push('empty')
+        }
+      } else {
+        break // item no longer available
+      }
+    }
+    if (results.length > 0) {
+      setBatchLootResults(results)
+    }
+  }, [useItem])
+
   const handleDelete = useCallback((itemId: string) => {
     setDeletingItemId(itemId)
   }, [])
 
   const handleConfirmDelete = useCallback(() => {
     if (!deletingItemId) return
+    // Log deletion to usage history
+    const item = shopItems.find((i) => i.id === deletingItemId)
+    if (item && activeProfileId) {
+      useRpgStore.setState((s) => ({
+        usageHistory: [
+          ...s.usageHistory,
+          {
+            profileId: activeProfileId,
+            itemId: deletingItemId,
+            itemName: item.name,
+            timestamp: Date.now(),
+            action: 'deleted' as const,
+            deletedQuantity: 1,
+          },
+        ].slice(-500),
+      }))
+    }
     removeFromInventory(deletingItemId, 1)
     // Close modal if removing last unit
     if (detailModalItemId === deletingItemId) {
@@ -240,7 +278,7 @@ export default function InventoryPage() {
       }
     }
     setDeletingItemId(null)
-  }, [deletingItemId, detailModalItemId, inventory, removeFromInventory])
+  }, [deletingItemId, detailModalItemId, inventory, removeFromInventory, shopItems, activeProfileId])
 
   const handleCancelDelete = useCallback(() => setDeletingItemId(null), [])
   const handleCloseModal = useCallback(() => setDetailModalItemId(null), [])
@@ -447,6 +485,7 @@ export default function InventoryPage() {
         onClose={handleCloseModal}
         onUse={handleUse}
         onDelete={handleDelete}
+        onOpenAll={handleOpenAll}
       />
 
       {/* Streak multiplier task selection */}
@@ -501,6 +540,72 @@ export default function InventoryPage() {
             <button
               type="button"
               onClick={() => setLootResult(null)}
+              className="btn-primary w-full py-2.5"
+            >
+              Понятно
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Batch lootbox results modal */}
+      {batchLootResults !== null && (
+        <Modal
+          isOpen
+          onClose={() => setBatchLootResults(null)}
+          size="md"
+          showCloseButton={false}
+        >
+          <div className="p-6">
+            <div className="flex flex-col items-center text-center mb-5">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/15 mb-4">
+                <Gift className="h-7 w-7 text-violet-500" />
+              </div>
+              <h3 className="text-lg font-bold text-[var(--fg)] mb-1">
+                Открыто {batchLootResults.length} лутбоксов
+              </h3>
+            </div>
+
+            <div className="max-h-[40vh] overflow-y-auto no-scrollbar space-y-1.5 mb-5">
+              {batchLootResults.map((r, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    'flex items-center gap-2.5 rounded-xl px-3 py-2.5',
+                    r === 'empty' ? 'bg-zinc-500/5' : 'bg-violet-500/5',
+                  )}
+                >
+                  <span className={cn(
+                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sm',
+                    r === 'empty' ? 'bg-zinc-500/10 text-zinc-400' : 'bg-violet-500/10 text-violet-400',
+                  )}>
+                    {r === 'empty' ? <Frown className="h-4 w-4" /> : <Gift className="h-4 w-4" />}
+                  </span>
+                  <span className={cn(
+                    'text-sm font-medium truncate',
+                    r === 'empty' ? 'text-[var(--fg-muted)]' : 'text-[var(--fg)]',
+                  )}>
+                    {r === 'empty' ? 'Ничего не выпало' : r.itemName}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Summary */}
+            {(() => {
+              const won = batchLootResults.filter((r) => r !== 'empty')
+              const empty = batchLootResults.length - won.length
+              return (
+                <p className="text-xs text-[var(--fg-muted)] text-center mb-4">
+                  Получено: <span className="text-violet-400 font-medium">{won.length}</span>
+                  {empty > 0 && <> · Пусто: <span className="text-zinc-400 font-medium">{empty}</span></>}
+                </p>
+              )
+            })()}
+
+            <button
+              type="button"
+              onClick={() => setBatchLootResults(null)}
               className="btn-primary w-full py-2.5"
             >
               Понятно

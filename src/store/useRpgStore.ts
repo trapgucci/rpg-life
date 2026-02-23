@@ -344,6 +344,48 @@ export const useRpgStore = create<RpgStoreState>()(
         set((s) => ({ stats: { ...s.stats, ...updater(s.stats) } }))
       }
 
+      /** Add a usage history entry with automatic cleanup based on retention settings */
+      const addUsageEntry = (entry: Omit<import('../types/domain').UsageHistoryEntry, 'timestamp'> & { timestamp?: number }) => {
+        set((s) => {
+          const newEntry = { ...entry, timestamp: entry.timestamp ?? now() } as import('../types/domain').UsageHistoryEntry
+          let history = [...s.usageHistory, newEntry]
+          const days = s.settings.historyRetentionDays
+          if (days > 0) {
+            const cutoff = now() - days * 86_400_000
+            history = history.filter((e) => e.timestamp >= cutoff)
+          }
+          return { usageHistory: history.slice(-500) }
+        })
+      }
+
+      /** Log a 'deactivated_multiplier' usage history entry when a multiplier is removed from a task */
+      const logMultiplierDeactivation = (
+        task: { id: string; title: string; streakMultiplier?: { value: number; interval: number; mode: string } },
+        reason: 'streak_break' | 'uses_exhausted' | 'task_expired' | 'task_missed',
+      ) => {
+        const { activeProfileId } = get()
+        if (!activeProfileId || !task.streakMultiplier) return
+
+        // Find the activation entry to get itemId/itemName
+        const activationEntry = get().usageHistory
+          .filter((e) => e.action === 'activated_multiplier' && e.taskId === task.id)
+          .sort((a, b) => b.timestamp - a.timestamp)[0]
+
+        const itemId = activationEntry?.itemId ?? ''
+        const itemName = activationEntry?.itemName ?? 'Множитель'
+
+        addUsageEntry({
+          profileId: activeProfileId,
+          itemId,
+          itemName,
+          action: 'deactivated_multiplier' as const,
+          taskId: task.id,
+          taskName: task.title,
+          multiplierValue: task.streakMultiplier!.value,
+          deactivationReason: reason,
+        })
+      }
+
       return {
         // Initial state
         profiles: [],
@@ -780,6 +822,9 @@ export const useRpgStore = create<RpgStoreState>()(
             if (sm.mode === 'instant' && sm.remainingUses != null) {
               const left = sm.remainingUses - 1
               smUpdate.streakMultiplier = left <= 0 ? undefined : { ...sm, remainingUses: left }
+              if (left <= 0) {
+                logMultiplierDeactivation(task, 'uses_exhausted')
+              }
             }
             // streak mode: multiplier persists (removed only on streak break)
           }
@@ -986,6 +1031,11 @@ export const useRpgStore = create<RpgStoreState>()(
             completedAt: now(),
             status: 'skipped',
           }
+          // Log multiplier deactivation when streak breaks
+          if (task.streakMultiplier?.mode === 'streak') {
+            logMultiplierDeactivation(task, 'streak_break')
+          }
+
           const skipHistoryFields = {
             completionHistory: [...(task.completionHistory ?? []), skipRecord].slice(-365),
             currentStreak: 0,
@@ -1080,6 +1130,9 @@ export const useRpgStore = create<RpgStoreState>()(
 
             // Тип «once» с endDate: если дата прошла и не выполнена — архивируем как «Проваленная»
             if (task.recurrence === 'once' && endDate && nowTime >= endDate && !task.isCompleted && !task.canceledAt) {
+              if (task.streakMultiplier?.mode === 'streak') {
+                logMultiplierDeactivation(task, 'task_expired')
+              }
               const missedRecord: TaskCompletionRecord = {
                 id: crypto.randomUUID(),
                 cycleStart: task.createdAt,
@@ -1100,6 +1153,9 @@ export const useRpgStore = create<RpgStoreState>()(
 
             // Recurring (daily/weekly/monthly/yearly/custom) с endDate: если endDate прошла — архивируем
             if (task.recurrence !== 'once' && task.recurrence !== 'instant' && endDate && nowTime >= endDate && !task.canceledAt) {
+              if (!task.isCompleted && task.streakMultiplier?.mode === 'streak') {
+                logMultiplierDeactivation(task, 'task_expired')
+              }
               // Записываем пропуск последнего цикла, если не выполнена
               const missedFields = !task.isCompleted ? {
                 currentStreak: 0,
@@ -1135,6 +1191,10 @@ export const useRpgStore = create<RpgStoreState>()(
             if (task.recurrence !== 'once' && task.recurrence !== 'instant' && !task.isCompleted && !task.canceledAt) {
               const cycleEnd = getCycleEndDate(task, now())
               if (cycleEnd && nowTime > cycleEnd) {
+                // Log multiplier deactivation before removing it
+                if (task.streakMultiplier?.mode === 'streak') {
+                  logMultiplierDeactivation(task, 'task_missed')
+                }
                 // Цикл закончился, а задача не выполнена — «Пропущено»
                 const missedRecord: TaskCompletionRecord = {
                   id: crypto.randomUUID(),
@@ -1860,12 +1920,13 @@ export const useRpgStore = create<RpgStoreState>()(
           }))
 
           if (activeProfileId) {
-            set((s) => ({
-              usageHistory: [
-                ...s.usageHistory,
-                { profileId: activeProfileId, itemId, itemName: item.name, timestamp: now(), action: 'used' as const },
-              ].slice(-500),
-            }))
+            addUsageEntry({
+              profileId: activeProfileId,
+              itemId,
+              itemName: item.name,
+              action: 'used' as const,
+              gameHoursUsed: Math.round(minutes / 60 * 10) / 10,
+            })
           }
 
           return true
@@ -1947,12 +2008,14 @@ export const useRpgStore = create<RpgStoreState>()(
 
           // Log usage
           if (activeProfileId) {
-            set((s) => ({
-              usageHistory: [
-                ...s.usageHistory,
-                { profileId: activeProfileId, itemId, itemName: item.name, timestamp: now(), action: 'used' as const },
-              ].slice(-500),
-            }))
+            addUsageEntry({
+              profileId: activeProfileId,
+              itemId,
+              itemName: item.name,
+              action: 'used' as const,
+              seasonNumber: season.number,
+              episodeNumber: episode.number,
+            })
           }
 
           return true
@@ -2012,33 +2075,47 @@ export const useRpgStore = create<RpgStoreState>()(
             return { videogame: true as const, itemId }
           }
 
-          // Determine action type for usage history
-          let action: UsageHistoryEntry['action'] = 'used'
-          if (item.isLootBox) action = 'opened_lootbox'
-          else if (item.isDiscountVoucher) action = 'activated_discount'
-          else if (item.streakMultiplierEnabled) action = 'activated_multiplier'
-
-          // Log usage history
-          if (activeProfileId) {
-            set((s) => ({
-              usageHistory: [
-                ...s.usageHistory,
-                { profileId: activeProfileId, itemId, itemName: item.name, timestamp: now(), action },
-              ].slice(-500),
-            }))
-          }
-
-          // Lootbox: open and return loot result
+          // Lootbox: open, log result, and return
           if (item.isLootBox) {
             const loot = openLootbox(itemId)
+            if (activeProfileId) {
+              addUsageEntry({
+                profileId: activeProfileId,
+                itemId,
+                itemName: item.name,
+                action: 'opened_lootbox' as const,
+                lootResultName: loot?.name ?? null,
+              })
+            }
             removeFromInventory(itemId, 1)
             return { loot }
           }
 
+          // Discount voucher: log with percent, activate, and return
           if (item.isDiscountVoucher && (item.discountPercent ?? 0) > 0) {
             const percent = Math.min(85, Math.max(1, item.discountPercent ?? 0))
-            set((s) => ({ activeShopDiscountPercent: percent }))
+            if (activeProfileId) {
+              addUsageEntry({
+                profileId: activeProfileId,
+                itemId,
+                itemName: item.name,
+                action: 'activated_discount' as const,
+                discountPercent: percent,
+              })
+            }
+            set(() => ({ activeShopDiscountPercent: percent }))
             return removeFromInventory(itemId, 1)
+          }
+
+          // Generic usage (non-lootbox, non-discount, non-multiplier)
+          // Note: multiplier logging happens in applyStreakMultiplier where taskId is known
+          if (activeProfileId && !item.streakMultiplierEnabled) {
+            addUsageEntry({
+              profileId: activeProfileId,
+              itemId,
+              itemName: item.name,
+              action: 'used' as const,
+            })
           }
 
           // Streak multiplier: don't consume yet — return signal to open task selection modal
@@ -2080,12 +2157,15 @@ export const useRpgStore = create<RpgStoreState>()(
 
           // Log usage
           if (activeProfileId) {
-            set((s) => ({
-              usageHistory: [
-                ...s.usageHistory,
-                { profileId: activeProfileId, itemId, itemName: item.name, timestamp: now(), action: 'activated_multiplier' as const },
-              ].slice(-500),
-            }))
+            addUsageEntry({
+              profileId: activeProfileId,
+              itemId,
+              itemName: item.name,
+              action: 'activated_multiplier' as const,
+              taskId: taskId,
+              taskName: task.title,
+              multiplierValue,
+            })
           }
 
           // Remove item from inventory
@@ -2212,6 +2292,26 @@ export const useRpgStore = create<RpgStoreState>()(
         if (state.activeShopDiscountPercent === undefined) useRpgStore.setState({ activeShopDiscountPercent: null })
         if (!state.purchaseHistory) useRpgStore.setState({ purchaseHistory: [] })
         if (!state.usageHistory) useRpgStore.setState({ usageHistory: [] })
+
+        // Migrate settings to add historyRetentionDays if missing
+        if (state.settings && state.settings.historyRetentionDays === undefined) {
+          useRpgStore.setState({
+            settings: { ...state.settings, historyRetentionDays: 30 },
+          })
+        }
+
+        // Clean up old usage history entries based on retention setting
+        {
+          const days = state.settings?.historyRetentionDays ?? 30
+          if (days > 0 && state.usageHistory?.length) {
+            const cutoff = Date.now() - days * 86_400_000
+            const filtered = state.usageHistory.filter((e: any) => e.timestamp >= cutoff)
+            if (filtered.length < state.usageHistory.length) {
+              useRpgStore.setState({ usageHistory: filtered })
+            }
+          }
+        }
+
         if (!state.taskGroups) useRpgStore.setState({ taskGroups: [] })
         if (!state.itemGroups) useRpgStore.setState({ itemGroups: [] })
         if (!state.tasks) useRpgStore.setState({ tasks: [] })
