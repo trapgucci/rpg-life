@@ -2,10 +2,10 @@ import { useState, useRef, useEffect } from 'react'
 import {
   ChevronDown, ChevronRight, RefreshCw, CalendarClock, BarChart3, History,
   Check, SkipForward, XCircle, Zap, Coins, Gem, ListChecks, TrendingUp,
-  CheckCircle2, Ban, Flame, Crown, Archive
+  CheckCircle2, Flame, Crown, Archive
 } from 'lucide-react'
 import { cn } from '../lib/cn'
-import type { TaskRpg } from '../types/domain'
+import type { TaskRpg, TaskCompletionRecord } from '../types/domain'
 import {
   getNextAvailableDate,
   getCompletionRate, formatCycleDateRu, formatDateShortRu, getRelativeTimeRu,
@@ -434,6 +434,175 @@ export function TaskMultiplierBlock({ task }: TaskBlockProps) {
   )
 }
 
+// ─── 3. Гистограмма выполнений ───────────────────────────────────────────
+
+type HistogramPeriod = 'week' | 'month' | 'year'
+
+const PERIOD_LABELS: Record<HistogramPeriod, string> = {
+  week: 'Неделя',
+  month: 'Месяц',
+  year: 'Год',
+}
+
+/** Короткие русские названия дней недели */
+const SHORT_DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+
+/** Короткие русские названия месяцев */
+const SHORT_MONTHS = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
+
+interface HistogramBar {
+  label: string
+  count: number
+}
+
+function buildBars(history: TaskCompletionRecord[], period: HistogramPeriod): HistogramBar[] {
+  const now = new Date()
+  const completed = history.filter(r => r.status === 'completed')
+
+  if (period === 'week') {
+    // Последние 7 дней, начиная с понедельника текущей недели
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    // dayOfWeek: 0=Sun -> сдвигаем чтобы Mon=0
+    const jsDay = today.getDay()
+    const mondayOffset = jsDay === 0 ? 6 : jsDay - 1
+    const monday = new Date(today)
+    monday.setDate(today.getDate() - mondayOffset)
+
+    const bars: HistogramBar[] = []
+    for (let i = 0; i < 7; i++) {
+      const dayStart = new Date(monday)
+      dayStart.setDate(monday.getDate() + i)
+      const dayEnd = new Date(dayStart)
+      dayEnd.setDate(dayStart.getDate() + 1)
+      const count = completed.filter(r => {
+        const t = r.completedAt ?? r.cycleStart
+        return t >= dayStart.getTime() && t < dayEnd.getTime()
+      }).length
+      bars.push({ label: SHORT_DAYS[i], count })
+    }
+    return bars
+  }
+
+  if (period === 'month') {
+    // Последние 30 дней, разбитые на 6 «пятидневок»
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const bars: HistogramBar[] = []
+    for (let i = 5; i >= 0; i--) {
+      const blockEnd = new Date(today)
+      blockEnd.setDate(today.getDate() - i * 5)
+      const blockStart = new Date(blockEnd)
+      blockStart.setDate(blockEnd.getDate() - 5)
+      // Для последнего блока включаем сегодня
+      const end = i === 0 ? new Date(today.getTime() + 24 * 60 * 60 * 1000) : blockEnd
+      const count = completed.filter(r => {
+        const t = r.completedAt ?? r.cycleStart
+        return t >= blockStart.getTime() && t < end.getTime()
+      }).length
+      const d = i === 0 ? today : blockStart
+      bars.push({
+        label: `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}`,
+        count,
+      })
+    }
+    return bars
+  }
+
+  // year — последние 12 месяцев
+  const bars: HistogramBar[] = []
+  for (let i = 11; i >= 0; i--) {
+    const m = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const mEnd = new Date(m.getFullYear(), m.getMonth() + 1, 1)
+    const count = completed.filter(r => {
+      const t = r.completedAt ?? r.cycleStart
+      return t >= m.getTime() && t < mEnd.getTime()
+    }).length
+    bars.push({ label: SHORT_MONTHS[m.getMonth()], count })
+  }
+  return bars
+}
+
+function CompletionHistogram({ history }: { history: TaskCompletionRecord[] }) {
+  const [period, setPeriod] = useState<HistogramPeriod>('week')
+  const [open, setOpen] = useState(false)
+
+  const bars = buildBars(history, period)
+  const max = Math.max(...bars.map(b => b.count), 1)
+
+  return (
+    <div className="mt-3 rounded-xl border border-[var(--border)] overflow-hidden">
+      {/* Header */}
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 w-full px-3 py-2.5 text-left bg-[var(--surface)] hover:bg-[var(--surface-hover)] transition-colors"
+      >
+        <BarChart3 className="h-4 w-4 text-[var(--fg-muted)]" />
+        <span className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider flex-1">
+          График выполнений
+        </span>
+        <ChevronDown className={cn('h-4 w-4 text-[var(--fg-muted)] transition-transform', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div className="border-t border-[var(--border)] p-3">
+          {/* Period toggle */}
+          <div className="flex gap-1 mb-3 p-0.5 rounded-lg bg-[var(--border)]">
+            {(['week', 'month', 'year'] as HistogramPeriod[]).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPeriod(p)}
+                className={cn(
+                  'flex-1 text-xs font-semibold py-1.5 rounded-md transition-all',
+                  period === p
+                    ? 'bg-[var(--surface)] text-[var(--fg)] shadow-sm'
+                    : 'text-[var(--fg-muted)] hover:text-[var(--fg)]'
+                )}
+              >
+                {PERIOD_LABELS[p]}
+              </button>
+            ))}
+          </div>
+
+          {/* Bars */}
+          <div className="flex items-end gap-1.5 h-28">
+            {bars.map((bar, i) => {
+              const pct = max > 0 ? (bar.count / max) * 100 : 0
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end group">
+                  {/* Count tooltip */}
+                  <span className={cn(
+                    'text-[10px] font-bold transition-opacity',
+                    bar.count > 0 ? 'text-emerald-500' : 'text-[var(--fg-muted)] opacity-0 group-hover:opacity-100'
+                  )}>
+                    {bar.count}
+                  </span>
+                  {/* Bar */}
+                  <div
+                    className={cn(
+                      'w-full rounded-t-md transition-all duration-300',
+                      bar.count > 0
+                        ? 'bg-gradient-to-t from-emerald-500 to-emerald-400'
+                        : 'bg-[var(--border)]'
+                    )}
+                    style={{
+                      height: bar.count > 0 ? `${Math.max(pct, 8)}%` : '4px',
+                    }}
+                  />
+                  {/* Label */}
+                  <span className="text-[9px] text-[var(--fg-muted)] leading-none mt-0.5">
+                    {bar.label}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── 3. Статистика задачи ────────────────────────────────────────────────
 
 export function TaskStatsBlock({ task }: TaskBlockProps) {
@@ -442,10 +611,31 @@ export function TaskStatsBlock({ task }: TaskBlockProps) {
     task.recurrenceSettings?.completedCount ?? 0,
     history.filter(r => r.status === 'completed').length
   )
-  const skippedCount = task.totalSkipped ?? 0
   const rate = getCompletionRate(task)
   const streak = task.currentStreak ?? 0
   const best = task.bestStreak ?? 0
+  const isInstant = task.recurrence === 'instant'
+
+  // Для инстант-задач: выполнения сегодня и рекорд за день
+  const todayKey = isInstant ? getDateKey(Date.now()) : ''
+  const todayCount = isInstant
+    ? history.filter(r => r.status === 'completed' && r.completedAt && getDateKey(r.completedAt) === todayKey).length
+    : 0
+  const bestDayCount = isInstant
+    ? (() => {
+        const dayCounts = new Map<string, number>()
+        for (const r of history) {
+          if (r.status === 'completed' && r.completedAt) {
+            const key = getDateKey(r.completedAt)
+            dayCounts.set(key, (dayCounts.get(key) ?? 0) + 1)
+          }
+        }
+        let max = 0
+        for (const c of dayCounts.values()) { if (c > max) max = c }
+        return max
+      })()
+    : 0
+
   const hasData = history.length > 0 || completedCount > 0
 
   return (
@@ -480,44 +670,66 @@ export function TaskStatsBlock({ task }: TaskBlockProps) {
             </div>
 
             {/* Stat grid */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 mb-3">
+              {/* Выполнено — полная ширина */}
               <div className="rounded-2xl bg-gradient-to-b from-emerald-500/12 to-emerald-500/4 p-4 text-center ring-1 ring-inset ring-emerald-400/15 shadow-sm shadow-emerald-500/5">
                 <div className="flex items-center justify-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-emerald-500/25 to-emerald-500/10 ring-1 ring-inset ring-emerald-400/30">
-                    <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-b from-emerald-500/25 to-emerald-500/10 ring-1 ring-inset ring-emerald-400/30">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                   </div>
                   <div className="text-2xl font-bold text-emerald-500">{completedCount}</div>
                 </div>
                 <div className="text-xs mt-1 text-[var(--fg-muted)]">Выполнено</div>
               </div>
-              <div className="rounded-2xl bg-gradient-to-b from-red-500/12 to-red-500/4 p-4 text-center ring-1 ring-inset ring-red-400/15 shadow-sm shadow-red-500/5">
-                <div className="flex items-center justify-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-red-500/25 to-red-500/10 ring-1 ring-inset ring-red-400/30">
-                    <Ban className="h-4.5 w-4.5 text-red-500" />
-                  </div>
-                  <div className="text-2xl font-bold text-red-500">{skippedCount}</div>
-                </div>
-                <div className="text-xs mt-1 text-[var(--fg-muted)]">Пропущено</div>
-              </div>
-              <div className="rounded-2xl bg-gradient-to-b from-orange-500/12 to-orange-500/4 p-4 text-center ring-1 ring-inset ring-orange-400/15 shadow-sm shadow-orange-500/5">
-                <div className="flex items-center justify-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-orange-500/25 to-orange-500/10 ring-1 ring-inset ring-orange-400/30">
-                    <Flame className="h-4.5 w-4.5 text-orange-500" />
-                  </div>
-                  <div className="text-2xl font-bold text-orange-500">{streak}</div>
-                </div>
-                <div className="text-xs mt-1 text-[var(--fg-muted)]">Текущая серия</div>
-              </div>
-              <div className="rounded-2xl bg-gradient-to-b from-amber-500/12 to-amber-500/4 p-4 text-center ring-1 ring-inset ring-amber-400/15 shadow-sm shadow-amber-500/5">
-                <div className="flex items-center justify-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-amber-500/25 to-amber-500/10 ring-1 ring-inset ring-amber-400/30">
-                    <Crown className="h-4.5 w-4.5 text-amber-500" />
-                  </div>
-                  <div className="text-2xl font-bold text-amber-500">{best}</div>
-                </div>
-                <div className="text-xs mt-1 text-[var(--fg-muted)]">Лучший результат</div>
-              </div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              {isInstant ? (
+                <>
+                  <div className="rounded-2xl bg-gradient-to-b from-blue-500/12 to-blue-500/4 p-4 text-center ring-1 ring-inset ring-blue-400/15 shadow-sm shadow-blue-500/5">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-blue-500/25 to-blue-500/10 ring-1 ring-inset ring-blue-400/30">
+                        <Zap className="h-4.5 w-4.5 text-blue-500" />
+                      </div>
+                      <div className="text-2xl font-bold text-blue-500">{todayCount}</div>
+                    </div>
+                    <div className="text-xs mt-1 text-[var(--fg-muted)]">Сегодня</div>
+                  </div>
+                  <div className="rounded-2xl bg-gradient-to-b from-violet-500/12 to-violet-500/4 p-4 text-center ring-1 ring-inset ring-violet-400/15 shadow-sm shadow-violet-500/5">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-violet-500/25 to-violet-500/10 ring-1 ring-inset ring-violet-400/30">
+                        <Crown className="h-4.5 w-4.5 text-violet-500" />
+                      </div>
+                      <div className="text-2xl font-bold text-violet-500">{bestDayCount}</div>
+                    </div>
+                    <div className="text-xs mt-1 text-[var(--fg-muted)]">Рекорд за день</div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="rounded-2xl bg-gradient-to-b from-orange-500/12 to-orange-500/4 p-4 text-center ring-1 ring-inset ring-orange-400/15 shadow-sm shadow-orange-500/5">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-orange-500/25 to-orange-500/10 ring-1 ring-inset ring-orange-400/30">
+                        <Flame className="h-4.5 w-4.5 text-orange-500" />
+                      </div>
+                      <div className="text-2xl font-bold text-orange-500">{streak}</div>
+                    </div>
+                    <div className="text-xs mt-1 text-[var(--fg-muted)]">Текущая серия</div>
+                  </div>
+                  <div className="rounded-2xl bg-gradient-to-b from-amber-500/12 to-amber-500/4 p-4 text-center ring-1 ring-inset ring-amber-400/15 shadow-sm shadow-amber-500/5">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-amber-500/25 to-amber-500/10 ring-1 ring-inset ring-amber-400/30">
+                        <Crown className="h-4.5 w-4.5 text-amber-500" />
+                      </div>
+                      <div className="text-2xl font-bold text-amber-500">{best}</div>
+                    </div>
+                    <div className="text-xs mt-1 text-[var(--fg-muted)]">Лучший результат</div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Гистограмма выполнений */}
+            <CompletionHistogram history={history} />
           </>
         ) : (
           <div className="text-center py-6">
@@ -585,6 +797,206 @@ function formatTime(ts: number): string {
 function getDateKey(ts: number): string {
   const d = new Date(ts)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/** Отдельная карточка записи истории (для переиспользования) */
+function HistoryRecordCard({ record, task }: { record: TaskCompletionRecord; task: TaskRpg }) {
+  const isOnce = task.recurrence === 'once'
+  const config =
+    record.status === 'skipped' && isOnce
+      ? { bg: 'bg-gradient-to-b from-red-500/15 to-red-500/5', iconBg: 'bg-gradient-to-b from-red-500/25 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/30', icon: XCircle, label: 'Провалено' }
+    : record.status === 'missed' && isOnce
+      ? { bg: 'bg-gradient-to-b from-red-500/15 to-red-500/5', iconBg: 'bg-gradient-to-b from-red-500/25 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/30', icon: XCircle, label: 'Провалено (авто)' }
+    : record.status === 'missed'
+      ? { bg: 'bg-gradient-to-b from-blue-500/15 to-blue-500/5', iconBg: 'bg-gradient-to-b from-blue-500/25 to-blue-500/10 text-blue-500 ring-1 ring-inset ring-blue-400/30', icon: SkipForward, label: 'Пропущено (авто)' }
+    : STATUS_CONFIG[record.status]
+  const Icon = config.icon
+  const subs = record.completedSubtasks ?? []
+  const recXp = (record.xpEarned ?? 0) + subs.reduce((s, sub) => s + (sub.xpEarned ?? 0), 0)
+  const recCoins = (record.coinsEarned ?? 0) + subs.reduce((s, sub) => s + (sub.coinReward ?? 0), 0)
+  const recGems = (record.gemsEarned ?? 0) + subs.reduce((s, sub) => s + (sub.gemReward ?? 0), 0)
+
+  return (
+    <div className="rounded-xl border border-[var(--border)] overflow-hidden">
+      <div className={cn('flex items-center gap-3 p-3', config.bg)}>
+        <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-xl', config.iconBg)}>
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-[var(--fg)]">{config.label}</p>
+          <p className="text-[11px] text-[var(--fg-muted)]">{formatTime(record.completedAt ?? record.cycleStart)}</p>
+        </div>
+        {record.status === 'completed' && (
+          <div className="flex flex-wrap items-center gap-1.5 text-xs shrink-0">
+            {recXp > 0 && (
+              <span className="inline-flex items-center gap-0.5 rounded-lg bg-gradient-to-b from-purple-500/20 to-purple-500/8 px-1.5 py-0.5 text-purple-500 font-semibold ring-1 ring-inset ring-purple-400/25 shadow-sm shadow-purple-500/10">
+                <Zap className="h-3 w-3" />+{recXp}
+              </span>
+            )}
+            {recCoins > 0 && (
+              <span className="inline-flex items-center gap-0.5 rounded-lg bg-gradient-to-b from-amber-500/20 to-amber-500/8 px-1.5 py-0.5 text-amber-500 font-semibold ring-1 ring-inset ring-amber-400/25 shadow-sm shadow-amber-500/10">
+                <Coins className="h-3 w-3" />+{recCoins}
+              </span>
+            )}
+            {recGems > 0 && (
+              <span className="inline-flex items-center gap-0.5 rounded-lg bg-gradient-to-b from-cyan-500/20 to-cyan-500/8 px-1.5 py-0.5 text-cyan-500 font-semibold ring-1 ring-inset ring-cyan-400/25 shadow-sm shadow-cyan-500/10">
+                <Gem className="h-3 w-3" strokeWidth={2.5} />+{recGems}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+      {subs.length > 0 && (
+        <div className="border-t border-[var(--border)] bg-[var(--surface)] px-3 py-2">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <ListChecks className="h-3 w-3 text-[var(--fg-muted)]" />
+            <span className="text-[10px] font-bold text-[var(--fg-muted)] uppercase tracking-wider">
+              Подзадачи ({subs.filter(s => s.isCompleted !== false).length}/{subs.length})
+            </span>
+          </div>
+          <div className="flex flex-col gap-1">
+            {subs.map((sub) => {
+              const done = sub.isCompleted !== false
+              return (
+                <div key={sub.id} className="flex items-center gap-2 py-1">
+                  {done ? (
+                    <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-emerald-500/20">
+                      <Check className="h-2.5 w-2.5 text-emerald-500" />
+                    </div>
+                  ) : (
+                    <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[var(--border)]">
+                      <XCircle className="h-2.5 w-2.5 text-[var(--fg-muted)]" />
+                    </div>
+                  )}
+                  <span className={cn('flex-1 text-xs truncate', done ? 'text-[var(--fg)]' : 'text-[var(--fg-muted)]')}>{sub.title}</span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {(sub.xpEarned ?? 0) > 0 && (
+                      <span className="text-[10px] text-purple-500 font-semibold">+{sub.xpEarned} XP</span>
+                    )}
+                    {(sub.coinReward ?? 0) > 0 && (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-500 font-semibold">
+                        <Coins className="h-2.5 w-2.5" />{sub.coinReward}
+                      </span>
+                    )}
+                    {(sub.gemReward ?? 0) > 0 && (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] text-cyan-500 font-semibold">
+                        <Gem className="h-2.5 w-2.5" strokeWidth={2.5} />{sub.gemReward}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Сводная карточка для инстант-задач: «Выполнено (x100)» + разворачиваемый список */
+function InstantDaySummary({ records, task }: { records: TaskCompletionRecord[]; task: TaskRpg }) {
+  const [expanded, setExpanded] = useState(false)
+  const count = records.length
+
+  // Агрегированные награды за день
+  const dayXp = records.reduce((sum, r) => {
+    const subs = r.completedSubtasks ?? []
+    return sum + (r.xpEarned ?? 0) + subs.reduce((s, sub) => s + (sub.xpEarned ?? 0), 0)
+  }, 0)
+  const dayCoins = records.reduce((sum, r) => {
+    const subs = r.completedSubtasks ?? []
+    return sum + (r.coinsEarned ?? 0) + subs.reduce((s, sub) => s + (sub.coinReward ?? 0), 0)
+  }, 0)
+  const dayGems = records.reduce((sum, r) => {
+    const subs = r.completedSubtasks ?? []
+    return sum + (r.gemsEarned ?? 0) + subs.reduce((s, sub) => s + (sub.gemReward ?? 0), 0)
+  }, 0)
+
+  return (
+    <div className="rounded-xl border border-[var(--border)] overflow-hidden">
+      {/* Summary header — always visible */}
+      <button
+        type="button"
+        onClick={() => setExpanded(v => !v)}
+        className={cn(
+          'flex items-center gap-3 p-3 w-full text-left transition-colors',
+          'bg-gradient-to-b from-emerald-500/15 to-emerald-500/5',
+          'hover:from-emerald-500/20 hover:to-emerald-500/10'
+        )}
+      >
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-emerald-500/25 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/30">
+          <Check className="h-4 w-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-[var(--fg)]">
+            Выполнено <span className="text-emerald-500">(x{count})</span>
+          </p>
+          <p className="text-[11px] text-[var(--fg-muted)]">
+            {formatTime(records[records.length - 1].completedAt ?? records[records.length - 1].cycleStart)}
+            {' — '}
+            {formatTime(records[0].completedAt ?? records[0].cycleStart)}
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {dayXp > 0 && (
+            <span className="inline-flex items-center gap-0.5 rounded-lg bg-gradient-to-b from-purple-500/20 to-purple-500/8 px-1.5 py-0.5 text-xs text-purple-500 font-semibold ring-1 ring-inset ring-purple-400/25 shadow-sm shadow-purple-500/10">
+              <Zap className="h-3 w-3" />+{dayXp}
+            </span>
+          )}
+          {dayCoins > 0 && (
+            <span className="inline-flex items-center gap-0.5 rounded-lg bg-gradient-to-b from-amber-500/20 to-amber-500/8 px-1.5 py-0.5 text-xs text-amber-500 font-semibold ring-1 ring-inset ring-amber-400/25 shadow-sm shadow-amber-500/10">
+              <Coins className="h-3 w-3" />+{dayCoins}
+            </span>
+          )}
+          {dayGems > 0 && (
+            <span className="inline-flex items-center gap-0.5 rounded-lg bg-gradient-to-b from-cyan-500/20 to-cyan-500/8 px-1.5 py-0.5 text-xs text-cyan-500 font-semibold ring-1 ring-inset ring-cyan-400/25 shadow-sm shadow-cyan-500/10">
+              <Gem className="h-3 w-3" strokeWidth={2.5} />+{dayGems}
+            </span>
+          )}
+          <ChevronDown className={cn('h-4 w-4 text-[var(--fg-muted)] transition-transform', expanded && 'rotate-180')} />
+        </div>
+      </button>
+
+      {/* Expanded detail list */}
+      {expanded && (
+        <div className="border-t border-[var(--border)] bg-[var(--surface)] px-3 py-2 flex flex-col gap-1.5">
+          {records.map((record) => {
+            const subs = record.completedSubtasks ?? []
+            const recXp = (record.xpEarned ?? 0) + subs.reduce((s, sub) => s + (sub.xpEarned ?? 0), 0)
+            const recCoins = (record.coinsEarned ?? 0) + subs.reduce((s, sub) => s + (sub.coinReward ?? 0), 0)
+            const recGems = (record.gemsEarned ?? 0) + subs.reduce((s, sub) => s + (sub.gemReward ?? 0), 0)
+            return (
+              <div key={record.id} className="flex items-center gap-2 py-1">
+                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15">
+                  <Check className="h-3 w-3 text-emerald-500" />
+                </div>
+                <span className="text-xs text-[var(--fg-muted)] shrink-0">
+                  {formatTime(record.completedAt ?? record.cycleStart)}
+                </span>
+                <div className="flex-1" />
+                <div className="flex items-center gap-1 shrink-0">
+                  {recXp > 0 && (
+                    <span className="text-[10px] text-purple-500 font-semibold">+{recXp} XP</span>
+                  )}
+                  {recCoins > 0 && (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-500 font-semibold">
+                      <Coins className="h-2.5 w-2.5" />+{recCoins}
+                    </span>
+                  )}
+                  {recGems > 0 && (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] text-cyan-500 font-semibold">
+                      <Gem className="h-2.5 w-2.5" strokeWidth={2.5} />+{recGems}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function TaskHistoryBlock({ task, nowMs = Date.now() }: TaskBlockProps) {
@@ -655,6 +1067,9 @@ export function TaskHistoryBlock({ task, nowMs = Date.now() }: TaskBlockProps) {
             <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-1">
               {sortedGroups.map(([dateKey, records]) => {
                 const groupTs = records[0].completedAt ?? records[0].cycleStart
+                const isInstant = task.recurrence === 'instant'
+                const completedRecords = isInstant ? records.filter(r => r.status === 'completed') : []
+                const otherRecords = isInstant ? records.filter(r => r.status !== 'completed') : records
                 return (
                   <div key={dateKey}>
                     {/* Date header */}
@@ -665,120 +1080,16 @@ export function TaskHistoryBlock({ task, nowMs = Date.now() }: TaskBlockProps) {
                       <div className="flex-1 h-px bg-[var(--border)]" />
                     </div>
 
-                    {/* Records for this date */}
                     <div className="flex flex-col gap-2">
-                      {records.map((record) => {
-                        // Для once-задач пропуск = провал → красный стиль
-                        // Для recurring-задач пропуск (авто) → синий стиль
-                        const isOnce = task.recurrence === 'once'
-                        const config =
-                          record.status === 'skipped' && isOnce
-                            ? { bg: 'bg-gradient-to-b from-red-500/15 to-red-500/5', iconBg: 'bg-gradient-to-b from-red-500/25 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/30', icon: XCircle, label: 'Провалено' }
-                          : record.status === 'missed' && isOnce
-                            ? { bg: 'bg-gradient-to-b from-red-500/15 to-red-500/5', iconBg: 'bg-gradient-to-b from-red-500/25 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/30', icon: XCircle, label: 'Провалено (авто)' }
-                          : record.status === 'missed'
-                            ? { bg: 'bg-gradient-to-b from-blue-500/15 to-blue-500/5', iconBg: 'bg-gradient-to-b from-blue-500/25 to-blue-500/10 text-blue-500 ring-1 ring-inset ring-blue-400/30', icon: SkipForward, label: 'Пропущено (авто)' }
-                          : STATUS_CONFIG[record.status]
-                        const Icon = config.icon
-                        const subs = record.completedSubtasks ?? []
-                        // Суммируем основные + подзадачные награды для записи
-                        const recXp = (record.xpEarned ?? 0) + subs.reduce((s, sub) => s + (sub.xpEarned ?? 0), 0)
-                        const recCoins = (record.coinsEarned ?? 0) + subs.reduce((s, sub) => s + (sub.coinReward ?? 0), 0)
-                        const recGems = (record.gemsEarned ?? 0) + subs.reduce((s, sub) => s + (sub.gemReward ?? 0), 0)
-                        return (
-                          <div key={record.id} className="rounded-xl border border-[var(--border)] overflow-hidden">
-                            {/* Main record row */}
-                            <div
-                              className={cn(
-                                'flex items-center gap-3 p-3',
-                                config.bg
-                              )}
-                            >
-                              <div className={cn(
-                                'flex h-8 w-8 shrink-0 items-center justify-center rounded-xl',
-                                config.iconBg
-                              )}>
-                                <Icon className="h-4 w-4" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-[var(--fg)]">
-                                  {config.label}
-                                </p>
-                                <p className="text-[11px] text-[var(--fg-muted)]">
-                                  {formatTime(record.completedAt ?? record.cycleStart)}
-                                </p>
-                              </div>
-                              {record.status === 'completed' && (
-                                <div className="flex flex-wrap items-center gap-1.5 text-xs shrink-0">
-                                  {recXp > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 rounded-lg bg-gradient-to-b from-purple-500/20 to-purple-500/8 px-1.5 py-0.5 text-purple-500 font-semibold ring-1 ring-inset ring-purple-400/25 shadow-sm shadow-purple-500/10">
-                                      <Zap className="h-3 w-3" />+{recXp}
-                                    </span>
-                                  )}
-                                  {recCoins > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 rounded-lg bg-gradient-to-b from-amber-500/20 to-amber-500/8 px-1.5 py-0.5 text-amber-500 font-semibold ring-1 ring-inset ring-amber-400/25 shadow-sm shadow-amber-500/10">
-                                      <Coins className="h-3 w-3" />+{recCoins}
-                                    </span>
-                                  )}
-                                  {recGems > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 rounded-lg bg-gradient-to-b from-cyan-500/20 to-cyan-500/8 px-1.5 py-0.5 text-cyan-500 font-semibold ring-1 ring-inset ring-cyan-400/25 shadow-sm shadow-cyan-500/10">
-                                      <Gem className="h-3 w-3" strokeWidth={2.5} />+{recGems}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
+                      {/* Instant: сводная карточка для выполненных записей */}
+                      {isInstant && completedRecords.length > 0 && (
+                        <InstantDaySummary records={completedRecords} task={task} />
+                      )}
 
-                            {/* Completed subtasks */}
-                            {subs.length > 0 && (
-                              <div className="border-t border-[var(--border)] bg-[var(--surface)] px-3 py-2">
-                                <div className="flex items-center gap-1.5 mb-1.5">
-                                  <ListChecks className="h-3 w-3 text-[var(--fg-muted)]" />
-                                  <span className="text-[10px] font-bold text-[var(--fg-muted)] uppercase tracking-wider">
-                                    Подзадачи ({subs.filter(s => s.isCompleted !== false).length}/{subs.length})
-                                  </span>
-                                </div>
-                                <div className="flex flex-col gap-1">
-                                  {subs.map((sub) => {
-                                    const done = sub.isCompleted !== false
-                                    return (
-                                    <div key={sub.id} className="flex items-center gap-2 py-1">
-                                      {done ? (
-                                        <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-emerald-500/20">
-                                          <Check className="h-2.5 w-2.5 text-emerald-500" />
-                                        </div>
-                                      ) : (
-                                        <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[var(--border)]">
-                                          <XCircle className="h-2.5 w-2.5 text-[var(--fg-muted)]" />
-                                        </div>
-                                      )}
-                                      <span className={cn('flex-1 text-xs truncate', done ? 'text-[var(--fg)]' : 'text-[var(--fg-muted)]')}>{sub.title}</span>
-                                      <div className="flex items-center gap-1 shrink-0">
-                                        {(sub.xpEarned ?? 0) > 0 && (
-                                          <span className="text-[10px] text-purple-500 font-semibold">
-                                            +{sub.xpEarned} XP
-                                          </span>
-                                        )}
-                                        {(sub.coinReward ?? 0) > 0 && (
-                                          <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-500 font-semibold">
-                                            <Coins className="h-2.5 w-2.5" />{sub.coinReward}
-                                          </span>
-                                        )}
-                                        {(sub.gemReward ?? 0) > 0 && (
-                                          <span className="inline-flex items-center gap-0.5 text-[10px] text-cyan-500 font-semibold">
-                                            <Gem className="h-2.5 w-2.5" strokeWidth={2.5} />{sub.gemReward}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                    )
-                                  })}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
+                      {/* Остальные записи (skipped/missed для instant, все для обычных) */}
+                      {otherRecords.map((record) => (
+                        <HistoryRecordCard key={record.id} record={record} task={task} />
+                      ))}
                     </div>
                   </div>
                 )
