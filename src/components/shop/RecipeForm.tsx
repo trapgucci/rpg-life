@@ -57,6 +57,7 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
   const migratedSourceType = rawSourceType === 'habit_linked' ? 'random_drop' : rawSourceType
   const [sourceType, setSourceType] = useState<FragmentSourceType>(migratedSourceType)
   const [dropChance, setDropChance] = useState((recipe as any)?.fragmentSource?.dropChance ?? 15)
+  const [allowSubtaskDrop, setAllowSubtaskDrop] = useState<boolean>((recipe as any)?.fragmentSource?.allowSubtaskDrop ?? false)
   const [linkedTaskIds, setLinkedTaskIds] = useState<string[]>(
     (recipe as any)?.fragmentSource?.linkedTaskIds ?? []
   )
@@ -89,8 +90,8 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
 
     const fragmentSource =
       sourceType === 'task_linked'
-        ? { type: 'task_linked' as const, linkedTaskIds, dropChance }
-        : { type: 'random_drop' as const, dropChance }
+        ? { type: 'task_linked' as const, linkedTaskIds, dropChance, allowSubtaskDrop }
+        : { type: 'random_drop' as const, dropChance, allowSubtaskDrop }
 
     const data: any = {
       fragmentName: fragmentName.trim(),
@@ -361,6 +362,18 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
                 <span className="text-sm font-bold text-[var(--fg-muted)]">%</span>
               </div>
             </div>
+            <label className="flex items-center gap-2.5 mt-3 pt-3 border-t border-[var(--border)] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={allowSubtaskDrop}
+                onChange={(e) => setAllowSubtaskDrop(e.target.checked)}
+                className="h-4 w-4 rounded accent-[var(--accent)] shrink-0"
+              />
+              <div>
+                <span className="text-sm font-medium text-[var(--fg)]">Фрагменты могут выпадать из подзадач</span>
+                <p className="text-[10px] text-[var(--fg-muted)] mt-0.5">Каждая выполненная подзадача также имеет шанс дропа</p>
+              </div>
+            </label>
           </div>
         )}
 
@@ -407,6 +420,18 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
               <p className="text-xs text-[var(--fg-muted)] mt-2">
                 При выполнении каждой привязанной задачи с вероятностью {dropChance}% выпадет фрагмент
               </p>
+              <label className="flex items-center gap-2.5 mt-3 pt-3 border-t border-[var(--border)] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={allowSubtaskDrop}
+                  onChange={(e) => setAllowSubtaskDrop(e.target.checked)}
+                  className="h-4 w-4 rounded accent-[var(--accent)] shrink-0"
+                />
+                <div>
+                  <span className="text-sm font-medium text-[var(--fg)]">Фрагменты могут выпадать из подзадач</span>
+                  <p className="text-[10px] text-[var(--fg-muted)] mt-0.5">Каждая выполненная подзадача также имеет шанс дропа</p>
+                </div>
+              </label>
             </div>
           </>
         )}

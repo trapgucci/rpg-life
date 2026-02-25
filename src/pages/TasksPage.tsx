@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { cn } from '../lib/cn'
 import { CheckSquare, Plus, Sparkles, Target, Folder, Pencil, Trash2, X, Archive, ArrowUpDown, ArrowUp, ArrowDown, Search, ChevronDown, List, FlaskConical } from 'lucide-react'
 import TaskCreateForm from '../components/TaskCreateForm'
-import TaskCard from '../components/TaskCard'
+import TaskCard, { type TaskCardFragment } from '../components/TaskCard'
 import TaskDetailPanel from '../components/TaskDetailPanel'
 import { useRpgStore } from '../store/useRpgStore'
 import ConfirmModal from '../components/ConfirmModal'
@@ -52,6 +52,7 @@ export default function TasksPage() {
   const reorderTaskGroups = useRpgStore((s) => s.reorderTaskGroups)
   const resetRecurringTasks = useRpgStore((s) => s.resetRecurringTasks)
   const getTaskRewardPreview = useRpgStore((s) => s.getTaskRewardPreview)
+  const getCraftRecipes = useRpgStore((s) => s.getCraftRecipes)
 
   // Debug mode
   const debugDaysOffset = useRpgStore((s) => s.debugDaysOffset)
@@ -199,6 +200,36 @@ export default function TasksPage() {
       rewardMap.set(task.id, getTaskRewardPreview(task))
     }
 
+    // Build fragment map: taskId -> fragments that can drop from it
+    const recipes = getCraftRecipes().filter((r) => !r.crafted)
+    const fragmentMap = new Map<string, TaskCardFragment[]>()
+    for (const recipe of recipes) {
+      const fs = (recipe as any).fragmentSource as { type?: string; dropChance?: number; linkedTaskIds?: string[] } | undefined
+      if (!fs) continue
+      const frag: TaskCardFragment = {
+        id: recipe.id,
+        fragmentName: recipe.fragmentName,
+        fragmentIcon: recipe.fragmentIcon,
+        fragmentIconImage: (recipe as any).fragmentIconImage,
+        fragmentColor: recipe.fragmentColor || '#a855f7',
+        dropChance: fs.dropChance ?? 0,
+      }
+      if (fs.type === 'random_drop') {
+        // random_drop applies to all tasks
+        for (const task of filteredTasks) {
+          const existing = fragmentMap.get(task.id) ?? []
+          existing.push(frag)
+          fragmentMap.set(task.id, existing)
+        }
+      } else if (fs.type === 'task_linked' && fs.linkedTaskIds) {
+        for (const tid of fs.linkedTaskIds) {
+          const existing = fragmentMap.get(tid) ?? []
+          existing.push(frag)
+          fragmentMap.set(tid, existing)
+        }
+      }
+    }
+
     const sorted = [...filteredTasks].sort((a, b) => {
       if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1
 
@@ -228,8 +259,8 @@ export default function TasksPage() {
       }
     })
 
-    return sorted.map(task => ({ task, rewards: rewardMap.get(task.id)! }))
-  }, [filteredTasks, sortField, sortDirection, getTaskRewardPreview])
+    return sorted.map(task => ({ task, rewards: rewardMap.get(task.id)!, fragments: fragmentMap.get(task.id) }))
+  }, [filteredTasks, sortField, sortDirection, getTaskRewardPreview, getCraftRecipes])
 
   // Bug fix: look up selectedTask in ALL tasks (not just filteredTasks)
   // so switching filter/group doesn't lose the selected task panel
@@ -854,7 +885,7 @@ export default function TasksPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {tasksWithRewards.map(({ task, rewards }) => (
+              {tasksWithRewards.map(({ task, rewards, fragments }) => (
                 <TaskCard
                   key={task.id}
                   task={task}
@@ -867,6 +898,7 @@ export default function TasksPage() {
                     }
                   }}
                   rewards={rewards}
+                  fragments={fragments}
                 />
               ))}
             </div>

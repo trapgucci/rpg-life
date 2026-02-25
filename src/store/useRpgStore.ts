@@ -305,7 +305,7 @@ interface RpgStoreState {
   deleteCraftRecipe: (id: CraftRecipeId) => void
   addFragment: (recipeId: CraftRecipeId, amount?: number) => void
   craftItem: (recipeId: CraftRecipeId) => boolean
-  tryRandomFragmentDrop: (taskId?: TaskId) => void
+  tryRandomFragmentDrop: (taskId?: TaskId, isSubtask?: boolean) => void
 
   // Shop actions
   getShopItems: () => ShopItem[]
@@ -1388,7 +1388,7 @@ export const useRpgStore = create<RpgStoreState>()(
 
           // Дроп фрагментов при выполнении подзадачи
           if (isNowCompleted) {
-            get().tryRandomFragmentDrop(subtaskId)
+            get().tryRandomFragmentDrop(subtaskId, true)
           }
         },
 
@@ -1704,14 +1704,17 @@ export const useRpgStore = create<RpgStoreState>()(
           return true
         },
 
-        tryRandomFragmentDrop: (taskId?: string) => {
+        tryRandomFragmentDrop: (taskId?: string, isSubtask = false) => {
           const recipes = get().getCraftRecipes().filter((r) => !r.crafted)
 
           recipes.forEach((recipe) => {
             const fs = (recipe as any).fragmentSource as
-              | { type?: string; dropChance?: number; linkedTaskIds?: string[]; streakRequired?: number }
+              | { type?: string; dropChance?: number; linkedTaskIds?: string[]; streakRequired?: number; allowSubtaskDrop?: boolean }
               | undefined
             if (!fs || !fs.type) return
+
+            // If this is a subtask completion, only drop if allowSubtaskDrop is enabled
+            if (isSubtask && !fs.allowSubtaskDrop) return
 
             const chance = typeof fs.dropChance === 'number' ? fs.dropChance / 100 : 0
 

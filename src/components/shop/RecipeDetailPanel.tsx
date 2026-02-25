@@ -39,7 +39,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
 
   // --- Fragment source (runtime extended field) ---
   const rawSource = (recipe as any).fragmentSource
-  const fragmentSource: { type?: string; dropChance?: number; linkedTaskIds?: string[]; streakRequired?: number } =
+  const fragmentSource: { type?: string; dropChance?: number; linkedTaskIds?: string[]; streakRequired?: number; allowSubtaskDrop?: boolean } =
     rawSource != null && typeof rawSource === 'object'
       ? rawSource
       : { type: 'random_drop', dropChance: 0 }
@@ -86,6 +86,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
   const [editResultRarity, setEditResultRarity] = useState<ItemRarity>(recipe.resultRarity)
   const [editSourceType, setEditSourceType] = useState<FragmentSourceType>(sourceType)
   const [editDropChance, setEditDropChance] = useState(fragmentSource?.dropChance ?? 15)
+  const [editAllowSubtaskDrop, setEditAllowSubtaskDrop] = useState<boolean>(fragmentSource?.allowSubtaskDrop ?? false)
   const [editLinkedTaskIds, setEditLinkedTaskIds] = useState<string[]>(fragmentSource?.linkedTaskIds ?? [])
   const [editResultItemId, setEditResultItemId] = useState<string | null>(recipe.resultItemId || null)
   const [editCraftCostCoins, setEditCraftCostCoins] = useState(coinCost)
@@ -110,7 +111,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
 
   const resetEditState = (r: CraftRecipe) => {
     const src = (r as any).fragmentSource
-    const fs: { type?: string; dropChance?: number; linkedTaskIds?: string[]; streakRequired?: number } =
+    const fs: { type?: string; dropChance?: number; linkedTaskIds?: string[]; streakRequired?: number; allowSubtaskDrop?: boolean } =
       src != null && typeof src === 'object' ? src : { type: 'random_drop', dropChance: 0 }
     const fsType = fs?.type ?? 'random_drop'
     const cc = (r as any).craftCost as Record<string, number> | undefined
@@ -123,6 +124,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
     setEditResultRarity(r.resultRarity)
     setEditSourceType((fsType === 'habit_linked' ? 'random_drop' : fsType) as FragmentSourceType)
     setEditDropChance(fs?.dropChance ?? 15)
+    setEditAllowSubtaskDrop(fs?.allowSubtaskDrop ?? false)
     setEditLinkedTaskIds(fs?.linkedTaskIds ?? [])
     setEditResultItemId(r.resultItemId || null)
     setEditCraftCostCoins(cc?.coins ?? 0)
@@ -194,8 +196,8 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
     if (!editFragmentName.trim()) return
     const fragmentSourceData =
       editSourceType === 'task_linked'
-        ? { type: 'task_linked' as const, linkedTaskIds: editLinkedTaskIds, dropChance: editDropChance }
-        : { type: 'random_drop' as const, dropChance: editDropChance }
+        ? { type: 'task_linked' as const, linkedTaskIds: editLinkedTaskIds, dropChance: editDropChance, allowSubtaskDrop: editAllowSubtaskDrop }
+        : { type: 'random_drop' as const, dropChance: editDropChance, allowSubtaskDrop: editAllowSubtaskDrop }
 
     const selItem = editResultItemId ? allShopItems.find((i) => i.id === editResultItemId) : null
 
@@ -470,6 +472,14 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                   </div>
                 )}
 
+                {/* Subtask drop flag */}
+                {fragmentSource?.allowSubtaskDrop && (
+                  <div className="flex items-center justify-between py-2.5">
+                    <span className="text-xs text-[var(--fg-muted)]">Подзадачи</span>
+                    <span className="text-xs font-medium text-emerald-500">Могут дропать</span>
+                  </div>
+                )}
+
                 {/* Craft cost */}
                 {hasCost && (
                   <div className="flex items-center justify-between py-2.5">
@@ -701,6 +711,13 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                     <span className="text-sm font-bold text-[var(--fg-muted)]">%</span>
                   </div>
                 </div>
+                <label className="flex items-center gap-2.5 mt-3 pt-3 border-t border-[var(--border)] cursor-pointer">
+                  <input type="checkbox" checked={editAllowSubtaskDrop} onChange={(e) => setEditAllowSubtaskDrop(e.target.checked)} className="h-4 w-4 rounded accent-[var(--accent)] shrink-0" />
+                  <div>
+                    <span className="text-sm font-medium text-[var(--fg)]">Фрагменты могут выпадать из подзадач</span>
+                    <p className="text-[10px] text-[var(--fg-muted)] mt-0.5">Каждая выполненная подзадача также имеет шанс дропа</p>
+                  </div>
+                </label>
               </div>
             )}
 
@@ -729,6 +746,13 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                   <p className="text-xs text-[var(--fg-muted)] mt-2">
                     При выполнении каждой привязанной задачи с вероятностью {editDropChance}% выпадет фрагмент
                   </p>
+                  <label className="flex items-center gap-2.5 mt-3 pt-3 border-t border-[var(--border)] cursor-pointer">
+                    <input type="checkbox" checked={editAllowSubtaskDrop} onChange={(e) => setEditAllowSubtaskDrop(e.target.checked)} className="h-4 w-4 rounded accent-[var(--accent)] shrink-0" />
+                    <div>
+                      <span className="text-sm font-medium text-[var(--fg)]">Фрагменты могут выпадать из подзадач</span>
+                      <p className="text-[10px] text-[var(--fg-muted)] mt-0.5">Каждая выполненная подзадача также имеет шанс дропа</p>
+                    </div>
+                  </label>
                 </div>
               </>
             )}

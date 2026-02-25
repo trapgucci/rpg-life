@@ -2,6 +2,7 @@ import { CheckSquare, Hash, ListChecks, Clock, Repeat, Flag, Archive, CalendarCl
 import { cn } from '../lib/cn'
 import type { TaskRpg } from '../types/domain'
 import RewardBadge from './RewardBadge'
+import { HabitIcon } from './HabitIcon'
 import { getNextAvailableDate, getRelativeTimeRu } from '../lib/taskCycleUtils'
 
 // Glow keyframes moved to index.css (global, not per-card)
@@ -34,15 +35,26 @@ const PRIORITY_LABELS = {
   high: 'Высокий',
 } as const
 
+export interface TaskCardFragment {
+  id: string
+  fragmentName: string
+  fragmentIcon: string
+  fragmentIconImage?: string
+  fragmentColor: string
+  dropChance: number
+}
+
 interface TaskCardProps {
   task: TaskRpg
   selected?: boolean
   onSelect: () => void
   /** Предвычисленные награды (для оптимизации) */
   rewards?: { xp: number; coins: number; gems: number; multiplierActive?: boolean }
+  /** Фрагменты, которые могут выпасть из этой задачи */
+  fragments?: TaskCardFragment[]
 }
 
-export default function TaskCard({ task, selected, onSelect, rewards }: TaskCardProps) {
+export default function TaskCard({ task, selected, onSelect, rewards, fragments }: TaskCardProps) {
   const Icon = KIND_ICON[task.kind]
   const priority = task.priority ?? 'none'
 
@@ -159,6 +171,35 @@ export default function TaskCard({ task, selected, onSelect, rewards }: TaskCard
                 customXp={!!task.customXp}
               />
             )}
+
+            {/* Fragment drop badges */}
+            {fragments && fragments.length > 0 && fragments.map((frag) => (
+              <span
+                key={frag.id}
+                className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-semibold shadow-sm ring-1 ring-inset"
+                style={{
+                  background: `linear-gradient(to bottom, ${frag.fragmentColor}20, ${frag.fragmentColor}08)`,
+                  color: frag.fragmentColor,
+                  '--tw-ring-color': `${frag.fragmentColor}30`,
+                  boxShadow: `0 1px 3px ${frag.fragmentColor}15`,
+                } as React.CSSProperties}
+              >
+                <span
+                  className="flex h-4 w-4 items-center justify-center rounded-[5px] shrink-0"
+                  style={{
+                    background: `linear-gradient(135deg, ${frag.fragmentColor}cc, ${frag.fragmentColor}80)`,
+                    boxShadow: `inset 1px 1px 2px rgba(255,255,255,0.3), 0 1px 3px ${frag.fragmentColor}40`,
+                  }}
+                >
+                  {frag.fragmentIconImage ? (
+                    <img src={frag.fragmentIconImage} alt="" className="h-full w-full rounded-[5px] object-cover" />
+                  ) : (
+                    <HabitIcon iconName={frag.fragmentIcon || 'Puzzle'} size={10} className="text-white drop-shadow-sm" />
+                  )}
+                </span>
+                {frag.fragmentName}
+              </span>
+            ))}
 
             {/* Recurrence */}
             {task.recurrence !== 'once' && (

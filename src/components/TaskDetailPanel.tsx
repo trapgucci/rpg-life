@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   Check, SkipForward, Pencil, Trash2, X,
   Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder, Edit2, Target, Hash, ListChecks, CheckSquare, Flag, Coins, Gem, Zap, Archive, XCircle, AlertTriangle
@@ -14,6 +14,7 @@ import SubtaskCreateModal, { type SubtaskEditData, type SubtaskFormData } from '
 import RecurrenceSelectModal from './RecurrenceSelectModal'
 import ConfirmModal from './ConfirmModal'
 import RewardBadge from './RewardBadge'
+import { HabitIcon } from './HabitIcon'
 import { TaskCurrentCycleBlock, TaskMultiplierBlock, TaskStatsBlock, TaskHistoryBlock } from './TaskCycleSections'
 import { getNextAvailableDate, getRelativeTimeRu, getSubtaskXp, isTodayScheduled } from '../lib/taskCycleUtils'
 
@@ -81,6 +82,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const toggleSubtask = useRpgStore((s) => s.toggleSubtask)
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
+  const getCraftRecipes = useRpgStore((s) => s.getCraftRecipes)
 
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(task.title)
@@ -126,6 +128,21 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const taskAttrs = taskAttrIds.map((id) => attributes.find((a) => a.id === id)).filter(Boolean)
   const { xp, coins, gems } = getTaskRewardPreview(task)
   const isCustomXp = task.customXp != null
+
+  // Fragments linked to this task
+  const linkedFragments = useMemo(() => {
+    const recipes = getCraftRecipes().filter((r) => !r.crafted)
+    return recipes.filter((recipe) => {
+      const fs = (recipe as any).fragmentSource as { type?: string; linkedTaskIds?: string[] } | undefined
+      if (!fs) return false
+      if (fs.type === 'random_drop') return true
+      if (fs.type === 'task_linked') {
+        const linked = fs.linkedTaskIds ?? []
+        return linked.includes(task.id)
+      }
+      return false
+    })
+  }, [getCraftRecipes, task.id])
 
   const canComplete = canCompleteTask(task)
   const diffColor = DIFFICULTY_COLORS[task.difficulty]
@@ -1193,6 +1210,79 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   </div>
                 )}
               </div>
+
+              {/* Fragment rewards */}
+              {linkedFragments.length > 0 && (
+                <div className="space-y-2 mt-3 pt-3 border-t border-[var(--border)]">
+                  <p className="text-[10px] font-semibold text-[var(--fg-muted)] uppercase tracking-wider">Шанс дропа фрагментов</p>
+                  {linkedFragments.map((recipe) => {
+                    const fs = (recipe as any).fragmentSource as { dropChance?: number; type?: string } | undefined
+                    const chance = fs?.dropChance ?? 0
+                    const fragmentColor = recipe.fragmentColor || '#a855f7'
+                    const isTaskLinked = fs?.type === 'task_linked'
+                    return (
+                      <div
+                        key={recipe.id}
+                        className="flex items-center gap-3 rounded-2xl p-3 ring-1 ring-inset shadow-sm"
+                        style={{
+                          background: `linear-gradient(135deg, ${fragmentColor}12, ${fragmentColor}06, rgba(168,85,247,0.04))`,
+                          boxShadow: `0 2px 8px ${fragmentColor}12`,
+                          '--tw-ring-color': `${fragmentColor}25`,
+                        } as React.CSSProperties}
+                      >
+                        {/* Shard icon — prismatic crystal look */}
+                        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center">
+                          {/* Outer glow */}
+                          <div
+                            className="absolute inset-0 rounded-xl blur-[6px] opacity-50"
+                            style={{
+                              background: `linear-gradient(135deg, ${fragmentColor}60, ${fragmentColor}20)`,
+                            }}
+                          />
+                          {/* Crystal shape */}
+                          <div
+                            className="relative flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden"
+                            style={{
+                              background: `
+                                linear-gradient(135deg,
+                                  ${fragmentColor}dd 0%,
+                                  ${fragmentColor}90 30%,
+                                  ${fragmentColor}bb 50%,
+                                  ${fragmentColor}70 70%,
+                                  ${fragmentColor}dd 100%
+                                )
+                              `,
+                              boxShadow: `
+                                inset 2px 2px 4px rgba(255,255,255,0.35),
+                                inset -1px -1px 3px rgba(0,0,0,0.15),
+                                0 2px 6px ${fragmentColor}40
+                              `,
+                            }}
+                          >
+                            {/* Glass refraction highlight */}
+                            <div
+                              className="absolute top-0 left-0 w-[60%] h-[60%] rounded-bl-full opacity-30"
+                              style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.8), transparent)' }}
+                            />
+                            {(recipe as any).fragmentIconImage ? (
+                              <img src={(recipe as any).fragmentIconImage} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <HabitIcon iconName={recipe.fragmentIcon || 'Puzzle'} size={18} className="text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]" />
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold truncate" style={{ color: fragmentColor }}>{recipe.fragmentName}</p>
+                          <p className="text-[11px] text-[var(--fg-muted)] mt-0.5">
+                            {isTaskLinked ? 'За выполнение задачи' : 'За выполнение любой задачи'} — <span className="font-semibold" style={{ color: fragmentColor }}>{chance}%</span>
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Counter controls - only show when not completed */}
