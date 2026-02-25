@@ -292,7 +292,11 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
   }
 
   // ── Stats ────────────────────────────────────────────────────────────────
-  const totalPurchases = purchaseHistory.filter((e) => e.itemId === item.id).length
+  const itemPurchases = purchaseHistory.filter((e) => e.itemId === item.id)
+  const totalPurchases = itemPurchases.length
+  const lastPurchaseTs = itemPurchases.length > 0 ? Math.max(...itemPurchases.map((e) => e.timestamp)) : null
+  const totalSpentCoins = totalPurchases * (item.cost[CURRENCY_IDS.COINS] ?? 0)
+  const totalSpentGems = totalPurchases * (item.cost[CURRENCY_IDS.GEMS] ?? 0)
   const typeBadge = getItemTypeBadge(item)
 
   // ── Divider helper ───────────────────────────────────────────────────────
@@ -1499,17 +1503,42 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
             )}
 
             {/* ── Stats section (hidden for single-stock items) ────────── */}
-            {!(item.stock !== undefined && item.stock <= 1) && (
-              <div className="glass rounded-2xl p-4">
-                <h3 className="text-sm font-semibold text-[var(--fg)] mb-3">Статистика</h3>
-                <div className="flex items-center gap-3 rounded-xl bg-[var(--surface-elevated)] px-4 py-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10">
-                    <ShoppingCart className="h-4 w-4" />
+            {!(item.stock !== undefined && item.stock <= 1) && totalPurchases > 0 && (
+              <div className="glass rounded-2xl p-3">
+                <div className="flex items-center gap-3 overflow-x-auto">
+                  {/* Total purchases */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <ShoppingCart className="h-3.5 w-3.5 text-[var(--accent)]" />
+                    <span className="text-sm font-bold text-[var(--fg)]">{totalPurchases}</span>
                   </div>
-                  <div>
-                    <p className="text-lg font-bold text-[var(--fg)]">{totalPurchases}</p>
-                    <p className="text-xs text-[var(--fg-muted)]">Всего покупок</p>
+                  <span className="w-px h-4 bg-[var(--border)] shrink-0" />
+                  {/* Last purchase */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Clock className="h-3.5 w-3.5 text-emerald-500" />
+                    <span className="text-sm font-medium text-[var(--fg)]">
+                      {lastPurchaseTs ? new Date(lastPurchaseTs).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) : '—'}
+                    </span>
                   </div>
+                  {/* Total coins spent */}
+                  {totalSpentCoins > 0 && (
+                    <>
+                      <span className="w-px h-4 bg-[var(--border)] shrink-0" />
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Coins className="h-3.5 w-3.5 text-amber-500" />
+                        <span className="text-sm font-bold text-[var(--fg)]">{totalSpentCoins.toLocaleString('ru-RU')}</span>
+                      </div>
+                    </>
+                  )}
+                  {/* Total gems spent */}
+                  {totalSpentGems > 0 && (
+                    <>
+                      <span className="w-px h-4 bg-[var(--border)] shrink-0" />
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Gem className="h-3.5 w-3.5 text-purple-500" />
+                        <span className="text-sm font-bold text-[var(--fg)]">{totalSpentGems.toLocaleString('ru-RU')}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}

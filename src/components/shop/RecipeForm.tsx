@@ -4,7 +4,7 @@ import { cn } from '../../lib/cn'
 import { X, Dice5, Crosshair, Search, Package, Folder, CheckSquare, Hash, ListChecks, ChevronDown, ChevronRight } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
 import type { CraftRecipe, ItemRarity, FragmentSourceType } from '../../types/domain'
-import { RARITY_LABELS, RARITY_BADGE_CLASSES, RARITY_COLORS, migrateIcon } from './shopUtils'
+import { migrateIcon, getItemTypeColor } from './shopUtils'
 import { HabitIcon } from '../HabitIcon'
 import IconSourcePicker from './IconSourcePicker'
 import EmojiPickerModal from './EmojiPickerModal'
@@ -112,14 +112,14 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
     }
   }
 
-  const rarityColor = RARITY_COLORS[resultRarity]
+  const themeColor = getItemTypeColor(selectedItem)
 
   return (
     <div className="glass-card relative flex h-full flex-col rounded-2xl overflow-hidden">
       {/* Rarity accent strip */}
       <div
         className="absolute top-0 left-0 right-0 h-[3px] z-10"
-        style={{ background: `linear-gradient(90deg, ${rarityColor}, ${rarityColor}40)` }}
+        style={{ background: `linear-gradient(90deg, ${themeColor}, ${themeColor}40)` }}
       />
 
       {/* Header */}
@@ -144,9 +144,9 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
               onClick={() => setShowIconSource(true)}
               className="relative shrink-0 group/preview flex items-center justify-center w-[48px] h-[48px] rounded-xl overflow-hidden transition-all cursor-pointer ring-1 ring-inset shadow-md hover:ring-[var(--accent)] hover:scale-105 active:scale-95"
               style={{
-                background: `linear-gradient(to bottom, ${rarityColor}35, ${rarityColor}15)`,
-                boxShadow: `0 2px 8px ${rarityColor}25, inset 0 1px 0 ${rarityColor}20`,
-                '--tw-ring-color': `${rarityColor}40`,
+                background: `linear-gradient(to bottom, ${themeColor}35, ${themeColor}15)`,
+                boxShadow: `0 2px 8px ${themeColor}25, inset 0 1px 0 ${themeColor}20`,
+                '--tw-ring-color': `${themeColor}40`,
               } as React.CSSProperties}
               title="Изменить иконку"
             >
@@ -216,28 +216,6 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
           </div>
         </div>
 
-        {/* ─── Rarity ─── */}
-        <div className="glass rounded-2xl p-4">
-          <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Редкость</label>
-          <div className="grid grid-cols-5 gap-1.5">
-            {(['common', 'uncommon', 'rare', 'epic', 'legendary'] as ItemRarity[]).map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setResultRarity(r)}
-                className={cn(
-                  'flex flex-col items-center gap-1 rounded-xl px-2 py-2.5 text-[10px] font-bold transition-all',
-                  resultRarity === r
-                    ? cn(RARITY_BADGE_CLASSES[r], 'ring-2 scale-105 shadow-md')
-                    : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] border border-[var(--border)]'
-                )}
-              >
-                {RARITY_LABELS[r]}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* ─── Result item (Результат крафта) ─── */}
         <div className="glass rounded-2xl p-4">
           <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Результат крафта</label>
@@ -246,8 +224,8 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
               <div
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden ring-1 ring-inset shadow-sm"
                 style={{
-                  background: `linear-gradient(to bottom, ${RARITY_COLORS[selectedItem.rarity]}35, ${RARITY_COLORS[selectedItem.rarity]}15)`,
-                  '--tw-ring-color': `${RARITY_COLORS[selectedItem.rarity]}40`,
+                  background: `linear-gradient(to bottom, ${themeColor}35, ${themeColor}15)`,
+                  '--tw-ring-color': `${themeColor}40`,
                 } as React.CSSProperties}
               >
                 {selectedItem.iconImage ? (
@@ -258,9 +236,6 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-[var(--fg)] truncate">{selectedItem.name}</p>
-                <span className={cn('inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-bold mt-0.5', RARITY_BADGE_CLASSES[selectedItem.rarity])}>
-                  {RARITY_LABELS[selectedItem.rarity]}
-                </span>
               </div>
               <button
                 type="button"
@@ -504,7 +479,7 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
             <div className="max-h-72 overflow-y-auto rounded-xl bg-[var(--surface)] p-2 mb-4">
               {filteredPickerItems.map((item) => {
                 const group = itemGroups.find((g) => g.id === item.groupId)
-                const iconBg = group?.color ?? RARITY_COLORS[item.rarity]
+                const iconBg = group?.color ?? getItemTypeColor(item)
                 return (
                   <button
                     key={item.id}
@@ -531,9 +506,6 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-[var(--fg)] truncate">{item.name}</p>
                     </div>
-                    <span className={cn('inline-flex items-center rounded-lg px-2 py-0.5 text-[9px] font-bold shrink-0', RARITY_BADGE_CLASSES[item.rarity])}>
-                      {RARITY_LABELS[item.rarity]}
-                    </span>
                   </button>
                 )
               })}

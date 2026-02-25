@@ -198,9 +198,8 @@ export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: 
 
             {/* Craftable badge */}
             {hasCraftRecipe && (
-              <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-bold bg-gradient-to-b from-emerald-500/20 to-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10">
-                <Hammer className="h-3 w-3" />
-                Крафт
+              <span className="inline-flex items-center justify-center rounded-xl h-6 w-6 bg-gradient-to-b from-emerald-500/20 to-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10">
+                <Hammer className="h-3.5 w-3.5" />
               </span>
             )}
 

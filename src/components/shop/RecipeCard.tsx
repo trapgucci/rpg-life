@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { cn } from '../../lib/cn'
 import { Trash2, CheckCircle2, Sparkles, Dice5, Crosshair } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
 import ConfirmModal from '../ConfirmModal'
 import type { CraftRecipe } from '../../types/domain'
-import { RARITY_COLORS, RARITY_LABELS, RARITY_BADGE_CLASSES, migrateIcon } from './shopUtils'
+import { migrateIcon, getItemTypeColor } from './shopUtils'
 import { HabitIcon } from '../HabitIcon'
 
 interface RecipeCardProps {
@@ -15,7 +15,10 @@ interface RecipeCardProps {
 
 export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardProps) {
   const deleteRecipe = useRpgStore((s) => s.deleteCraftRecipe)
+  const allShopItems = useRpgStore((s) => s.shopItems)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  const resultItem = useMemo(() => recipe?.resultItemId ? allShopItems.find((i) => i.id === recipe.resultItemId) : null, [recipe?.resultItemId, allShopItems])
 
   if (!recipe) return null
 
@@ -32,7 +35,7 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
     : 0
 
   const canCraft = recipe.fragmentsCollected >= recipe.fragmentsRequired && !recipe.crafted
-  const rarityColor = RARITY_COLORS[recipe.resultRarity]
+  const themeColor = getItemTypeColor(resultItem)
   const fragmentIconImage = (recipe as any).fragmentIconImage ?? ''
 
   return (
@@ -56,10 +59,10 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
             'ring-1 ring-inset shadow-sm',
           )}
           style={{
-            background: `linear-gradient(to bottom, ${rarityColor}30, ${rarityColor}15)`,
-            color: rarityColor,
-            boxShadow: `0 1px 2px ${rarityColor}20`,
-            '--tw-ring-color': `${rarityColor}40`,
+            background: `linear-gradient(to bottom, ${themeColor}30, ${themeColor}15)`,
+            color: themeColor,
+            boxShadow: `0 1px 2px ${themeColor}20`,
+            '--tw-ring-color': `${themeColor}40`,
           } as React.CSSProperties}
         >
           {fragmentIconImage ? (
@@ -83,9 +86,6 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
 
           {/* Badges */}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span className={cn('inline-flex items-center rounded-xl px-2 py-0.5 text-xs font-semibold', RARITY_BADGE_CLASSES[recipe.resultRarity])}>
-              {RARITY_LABELS[recipe.resultRarity]}
-            </span>
             <span className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 px-2 py-0.5 text-xs font-semibold text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10">
               {sourceType === 'task_linked' && <><Crosshair className="h-3 w-3" /> Задачи{typeof fragmentSource?.dropChance === 'number' && fragmentSource.dropChance > 0 && ` ${fragmentSource.dropChance}%`}</>}
               {sourceType === 'random_drop' && <><Dice5 className="h-3 w-3" /> Дроп{typeof fragmentSource?.dropChance === 'number' && fragmentSource.dropChance > 0 && ` ${fragmentSource.dropChance}%`}</>}
@@ -107,7 +107,7 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
                   width: `${progress * 100}%`,
                   background: canCraft
                     ? 'linear-gradient(90deg, #10b981, #34d399)'
-                    : `linear-gradient(90deg, ${rarityColor}, ${rarityColor}cc)`
+                    : `linear-gradient(90deg, ${themeColor}, ${themeColor}cc)`
                 }}
               />
             </div>

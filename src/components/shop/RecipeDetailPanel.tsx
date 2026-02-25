@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
-import { X, Pencil, Trash2, Sparkles, CheckCircle2, Dice5, Crosshair, Search, Package, Folder, CheckSquare, Hash, ListChecks, ChevronDown, ChevronRight, Puzzle } from 'lucide-react'
+import { X, Pencil, Trash2, Sparkles, CheckCircle2, Dice5, Crosshair, Search, Package, Folder, CheckSquare, Hash, ListChecks, ChevronDown, ChevronRight, Puzzle, Gift, TrendingUp, Percent, Gamepad2, Clapperboard } from 'lucide-react'
 
 const KIND_ICON_MAP = {
   checkbox: CheckSquare,
@@ -10,7 +10,7 @@ const KIND_ICON_MAP = {
 } as const
 import { useRpgStore } from '../../store/useRpgStore'
 import type { CraftRecipe, ItemRarity, FragmentSourceType } from '../../types/domain'
-import { RARITY_LABELS, RARITY_COLORS, RARITY_BADGE_CLASSES, migrateIcon } from './shopUtils'
+import { RARITY_LABELS, RARITY_COLORS, RARITY_BADGE_CLASSES, migrateIcon, getItemTypeBadge, getItemTypeColor } from './shopUtils'
 import ConfirmModal from '../ConfirmModal'
 import { HabitIcon } from '../HabitIcon'
 import IconSourcePicker from './IconSourcePicker'
@@ -59,7 +59,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
     ? Math.min(1, recipe.fragmentsCollected / recipe.fragmentsRequired)
     : 0
   const canCraft = recipe.fragmentsCollected >= recipe.fragmentsRequired && !recipe.crafted
-  const rarityColor = RARITY_COLORS[recipe.resultRarity]
+  const themeColor = getItemTypeColor(resultItem)
 
   // --- UI state ---
   const [isEditing, setIsEditing] = useState(false)
@@ -89,6 +89,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
   const [editCraftCostGems, setEditCraftCostGems] = useState(gemCost)
 
   const editSelectedItem = useMemo(() => editResultItemId ? allShopItems.find((i) => i.id === editResultItemId) : null, [editResultItemId, allShopItems])
+  const editThemeColor = getItemTypeColor(editSelectedItem)
 
   const filteredPickerItems = useMemo(() => {
     let items = profileItems
@@ -233,7 +234,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
       {/* Rarity accent strip */}
       <div
         className="absolute top-0 left-0 right-0 h-[3px] z-10"
-        style={{ background: `linear-gradient(90deg, ${rarityColor}, ${rarityColor}40)` }}
+        style={{ background: `linear-gradient(90deg, ${themeColor}, ${themeColor}40)` }}
       />
 
       <div className="flex-1 min-h-0 overflow-y-auto p-6">
@@ -253,10 +254,10 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                       'ring-1 ring-inset shadow-md',
                     )}
                     style={{
-                      background: `linear-gradient(to bottom, ${rarityColor}35, ${rarityColor}15)`,
-                      color: rarityColor,
-                      boxShadow: `0 2px 8px ${rarityColor}25`,
-                      '--tw-ring-color': `${rarityColor}40`,
+                      background: `linear-gradient(to bottom, ${themeColor}35, ${themeColor}15)`,
+                      color: themeColor,
+                      boxShadow: `0 2px 8px ${themeColor}25`,
+                      '--tw-ring-color': `${themeColor}40`,
                     } as React.CSSProperties}
                   >
                     {fragmentIconImage ? (
@@ -272,15 +273,6 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
 
                 {/* Badges */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className={cn(
-                    'inline-flex items-center rounded-2xl px-3.5 py-1.5 text-sm font-medium',
-                    RARITY_BADGE_CLASSES[recipe.resultRarity],
-                  )}>
-                    {RARITY_LABELS[recipe.resultRarity]}
-                  </span>
-
-                  <span className="w-px h-5 bg-[var(--border)] rounded-full self-center select-none" />
-
                   {/* Source badge */}
                   <span className="inline-flex items-center gap-1.5 rounded-2xl bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 px-3.5 py-1.5 text-sm font-medium text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10">
                     {sourceType === 'random_drop' && (
@@ -325,8 +317,8 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                   <div
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden ring-1 ring-inset shadow-sm"
                     style={{
-                      background: `linear-gradient(to bottom, ${RARITY_COLORS[resultItem.rarity]}35, ${RARITY_COLORS[resultItem.rarity]}15)`,
-                      '--tw-ring-color': `${RARITY_COLORS[resultItem.rarity]}40`,
+                      background: `linear-gradient(to bottom, ${themeColor}35, ${themeColor}15)`,
+                      '--tw-ring-color': `${themeColor}40`,
                     } as React.CSSProperties}
                   >
                     {resultItem.iconImage ? (
@@ -337,9 +329,32 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-[var(--fg)] truncate">{resultItem.name}</p>
-                    <span className={cn('inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-bold mt-0.5', RARITY_BADGE_CLASSES[resultItem.rarity])}>
-                      {RARITY_LABELS[resultItem.rarity]}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-1 mt-1">
+                      {(() => {
+                        const tb = getItemTypeBadge(resultItem)
+                        if (!tb) return (
+                          <span className="inline-flex items-center gap-0.5 rounded-lg px-2 py-0.5 text-[10px] font-bold bg-gradient-to-b from-slate-400/20 to-slate-400/10 text-slate-500 ring-1 ring-inset ring-slate-400/25">
+                            <Package className="h-2.5 w-2.5" />
+                            Предмет
+                          </span>
+                        )
+                        const cfg: Record<string, { cls: string; Icon: typeof Gift; label: string }> = {
+                          lootbox: { cls: 'from-violet-500/20 to-violet-500/10 text-violet-500 ring-violet-400/25', Icon: Gift, label: 'Лутбокс' },
+                          multiplier: { cls: 'from-amber-500/20 to-amber-500/10 text-amber-500 ring-amber-400/25', Icon: TrendingUp, label: 'Множитель' },
+                          discount: { cls: 'from-red-500/20 to-red-500/10 text-red-500 ring-red-400/25', Icon: Percent, label: 'Скидочник' },
+                          videogame: { cls: 'from-cyan-500/20 to-cyan-500/10 text-cyan-500 ring-cyan-400/25', Icon: Gamepad2, label: 'Видеоигра' },
+                          serial: { cls: 'from-pink-500/20 to-pink-500/10 text-pink-500 ring-pink-400/25', Icon: Clapperboard, label: 'Сериал' },
+                        }
+                        const c = cfg[tb.type]
+                        if (!c) return null
+                        return (
+                          <span className={cn('inline-flex items-center gap-0.5 rounded-lg px-2 py-0.5 text-[10px] font-bold bg-gradient-to-b ring-1 ring-inset', c.cls)}>
+                            <c.Icon className="h-2.5 w-2.5" />
+                            {c.label}
+                          </span>
+                        )
+                      })()}
+                    </div>
                   </div>
                 </div>
                 {hasCost && (
@@ -379,7 +394,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                     width: `${progress * 100}%`,
                     background: canCraft
                       ? 'linear-gradient(90deg, #10b981, #34d399)'
-                      : `linear-gradient(90deg, ${rarityColor}, ${rarityColor}cc)`,
+                      : `linear-gradient(90deg, ${themeColor}, ${themeColor}cc)`,
                   }}
                 />
               </div>
@@ -418,7 +433,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                     <span>{sourceType === 'random_drop' ? 'Случайный дроп' : 'Привязка к задачам'}</span>
                   </div>
                   {typeof fragmentSource?.dropChance === 'number' && fragmentSource.dropChance > 0 && (
-                    <span className="text-xs font-bold" style={{ color: rarityColor }}>{fragmentSource.dropChance}%</span>
+                    <span className="text-xs font-bold" style={{ color: themeColor }}>{fragmentSource.dropChance}%</span>
                   )}
                 </div>
 
@@ -431,7 +446,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                         const task = allTasks.find((t) => t.id === taskId)
                         return task ? (
                           <span key={taskId} className="inline-flex items-center gap-1 rounded-lg bg-[var(--surface-elevated)] px-2 py-1 text-[11px] text-[var(--fg)]">
-                            <Puzzle className="h-2.5 w-2.5 shrink-0" style={{ color: rarityColor }} />
+                            <Puzzle className="h-2.5 w-2.5 shrink-0" style={{ color: themeColor }} />
                             <span className="truncate max-w-[120px]">{task.title}</span>
                           </span>
                         ) : null
@@ -519,9 +534,9 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                   onClick={() => setShowIconSource(true)}
                   className="relative shrink-0 group/preview flex items-center justify-center w-[48px] h-[48px] rounded-xl overflow-hidden transition-all cursor-pointer ring-1 ring-inset shadow-md hover:ring-[var(--accent)] hover:scale-105 active:scale-95"
                   style={{
-                    background: `linear-gradient(to bottom, ${rarityColor}35, ${rarityColor}15)`,
-                    boxShadow: `0 2px 8px ${rarityColor}25, inset 0 1px 0 ${rarityColor}20`,
-                    '--tw-ring-color': `${rarityColor}40`,
+                    background: `linear-gradient(to bottom, ${editThemeColor}35, ${editThemeColor}15)`,
+                    boxShadow: `0 2px 8px ${editThemeColor}25, inset 0 1px 0 ${editThemeColor}20`,
+                    '--tw-ring-color': `${editThemeColor}40`,
                   } as React.CSSProperties}
                   title="Изменить иконку"
                 >
@@ -570,28 +585,6 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
               </div>
             </div>
 
-            {/* Rarity */}
-            <div className="glass rounded-2xl p-4">
-              <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Редкость</label>
-              <div className="grid grid-cols-5 gap-1.5">
-                {(['common', 'uncommon', 'rare', 'epic', 'legendary'] as ItemRarity[]).map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setEditResultRarity(r)}
-                    className={cn(
-                      'flex flex-col items-center gap-1 rounded-xl px-2 py-2.5 text-[10px] font-bold transition-all',
-                      editResultRarity === r
-                        ? cn(RARITY_BADGE_CLASSES[r], 'ring-2 scale-105 shadow-md')
-                        : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] border border-[var(--border)]'
-                    )}
-                  >
-                    {RARITY_LABELS[r]}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Result item (edit) */}
             <div className="glass rounded-2xl p-4">
               <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Результат крафта</label>
@@ -600,8 +593,8 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                   <div
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden ring-1 ring-inset shadow-sm"
                     style={{
-                      background: `linear-gradient(to bottom, ${RARITY_COLORS[editSelectedItem.rarity]}35, ${RARITY_COLORS[editSelectedItem.rarity]}15)`,
-                      '--tw-ring-color': `${RARITY_COLORS[editSelectedItem.rarity]}40`,
+                      background: `linear-gradient(to bottom, ${editThemeColor}35, ${editThemeColor}15)`,
+                      '--tw-ring-color': `${editThemeColor}40`,
                     } as React.CSSProperties}
                   >
                     {editSelectedItem.iconImage ? (
@@ -612,9 +605,6 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-[var(--fg)] truncate">{editSelectedItem.name}</p>
-                    <span className={cn('inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-bold mt-0.5', RARITY_BADGE_CLASSES[editSelectedItem.rarity])}>
-                      {RARITY_LABELS[editSelectedItem.rarity]}
-                    </span>
                   </div>
                   <button
                     type="button"
