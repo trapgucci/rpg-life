@@ -1,7 +1,13 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
-import { X, Pencil, Trash2, Sparkles, CheckCircle2, Plus, Minus, Dice5, Crosshair, Flame, Search, Package, Folder } from 'lucide-react'
+import { X, Pencil, Trash2, Sparkles, CheckCircle2, Dice5, Crosshair, Search, Package, Folder, CheckSquare, Hash, ListChecks, ChevronDown, ChevronRight, Puzzle } from 'lucide-react'
+
+const KIND_ICON_MAP = {
+  checkbox: CheckSquare,
+  counter: Hash,
+  nested: ListChecks,
+} as const
 import { useRpgStore } from '../../store/useRpgStore'
 import type { CraftRecipe, ItemRarity, FragmentSourceType } from '../../types/domain'
 import { RARITY_LABELS, RARITY_COLORS, RARITY_BADGE_CLASSES, migrateIcon } from './shopUtils'
@@ -19,14 +25,15 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
   const updateRecipe = useRpgStore((s) => s.updateCraftRecipe)
   const deleteRecipe = useRpgStore((s) => s.deleteCraftRecipe)
   const craftItem = useRpgStore((s) => s.craftItem)
-  const addFragment = useRpgStore((s) => s.addFragment)
   const allTasks = useRpgStore((s) => s.tasks)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const tasks = activeProfileId ? allTasks.filter((t) => t.profileId === activeProfileId && !t.archived && !t.isCompleted) : []
   const allShopItems = useRpgStore((s) => s.shopItems)
   const allItemGroups = useRpgStore((s) => s.itemGroups)
+  const allTaskGroups = useRpgStore((s) => s.taskGroups)
   const getCurrency = useRpgStore((s) => s.getCurrency)
   const itemGroups = useMemo(() => activeProfileId ? allItemGroups.filter((g) => g.profileId === activeProfileId).sort((a, b) => a.sortOrder - b.sortOrder) : [], [allItemGroups, activeProfileId])
+  const taskGroupsList = useMemo(() => activeProfileId ? allTaskGroups.filter((g) => g.profileId === activeProfileId).sort((a, b) => a.sortOrder - b.sortOrder) : [], [allTaskGroups, activeProfileId])
   const profileItems = useMemo(() => activeProfileId ? allShopItems.filter((i) => (i as any).profileId === activeProfileId || !(i as any).profileId) : allShopItems, [allShopItems, activeProfileId])
 
   // --- Fragment source (runtime extended field) ---
@@ -59,6 +66,8 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false)
   const [showTaskPicker, setShowTaskPicker] = useState(false)
+  const [taskSearch, setTaskSearch] = useState('')
+  const [collapsedTaskGroups, setCollapsedTaskGroups] = useState<Set<string>>(new Set())
   const [showIconSource, setShowIconSource] = useState(false)
   const [showIconPicker, setShowIconPicker] = useState(false)
   const [showItemPicker, setShowItemPicker] = useState(false)
@@ -75,7 +84,6 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
   const [editSourceType, setEditSourceType] = useState<FragmentSourceType>(sourceType)
   const [editDropChance, setEditDropChance] = useState(fragmentSource?.dropChance ?? 15)
   const [editLinkedTaskIds, setEditLinkedTaskIds] = useState<string[]>(fragmentSource?.linkedTaskIds ?? [])
-  const [editStreakRequired, setEditStreakRequired] = useState(fragmentSource?.streakRequired ?? 7)
   const [editResultItemId, setEditResultItemId] = useState<string | null>(recipe.resultItemId || null)
   const [editCraftCostCoins, setEditCraftCostCoins] = useState(coinCost)
   const [editCraftCostGems, setEditCraftCostGems] = useState(gemCost)
@@ -112,11 +120,12 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
     setEditSourceType((fsType === 'habit_linked' ? 'random_drop' : fsType) as FragmentSourceType)
     setEditDropChance(fs?.dropChance ?? 15)
     setEditLinkedTaskIds(fs?.linkedTaskIds ?? [])
-    setEditStreakRequired(fs?.streakRequired ?? 7)
     setEditResultItemId(r.resultItemId || null)
     setEditCraftCostCoins(cc?.coins ?? 0)
     setEditCraftCostGems(cc?.gems ?? 0)
     setShowTaskPicker(false)
+    setTaskSearch('')
+    setCollapsedTaskGroups(new Set())
     setShowIconSource(false)
     setShowIconPicker(false)
     setShowItemPicker(false)
@@ -140,8 +149,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
           editResultRarity !== prev.resultRarity ||
           editSourceType !== prevSourceType ||
           (editSourceType === 'random_drop' && editDropChance !== (prevFs?.dropChance ?? 15)) ||
-          (editSourceType === 'task_linked' && JSON.stringify(editLinkedTaskIds) !== JSON.stringify(prevFs?.linkedTaskIds ?? [])) ||
-          (editSourceType === 'streak_reward' && editStreakRequired !== (prevFs?.streakRequired ?? 7))
+          (editSourceType === 'task_linked' && JSON.stringify(editLinkedTaskIds) !== JSON.stringify(prevFs?.linkedTaskIds ?? []))
 
         if (changed) {
           pendingRecipeRef.current = recipe
@@ -183,9 +191,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
     const fragmentSourceData =
       editSourceType === 'task_linked'
         ? { type: 'task_linked' as const, linkedTaskIds: editLinkedTaskIds, dropChance: editDropChance }
-        : editSourceType === 'streak_reward'
-          ? { type: 'streak_reward' as const, streakRequired: editStreakRequired }
-          : { type: 'random_drop' as const, dropChance: editDropChance }
+        : { type: 'random_drop' as const, dropChance: editDropChance }
 
     const selItem = editResultItemId ? allShopItems.find((i) => i.id === editResultItemId) : null
 
@@ -214,24 +220,10 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
     craftItem(recipe.id)
   }
 
-  // --- Manual fragment add/remove ---
-  const handleAddFragment = () => {
-    addFragment(recipe.id, 1)
-  }
-
-  const handleRemoveFragment = () => {
-    if (recipe.fragmentsCollected <= 0) return
-    updateRecipe(recipe.id, (r) => ({
-      ...r,
-      fragmentsCollected: Math.max(0, r.fragmentsCollected - 1),
-    }))
-  }
-
   // --- Source labels ---
   const SOURCE_LABELS: Record<string, { iconName: string; label: string; description: string }> = {
     random_drop: { iconName: 'Dice5', label: 'Случайный дроп', description: 'Шанс при выполнении задач' },
     task_linked: { iconName: 'Crosshair', label: 'Привязка к задачам', description: 'Конкретные задачи' },
-    streak_reward: { iconName: 'Flame', label: 'За стрик', description: 'Награда за серию выполнений' },
   }
 
   const fragmentIconImage = (recipe as any).fragmentIconImage ?? ''
@@ -295,7 +287,6 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                       <><Dice5 className="h-3.5 w-3.5" /> Случайный дроп{typeof fragmentSource?.dropChance === 'number' && fragmentSource.dropChance > 0 && ` ${fragmentSource.dropChance}%`}</>
                     )}
                     {sourceType === 'task_linked' && <><Crosshair className="h-3.5 w-3.5" /> Привязка к задачам{typeof fragmentSource?.dropChance === 'number' && fragmentSource.dropChance > 0 && ` ${fragmentSource.dropChance}%`}</>}
-                    {sourceType === 'streak_reward' && <><Flame className="h-3.5 w-3.5" /> За стрик{typeof fragmentSource?.streakRequired === 'number' && ` ${fragmentSource.streakRequired}д`}</>}
                   </span>
 
                   {recipe.crafted && (
@@ -368,48 +359,16 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
               </div>
             )}
 
-            {/* Progress Section with manual controls */}
+            {/* Progress Section */}
             <div className="glass rounded-2xl p-5">
               <h3 className="text-sm font-semibold text-[var(--fg)] mb-4">Прогресс сбора</h3>
 
-              <div className="flex items-center justify-center gap-6 mb-4">
-                {/* Decrement */}
-                <button
-                  type="button"
-                  onClick={handleRemoveFragment}
-                  disabled={recipe.fragmentsCollected <= 0 || recipe.crafted}
-                  className={cn(
-                    'flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-200',
-                    recipe.fragmentsCollected > 0 && !recipe.crafted
-                      ? 'bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 shadow-sm shadow-red-500/10 hover:from-red-500/30 hover:to-red-500/15 hover:scale-110 active:scale-95'
-                      : 'bg-[var(--surface)] text-[var(--fg-muted)] opacity-40 cursor-not-allowed'
-                  )}
-                >
-                  <Minus className="h-6 w-6" />
-                </button>
-
-                {/* Counter display */}
-                <div className="text-center">
-                  <div className="text-4xl font-bold" style={{ color: canCraft ? '#10b981' : 'var(--fg)' }}>
-                    {recipe.fragmentsCollected}
-                  </div>
-                  <div className="text-lg text-[var(--fg-muted)]">из {recipe.fragmentsRequired}</div>
+              {/* Counter display */}
+              <div className="text-center mb-4">
+                <div className="text-4xl font-bold" style={{ color: canCraft ? '#10b981' : 'var(--fg)' }}>
+                  {recipe.fragmentsCollected}
                 </div>
-
-                {/* Increment */}
-                <button
-                  type="button"
-                  onClick={handleAddFragment}
-                  disabled={recipe.fragmentsCollected >= recipe.fragmentsRequired || recipe.crafted}
-                  className={cn(
-                    'flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-200',
-                    recipe.fragmentsCollected < recipe.fragmentsRequired && !recipe.crafted
-                      ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 text-white ring-1 ring-inset ring-emerald-300/30 shadow-lg shadow-emerald-500/30 hover:scale-110 active:scale-95'
-                      : 'bg-[var(--surface)] text-[var(--fg-muted)] opacity-40 cursor-not-allowed'
-                  )}
-                >
-                  <Plus className="h-6 w-6" />
-                </button>
+                <div className="text-lg text-[var(--fg-muted)]">из {recipe.fragmentsRequired}</div>
               </div>
 
               {/* Progress bar */}
@@ -424,6 +383,11 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                   }}
                 />
               </div>
+
+              {/* Percentage label */}
+              <p className="text-center text-xs font-medium text-[var(--fg-muted)] mt-2">
+                {Math.round(progress * 100)}%
+              </p>
             </div>
 
             {/* Crafted complete state */}
@@ -441,18 +405,96 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
               </div>
             )}
 
-            {/* Stats */}
+            {/* Stats & Source Info */}
             <div className="glass rounded-2xl p-4">
-              <h3 className="text-sm font-semibold text-[var(--fg)] mb-3">Статистика</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-[var(--surface-elevated)] p-3 text-center">
-                  <div className="text-lg font-bold text-[var(--fg)]">{recipe.fragmentsCollected}</div>
-                  <div className="text-xs text-[var(--fg-muted)]">Собрано</div>
+              <h3 className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Информация</h3>
+
+              {/* Inline stat items — compact rows */}
+              <div className="space-y-0 divide-y divide-[var(--border)]">
+                {/* Source type */}
+                <div className="flex items-center justify-between py-2.5 first:pt-0">
+                  <div className="flex items-center gap-2 text-xs text-[var(--fg-muted)]">
+                    {sourceType === 'random_drop' ? <Dice5 className="h-3.5 w-3.5" /> : <Crosshair className="h-3.5 w-3.5" />}
+                    <span>{sourceType === 'random_drop' ? 'Случайный дроп' : 'Привязка к задачам'}</span>
+                  </div>
+                  {typeof fragmentSource?.dropChance === 'number' && fragmentSource.dropChance > 0 && (
+                    <span className="text-xs font-bold" style={{ color: rarityColor }}>{fragmentSource.dropChance}%</span>
+                  )}
                 </div>
-                <div className="rounded-xl bg-[var(--surface-elevated)] p-3 text-center">
-                  <div className="text-lg font-bold text-[var(--fg)]">{recipe.fragmentsRequired}</div>
-                  <div className="text-xs text-[var(--fg-muted)]">Нужно</div>
+
+                {/* Linked tasks inline */}
+                {sourceType === 'task_linked' && fragmentSource?.linkedTaskIds && fragmentSource.linkedTaskIds.length > 0 && (
+                  <div className="py-2.5">
+                    <p className="text-[10px] font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-1.5">Привязанные задачи</p>
+                    <div className="flex flex-wrap gap-1">
+                      {fragmentSource.linkedTaskIds.slice(0, 5).map((taskId: string) => {
+                        const task = allTasks.find((t) => t.id === taskId)
+                        return task ? (
+                          <span key={taskId} className="inline-flex items-center gap-1 rounded-lg bg-[var(--surface-elevated)] px-2 py-1 text-[11px] text-[var(--fg)]">
+                            <Puzzle className="h-2.5 w-2.5 shrink-0" style={{ color: rarityColor }} />
+                            <span className="truncate max-w-[120px]">{task.title}</span>
+                          </span>
+                        ) : null
+                      })}
+                      {fragmentSource.linkedTaskIds.length > 5 && (
+                        <span className="inline-flex items-center rounded-lg bg-[var(--surface-elevated)] px-2 py-1 text-[10px] text-[var(--fg-muted)]">
+                          +{fragmentSource.linkedTaskIds.length - 5}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {sourceType === 'random_drop' && (
+                  <div className="flex items-center justify-between py-2.5">
+                    <span className="text-xs text-[var(--fg-muted)]">Источник</span>
+                    <span className="text-xs text-[var(--fg)]">Любая задача</span>
+                  </div>
+                )}
+
+                {/* Craft cost */}
+                {hasCost && (
+                  <div className="flex items-center justify-between py-2.5">
+                    <span className="text-xs text-[var(--fg-muted)]">Стоимость крафта</span>
+                    <div className="flex items-center gap-2">
+                      {coinCost > 0 && (
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400">
+                          🪙 {coinCost}
+                        </span>
+                      )}
+                      {gemCost > 0 && (
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-500">
+                          💎 {gemCost}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {!hasCost && (
+                  <div className="flex items-center justify-between py-2.5">
+                    <span className="text-xs text-[var(--fg-muted)]">Стоимость крафта</span>
+                    <span className="text-xs font-medium text-emerald-500">Бесплатно</span>
+                  </div>
+                )}
+
+                {/* Remaining */}
+                <div className="flex items-center justify-between py-2.5">
+                  <span className="text-xs text-[var(--fg-muted)]">Осталось собрать</span>
+                  <span className="text-xs font-bold text-[var(--fg)]">
+                    {Math.max(0, recipe.fragmentsRequired - recipe.fragmentsCollected)} шт
+                  </span>
                 </div>
+
+                {/* Created */}
+                {recipe.createdAt && (
+                  <div className="flex items-center justify-between py-2.5 last:pb-0">
+                    <span className="text-xs text-[var(--fg-muted)]">Создано</span>
+                    <span className="text-xs text-[var(--fg)]">
+                      {new Date(recipe.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -598,8 +640,11 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
             <div className="glass rounded-2xl p-4">
               <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Стоимость крафта</label>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-bold text-[var(--fg-muted)] uppercase tracking-wider mb-1.5">🪙 Монеты</label>
+                <div className="flex flex-col items-center gap-2 rounded-xl bg-gradient-to-b from-amber-500/12 to-amber-500/4 ring-1 ring-inset ring-amber-400/20 p-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/20 text-sm">🪙</span>
+                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Монеты</span>
+                  </div>
                   <input
                     type="number"
                     value={editCraftCostCoins}
@@ -608,8 +653,11 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                     className="input w-full h-10 py-0 text-center text-sm font-bold"
                   />
                 </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-[var(--fg-muted)] uppercase tracking-wider mb-1.5">💎 Кристаллы</label>
+                <div className="flex flex-col items-center gap-2 rounded-xl bg-gradient-to-b from-blue-500/12 to-blue-500/4 ring-1 ring-inset ring-blue-400/20 p-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-500/20 text-sm">💎</span>
+                    <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Кристаллы</span>
+                  </div>
                   <input
                     type="number"
                     value={editCraftCostGems}
@@ -619,14 +667,14 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                   />
                 </div>
               </div>
-              <p className="text-[10px] text-[var(--fg-muted)] mt-2">Оставьте 0 для бесплатного крафта</p>
+              <p className="text-[10px] text-[var(--fg-muted)] mt-2 text-center">Оставьте 0 для бесплатного крафта</p>
             </div>
 
             {/* Source type */}
             <div className="glass rounded-2xl p-4">
               <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Источник фрагментов</label>
-              <div className="grid grid-cols-3 gap-2">
-                {(['random_drop', 'task_linked', 'streak_reward'] as FragmentSourceType[]).map((st) => (
+              <div className="grid grid-cols-2 gap-2">
+                {(['random_drop', 'task_linked'] as FragmentSourceType[]).map((st) => (
                   <button
                     key={st}
                     type="button"
@@ -641,10 +689,9 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                     <div className={cn('mb-1.5', editSourceType === st ? 'text-[var(--accent)]' : 'text-[var(--fg-muted)]')}>
                       {st === 'random_drop' && <Dice5 className="h-5 w-5" />}
                       {st === 'task_linked' && <Crosshair className="h-5 w-5" />}
-                      {st === 'streak_reward' && <Flame className="h-5 w-5" />}
                     </div>
-                    <div className="font-medium text-xs">{SOURCE_LABELS[st].label}</div>
-                    <div className="text-[10px] text-[var(--fg-muted)] mt-0.5">{SOURCE_LABELS[st].description}</div>
+                    <div className="font-medium text-xs">{SOURCE_LABELS[st]?.label}</div>
+                    <div className="text-[10px] text-[var(--fg-muted)] mt-0.5">{SOURCE_LABELS[st]?.description}</div>
                   </button>
                 ))}
               </div>
@@ -691,22 +738,6 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                   </p>
                 </div>
               </>
-            )}
-
-            {editSourceType === 'streak_reward' && (
-              <div className="glass rounded-2xl p-4">
-                <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Стрик для получения</label>
-                <div className="flex items-center gap-3">
-                  <input type="range" min={1} max={90} value={editStreakRequired} onChange={(e) => setEditStreakRequired(Number(e.target.value))} className="flex-1 accent-[var(--accent)]" />
-                  <div className="flex items-center gap-1">
-                    <input type="number" value={editStreakRequired} onChange={(e) => setEditStreakRequired(Math.max(1, Math.min(365, Number(e.target.value) || 1)))} min={1} max={365} className="input w-16 text-center h-9 py-0 text-sm font-bold" />
-                    <span className="text-xs text-[var(--fg-muted)]">дн.</span>
-                  </div>
-                </div>
-                <p className="text-xs text-[var(--fg-muted)] mt-2">
-                  Фрагмент выдаётся при достижении стрика {editStreakRequired} дней
-                </p>
-              </div>
             )}
 
             <div className="flex gap-3 pt-2">
@@ -876,39 +907,131 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
         </div>
       )}
 
-      {showTaskPicker && (
-        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setShowTaskPicker(false)}>
-          <div className="modal-content max-w-lg">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-[var(--fg)]">Выбрать задачи</h3>
-              <button type="button" onClick={() => setShowTaskPicker(false)} className="icon-btn"><X className="h-5 w-5" /></button>
-            </div>
-            <p className="text-sm text-[var(--fg-muted)] mb-3">Отметьте одну или несколько задач, за выполнение которых будут выдаваться фрагменты.</p>
-            <div className="max-h-72 overflow-y-auto rounded-xl bg-[var(--surface)] p-2 mb-4">
-              {tasks.map((task) => (
-                <label key={task.id} className="flex items-center gap-2 rounded-lg p-2 hover:bg-[var(--surface-elevated)] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editLinkedTaskIds.includes(task.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) setEditLinkedTaskIds((prev) => [...prev, task.id])
-                      else setEditLinkedTaskIds((prev) => prev.filter((id) => id !== task.id))
-                    }}
-                    className="h-4 w-4 rounded accent-[var(--accent)]"
-                  />
-                  <span className="text-sm truncate">{task.title}</span>
-                </label>
-              ))}
-              {tasks.length === 0 && (
-                <p className="text-sm text-[var(--fg-muted)] text-center py-4">Нет активных задач</p>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setShowTaskPicker(false)} className="btn-secondary flex-1">Готово</button>
+      {showTaskPicker && (() => {
+        const q = taskSearch.trim().toLowerCase()
+        const filtered = q ? tasks.filter((t) => t.title.toLowerCase().includes(q)) : tasks
+        const grouped = taskGroupsList.map((g) => ({
+          group: g,
+          tasks: filtered.filter((t) => t.groupId === g.id),
+        })).filter((g) => g.tasks.length > 0)
+        const ungrouped = filtered.filter((t) => !t.groupId || !taskGroupsList.some((g) => g.id === t.groupId))
+        const toggleGroup = (id: string) => setCollapsedTaskGroups((prev) => {
+          const next = new Set(prev)
+          if (next.has(id)) next.delete(id); else next.add(id)
+          return next
+        })
+
+        return (
+          <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setShowTaskPicker(false)}>
+            <div className="modal-content max-w-lg">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-[var(--fg)]">Выбрать задачи</h3>
+                <button type="button" onClick={() => { setShowTaskPicker(false); setTaskSearch('') }} className="icon-btn"><X className="h-5 w-5" /></button>
+              </div>
+              <p className="text-sm text-[var(--fg-muted)] mb-3">Отметьте задачи, за выполнение которых будут выдаваться фрагменты.</p>
+
+              {/* Search */}
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--fg-muted)]" />
+                <input
+                  type="text"
+                  value={taskSearch}
+                  onChange={(e) => setTaskSearch(e.target.value)}
+                  placeholder="Поиск задачи..."
+                  className="input w-full pl-9 h-9 text-sm"
+                />
+              </div>
+
+              <div className="max-h-72 overflow-y-auto rounded-xl bg-[var(--surface)] p-2 mb-4">
+                {grouped.map(({ group, tasks: groupTasks }) => {
+                  const isCollapsed = collapsedTaskGroups.has(group.id)
+                  const selectedInGroup = groupTasks.filter((t) => editLinkedTaskIds.includes(t.id)).length
+                  return (
+                    <div key={group.id} className="mb-1">
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(group.id)}
+                        className="flex w-full items-center gap-2 rounded-lg px-2 py-2 hover:bg-[var(--surface-elevated)] transition-colors"
+                      >
+                        {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-[var(--fg-muted)]" /> : <ChevronDown className="h-3.5 w-3.5 text-[var(--fg-muted)]" />}
+                        <Folder className="h-4 w-4 text-[var(--accent)]" />
+                        <span className="text-xs font-semibold text-[var(--fg)] flex-1 text-left">{group.name}</span>
+                        {selectedInGroup > 0 && (
+                          <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent-subtle)] rounded-md px-1.5 py-0.5">{selectedInGroup}</span>
+                        )}
+                        <span className="text-[10px] text-[var(--fg-muted)]">{groupTasks.length}</span>
+                      </button>
+                      {!isCollapsed && (
+                        <div className="ml-4 border-l-2 border-[var(--border)] pl-2">
+                          {groupTasks.map((task) => {
+                            const KindIcon = KIND_ICON_MAP[task.kind] || CheckSquare
+                            return (
+                              <label key={task.id} className="flex items-center gap-2.5 rounded-lg p-2 hover:bg-[var(--surface-elevated)] cursor-pointer transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={editLinkedTaskIds.includes(task.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) setEditLinkedTaskIds((prev) => [...prev, task.id])
+                                    else setEditLinkedTaskIds((prev) => prev.filter((id) => id !== task.id))
+                                  }}
+                                  className="h-4 w-4 rounded accent-[var(--accent)] shrink-0"
+                                />
+                                <KindIcon className="h-3.5 w-3.5 text-[var(--fg-muted)] shrink-0" />
+                                <span className="text-sm truncate text-[var(--fg)]">{task.title}</span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+
+                {ungrouped.length > 0 && (
+                  <div className={grouped.length > 0 ? 'mt-1 pt-1 border-t border-[var(--border)]' : ''}>
+                    {grouped.length > 0 && (
+                      <div className="flex items-center gap-2 px-2 py-2">
+                        <Package className="h-4 w-4 text-[var(--fg-muted)]" />
+                        <span className="text-xs font-semibold text-[var(--fg-muted)]">Без группы</span>
+                        <span className="text-[10px] text-[var(--fg-muted)]">{ungrouped.length}</span>
+                      </div>
+                    )}
+                    {ungrouped.map((task) => {
+                      const KindIcon = KIND_ICON_MAP[task.kind] || CheckSquare
+                      return (
+                        <label key={task.id} className={cn('flex items-center gap-2.5 rounded-lg p-2 hover:bg-[var(--surface-elevated)] cursor-pointer transition-colors', grouped.length > 0 && 'ml-4')}>
+                          <input
+                            type="checkbox"
+                            checked={editLinkedTaskIds.includes(task.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) setEditLinkedTaskIds((prev) => [...prev, task.id])
+                              else setEditLinkedTaskIds((prev) => prev.filter((id) => id !== task.id))
+                            }}
+                            className="h-4 w-4 rounded accent-[var(--accent)] shrink-0"
+                          />
+                          <KindIcon className="h-3.5 w-3.5 text-[var(--fg-muted)] shrink-0" />
+                          <span className="text-sm truncate text-[var(--fg)]">{task.title}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {filtered.length === 0 && (
+                  <p className="text-sm text-[var(--fg-muted)] text-center py-4">
+                    {q ? 'Задачи не найдены' : 'Нет активных задач'}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-[var(--fg-muted)]">Выбрано: {editLinkedTaskIds.length}</span>
+                <button type="button" onClick={() => { setShowTaskPicker(false); setTaskSearch('') }} className="btn-secondary px-6">Готово</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Icon source picker (same as shop) */}
       {showIconSource && (

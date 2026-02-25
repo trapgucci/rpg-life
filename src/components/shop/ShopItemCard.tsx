@@ -1,5 +1,6 @@
+import { useMemo } from 'react'
 import { cn } from '../../lib/cn'
-import { Coins, Gem, Gift, Percent, ShoppingCart, TrendingUp, Gamepad2, Clapperboard, Check } from 'lucide-react'
+import { Coins, Gem, Gift, Percent, ShoppingCart, TrendingUp, Gamepad2, Clapperboard, Check, Hammer } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
@@ -18,6 +19,13 @@ export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: 
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const allItemGroups = useRpgStore((s) => s.itemGroups)
+  const craftRecipes = useRpgStore((s) => s.craftRecipes)
+
+  // Check if this item has an active (non-crafted) recipe
+  const hasCraftRecipe = useMemo(
+    () => craftRecipes.some((r) => r.resultItemId === item.id && !r.crafted),
+    [craftRecipes, item.id],
+  )
 
   const profile = profiles.find((p) => p.id === activeProfileId)
   const coins = profile?.currencies[CURRENCY_IDS.COINS] ?? 0
@@ -185,6 +193,14 @@ export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: 
             {item.stock !== undefined && item.stock > 0 && !item.isTvSerial && !item.isVideoGame && (
               <span className="inline-flex items-center rounded-xl px-2.5 py-1 text-xs font-bold bg-gradient-to-b from-[var(--accent)]/20 to-[var(--accent)]/10 text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/25">
                 ×{item.stock}
+              </span>
+            )}
+
+            {/* Craftable badge */}
+            {hasCraftRecipe && (
+              <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-bold bg-gradient-to-b from-emerald-500/20 to-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10">
+                <Hammer className="h-3 w-3" />
+                Крафт
               </span>
             )}
 

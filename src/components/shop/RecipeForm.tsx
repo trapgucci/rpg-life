@@ -1,13 +1,19 @@
 import { useState, useRef, useMemo } from 'react'
 import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
-import { X, Dice5, Crosshair, Flame, Search, Package, Folder } from 'lucide-react'
+import { X, Dice5, Crosshair, Search, Package, Folder, CheckSquare, Hash, ListChecks, ChevronDown, ChevronRight } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
 import type { CraftRecipe, ItemRarity, FragmentSourceType } from '../../types/domain'
 import { RARITY_LABELS, RARITY_BADGE_CLASSES, RARITY_COLORS, migrateIcon } from './shopUtils'
 import { HabitIcon } from '../HabitIcon'
 import IconSourcePicker from './IconSourcePicker'
 import EmojiPickerModal from './EmojiPickerModal'
+
+const KIND_ICON_MAP = {
+  checkbox: CheckSquare,
+  counter: Hash,
+  nested: ListChecks,
+} as const
 
 interface RecipeFormProps {
   recipe?: CraftRecipe
@@ -23,7 +29,9 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
   const tasks = activeProfileId ? allTasks.filter((t) => t.profileId === activeProfileId && !t.archived && !t.isCompleted) : []
   const allShopItems = useRpgStore((s) => s.shopItems)
   const allItemGroups = useRpgStore((s) => s.itemGroups)
+  const allTaskGroups = useRpgStore((s) => s.taskGroups)
   const itemGroups = useMemo(() => activeProfileId ? allItemGroups.filter((g) => g.profileId === activeProfileId).sort((a, b) => a.sortOrder - b.sortOrder) : [], [allItemGroups, activeProfileId])
+  const taskGroups = useMemo(() => activeProfileId ? allTaskGroups.filter((g) => g.profileId === activeProfileId).sort((a, b) => a.sortOrder - b.sortOrder) : [], [allTaskGroups, activeProfileId])
   const profileItems = useMemo(() => activeProfileId ? allShopItems.filter((i) => (i as any).profileId === activeProfileId || !(i as any).profileId) : allShopItems, [allShopItems, activeProfileId])
 
   const [fragmentName, setFragmentName] = useState(recipe?.fragmentName ?? '')
@@ -51,8 +59,9 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
   const [linkedTaskIds, setLinkedTaskIds] = useState<string[]>(
     (recipe as any)?.fragmentSource?.linkedTaskIds ?? []
   )
-  const [streakRequired, setStreakRequired] = useState((recipe as any)?.fragmentSource?.streakRequired ?? 7)
   const [showTaskPicker, setShowTaskPicker] = useState(false)
+  const [taskSearch, setTaskSearch] = useState('')
+  const [collapsedTaskGroups, setCollapsedTaskGroups] = useState<Set<string>>(new Set())
 
   // Icon picker state (same as shop)
   const [showIconSource, setShowIconSource] = useState(false)
@@ -78,9 +87,7 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
     const fragmentSource =
       sourceType === 'task_linked'
         ? { type: 'task_linked' as const, linkedTaskIds, dropChance }
-        : sourceType === 'streak_reward'
-          ? { type: 'streak_reward' as const, streakRequired }
-          : { type: 'random_drop' as const, dropChance }
+        : { type: 'random_drop' as const, dropChance }
 
     const data: any = {
       fragmentName: fragmentName.trim(),
@@ -279,8 +286,11 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
         <div className="glass rounded-2xl p-4">
           <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Стоимость крафта</label>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[10px] font-bold text-[var(--fg-muted)] uppercase tracking-wider mb-1.5">🪙 Монеты</label>
+            <div className="flex flex-col items-center gap-2 rounded-xl bg-gradient-to-b from-amber-500/12 to-amber-500/4 ring-1 ring-inset ring-amber-400/20 p-3">
+              <div className="flex items-center gap-1.5">
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/20 text-sm">🪙</span>
+                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Монеты</span>
+              </div>
               <input
                 type="number"
                 value={craftCostCoins}
@@ -289,8 +299,11 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
                 className="input w-full h-10 py-0 text-center text-sm font-bold"
               />
             </div>
-            <div>
-              <label className="block text-[10px] font-bold text-[var(--fg-muted)] uppercase tracking-wider mb-1.5">💎 Кристаллы</label>
+            <div className="flex flex-col items-center gap-2 rounded-xl bg-gradient-to-b from-blue-500/12 to-blue-500/4 ring-1 ring-inset ring-blue-400/20 p-3">
+              <div className="flex items-center gap-1.5">
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-500/20 text-sm">💎</span>
+                <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Кристаллы</span>
+              </div>
               <input
                 type="number"
                 value={craftCostGems}
@@ -300,13 +313,13 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
               />
             </div>
           </div>
-          <p className="text-[10px] text-[var(--fg-muted)] mt-2">Оставьте 0 для бесплатного крафта</p>
+          <p className="text-[10px] text-[var(--fg-muted)] mt-2 text-center">Оставьте 0 для бесплатного крафта</p>
         </div>
 
         {/* ─── Source type ─── */}
         <div className="glass rounded-2xl p-4">
           <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Источник фрагментов</label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {/* Random drop */}
             <button
               type="button"
@@ -341,24 +354,6 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
               </div>
               <div className="font-medium text-xs">Привязка к задачам</div>
               <div className="text-[10px] text-[var(--fg-muted)] mt-0.5">Конкретные задачи</div>
-            </button>
-
-            {/* Streak reward */}
-            <button
-              type="button"
-              onClick={() => setSourceType('streak_reward')}
-              className={cn(
-                'rounded-xl p-3 text-left transition-all',
-                sourceType === 'streak_reward'
-                  ? 'bg-gradient-to-b from-[var(--accent)]/20 to-[var(--accent)]/8 border-2 border-[var(--accent)] shadow-md shadow-[var(--accent)]/15'
-                  : 'bg-[var(--surface)] border-2 border-transparent hover:border-[var(--border)] hover:bg-[var(--surface-elevated)]'
-              )}
-            >
-              <div className={cn('mb-1.5', sourceType === 'streak_reward' ? 'text-[var(--accent)]' : 'text-[var(--fg-muted)]')}>
-                <Flame className="h-5 w-5" />
-              </div>
-              <div className="font-medium text-xs">За стрик</div>
-              <div className="text-[10px] text-[var(--fg-muted)] mt-0.5">Награда за серию</div>
             </button>
           </div>
         </div>
@@ -436,36 +431,6 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
               </p>
             </div>
           </>
-        )}
-
-        {sourceType === 'streak_reward' && (
-          <div className="glass rounded-2xl p-4">
-            <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Стрик для получения фрагмента</label>
-            <div className="flex items-center gap-3">
-              <input
-                type="range"
-                min={1}
-                max={90}
-                value={streakRequired}
-                onChange={(e) => setStreakRequired(Number(e.target.value))}
-                className="flex-1 accent-[var(--accent)]"
-              />
-              <div className="flex items-center gap-1">
-                <input
-                  type="number"
-                  value={streakRequired}
-                  onChange={(e) => setStreakRequired(Math.max(1, Math.min(365, Number(e.target.value) || 1)))}
-                  min={1}
-                  max={365}
-                  className="input w-16 text-center h-9 py-0 text-sm font-bold"
-                />
-                <span className="text-xs text-[var(--fg-muted)]">дн.</span>
-              </div>
-            </div>
-            <p className="text-xs text-[var(--fg-muted)] mt-2">
-              Фрагмент выдаётся каждый раз при достижении стрика {streakRequired} дней
-            </p>
-          </div>
         )}
 
         {/* ─── Buttons ─── */}
@@ -583,37 +548,131 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
       )}
 
       {/* ─── Task picker modal ─── */}
-      {showTaskPicker && (
-        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setShowTaskPicker(false)}>
-          <div className="modal-content max-w-lg">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-[var(--fg)]">Выбрать задачи</h3>
-              <button type="button" onClick={() => setShowTaskPicker(false)} className="icon-btn"><X className="h-5 w-5" /></button>
+      {showTaskPicker && (() => {
+        const q = taskSearch.trim().toLowerCase()
+        const filtered = q ? tasks.filter((t) => t.title.toLowerCase().includes(q)) : tasks
+        const grouped = taskGroups.map((g) => ({
+          group: g,
+          tasks: filtered.filter((t) => t.groupId === g.id),
+        })).filter((g) => g.tasks.length > 0)
+        const ungrouped = filtered.filter((t) => !t.groupId || !taskGroups.some((g) => g.id === t.groupId))
+        const toggleGroup = (id: string) => setCollapsedTaskGroups((prev) => {
+          const next = new Set(prev)
+          if (next.has(id)) next.delete(id); else next.add(id)
+          return next
+        })
+
+        return (
+          <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setShowTaskPicker(false)}>
+            <div className="modal-content max-w-lg">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-[var(--fg)]">Выбрать задачи</h3>
+                <button type="button" onClick={() => { setShowTaskPicker(false); setTaskSearch('') }} className="icon-btn"><X className="h-5 w-5" /></button>
+              </div>
+              <p className="text-sm text-[var(--fg-muted)] mb-3">Отметьте задачи, за выполнение которых будут выдаваться фрагменты.</p>
+
+              {/* Search */}
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--fg-muted)]" />
+                <input
+                  type="text"
+                  value={taskSearch}
+                  onChange={(e) => setTaskSearch(e.target.value)}
+                  placeholder="Поиск задачи..."
+                  className="input w-full pl-9 h-9 text-sm"
+                />
+              </div>
+
+              <div className="max-h-72 overflow-y-auto rounded-xl bg-[var(--surface)] p-2 mb-4">
+                {grouped.map(({ group, tasks: groupTasks }) => {
+                  const isCollapsed = collapsedTaskGroups.has(group.id)
+                  const selectedInGroup = groupTasks.filter((t) => linkedTaskIds.includes(t.id)).length
+                  return (
+                    <div key={group.id} className="mb-1">
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(group.id)}
+                        className="flex w-full items-center gap-2 rounded-lg px-2 py-2 hover:bg-[var(--surface-elevated)] transition-colors"
+                      >
+                        {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-[var(--fg-muted)]" /> : <ChevronDown className="h-3.5 w-3.5 text-[var(--fg-muted)]" />}
+                        <Folder className="h-4 w-4 text-[var(--accent)]" />
+                        <span className="text-xs font-semibold text-[var(--fg)] flex-1 text-left">{group.name}</span>
+                        {selectedInGroup > 0 && (
+                          <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent-subtle)] rounded-md px-1.5 py-0.5">{selectedInGroup}</span>
+                        )}
+                        <span className="text-[10px] text-[var(--fg-muted)]">{groupTasks.length}</span>
+                      </button>
+                      {!isCollapsed && (
+                        <div className="ml-4 border-l-2 border-[var(--border)] pl-2">
+                          {groupTasks.map((task) => {
+                            const KindIcon = KIND_ICON_MAP[task.kind] || CheckSquare
+                            return (
+                              <label key={task.id} className="flex items-center gap-2.5 rounded-lg p-2 hover:bg-[var(--surface-elevated)] cursor-pointer transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={linkedTaskIds.includes(task.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) setLinkedTaskIds((prev) => [...prev, task.id])
+                                    else setLinkedTaskIds((prev) => prev.filter(id => id !== task.id))
+                                  }}
+                                  className="h-4 w-4 rounded accent-[var(--accent)] shrink-0"
+                                />
+                                <KindIcon className="h-3.5 w-3.5 text-[var(--fg-muted)] shrink-0" />
+                                <span className="text-sm truncate text-[var(--fg)]">{task.title}</span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+
+                {ungrouped.length > 0 && (
+                  <div className={grouped.length > 0 ? 'mt-1 pt-1 border-t border-[var(--border)]' : ''}>
+                    {grouped.length > 0 && (
+                      <div className="flex items-center gap-2 px-2 py-2">
+                        <Package className="h-4 w-4 text-[var(--fg-muted)]" />
+                        <span className="text-xs font-semibold text-[var(--fg-muted)]">Без группы</span>
+                        <span className="text-[10px] text-[var(--fg-muted)]">{ungrouped.length}</span>
+                      </div>
+                    )}
+                    {ungrouped.map((task) => {
+                      const KindIcon = KIND_ICON_MAP[task.kind] || CheckSquare
+                      return (
+                        <label key={task.id} className={cn('flex items-center gap-2.5 rounded-lg p-2 hover:bg-[var(--surface-elevated)] cursor-pointer transition-colors', grouped.length > 0 && 'ml-4')}>
+                          <input
+                            type="checkbox"
+                            checked={linkedTaskIds.includes(task.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) setLinkedTaskIds((prev) => [...prev, task.id])
+                              else setLinkedTaskIds((prev) => prev.filter(id => id !== task.id))
+                            }}
+                            className="h-4 w-4 rounded accent-[var(--accent)] shrink-0"
+                          />
+                          <KindIcon className="h-3.5 w-3.5 text-[var(--fg-muted)] shrink-0" />
+                          <span className="text-sm truncate text-[var(--fg)]">{task.title}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {filtered.length === 0 && (
+                  <p className="text-sm text-[var(--fg-muted)] text-center py-4">
+                    {q ? 'Задачи не найдены' : 'Нет активных задач'}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-[var(--fg-muted)]">Выбрано: {linkedTaskIds.length}</span>
+                <button type="button" onClick={() => { setShowTaskPicker(false); setTaskSearch('') }} className="btn-secondary px-6">Готово</button>
+              </div>
             </div>
-            <p className="text-sm text-[var(--fg-muted)] mb-3">Отметьте задачи, за выполнение которых будут выдаваться фрагменты.</p>
-            <div className="max-h-72 overflow-y-auto rounded-xl bg-[var(--surface)] p-2 mb-4">
-              {tasks.map((task) => (
-                <label key={task.id} className="flex items-center gap-2 rounded-lg p-2 hover:bg-[var(--surface-elevated)] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={linkedTaskIds.includes(task.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) setLinkedTaskIds((prev) => [...prev, task.id])
-                      else setLinkedTaskIds((prev) => prev.filter(id => id !== task.id))
-                    }}
-                    className="h-4 w-4 rounded accent-[var(--accent)]"
-                  />
-                  <span className="text-sm truncate">{task.title}</span>
-                </label>
-              ))}
-              {tasks.length === 0 && (
-                <p className="text-sm text-[var(--fg-muted)] text-center py-4">Нет активных задач</p>
-              )}
-            </div>
-            <button type="button" onClick={() => setShowTaskPicker(false)} className="btn-secondary w-full">Готово</button>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* ─── Icon source picker (same as shop) ─── */}
       {showIconSource && (

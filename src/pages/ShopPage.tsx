@@ -262,6 +262,12 @@ export default function ShopPage() {
     setSelectedRecipeId(id)
   }
 
+  const handleNavigateToRecipe = (recipeId: string) => {
+    setTab('fragments')
+    setSelectedItemId(null)
+    setSelectedRecipeId(recipeId)
+  }
+
   // ── Group management helpers ──────────────────────────────────────────────
 
   const handleAddGroup = () => {
@@ -917,6 +923,7 @@ export default function ShopPage() {
           <ShopDetailPanel
             item={selectedItem}
             onDeselect={() => setSelectedItemId(null)}
+            onNavigateToRecipe={handleNavigateToRecipe}
           />
         ) : tab === 'fragments' && selectedRecipe ? (
           <RecipeDetailPanel
@@ -969,6 +976,7 @@ export default function ShopPage() {
           <ShopDetailPanel
             item={selectedItem}
             onDeselect={() => setSelectedItemId(null)}
+            onNavigateToRecipe={handleNavigateToRecipe}
           />
         </div>
       )}

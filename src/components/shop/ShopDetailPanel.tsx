@@ -4,7 +4,7 @@ import { cn } from '../../lib/cn'
 import {
   X, Pencil, Trash2, Coins, Gem, Gift, Percent, ShoppingCart,
   ChevronRight, Settings, Folder, TrendingUp, Gamepad2, Plus, Clock,
-  Clapperboard, ChevronDown, Check, Package,
+  Clapperboard, ChevronDown, Check, Package, Hammer, Puzzle, Crosshair, Dice5,
 } from 'lucide-react'
 import ItemGroupSelectModal from './ItemGroupSelectModal'
 import IconSourcePicker from './IconSourcePicker'
@@ -13,7 +13,7 @@ import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem, GameTimePackage, SerialSeason } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
 import {
-  getItemIcon, getItemTypeBadge, migrateIcon,
+  getItemIcon, getItemTypeBadge, migrateIcon, RARITY_COLORS,
 } from './shopUtils'
 import type { LootTableEntry } from './shopUtils'
 import ConfirmModal from '../ConfirmModal'
@@ -27,11 +27,12 @@ import DiscountVoucherModal from './DiscountVoucherModal'
 interface ShopDetailPanelProps {
   item: ShopItem
   onDeselect?: () => void
+  onNavigateToRecipe?: (recipeId: string) => void
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelProps) {
+export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }: ShopDetailPanelProps) {
   // ── Store selectors ──────────────────────────────────────────────────────
   const updateItem = useRpgStore((s) => s.updateShopItem)
   const deleteShopItem = useRpgStore((s) => s.deleteShopItem)
@@ -44,6 +45,22 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
   const allItemGroups = useRpgStore((s) => s.itemGroups)
   const shopItems = useRpgStore((s) => s.shopItems)
   const purchaseHistory = useRpgStore((s) => s.purchaseHistory)
+  const craftRecipes = useRpgStore((s) => s.craftRecipes)
+  const allTasks = useRpgStore((s) => s.tasks)
+
+  // Find active recipe for this item
+  const itemRecipe = craftRecipes.find((r) => r.resultItemId === item.id && !r.crafted)
+  const recipeLinkedTasks = itemRecipe
+    ? (() => {
+        const src = (itemRecipe as any).fragmentSource
+        if (src?.type === 'task_linked' && Array.isArray(src.linkedTaskIds)) {
+          return src.linkedTaskIds
+            .map((id: string) => allTasks.find((t) => t.id === id))
+            .filter(Boolean)
+        }
+        return []
+      })()
+    : []
 
   const profile = profiles.find((p) => p.id === activeProfileId)
   const coins = profile?.currencies[CURRENCY_IDS.COINS] ?? 0
@@ -1189,6 +1206,130 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 </div>
               )}
             </div>
+
+            {/* ── Crafting info block ───────────────────────────────────── */}
+            {itemRecipe && (() => {
+              const recipeSrc = (itemRecipe as any).fragmentSource
+              const recipeSourceType = recipeSrc?.type === 'task_linked' ? 'task_linked' : 'random_drop'
+              const recipeDropChance = recipeSrc?.dropChance ?? 0
+              const recipeCraftCost = (itemRecipe as any).craftCost as Record<string, number> | undefined
+              const recipeCoinCost = recipeCraftCost?.coins ?? 0
+              const recipeGemCost = recipeCraftCost?.gems ?? 0
+              const recipeProgress = itemRecipe.fragmentsRequired > 0
+                ? Math.min(1, itemRecipe.fragmentsCollected / itemRecipe.fragmentsRequired)
+                : 0
+
+              return (
+                <div className="rounded-2xl bg-gradient-to-b from-emerald-500/10 to-emerald-500/3 ring-1 ring-inset ring-emerald-400/20 p-4 mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-b from-emerald-500/25 to-emerald-500/10 ring-1 ring-inset ring-emerald-400/25">
+                      <Hammer className="h-4 w-4 text-emerald-500" />
+                    </div>
+                    <h3 className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Можно скрафтить</h3>
+                  </div>
+
+                  {/* Fragment progress */}
+                  <div className="flex items-center gap-3 rounded-xl bg-[var(--surface-elevated)]/60 px-3 py-2.5 mb-3">
+                    <div
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg overflow-hidden ring-1 ring-inset"
+                      style={{
+                        background: `linear-gradient(to bottom, ${RARITY_COLORS[itemRecipe.resultRarity]}30, ${RARITY_COLORS[itemRecipe.resultRarity]}10)`,
+                        '--tw-ring-color': `${RARITY_COLORS[itemRecipe.resultRarity]}35`,
+                      } as React.CSSProperties}
+                    >
+                      {(itemRecipe as any).fragmentIconImage ? (
+                        <img src={(itemRecipe as any).fragmentIconImage} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <HabitIcon iconName={migrateIcon(itemRecipe.fragmentIcon, 'Puzzle')} size={16} />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-[var(--fg)] truncate">{itemRecipe.fragmentName}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex-1 h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${recipeProgress * 100}%`,
+                              background: recipeProgress >= 1
+                                ? 'linear-gradient(90deg, #10b981, #34d399)'
+                                : 'linear-gradient(90deg, #10b981, #6ee7b7)',
+                            }}
+                          />
+                        </div>
+                        <span className="text-[11px] font-bold text-[var(--fg-muted)] shrink-0">
+                          {itemRecipe.fragmentsCollected}/{itemRecipe.fragmentsRequired}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Source info */}
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--surface-elevated)]/60 px-2 py-1 text-[11px] font-medium text-[var(--fg-muted)]">
+                      {recipeSourceType === 'random_drop' ? (
+                        <><Dice5 className="h-3 w-3" /> Случайный дроп</>
+                      ) : (
+                        <><Crosshair className="h-3 w-3" /> Привязка к задачам</>
+                      )}
+                      {recipeDropChance > 0 && <span className="font-bold ml-0.5">{recipeDropChance}%</span>}
+                    </span>
+
+                    {(recipeCoinCost > 0 || recipeGemCost > 0) && (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--surface-elevated)]/60 px-2 py-1 text-[11px] font-medium text-[var(--fg-muted)]">
+                        Крафт:
+                        {recipeCoinCost > 0 && <span className="font-bold">🪙 {recipeCoinCost}</span>}
+                        {recipeGemCost > 0 && <span className="font-bold">💎 {recipeGemCost}</span>}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* How to get fragments */}
+                  <div className="mb-3">
+                    <p className="text-[10px] font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-1.5">Как получить фрагменты</p>
+                    {recipeSourceType === 'random_drop' ? (
+                      <div className="flex items-center gap-2 rounded-lg bg-[var(--surface-elevated)]/60 px-2.5 py-2">
+                        <Dice5 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                        <span className="text-xs text-[var(--fg)]">
+                          Выпадают с шансом {recipeDropChance > 0 ? `${recipeDropChance}%` : ''} при выполнении <span className="font-semibold">любой задачи</span>
+                        </span>
+                      </div>
+                    ) : recipeLinkedTasks.length > 0 ? (
+                      <div className="space-y-1">
+                        {recipeLinkedTasks.slice(0, 4).map((task: any) => (
+                          <div key={task.id} className="flex items-center gap-2 rounded-lg bg-[var(--surface-elevated)]/60 px-2.5 py-1.5">
+                            <Crosshair className="h-3 w-3 text-emerald-500 shrink-0" />
+                            <span className="text-xs text-[var(--fg)] truncate">{task.title}</span>
+                            {recipeDropChance > 0 && <span className="text-[10px] font-bold text-emerald-500 shrink-0">{recipeDropChance}%</span>}
+                          </div>
+                        ))}
+                        {recipeLinkedTasks.length > 4 && (
+                          <p className="text-[10px] text-[var(--fg-muted)] text-center">+{recipeLinkedTasks.length - 4} ещё</p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 rounded-lg bg-[var(--surface-elevated)]/60 px-2.5 py-2">
+                        <Crosshair className="h-3.5 w-3.5 text-[var(--fg-muted)] shrink-0" />
+                        <span className="text-xs text-[var(--fg-muted)]">Привязаны к конкретным задачам</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Navigate to crafting button */}
+                  {onNavigateToRecipe && (
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToRecipe(itemRecipe.id)}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 ring-1 ring-inset ring-emerald-400/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      <Hammer className="h-4 w-4" />
+                      Перейти к крафту
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* ── Video Game: time balance + buy packages ─────────────── */}
             {item.isVideoGame && (
