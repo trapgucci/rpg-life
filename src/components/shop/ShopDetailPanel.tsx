@@ -5,6 +5,7 @@ import {
   X, Pencil, Trash2, Coins, Gem, Gift, Percent, ShoppingCart,
   ChevronRight, Settings, Folder, TrendingUp, Gamepad2, Plus, Clock,
   Clapperboard, ChevronDown, Check, Package, Hammer, Puzzle, Crosshair, Dice5,
+  BarChart3,
 } from 'lucide-react'
 import ItemGroupSelectModal from './ItemGroupSelectModal'
 import IconSourcePicker from './IconSourcePicker'
@@ -13,7 +14,7 @@ import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem, GameTimePackage, SerialSeason } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
 import {
-  getItemIcon, getItemTypeBadge, migrateIcon, RARITY_COLORS,
+  getItemIcon, getItemTypeBadge, getItemTypeColor, migrateIcon, RARITY_COLORS,
 } from './shopUtils'
 import type { LootTableEntry } from './shopUtils'
 import ConfirmModal from '../ConfirmModal'
@@ -1178,9 +1179,14 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
 
               {/* Loot table preview */}
               {item.isLootBox && item.lootTable && item.lootTable.length > 0 && (
-                <div className="mt-3">
-                  <p className="text-xs font-semibold text-[var(--fg)] mb-2">Таблица наград</p>
-                  <div className="space-y-1.5">
+                <div className="mt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-b from-violet-500/20 to-violet-500/8 ring-1 ring-inset ring-violet-400/25">
+                      <Dice5 className="h-3.5 w-3.5 text-violet-500" />
+                    </div>
+                    <span className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider">Возможный дроп</span>
+                  </div>
+                  <div className="space-y-2">
                     {item.lootTable.map((entry, idx) => {
                       const lootItem = shopItems.find((i) => i.id === entry.id)
                       const entryName =
@@ -1191,18 +1197,79 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                         entry.id === CURRENCY_IDS.COINS ? 'Coins'
                         : entry.id === CURRENCY_IDS.GEMS ? 'Gem'
                         : lootItem ? getItemIcon(lootItem) : 'Sword'
+                      const entryIconImage = lootItem?.iconImage
+                      const lootGroup = lootItem?.groupId ? allItemGroups.find((g) => g.id === lootItem.groupId) : null
+                      const lootTypeBadge = lootItem ? getItemTypeBadge(lootItem) : null
+                      const entryColor =
+                        entry.id === CURRENCY_IDS.COINS ? '#f59e0b'
+                        : entry.id === CURRENCY_IDS.GEMS ? '#a855f7'
+                        : lootTypeBadge ? getItemTypeColor(lootItem)
+                        : lootGroup?.color ?? '#9ca3af'
+                      const maxWeight = Math.max(...item.lootTable!.map((e) => e.weight))
 
                       return (
                         <div
                           key={`${entry.id}-${idx}`}
-                          className="flex items-center gap-2 rounded-xl bg-[var(--surface-elevated)] px-3 py-2"
+                          className="relative rounded-xl overflow-hidden ring-1 ring-inset transition-all duration-200 hover:scale-[1.01]"
+                          style={{
+                            background: `linear-gradient(to bottom, ${entryColor}12, ${entryColor}04)`,
+                            '--tw-ring-color': `${entryColor}20`,
+                            boxShadow: `0 1px 4px ${entryColor}10`,
+                          } as React.CSSProperties}
                         >
-                          <span className="shrink-0 text-[var(--fg-muted)]"><HabitIcon iconName={entryIconName} size={18} /></span>
-                          <span className="flex-1 min-w-0 text-sm font-medium text-[var(--fg)] truncate">{entryName}</span>
-                          {(entry.quantity ?? 1) > 1 && (
-                            <span className="text-xs text-[var(--fg-muted)]">x{entry.quantity}</span>
-                          )}
-                          <span className="text-xs font-semibold text-[var(--accent)]">{entry.weight}%</span>
+                          {/* Type accent strip */}
+                          <div
+                            className="absolute top-0 left-0 w-[3px] h-full rounded-l-xl"
+                            style={{ background: entryColor }}
+                          />
+                          <div className="flex items-center gap-3 pl-4 pr-3 py-2.5">
+                            {/* Item icon */}
+                            <div
+                              className="relative shrink-0 flex h-10 w-10 items-center justify-center rounded-xl ring-1 ring-inset shadow-md"
+                              style={{
+                                background: `linear-gradient(135deg, ${entryColor}30, ${entryColor}12)`,
+                                '--tw-ring-color': `${entryColor}35`,
+                                boxShadow: `0 2px 8px ${entryColor}20`,
+                                color: entryColor,
+                              } as React.CSSProperties}
+                            >
+                              {entryIconImage ? (
+                                <img src={entryIconImage} alt="" className="h-full w-full object-cover rounded-xl" />
+                              ) : (
+                                <HabitIcon iconName={entryIconName} size={20} />
+                              )}
+                            </div>
+                            {/* Quantity badge — outside icon */}
+                            {(entry.quantity ?? 1) > 1 && (
+                              <span
+                                className="shrink-0 rounded-lg px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm"
+                                style={{ background: entryColor }}
+                              >
+                                x{entry.quantity}
+                              </span>
+                            )}
+                            {/* Name + drop bar */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-[var(--fg)] truncate">{entryName}</p>
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <div className="flex-1 h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full transition-all duration-500"
+                                    style={{
+                                      width: `${maxWeight > 0 ? (entry.weight / maxWeight) * 100 : 0}%`,
+                                      background: `linear-gradient(90deg, ${entryColor}, ${entryColor}aa)`,
+                                    }}
+                                  />
+                                </div>
+                                <span
+                                  className="shrink-0 text-xs font-bold tabular-nums"
+                                  style={{ color: entryColor }}
+                                >
+                                  {entry.weight}%
+                                </span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       )
                     })}
@@ -1504,42 +1571,67 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
 
             {/* ── Stats section (hidden for single-stock items) ────────── */}
             {!(item.stock !== undefined && item.stock <= 1) && totalPurchases > 0 && (
-              <div className="glass rounded-2xl p-3">
-                <div className="flex items-center gap-3 overflow-x-auto">
-                  {/* Total purchases */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <ShoppingCart className="h-3.5 w-3.5 text-[var(--accent)]" />
-                    <span className="text-sm font-bold text-[var(--fg)]">{totalPurchases}</span>
+              <div className="glass rounded-2xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 ring-1 ring-inset ring-[var(--accent)]/20">
+                    <BarChart3 className="h-3.5 w-3.5 text-[var(--accent)]" />
                   </div>
-                  <span className="w-px h-4 bg-[var(--border)] shrink-0" />
-                  {/* Last purchase */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Clock className="h-3.5 w-3.5 text-emerald-500" />
-                    <span className="text-sm font-medium text-[var(--fg)]">
-                      {lastPurchaseTs ? new Date(lastPurchaseTs).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) : '—'}
-                    </span>
-                  </div>
-                  {/* Total coins spent */}
-                  {totalSpentCoins > 0 && (
-                    <>
-                      <span className="w-px h-4 bg-[var(--border)] shrink-0" />
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Coins className="h-3.5 w-3.5 text-amber-500" />
-                        <span className="text-sm font-bold text-[var(--fg)]">{totalSpentCoins.toLocaleString('ru-RU')}</span>
-                      </div>
-                    </>
-                  )}
-                  {/* Total gems spent */}
-                  {totalSpentGems > 0 && (
-                    <>
-                      <span className="w-px h-4 bg-[var(--border)] shrink-0" />
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Gem className="h-3.5 w-3.5 text-purple-500" />
-                        <span className="text-sm font-bold text-[var(--fg)]">{totalSpentGems.toLocaleString('ru-RU')}</span>
-                      </div>
-                    </>
-                  )}
+                  <span className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider">Статистика</span>
                 </div>
+                {/* Top row — always 2 columns */}
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Total purchases */}
+                  <div className="rounded-xl bg-gradient-to-b from-blue-500/12 to-blue-500/4 p-3 text-center ring-1 ring-inset ring-blue-400/15 shadow-sm shadow-blue-500/5">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-b from-blue-500/25 to-blue-500/10 ring-1 ring-inset ring-blue-400/30">
+                        <ShoppingCart className="h-3.5 w-3.5 text-blue-500" />
+                      </div>
+                      <span className="text-xl font-bold text-blue-500">{totalPurchases}</span>
+                    </div>
+                    <div className="text-[10px] mt-1.5 text-[var(--fg-muted)] uppercase tracking-wide">Куплено</div>
+                  </div>
+                  {/* Last purchase */}
+                  <div className="rounded-xl bg-gradient-to-b from-emerald-500/12 to-emerald-500/4 p-3 text-center ring-1 ring-inset ring-emerald-400/15 shadow-sm shadow-emerald-500/5">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-b from-emerald-500/25 to-emerald-500/10 ring-1 ring-inset ring-emerald-400/30">
+                        <Clock className="h-3.5 w-3.5 text-emerald-500" />
+                      </div>
+                      <span className="text-sm font-bold text-emerald-500">
+                        {lastPurchaseTs ? new Date(lastPurchaseTs).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) : '—'}
+                      </span>
+                    </div>
+                    <div className="text-[10px] mt-1.5 text-[var(--fg-muted)] uppercase tracking-wide">Последняя</div>
+                  </div>
+                </div>
+                {/* Currency row — stretches to full width when only one currency */}
+                {(totalSpentCoins > 0 || totalSpentGems > 0) && (
+                  <div className={cn('grid gap-2 mt-2', totalSpentCoins > 0 && totalSpentGems > 0 ? 'grid-cols-2' : 'grid-cols-1')}>
+                    {/* Total coins spent */}
+                    {totalSpentCoins > 0 && (
+                      <div className="rounded-xl bg-gradient-to-b from-amber-500/12 to-amber-500/4 p-3 text-center ring-1 ring-inset ring-amber-400/15 shadow-sm shadow-amber-500/5">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-b from-amber-500/25 to-amber-500/10 ring-1 ring-inset ring-amber-400/30">
+                            <Coins className="h-3.5 w-3.5 text-amber-500" />
+                          </div>
+                          <span className="text-xl font-bold text-amber-500">{totalSpentCoins.toLocaleString('ru-RU')}</span>
+                        </div>
+                        <div className="text-[10px] mt-1.5 text-[var(--fg-muted)] uppercase tracking-wide">Монет потрачено</div>
+                      </div>
+                    )}
+                    {/* Total gems spent */}
+                    {totalSpentGems > 0 && (
+                      <div className="rounded-xl bg-gradient-to-b from-violet-500/12 to-violet-500/4 p-3 text-center ring-1 ring-inset ring-violet-400/15 shadow-sm shadow-violet-500/5">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-b from-violet-500/25 to-violet-500/10 ring-1 ring-inset ring-violet-400/30">
+                            <Gem className="h-3.5 w-3.5 text-violet-500" />
+                          </div>
+                          <span className="text-xl font-bold text-violet-500">{totalSpentGems.toLocaleString('ru-RU')}</span>
+                        </div>
+                        <div className="text-[10px] mt-1.5 text-[var(--fg-muted)] uppercase tracking-wide">Гемов потрачено</div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </>
