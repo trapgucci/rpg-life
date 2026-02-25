@@ -110,7 +110,7 @@ export default function PurchaseHistoryModal({ onClose }: PurchaseHistoryModalPr
                             {typeBadge && (
                               <div
                                 className={cn(
-                                  'absolute -top-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-md',
+                                  'absolute -top-1 -right-1 z-20 flex h-4.5 w-4.5 items-center justify-center rounded-md',
                                   'shadow-sm ring-1.5 ring-[var(--surface)]',
                                   typeBadge.type === 'lootbox' && 'bg-gradient-to-br from-violet-400 to-violet-600',
                                   typeBadge.type === 'multiplier' && 'bg-gradient-to-br from-amber-400 to-orange-500',

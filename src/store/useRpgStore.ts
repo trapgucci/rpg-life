@@ -1385,6 +1385,11 @@ export const useRpgStore = create<RpgStoreState>()(
           )
 
           get().updateTask(taskId, (t) => t.kind === 'nested' ? { ...t, subtasks: updatedSubtasks } : t)
+
+          // Дроп фрагментов при выполнении подзадачи
+          if (isNowCompleted) {
+            get().tryRandomFragmentDrop(subtaskId)
+          }
         },
 
         // ─── Habits ───────────────────────────────────────────────────────

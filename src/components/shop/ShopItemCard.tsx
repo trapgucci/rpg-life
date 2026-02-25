@@ -110,7 +110,7 @@ export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: 
           {typeBadge && (
             <div
               className={cn(
-                'absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-lg',
+                'absolute -top-1 -right-1 z-20 flex h-6 w-6 items-center justify-center rounded-lg',
                 'shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.4)]',
                 'ring-2 ring-[var(--surface-card)] transition-transform group-hover:scale-110',
                 typeBadge.type === 'lootbox' && 'bg-gradient-to-br from-violet-400 to-violet-600',

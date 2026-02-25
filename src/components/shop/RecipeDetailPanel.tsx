@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
 import { X, Pencil, Trash2, Sparkles, CheckCircle2, Dice5, Crosshair, Search, Package, Folder, CheckSquare, Hash, ListChecks, ChevronDown, ChevronRight, Puzzle, Gift, TrendingUp, Percent, Gamepad2, Clapperboard } from 'lucide-react'
@@ -67,7 +68,9 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false)
   const [showTaskPicker, setShowTaskPicker] = useState(false)
   const [taskSearch, setTaskSearch] = useState('')
+  const [taskGroupFilter, setTaskGroupFilter] = useState<string | null>(null)
   const [collapsedTaskGroups, setCollapsedTaskGroups] = useState<Set<string>>(new Set())
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set())
   const [showIconSource, setShowIconSource] = useState(false)
   const [showIconPicker, setShowIconPicker] = useState(false)
   const [showItemPicker, setShowItemPicker] = useState(false)
@@ -897,26 +900,97 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
         </div>
       )}
 
-      {showTaskPicker && (() => {
+      {showTaskPicker && createPortal((() => {
         const q = taskSearch.trim().toLowerCase()
-        const filtered = q ? tasks.filter((t) => t.title.toLowerCase().includes(q)) : tasks
-        const grouped = taskGroupsList.map((g) => ({
+        const byGroup = taskGroupFilter ? tasks.filter((t) => taskGroupFilter === '__ungrouped' ? (!t.groupId || !taskGroupsList.some((g) => g.id === t.groupId)) : t.groupId === taskGroupFilter) : tasks
+        const filtered = q ? byGroup.filter((t) => {
+          if (t.title.toLowerCase().includes(q)) return true
+          if (t.kind === 'nested') return t.subtasks.some((s) => s.title.toLowerCase().includes(q))
+          return false
+        }) : byGroup
+        const grouped = taskGroupFilter ? [] : taskGroupsList.map((g) => ({
           group: g,
           tasks: filtered.filter((t) => t.groupId === g.id),
         })).filter((g) => g.tasks.length > 0)
-        const ungrouped = filtered.filter((t) => !t.groupId || !taskGroupsList.some((g) => g.id === t.groupId))
+        const ungrouped = taskGroupFilter
+          ? (taskGroupFilter === '__ungrouped' ? filtered : [])
+          : filtered.filter((t) => !t.groupId || !taskGroupsList.some((g) => g.id === t.groupId))
+        const flatFiltered = taskGroupFilter && taskGroupFilter !== '__ungrouped' ? filtered : []
         const toggleGroup = (id: string) => setCollapsedTaskGroups((prev) => {
           const next = new Set(prev)
           if (next.has(id)) next.delete(id); else next.add(id)
           return next
         })
+        const toggleTaskExpand = (id: string) => setExpandedTasks((prev) => {
+          const next = new Set(prev)
+          if (next.has(id)) next.delete(id); else next.add(id)
+          return next
+        })
+
+        const renderTaskRow = (task: typeof tasks[number], extraClass?: string) => {
+          const KindIcon = KIND_ICON_MAP[task.kind] || CheckSquare
+          const isNested = task.kind === 'nested' && task.subtasks.length > 0
+          const isExpanded = expandedTasks.has(task.id)
+          const subtaskIds = isNested ? task.subtasks.map((s) => s.id) : []
+          const selectedSubCount = subtaskIds.filter((id) => editLinkedTaskIds.includes(id)).length
+
+          return (
+            <div key={task.id} className={extraClass}>
+              <div className="flex items-center gap-2.5 rounded-lg p-2 hover:bg-[var(--surface-elevated)] transition-colors">
+                <input
+                  type="checkbox"
+                  checked={editLinkedTaskIds.includes(task.id)}
+                  onChange={(e) => {
+                    if (e.target.checked) setEditLinkedTaskIds((prev) => [...prev, task.id])
+                    else setEditLinkedTaskIds((prev) => prev.filter((id) => id !== task.id))
+                  }}
+                  className="h-4 w-4 rounded accent-[var(--accent)] shrink-0 cursor-pointer"
+                />
+                <KindIcon className="h-3.5 w-3.5 text-[var(--fg-muted)] shrink-0" />
+                <span className="text-sm truncate text-[var(--fg)] flex-1 min-w-0 cursor-default">{task.title}</span>
+                {isNested && (
+                  <>
+                    {selectedSubCount > 0 && (
+                      <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent-subtle)] rounded-md px-1.5 py-0.5">{selectedSubCount}</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => toggleTaskExpand(task.id)}
+                      className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-[var(--surface)] transition-colors shrink-0"
+                    >
+                      {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-[var(--fg-muted)]" /> : <ChevronRight className="h-3.5 w-3.5 text-[var(--fg-muted)]" />}
+                    </button>
+                  </>
+                )}
+              </div>
+              {isNested && isExpanded && (
+                <div className="ml-7 border-l-2 border-[var(--accent)]/20 pl-2">
+                  {task.subtasks.map((sub) => (
+                    <label key={sub.id} className="flex items-center gap-2.5 rounded-lg p-2 hover:bg-[var(--surface-elevated)] cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={editLinkedTaskIds.includes(sub.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) setEditLinkedTaskIds((prev) => [...prev, sub.id])
+                          else setEditLinkedTaskIds((prev) => prev.filter((id) => id !== sub.id))
+                        }}
+                        className="h-4 w-4 rounded accent-[var(--accent)] shrink-0"
+                      />
+                      <span className={cn('text-sm truncate', sub.isCompleted ? 'text-[var(--fg-muted)] line-through' : 'text-[var(--fg)]')}>{sub.title}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        }
 
         return (
           <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setShowTaskPicker(false)}>
             <div className="modal-content max-w-lg">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-[var(--fg)]">Выбрать задачи</h3>
-                <button type="button" onClick={() => { setShowTaskPicker(false); setTaskSearch('') }} className="icon-btn"><X className="h-5 w-5" /></button>
+                <button type="button" onClick={() => { setShowTaskPicker(false); setTaskSearch(''); setTaskGroupFilter(null) }} className="icon-btn"><X className="h-5 w-5" /></button>
               </div>
               <p className="text-sm text-[var(--fg-muted)] mb-3">Отметьте задачи, за выполнение которых будут выдаваться фрагменты.</p>
 
@@ -932,10 +1006,61 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                 />
               </div>
 
+              {/* Group filter tabs */}
+              {taskGroupsList.length > 0 && (
+                <div className="flex gap-1.5 flex-wrap mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setTaskGroupFilter(null)}
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all',
+                      !taskGroupFilter
+                        ? 'bg-[var(--accent-subtle)] text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20'
+                        : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)]'
+                    )}
+                  >
+                    Все
+                  </button>
+                  {taskGroupsList.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => setTaskGroupFilter(g.id)}
+                      className={cn(
+                        'inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all',
+                        taskGroupFilter === g.id
+                          ? 'bg-[var(--accent-subtle)] text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20'
+                          : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)]'
+                      )}
+                    >
+                      <Folder className="h-3 w-3" style={{ color: g.color || undefined }} />
+                      {g.name}
+                    </button>
+                  ))}
+                  {tasks.some((t) => !t.groupId || !taskGroupsList.some((g) => g.id === t.groupId)) && (
+                    <button
+                      type="button"
+                      onClick={() => setTaskGroupFilter('__ungrouped')}
+                      className={cn(
+                        'inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all',
+                        taskGroupFilter === '__ungrouped'
+                          ? 'bg-[var(--accent-subtle)] text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20'
+                          : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)]'
+                      )}
+                    >
+                      <Package className="h-3 w-3" />
+                      Без группы
+                    </button>
+                  )}
+                </div>
+              )}
+
               <div className="max-h-72 overflow-y-auto rounded-xl bg-[var(--surface)] p-2 mb-4">
+                {flatFiltered.map((task) => renderTaskRow(task))}
+
                 {grouped.map(({ group, tasks: groupTasks }) => {
                   const isCollapsed = collapsedTaskGroups.has(group.id)
-                  const selectedInGroup = groupTasks.filter((t) => editLinkedTaskIds.includes(t.id)).length
+                  const selectedInGroup = groupTasks.filter((t) => editLinkedTaskIds.includes(t.id) || (t.kind === 'nested' && t.subtasks.some((s) => editLinkedTaskIds.includes(s.id)))).length
                   return (
                     <div key={group.id} className="mb-1">
                       <button
@@ -953,24 +1078,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                       </button>
                       {!isCollapsed && (
                         <div className="ml-4 border-l-2 border-[var(--border)] pl-2">
-                          {groupTasks.map((task) => {
-                            const KindIcon = KIND_ICON_MAP[task.kind] || CheckSquare
-                            return (
-                              <label key={task.id} className="flex items-center gap-2.5 rounded-lg p-2 hover:bg-[var(--surface-elevated)] cursor-pointer transition-colors">
-                                <input
-                                  type="checkbox"
-                                  checked={editLinkedTaskIds.includes(task.id)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) setEditLinkedTaskIds((prev) => [...prev, task.id])
-                                    else setEditLinkedTaskIds((prev) => prev.filter((id) => id !== task.id))
-                                  }}
-                                  className="h-4 w-4 rounded accent-[var(--accent)] shrink-0"
-                                />
-                                <KindIcon className="h-3.5 w-3.5 text-[var(--fg-muted)] shrink-0" />
-                                <span className="text-sm truncate text-[var(--fg)]">{task.title}</span>
-                              </label>
-                            )
-                          })}
+                          {groupTasks.map((task) => renderTaskRow(task))}
                         </div>
                       )}
                     </div>
@@ -986,24 +1094,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                         <span className="text-[10px] text-[var(--fg-muted)]">{ungrouped.length}</span>
                       </div>
                     )}
-                    {ungrouped.map((task) => {
-                      const KindIcon = KIND_ICON_MAP[task.kind] || CheckSquare
-                      return (
-                        <label key={task.id} className={cn('flex items-center gap-2.5 rounded-lg p-2 hover:bg-[var(--surface-elevated)] cursor-pointer transition-colors', grouped.length > 0 && 'ml-4')}>
-                          <input
-                            type="checkbox"
-                            checked={editLinkedTaskIds.includes(task.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) setEditLinkedTaskIds((prev) => [...prev, task.id])
-                              else setEditLinkedTaskIds((prev) => prev.filter((id) => id !== task.id))
-                            }}
-                            className="h-4 w-4 rounded accent-[var(--accent)] shrink-0"
-                          />
-                          <KindIcon className="h-3.5 w-3.5 text-[var(--fg-muted)] shrink-0" />
-                          <span className="text-sm truncate text-[var(--fg)]">{task.title}</span>
-                        </label>
-                      )
-                    })}
+                    {ungrouped.map((task) => renderTaskRow(task, grouped.length > 0 ? 'ml-4' : undefined))}
                   </div>
                 )}
 
@@ -1016,12 +1107,12 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
 
               <div className="flex items-center justify-between">
                 <span className="text-xs text-[var(--fg-muted)]">Выбрано: {editLinkedTaskIds.length}</span>
-                <button type="button" onClick={() => { setShowTaskPicker(false); setTaskSearch('') }} className="btn-secondary px-6">Готово</button>
+                <button type="button" onClick={() => { setShowTaskPicker(false); setTaskSearch(''); setTaskGroupFilter(null) }} className="btn-secondary px-6">Готово</button>
               </div>
             </div>
           </div>
         )
-      })()}
+      })(), document.body)}
 
       {/* Icon source picker (same as shop) */}
       {showIconSource && (
