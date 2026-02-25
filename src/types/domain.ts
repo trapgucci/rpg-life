@@ -734,8 +734,8 @@ export interface AppSettings {
     hard: number
     veryHard: number
   }
-  /** Хранить историю инвентаря за N дней (0 = без ограничений) */
-  historyRetentionDays: number
+  /** Сколько записей отображать в истории инвентаря */
+  historyDisplayLimit: number
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -751,7 +751,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     hard: 100,
     veryHard: 300,
   },
-  historyRetentionDays: 30,
+  historyDisplayLimit: 50,
 }
 
 // ─── Database schema (SQLite-ready) ─────────────────────────────────────────

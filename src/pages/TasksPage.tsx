@@ -179,8 +179,7 @@ export default function TasksPage() {
       }
 
       const g = t.groupId ?? null
-      if (selectedGroupId === ALL_GROUPS_ID) return true
-      if (selectedGroupId === NO_GROUP_ID) return g === null
+      if (selectedGroupId === ALL_GROUPS_ID || selectedGroupId === NO_GROUP_ID) return true
       return g === selectedGroupId
     })
 
@@ -510,17 +509,13 @@ export default function TasksPage() {
                 <Folder className="h-3.5 w-3.5 shrink-0" />
               </div>
               <span className="flex-1 truncate font-medium">
-                {selectedGroupId === ALL_GROUPS_ID
+                {selectedGroupId === ALL_GROUPS_ID || selectedGroupId === NO_GROUP_ID
                   ? 'Все группы'
-                  : selectedGroupId === NO_GROUP_ID
-                  ? 'Без группы'
                   : taskGroups.find((g) => g.id === selectedGroupId)?.name ?? 'Группа'}
               </span>
               <span className="shrink-0 rounded-md bg-[var(--surface)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--fg-muted)] tabular-nums">
-                {selectedGroupId === ALL_GROUPS_ID
+                {selectedGroupId === ALL_GROUPS_ID || selectedGroupId === NO_GROUP_ID
                   ? Array.from(taskCountByGroup.values()).reduce((a, b) => a + b, 0)
-                  : selectedGroupId === NO_GROUP_ID
-                  ? countNoGroup
                   : taskCountByGroup.get(selectedGroupId) ?? 0}
               </span>
               <ChevronDown className={cn(
@@ -568,30 +563,6 @@ export default function TasksPage() {
                     </span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedGroupId(NO_GROUP_ID)
-                      setShowGroupSelector(false)
-                    }}
-                    className={cn(
-                      'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-all',
-                      selectedGroupId === NO_GROUP_ID
-                        ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium'
-                        : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)] hover:text-[var(--fg)]'
-                    )}
-                  >
-                    <div className={cn(
-                      'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg',
-                      selectedGroupId === NO_GROUP_ID ? 'bg-[var(--accent)]/15' : 'bg-[var(--surface)]'
-                    )}>
-                      <Folder className="h-3.5 w-3.5" />
-                    </div>
-                    <span className="flex-1 truncate">Без группы</span>
-                    <span className="shrink-0 rounded-md bg-[var(--surface)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--fg-muted)] tabular-nums">
-                      {countNoGroup}
-                    </span>
-                  </button>
                 </div>
 
                 {/* Пользовательские группы */}
@@ -922,7 +893,7 @@ export default function TasksPage() {
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-5 md:p-6 pt-5">
               <TaskCreateForm
-                defaultGroupId={selectedGroupId === NO_GROUP_ID ? null : selectedGroupId}
+                defaultGroupId={selectedGroupId === NO_GROUP_ID || selectedGroupId === ALL_GROUPS_ID ? null : selectedGroupId}
                 onCreated={() => setShowForm(false)}
               />
             </div>
@@ -959,7 +930,7 @@ export default function TasksPage() {
             </div>
             <div className="overflow-y-auto p-5 pt-5">
               <TaskCreateForm
-                defaultGroupId={selectedGroupId === NO_GROUP_ID ? null : selectedGroupId}
+                defaultGroupId={selectedGroupId === NO_GROUP_ID || selectedGroupId === ALL_GROUPS_ID ? null : selectedGroupId}
                 onCreated={() => setShowForm(false)}
               />
             </div>

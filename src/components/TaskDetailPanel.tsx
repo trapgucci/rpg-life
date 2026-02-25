@@ -497,7 +497,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                     <Folder className="h-4 w-4" />
                   </div>
                   <span className="flex-1 text-sm font-medium">
-                    {editGroupId ? getTaskGroups().find((g) => g.id === editGroupId)?.name : 'Без группы'}
+                    {editGroupId ? getTaskGroups().find((g) => g.id === editGroupId)?.name : 'Выберите группу'}
                   </span>
                   <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
                 </button>

@@ -344,16 +344,11 @@ export const useRpgStore = create<RpgStoreState>()(
         set((s) => ({ stats: { ...s.stats, ...updater(s.stats) } }))
       }
 
-      /** Add a usage history entry with automatic cleanup based on retention settings */
+      /** Add a usage history entry */
       const addUsageEntry = (entry: Omit<import('../types/domain').UsageHistoryEntry, 'timestamp'> & { timestamp?: number }) => {
         set((s) => {
           const newEntry = { ...entry, timestamp: entry.timestamp ?? now() } as import('../types/domain').UsageHistoryEntry
-          let history = [...s.usageHistory, newEntry]
-          const days = s.settings.historyRetentionDays
-          if (days > 0) {
-            const cutoff = now() - days * 86_400_000
-            history = history.filter((e) => e.timestamp >= cutoff)
-          }
+          const history = [...s.usageHistory, newEntry]
           return { usageHistory: history.slice(-500) }
         })
       }
@@ -2293,22 +2288,14 @@ export const useRpgStore = create<RpgStoreState>()(
         if (!state.purchaseHistory) useRpgStore.setState({ purchaseHistory: [] })
         if (!state.usageHistory) useRpgStore.setState({ usageHistory: [] })
 
-        // Migrate settings to add historyRetentionDays if missing
-        if (state.settings && state.settings.historyRetentionDays === undefined) {
-          useRpgStore.setState({
-            settings: { ...state.settings, historyRetentionDays: 30 },
-          })
-        }
-
-        // Clean up old usage history entries based on retention setting
-        {
-          const days = state.settings?.historyRetentionDays ?? 30
-          if (days > 0 && state.usageHistory?.length) {
-            const cutoff = Date.now() - days * 86_400_000
-            const filtered = state.usageHistory.filter((e: any) => e.timestamp >= cutoff)
-            if (filtered.length < state.usageHistory.length) {
-              useRpgStore.setState({ usageHistory: filtered })
-            }
+        // Migrate settings: historyRetentionDays -> historyDisplayLimit
+        if (state.settings) {
+          const s = state.settings as any
+          if (s.historyDisplayLimit === undefined) {
+            const { historyRetentionDays: _, ...rest } = s
+            useRpgStore.setState({
+              settings: { ...rest, historyDisplayLimit: 50 },
+            })
           }
         }
 

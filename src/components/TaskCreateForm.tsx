@@ -105,6 +105,11 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       return
     }
 
+    if (!selectedGroupId) {
+      setError('Выберите группу для задачи')
+      return
+    }
+
     const profile = getActiveProfile()
     if (!profile) {
       setError('Нет активного профиля. Создайте или выберите профиль в настройках.')
@@ -267,7 +272,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
             <Folder className="h-4 w-4" />
           </div>
           <span className="flex-1 text-sm font-medium text-[var(--fg)]">
-            {selectedGroupId ? getTaskGroups().find((g) => g.id === selectedGroupId)?.name ?? 'Без группы' : 'Без группы'}
+            {selectedGroupId ? getTaskGroups().find((g) => g.id === selectedGroupId)?.name ?? 'Выберите группу' : 'Выберите группу'}
           </span>
           <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
         </button>

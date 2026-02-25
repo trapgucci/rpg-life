@@ -83,6 +83,7 @@ export default function InventoryHistorySidebar() {
   const usageHistory = useRpgStore((s) => s.usageHistory)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const shopItems = useRpgStore((s) => s.shopItems)
+  const displayLimit = useRpgStore((s) => s.settings.historyDisplayLimit ?? 50)
 
   const shopItemMap = useMemo(() => {
     const map = new Map<string, ShopItem>()
@@ -112,8 +113,8 @@ export default function InventoryHistorySidebar() {
         deletedQuantity: e.deletedQuantity,
       }))
       .sort((a, b) => b.timestamp - a.timestamp)
-      .slice(0, 50)
-  }, [usageHistory, activeProfileId])
+      .slice(0, displayLimit)
+  }, [usageHistory, activeProfileId, displayLimit])
 
   return (
     <div className="glass-card flex h-full w-full flex-col rounded-2xl overflow-hidden">

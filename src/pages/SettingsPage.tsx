@@ -426,13 +426,11 @@ function NotificationsSection() {
 
 // ─── Data Section ───────────────────────────────────────────────────────────
 
-const RETENTION_OPTIONS = [
-  { value: 7, label: '7 дней' },
-  { value: 14, label: '14 дней' },
-  { value: 30, label: '30 дней' },
-  { value: 60, label: '60 дней' },
-  { value: 90, label: '90 дней' },
-  { value: 0, label: 'Без ограничений' },
+const DISPLAY_LIMIT_OPTIONS = [
+  { value: 50, label: '50' },
+  { value: 100, label: '100' },
+  { value: 250, label: '250' },
+  { value: 500, label: '500' },
 ] as const
 
 function DataSection() {
@@ -494,24 +492,24 @@ function DataSection() {
         </div>
       </div>
 
-      {/* History retention */}
+      {/* History display limit */}
       <div className="mb-4 rounded-xl bg-[var(--surface)] p-4">
         <div className="flex items-center gap-2 mb-1">
           <Clock className="h-4 w-4 text-[var(--fg-muted)]" />
-          <p className="font-medium text-[var(--fg)]">Хранение истории инвентаря</p>
+          <p className="font-medium text-[var(--fg)]">Сколько записей отображать</p>
         </div>
         <p className="text-xs text-[var(--fg-muted)] mb-3">
           Записей сейчас: {usageHistoryCount}
         </p>
         <div className="flex flex-wrap gap-2">
-          {RETENTION_OPTIONS.map((opt) => (
+          {DISPLAY_LIMIT_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               type="button"
-              onClick={() => updateSettings({ historyRetentionDays: opt.value })}
+              onClick={() => updateSettings({ historyDisplayLimit: opt.value })}
               className={cn(
                 'rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
-                (settings.historyRetentionDays ?? 30) === opt.value
+                (settings.historyDisplayLimit ?? 50) === opt.value
                   ? 'bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--accent)]'
                   : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)] border border-transparent hover:bg-[var(--surface-elevated)]'
               )}
