@@ -1301,18 +1301,45 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
 
                   {/* Fragment progress */}
                   <div className="flex items-center gap-3 rounded-xl bg-[var(--surface-elevated)]/60 px-3 py-2.5 mb-3">
-                    <div
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg overflow-hidden ring-1 ring-inset"
-                      style={{
-                        background: `linear-gradient(to bottom, ${RARITY_COLORS[itemRecipe.resultRarity]}30, ${RARITY_COLORS[itemRecipe.resultRarity]}10)`,
-                        '--tw-ring-color': `${RARITY_COLORS[itemRecipe.resultRarity]}35`,
-                      } as React.CSSProperties}
-                    >
-                      {(itemRecipe as any).fragmentIconImage ? (
-                        <img src={(itemRecipe as any).fragmentIconImage} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <HabitIcon iconName={migrateIcon(itemRecipe.fragmentIcon, 'Puzzle')} size={16} />
-                      )}
+                    <div className="relative flex h-8 w-8 shrink-0 items-center justify-center">
+                      {/* Outer glow */}
+                      <div
+                        className="absolute inset-0 rounded-lg blur-[5px] opacity-50"
+                        style={{
+                          background: `linear-gradient(135deg, ${RARITY_COLORS[itemRecipe.resultRarity]}60, ${RARITY_COLORS[itemRecipe.resultRarity]}20)`,
+                        }}
+                      />
+                      {/* Crystal shape */}
+                      <div
+                        className="relative flex h-8 w-8 items-center justify-center rounded-lg overflow-hidden"
+                        style={{
+                          background: `
+                            linear-gradient(135deg,
+                              ${RARITY_COLORS[itemRecipe.resultRarity]}dd 0%,
+                              ${RARITY_COLORS[itemRecipe.resultRarity]}90 30%,
+                              ${RARITY_COLORS[itemRecipe.resultRarity]}bb 50%,
+                              ${RARITY_COLORS[itemRecipe.resultRarity]}70 70%,
+                              ${RARITY_COLORS[itemRecipe.resultRarity]}dd 100%
+                            )
+                          `,
+                          boxShadow: `
+                            inset 2px 2px 4px rgba(255,255,255,0.35),
+                            inset -1px -1px 3px rgba(0,0,0,0.15),
+                            0 2px 6px ${RARITY_COLORS[itemRecipe.resultRarity]}40
+                          `,
+                        }}
+                      >
+                        {/* Glass refraction highlight */}
+                        <div
+                          className="absolute top-0 left-0 w-[60%] h-[60%] rounded-bl-full opacity-30"
+                          style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.8), transparent)' }}
+                        />
+                        {(itemRecipe as any).fragmentIconImage ? (
+                          <img src={(itemRecipe as any).fragmentIconImage} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <HabitIcon iconName={migrateIcon(itemRecipe.fragmentIcon, 'Puzzle')} size={14} className="text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]" />
+                        )}
+                      </div>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-[var(--fg)] truncate">{itemRecipe.fragmentName}</p>

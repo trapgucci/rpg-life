@@ -253,23 +253,45 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
               <div className="flex-1 min-w-0">
                 {/* Large fragment icon + name */}
                 <div className="flex items-center gap-3 mb-3">
-                  <div
-                    className={cn(
-                      'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl transition-all overflow-hidden',
-                      'ring-1 ring-inset shadow-md',
-                    )}
-                    style={{
-                      background: `linear-gradient(to bottom, ${themeColor}35, ${themeColor}15)`,
-                      color: themeColor,
-                      boxShadow: `0 2px 8px ${themeColor}25`,
-                      '--tw-ring-color': `${themeColor}40`,
-                    } as React.CSSProperties}
-                  >
-                    {fragmentIconImage ? (
-                      <img src={fragmentIconImage} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <HabitIcon iconName={migrateIcon(recipe.fragmentIcon, 'Puzzle')} size={24} />
-                    )}
+                  <div className="relative flex h-12 w-12 shrink-0 items-center justify-center">
+                    {/* Outer glow */}
+                    <div
+                      className="absolute inset-0 rounded-xl blur-[8px] opacity-50"
+                      style={{
+                        background: `linear-gradient(135deg, ${themeColor}60, ${themeColor}20)`,
+                      }}
+                    />
+                    {/* Crystal shape */}
+                    <div
+                      className="relative flex h-12 w-12 items-center justify-center rounded-xl overflow-hidden"
+                      style={{
+                        background: `
+                          linear-gradient(135deg,
+                            ${themeColor}dd 0%,
+                            ${themeColor}90 30%,
+                            ${themeColor}bb 50%,
+                            ${themeColor}70 70%,
+                            ${themeColor}dd 100%
+                          )
+                        `,
+                        boxShadow: `
+                          inset 2px 2px 4px rgba(255,255,255,0.35),
+                          inset -1px -1px 3px rgba(0,0,0,0.15),
+                          0 2px 8px ${themeColor}40
+                        `,
+                      }}
+                    >
+                      {/* Glass refraction highlight */}
+                      <div
+                        className="absolute top-0 left-0 w-[60%] h-[60%] rounded-bl-full opacity-30"
+                        style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.8), transparent)' }}
+                      />
+                      {fragmentIconImage ? (
+                        <img src={fragmentIconImage} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <HabitIcon iconName={migrateIcon(recipe.fragmentIcon, 'Puzzle')} size={22} className="text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]" />
+                      )}
+                    </div>
                   </div>
                   <h2 className="text-xl font-bold text-[var(--fg)] break-words min-w-0">
                     {recipe.fragmentName}

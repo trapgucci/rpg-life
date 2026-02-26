@@ -52,24 +52,46 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
       )}
     >
       <div className="flex items-start gap-3">
-        {/* Neumorphic icon */}
-        <div
-          className={cn(
-            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl transition-all overflow-hidden',
-            'ring-1 ring-inset shadow-sm',
-          )}
-          style={{
-            background: `linear-gradient(to bottom, ${themeColor}30, ${themeColor}15)`,
-            color: themeColor,
-            boxShadow: `0 1px 2px ${themeColor}20`,
-            '--tw-ring-color': `${themeColor}40`,
-          } as React.CSSProperties}
-        >
-          {fragmentIconImage ? (
-            <img src={fragmentIconImage} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <HabitIcon iconName={migrateIcon(recipe.fragmentIcon, 'Puzzle')} size={22} />
-          )}
+        {/* Prismatic crystal icon */}
+        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center">
+          {/* Outer glow */}
+          <div
+            className="absolute inset-0 rounded-xl blur-[6px] opacity-50"
+            style={{
+              background: `linear-gradient(135deg, ${themeColor}60, ${themeColor}20)`,
+            }}
+          />
+          {/* Crystal shape */}
+          <div
+            className="relative flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden"
+            style={{
+              background: `
+                linear-gradient(135deg,
+                  ${themeColor}dd 0%,
+                  ${themeColor}90 30%,
+                  ${themeColor}bb 50%,
+                  ${themeColor}70 70%,
+                  ${themeColor}dd 100%
+                )
+              `,
+              boxShadow: `
+                inset 2px 2px 4px rgba(255,255,255,0.35),
+                inset -1px -1px 3px rgba(0,0,0,0.15),
+                0 2px 6px ${themeColor}40
+              `,
+            }}
+          >
+            {/* Glass refraction highlight */}
+            <div
+              className="absolute top-0 left-0 w-[60%] h-[60%] rounded-bl-full opacity-30"
+              style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.8), transparent)' }}
+            />
+            {fragmentIconImage ? (
+              <img src={fragmentIconImage} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <HabitIcon iconName={migrateIcon(recipe.fragmentIcon, 'Puzzle')} size={18} className="text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]" />
+            )}
+          </div>
         </div>
 
         {/* Content */}
