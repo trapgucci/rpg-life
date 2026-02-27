@@ -1290,46 +1290,40 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                 ? Math.min(1, itemRecipe.fragmentsCollected / itemRecipe.fragmentsRequired)
                 : 0
 
-              return (
-                <div className="rounded-2xl bg-gradient-to-b from-emerald-500/10 to-emerald-500/3 ring-1 ring-inset ring-emerald-400/20 p-4 mb-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-b from-emerald-500/25 to-emerald-500/10 ring-1 ring-inset ring-emerald-400/25">
-                      <Hammer className="h-4 w-4 text-emerald-500" />
-                    </div>
-                    <h3 className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Можно скрафтить</h3>
-                  </div>
+              const craftThemeColor = getItemTypeColor(item)
 
-                  {/* Fragment progress */}
-                  <div className="flex items-center gap-3 rounded-xl bg-[var(--surface-elevated)]/60 px-3 py-2.5 mb-3">
-                    <div className="relative flex h-8 w-8 shrink-0 items-center justify-center">
-                      {/* Outer glow */}
+              return (
+                <div
+                  className="glass rounded-2xl p-4 mb-6 relative overflow-hidden"
+                  style={{
+                    boxShadow: `
+                      inset 0 1px 0 rgba(255,255,255,0.06),
+                      0 4px 24px rgba(0,0,0,0.08),
+                      0 1px 3px rgba(0,0,0,0.04)
+                    `,
+                  }}
+                >
+                  {/* Subtle accent glow */}
+                  <div
+                    className="absolute -top-8 -right-8 w-24 h-24 rounded-full blur-3xl opacity-10 pointer-events-none"
+                    style={{ background: craftThemeColor }}
+                  />
+
+                  {/* Header row: icon + name + progress */}
+                  <div className="flex items-center gap-3 mb-3">
+                    {/* Prismatic crystal icon */}
+                    <div className="relative flex h-9 w-9 shrink-0 items-center justify-center">
                       <div
-                        className="absolute inset-0 rounded-lg blur-[5px] opacity-50"
-                        style={{
-                          background: `linear-gradient(135deg, ${RARITY_COLORS[itemRecipe.resultRarity]}60, ${RARITY_COLORS[itemRecipe.resultRarity]}20)`,
-                        }}
+                        className="absolute inset-0 rounded-xl blur-[5px] opacity-40"
+                        style={{ background: `linear-gradient(135deg, ${craftThemeColor}60, ${craftThemeColor}20)` }}
                       />
-                      {/* Crystal shape */}
                       <div
-                        className="relative flex h-8 w-8 items-center justify-center rounded-lg overflow-hidden"
+                        className="relative flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden"
                         style={{
-                          background: `
-                            linear-gradient(135deg,
-                              ${RARITY_COLORS[itemRecipe.resultRarity]}dd 0%,
-                              ${RARITY_COLORS[itemRecipe.resultRarity]}90 30%,
-                              ${RARITY_COLORS[itemRecipe.resultRarity]}bb 50%,
-                              ${RARITY_COLORS[itemRecipe.resultRarity]}70 70%,
-                              ${RARITY_COLORS[itemRecipe.resultRarity]}dd 100%
-                            )
-                          `,
-                          boxShadow: `
-                            inset 2px 2px 4px rgba(255,255,255,0.35),
-                            inset -1px -1px 3px rgba(0,0,0,0.15),
-                            0 2px 6px ${RARITY_COLORS[itemRecipe.resultRarity]}40
-                          `,
+                          background: `linear-gradient(135deg, ${craftThemeColor}dd 0%, ${craftThemeColor}90 30%, ${craftThemeColor}bb 50%, ${craftThemeColor}70 70%, ${craftThemeColor}dd 100%)`,
+                          boxShadow: `inset 2px 2px 4px rgba(255,255,255,0.35), inset -1px -1px 3px rgba(0,0,0,0.15), 0 2px 6px ${craftThemeColor}40`,
                         }}
                       >
-                        {/* Glass refraction highlight */}
                         <div
                           className="absolute top-0 left-0 w-[60%] h-[60%] rounded-bl-full opacity-30"
                           style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.8), transparent)' }}
@@ -1337,92 +1331,79 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                         {(itemRecipe as any).fragmentIconImage ? (
                           <img src={(itemRecipe as any).fragmentIconImage} alt="" className="h-full w-full object-cover" />
                         ) : (
-                          <HabitIcon iconName={migrateIcon(itemRecipe.fragmentIcon, 'Puzzle')} size={14} className="text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]" />
+                          <HabitIcon iconName={migrateIcon(itemRecipe.fragmentIcon, 'Puzzle')} size={16} className="text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]" />
                         )}
                       </div>
                     </div>
+
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-[var(--fg)] truncate">{itemRecipe.fragmentName}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className="flex-1 h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all duration-500"
-                            style={{
-                              width: `${recipeProgress * 100}%`,
-                              background: recipeProgress >= 1
-                                ? 'linear-gradient(90deg, #10b981, #34d399)'
-                                : 'linear-gradient(90deg, #10b981, #6ee7b7)',
-                            }}
-                          />
-                        </div>
-                        <span className="text-[11px] font-bold text-[var(--fg-muted)] shrink-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-[var(--fg)] truncate">{itemRecipe.fragmentName}</p>
+                        <span className="text-[11px] font-bold text-[var(--fg-muted)] shrink-0 tabular-nums">
                           {itemRecipe.fragmentsCollected}/{itemRecipe.fragmentsRequired}
                         </span>
                       </div>
+                      {/* Progress bar */}
+                      <div className="mt-1.5 h-1.5 rounded-full bg-[var(--border)]/60 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${recipeProgress * 100}%`,
+                            background: recipeProgress >= 1
+                              ? `linear-gradient(90deg, ${craftThemeColor}, ${craftThemeColor}cc)`
+                              : `linear-gradient(90deg, ${craftThemeColor}cc, ${craftThemeColor}80)`,
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  {/* Source info */}
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--surface-elevated)]/60 px-2 py-1 text-[11px] font-medium text-[var(--fg-muted)]">
-                      {recipeSourceType === 'random_drop' ? (
-                        <><Dice5 className="h-3 w-3" /> Случайный дроп</>
-                      ) : (
-                        <><Crosshair className="h-3 w-3" /> Привязка к задачам</>
-                      )}
-                      {recipeDropChance > 0 && <span className="font-bold ml-0.5">{recipeDropChance}%</span>}
-                    </span>
-
-                    {(recipeCoinCost > 0 || recipeGemCost > 0) && (
-                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--surface-elevated)]/60 px-2 py-1 text-[11px] font-medium text-[var(--fg-muted)]">
-                        Крафт:
-                        {recipeCoinCost > 0 && <span className="font-bold">🪙 {recipeCoinCost}</span>}
-                        {recipeGemCost > 0 && <span className="font-bold">💎 {recipeGemCost}</span>}
+                  {/* Cost chips */}
+                  {(recipeCoinCost > 0 || recipeGemCost > 0) && (
+                    <div className="mb-3">
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--surface-elevated)]/50 px-2 py-1 text-[11px] text-[var(--fg-muted)] backdrop-blur-sm">
+                        {recipeCoinCost > 0 && <span className="font-semibold">🪙 {recipeCoinCost}</span>}
+                        {recipeGemCost > 0 && <span className="font-semibold">💎 {recipeGemCost}</span>}
                       </span>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
-                  {/* How to get fragments */}
-                  <div className="mb-3">
-                    <p className="text-[10px] font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-1.5">Как получить фрагменты</p>
-                    {recipeSourceType === 'random_drop' ? (
-                      <div className="flex items-center gap-2 rounded-lg bg-[var(--surface-elevated)]/60 px-2.5 py-2">
-                        <Dice5 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                        <span className="text-xs text-[var(--fg)]">
-                          Выпадают с шансом {recipeDropChance > 0 ? `${recipeDropChance}%` : ''} при выполнении <span className="font-semibold">любой задачи</span>
-                        </span>
-                      </div>
-                    ) : recipeLinkedTasks.length > 0 ? (
-                      <div className="space-y-1">
-                        {recipeLinkedTasks.slice(0, 4).map((task: any) => (
-                          <div key={task.id} className="flex items-center gap-2 rounded-lg bg-[var(--surface-elevated)]/60 px-2.5 py-1.5">
-                            <Crosshair className="h-3 w-3 text-emerald-500 shrink-0" />
-                            <span className="text-xs text-[var(--fg)] truncate">{task.title}</span>
-                            {recipeDropChance > 0 && <span className="text-[10px] font-bold text-emerald-500 shrink-0">{recipeDropChance}%</span>}
-                          </div>
-                        ))}
-                        {recipeLinkedTasks.length > 4 && (
-                          <p className="text-[10px] text-[var(--fg-muted)] text-center">+{recipeLinkedTasks.length - 4} ещё</p>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 rounded-lg bg-[var(--surface-elevated)]/60 px-2.5 py-2">
-                        <Crosshair className="h-3.5 w-3.5 text-[var(--fg-muted)] shrink-0" />
-                        <span className="text-xs text-[var(--fg-muted)]">Привязаны к конкретным задачам</span>
-                      </div>
-                    )}
-                  </div>
+                  {/* Drop source info */}
+                  {recipeSourceType === 'random_drop' ? (
+                    <div className="flex items-center gap-1.5 text-[11px] text-[var(--fg-muted)] mb-3">
+                      <Dice5 className="h-2.5 w-2.5 shrink-0 opacity-50" />
+                      <span>Выпадает с любой задачи{recipeSrc?.allowSubtaskDrop && ' и подзадачи'}{recipeDropChance > 0 && <span className="font-semibold" style={{ color: craftThemeColor }}> {recipeDropChance}%</span>}</span>
+                    </div>
+                  ) : recipeLinkedTasks.length > 0 ? (
+                    <div className="space-y-1 mb-3">
+                      {recipeLinkedTasks.slice(0, 3).map((task: any) => (
+                        <div key={task.id} className="flex items-center gap-1.5 text-[11px] text-[var(--fg-muted)]">
+                          <Crosshair className="h-2.5 w-2.5 shrink-0 opacity-50" />
+                          <span className="truncate">{task.title}</span>
+                          {recipeDropChance > 0 && <span className="font-semibold shrink-0" style={{ color: craftThemeColor }}>{recipeDropChance}%</span>}
+                        </div>
+                      ))}
+                      {recipeLinkedTasks.length > 3 && (
+                        <p className="text-[10px] text-[var(--fg-muted)]/60 pl-4">+{recipeLinkedTasks.length - 3} ещё</p>
+                      )}
+                    </div>
+                  ) : null}
 
                   {/* Navigate to crafting button */}
                   {onNavigateToRecipe && (
                     <button
                       type="button"
                       onClick={() => onNavigateToRecipe(itemRecipe.id)}
-                      className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 ring-1 ring-inset ring-emerald-400/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                      className="w-full flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition-all hover:scale-[1.01] active:scale-[0.98]"
+                      style={{
+                        color: craftThemeColor,
+                        background: `${craftThemeColor}10`,
+                        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 1px ${craftThemeColor}20`,
+                      }}
                     >
-                      <Hammer className="h-4 w-4" />
+                      <Hammer className="h-3.5 w-3.5" />
                       Перейти к крафту
-                      <ChevronRight className="h-4 w-4" />
+                      <ChevronRight className="h-3.5 w-3.5" />
                     </button>
                   )}
                 </div>
