@@ -1177,16 +1177,47 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                 </div>
               )}
 
-              {/* Loot table preview */}
+              {/* Loot table preview — Glassmorphic Neumorphism */}
               {item.isLootBox && item.lootTable && item.lootTable.length > 0 && (
-                <div className="mt-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-b from-violet-500/20 to-violet-500/8 ring-1 ring-inset ring-violet-400/25">
-                      <Dice5 className="h-3.5 w-3.5 text-violet-500" />
+                <div
+                  className="mt-4 rounded-2xl p-4 relative overflow-hidden"
+                  style={{
+                    background: 'var(--surface)',
+                    backdropFilter: 'blur(24px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+                    border: '1px solid var(--border)',
+                    boxShadow: `
+                      6px 6px 16px var(--neu-shadow-dark),
+                      -4px -4px 12px var(--neu-shadow-light),
+                      inset 0 1px 0 var(--neu-inset-light)
+                    `,
+                  }}
+                >
+                  {/* Subtle violet glow at top-right */}
+                  <div
+                    className="pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full opacity-30 blur-2xl"
+                    style={{ background: 'radial-gradient(circle, #8b5cf680, transparent 70%)' }}
+                  />
+                  {/* Header */}
+                  <div className="flex items-center gap-2.5 mb-4 relative">
+                    <div
+                      className="flex h-8 w-8 items-center justify-center rounded-xl"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(139,92,246,0.18), rgba(139,92,246,0.06))',
+                        boxShadow: `
+                          3px 3px 8px var(--neu-shadow-dark),
+                          -2px -2px 6px var(--neu-inset-item-light),
+                          inset 0 1px 0 var(--neu-inset-light)
+                        `,
+                        border: '1px solid rgba(139,92,246,0.15)',
+                      }}
+                    >
+                      <Dice5 className="h-4 w-4 text-violet-500" />
                     </div>
-                    <span className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider">Возможный дроп</span>
+                    <span className="text-xs font-bold text-[var(--fg-muted)] uppercase tracking-wider">Возможный дроп</span>
                   </div>
-                  <div className="space-y-2">
+                  {/* Items list */}
+                  <div className="space-y-2.5">
                     {item.lootTable.map((entry, idx) => {
                       const lootItem = shopItems.find((i) => i.id === entry.id)
                       const entryName =
@@ -1210,26 +1241,31 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                       return (
                         <div
                           key={`${entry.id}-${idx}`}
-                          className="relative rounded-xl overflow-hidden ring-1 ring-inset transition-all duration-200 hover:scale-[1.01]"
+                          className="relative rounded-xl overflow-hidden transition-all duration-200 hover:translate-y-[-1px]"
                           style={{
-                            background: `linear-gradient(to bottom, ${entryColor}12, ${entryColor}04)`,
-                            '--tw-ring-color': `${entryColor}20`,
-                            boxShadow: `0 1px 4px ${entryColor}10`,
-                          } as React.CSSProperties}
+                            background: `linear-gradient(135deg, ${entryColor}0a, ${entryColor}04)`,
+                            border: `1px solid ${entryColor}18`,
+                            boxShadow: `
+                              4px 4px 10px var(--neu-item-dark),
+                              -3px -3px 8px var(--neu-item-light),
+                              inset 0 1px 0 var(--neu-item-inset-light),
+                              inset 0 0 0 0.5px ${entryColor}10
+                            `,
+                          }}
                         >
-                          {/* Type accent strip */}
-                          <div
-                            className="absolute top-0 left-0 w-[3px] h-full rounded-l-xl"
-                            style={{ background: entryColor }}
-                          />
-                          <div className="flex items-center gap-3 pl-4 pr-3 py-2.5">
-                            {/* Item icon */}
+                          <div className="flex items-center gap-3 px-3.5 py-2.5">
+                            {/* Item icon — neumorphic inset */}
                             <div
-                              className="relative shrink-0 flex h-10 w-10 items-center justify-center rounded-xl ring-1 ring-inset shadow-md"
+                              className="relative shrink-0 flex h-10 w-10 items-center justify-center rounded-xl"
                               style={{
-                                background: `linear-gradient(135deg, ${entryColor}30, ${entryColor}12)`,
-                                '--tw-ring-color': `${entryColor}35`,
-                                boxShadow: `0 2px 8px ${entryColor}20`,
+                                background: `linear-gradient(135deg, ${entryColor}22, ${entryColor}0c)`,
+                                boxShadow: `
+                                  inset 2px 2px 4px ${entryColor}15,
+                                  inset -1px -1px 3px var(--neu-icon-inset-light),
+                                  2px 2px 6px ${entryColor}10,
+                                  -1px -1px 4px var(--neu-icon-inset-light)
+                                `,
+                                border: `1px solid ${entryColor}20`,
                                 color: entryColor,
                               } as React.CSSProperties}
                             >
@@ -1239,11 +1275,14 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                                 <HabitIcon iconName={entryIconName} size={20} />
                               )}
                             </div>
-                            {/* Quantity badge — outside icon */}
+                            {/* Quantity badge */}
                             {(entry.quantity ?? 1) > 1 && (
                               <span
-                                className="shrink-0 rounded-lg px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm"
-                                style={{ background: entryColor }}
+                                className="shrink-0 rounded-lg px-1.5 py-0.5 text-[10px] font-bold text-white"
+                                style={{
+                                  background: `linear-gradient(135deg, ${entryColor}, ${entryColor}cc)`,
+                                  boxShadow: `0 2px 6px ${entryColor}40`,
+                                }}
                               >
                                 x{entry.quantity}
                               </span>
@@ -1252,12 +1291,19 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-semibold text-[var(--fg)] truncate">{entryName}</p>
                               <div className="flex items-center gap-2 mt-1.5">
-                                <div className="flex-1 h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
+                                <div
+                                  className="flex-1 h-[5px] rounded-full overflow-hidden"
+                                  style={{
+                                    background: `${entryColor}12`,
+                                    boxShadow: `inset 1px 1px 3px ${entryColor}10, inset -1px -1px 2px var(--neu-inset-bar-light)`,
+                                  }}
+                                >
                                   <div
                                     className="h-full rounded-full transition-all duration-500"
                                     style={{
                                       width: `${maxWeight > 0 ? (entry.weight / maxWeight) * 100 : 0}%`,
-                                      background: `linear-gradient(90deg, ${entryColor}, ${entryColor}aa)`,
+                                      background: `linear-gradient(90deg, ${entryColor}cc, ${entryColor})`,
+                                      boxShadow: `0 0 8px ${entryColor}50`,
                                     }}
                                   />
                                 </div>
