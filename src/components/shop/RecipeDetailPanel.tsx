@@ -11,6 +11,7 @@ const KIND_ICON_MAP = {
 } as const
 import { useRpgStore } from '../../store/useRpgStore'
 import type { CraftRecipe, ItemRarity, FragmentSourceType } from '../../types/domain'
+import { CURRENCY_IDS } from '../../types/domain'
 import { RARITY_LABELS, RARITY_COLORS, RARITY_BADGE_CLASSES, migrateIcon, getItemTypeBadge, getItemTypeColor } from './shopUtils'
 import ConfirmModal from '../ConfirmModal'
 import { HabitIcon } from '../HabitIcon'
@@ -221,9 +222,20 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
     setIsEditing(false)
   }
 
+  // --- Media item already in inventory? ---
+  const inventory = useRpgStore((s) => s.inventory)
+  const isResultMediaItem = !!(resultItem?.isVideoGame || resultItem?.isTvSerial)
+  const resultAlreadyOwned = isResultMediaItem && !!resultItem && inventory.some((e) => e.itemId === resultItem.id)
+
+  // Craft compensation state (shown after craft when item was already owned)
+  const [craftCompensation, setCraftCompensation] = useState<{ coins: number; gems: number } | null>(null)
+
   // --- Craft handler ---
   const handleCraft = () => {
-    craftItem(recipe.id)
+    const result = craftItem(recipe.id)
+    if (result && typeof result === 'object' && 'compensated' in result) {
+      setCraftCompensation({ coins: result.coins, gems: result.gems })
+    }
   }
 
   // --- Source labels ---
@@ -384,6 +396,41 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                     </div>
                   </div>
                 </div>
+                {/* Already owned media item — compensation notice */}
+                {isResultMediaItem && resultAlreadyOwned && !recipe.crafted && (
+                  <div className="mt-3 pt-3 border-t border-[var(--border)]">
+                    <div className="flex items-start gap-2 rounded-xl bg-gradient-to-b from-amber-500/15 to-amber-500/5 ring-1 ring-inset ring-amber-400/25 px-3 py-2.5">
+                      <span className="text-amber-500 shrink-0 mt-0.5">⚠️</span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">Предмет уже есть в инвентаре</p>
+                        <p className="text-xs text-[var(--fg-muted)] mt-0.5">
+                          При крафте вместо предмета вы получите 80% его стоимости
+                          {(resultItem?.cost[CURRENCY_IDS.COINS] ?? 0) > 0 && (
+                            <span className="font-bold text-amber-600 dark:text-amber-400"> 🪙 {Math.floor((resultItem.cost[CURRENCY_IDS.COINS] ?? 0) * 0.8)}</span>
+                          )}
+                          {(resultItem?.cost[CURRENCY_IDS.GEMS] ?? 0) > 0 && (
+                            <span className="font-bold text-blue-500"> 💎 {Math.floor((resultItem.cost[CURRENCY_IDS.GEMS] ?? 0) * 0.8)}</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Craft compensation received */}
+                {craftCompensation && (
+                  <div className="mt-3 pt-3 border-t border-[var(--border)]">
+                    <div className="flex items-center gap-2 rounded-xl bg-gradient-to-b from-emerald-500/15 to-emerald-500/5 ring-1 ring-inset ring-emerald-400/25 px-3 py-2.5">
+                      <span className="text-emerald-500 shrink-0">✅</span>
+                      <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                        Компенсация выдана:
+                        {craftCompensation.coins > 0 && <span className="ml-1">🪙 {craftCompensation.coins}</span>}
+                        {craftCompensation.gems > 0 && <span className="ml-1">💎 {craftCompensation.gems}</span>}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {hasCost && (
                   <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-[var(--border)]">
                     {coinCost > 0 && (

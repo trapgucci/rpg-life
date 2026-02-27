@@ -304,7 +304,7 @@ interface RpgStoreState {
   updateCraftRecipe: (id: CraftRecipeId, updater: (r: CraftRecipe) => CraftRecipe) => void
   deleteCraftRecipe: (id: CraftRecipeId) => void
   addFragment: (recipeId: CraftRecipeId, amount?: number) => void
-  craftItem: (recipeId: CraftRecipeId) => boolean
+  craftItem: (recipeId: CraftRecipeId) => boolean | { compensated: true; coins: number; gems: number }
   tryRandomFragmentDrop: (taskId?: TaskId, isSubtask?: boolean) => void
 
   // Shop actions
@@ -312,8 +312,8 @@ interface RpgStoreState {
   addShopItem: (item: Omit<ShopItem, 'id'>) => ShopItem
   updateShopItem: (id: ItemId, updater: (i: ShopItem) => ShopItem) => void
   deleteShopItem: (id: ItemId) => void
-  purchaseItem: (itemId: ItemId) => boolean | { loot: { itemId: string; name: string } | null }
-  openLootbox: (itemId: ItemId) => { itemId: string; name: string } | null
+  purchaseItem: (itemId: ItemId) => boolean | { loot: { itemId: string; name: string; compensated?: boolean; compensationLabel?: string } | null }
+  openLootbox: (itemId: ItemId) => { itemId: string; name: string; compensated?: boolean; compensationLabel?: string } | null
   purchaseGameTime: (itemId: ItemId, packageId: string) => boolean
   useGameTime: (itemId: ItemId, minutes: number) => boolean
   purchaseEpisode: (itemId: ItemId, seasonId: string, episodeId: string) => boolean
@@ -323,7 +323,7 @@ interface RpgStoreState {
   getInventory: () => InventoryEntry[]
   addToInventory: (itemId: ItemId, quantity?: number) => void
   removeFromInventory: (itemId: ItemId, quantity?: number) => boolean
-  useItem: (itemId: ItemId) => boolean | { loot: { itemId: string; name: string } | null } | { multiplier: true; itemId: ItemId } | { serial: true; itemId: ItemId } | { videogame: true; itemId: ItemId }
+  useItem: (itemId: ItemId) => boolean | { loot: { itemId: string; name: string; compensated?: boolean; compensationLabel?: string } | null } | { multiplier: true; itemId: ItemId } | { serial: true; itemId: ItemId } | { videogame: true; itemId: ItemId }
 
   // Streak multiplier
   applyStreakMultiplier: (taskId: TaskId, itemId: ItemId) => boolean
@@ -1674,7 +1674,7 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         craftItem: (recipeId) => {
-          const { craftRecipes, addToInventory, deductCurrency, getCurrency, checkAchievements } = get()
+          const { craftRecipes, addToInventory, deductCurrency, getCurrency, checkAchievements, addCurrency, inventory, shopItems, updateShopItem } = get()
           const recipe = craftRecipes.find((r) => r.id === recipeId)
           if (!recipe || recipe.crafted || recipe.fragmentsCollected < recipe.fragmentsRequired) return false
 
@@ -1691,7 +1691,29 @@ export const useRpgStore = create<RpgStoreState>()(
 
           // Add item to inventory (only if resultItemId is set)
           if (recipe.resultItemId) {
+            const resultItem = shopItems.find((i) => i.id === recipe.resultItemId)
+            const isMediaItem = resultItem?.isVideoGame || resultItem?.isTvSerial
+            const alreadyOwned = isMediaItem && inventory.some((e) => e.itemId === recipe.resultItemId)
+
+            if (isMediaItem && alreadyOwned) {
+              // Item already in inventory — give 80% of item cost as compensation
+              const coinCost = resultItem?.cost[CURRENCY_IDS.COINS] ?? 0
+              const gemCost = resultItem?.cost[CURRENCY_IDS.GEMS] ?? 0
+              if (coinCost > 0) addCurrency(CURRENCY_IDS.COINS, Math.floor(coinCost * 0.8))
+              if (gemCost > 0) addCurrency(CURRENCY_IDS.GEMS, Math.floor(gemCost * 0.8))
+              // Mark recipe as crafted (compensation issued)
+              get().updateCraftRecipe(recipeId, (r) => ({ ...r, crafted: true, craftedAt: now() }))
+              updateStats((s) => ({ totalItemsCrafted: s.totalItemsCrafted + 1 }))
+              checkAchievements()
+              return { compensated: true, coins: Math.floor(coinCost * 0.8), gems: Math.floor(gemCost * 0.8) }
+            }
+
             addToInventory(recipe.resultItemId)
+
+            // If media item — mark as basePurchased in shop so user can buy episodes/time
+            if (isMediaItem && resultItem) {
+              updateShopItem(recipe.resultItemId, (prev) => ({ ...prev, basePurchased: true }))
+            }
           }
 
           // Mark as crafted
@@ -1837,7 +1859,7 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         openLootbox: (itemId) => {
-          const { shopItems, addToInventory, addCurrency } = get()
+          const { shopItems, addToInventory, addCurrency, inventory, updateShopItem } = get()
           const item = shopItems.find((i) => i.id === itemId)
           if (!item || !item.isLootBox || !item.lootTable) return null
 
@@ -1852,18 +1874,38 @@ export const useRpgStore = create<RpgStoreState>()(
               const qty = entry.quantity ?? 1
               if (entry.id === CURRENCY_IDS.COINS || entry.id === CURRENCY_IDS.GEMS) {
                 addCurrency(entry.id as CurrencyId, qty)
+                const name = entry.id === CURRENCY_IDS.COINS ? `Монеты x${qty}` : `Кристаллы x${qty}`
+                return { itemId: entry.id, name }
               } else {
-                addToInventory(entry.id, qty)
-              }
-              let name: string
-              if (entry.id === CURRENCY_IDS.COINS) name = `Монеты x${qty}`
-              else if (entry.id === CURRENCY_IDS.GEMS) name = `Кристаллы x${qty}`
-              else {
                 const resultItem = get().shopItems.find((i) => i.id === entry.id)
-                name = resultItem?.name ?? 'Награда'
-                if (qty > 1) name += ` x${qty}`
+                const isMediaItem = resultItem?.isVideoGame || resultItem?.isTvSerial
+                const alreadyOwned = isMediaItem && inventory.some((e) => e.itemId === entry.id)
+
+                if (isMediaItem && alreadyOwned) {
+                  // Already owned media item — give 80% compensation
+                  const coinCost = resultItem?.cost[CURRENCY_IDS.COINS] ?? 0
+                  const gemCost = resultItem?.cost[CURRENCY_IDS.GEMS] ?? 0
+                  const compCoins = Math.floor(coinCost * 0.8)
+                  const compGems = Math.floor(gemCost * 0.8)
+                  if (compCoins > 0) addCurrency(CURRENCY_IDS.COINS, compCoins)
+                  if (compGems > 0) addCurrency(CURRENCY_IDS.GEMS, compGems)
+                  const name = resultItem?.name ?? 'Награда'
+                  const compParts: string[] = []
+                  if (compCoins > 0) compParts.push(`🪙 ${compCoins}`)
+                  if (compGems > 0) compParts.push(`💎 ${compGems}`)
+                  return { itemId: entry.id, name, compensated: true, compensationLabel: compParts.join(' + ') || '—' }
+                }
+
+                addToInventory(entry.id, qty)
+
+                // If media item — mark basePurchased so user can buy episodes/time in shop
+                if (isMediaItem && resultItem) {
+                  updateShopItem(entry.id, (prev) => ({ ...prev, basePurchased: true }))
+                }
+
+                const name = resultItem?.name ?? 'Награда'
+                return { itemId: entry.id, name: qty > 1 ? `${name} x${qty}` : name }
               }
-              return { itemId: entry.id, name }
             }
           }
 

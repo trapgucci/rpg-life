@@ -42,8 +42,8 @@ export default function InventoryPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
   const [showMobileHistory, setShowMobileHistory] = useState(false)
-  const [lootResult, setLootResult] = useState<{ itemId: string; itemName: string } | 'empty' | null>(null)
-  const [batchLootResults, setBatchLootResults] = useState<Array<{ itemId: string; itemName: string } | 'empty'> | null>(null)
+  const [lootResult, setLootResult] = useState<{ itemId: string; itemName: string; compensated?: boolean; compensationLabel?: string } | 'empty' | null>(null)
+  const [batchLootResults, setBatchLootResults] = useState<Array<{ itemId: string; itemName: string; compensated?: boolean; compensationLabel?: string } | 'empty'> | null>(null)
   const [multiplierItemId, setMultiplierItemId] = useState<string | null>(null)
 
   // ── Refs ──────────────────────────────────────────────────────────────────
@@ -199,7 +199,7 @@ export default function InventoryPage() {
     if (result && typeof result === 'object' && 'loot' in result) {
       setDetailModalItemId(null)
       if (result.loot) {
-        setLootResult({ itemId: result.loot.itemId, itemName: result.loot.name })
+        setLootResult({ itemId: result.loot.itemId, itemName: result.loot.name, compensated: result.loot.compensated, compensationLabel: result.loot.compensationLabel })
       } else {
         setLootResult('empty')
       }
@@ -233,7 +233,7 @@ export default function InventoryPage() {
       const result = useItem(itemId)
       if (result && typeof result === 'object' && 'loot' in result) {
         if (result.loot) {
-          results.push({ itemId: result.loot.itemId, itemName: result.loot.name })
+          results.push({ itemId: result.loot.itemId, itemName: result.loot.name, compensated: result.loot.compensated, compensationLabel: result.loot.compensationLabel })
         } else {
           results.push('empty')
         }
@@ -519,22 +519,26 @@ export default function InventoryPage() {
           <div className="p-6 flex flex-col items-center text-center">
             <div className={cn(
               'flex h-14 w-14 items-center justify-center rounded-2xl mb-4',
-              lootResult === 'empty' ? 'bg-gray-500/15' : 'bg-violet-500/15',
+              lootResult === 'empty' ? 'bg-gray-500/15' : lootResult.compensated ? 'bg-amber-500/15' : 'bg-violet-500/15',
             )}>
               {lootResult === 'empty'
                 ? <Frown className="h-7 w-7 text-gray-500" />
-                : <Gift className="h-7 w-7 text-violet-500" />
+                : lootResult.compensated
+                  ? <span className="text-2xl">🪙</span>
+                  : <Gift className="h-7 w-7 text-violet-500" />
               }
             </div>
             <h3 className="text-lg font-bold text-[var(--fg)] mb-1">
-              {lootResult === 'empty' ? 'Ничего не выпало' : 'Вы получили!'}
+              {lootResult === 'empty' ? 'Ничего не выпало' : lootResult.compensated ? 'Компенсация!' : 'Вы получили!'}
             </h3>
             <p className="text-sm text-[var(--fg-muted)] mb-6 max-w-[280px]">
               {lootResult === 'empty'
                 ? 'В этот раз не повезло, попробуйте ещё раз!'
-                : lootResult.itemId === CURRENCY_IDS.COINS || lootResult.itemId === CURRENCY_IDS.GEMS
-                  ? `${lootResult.itemName} добавлены к балансу`
-                  : `${lootResult.itemName} добавлен в инвентарь`
+                : lootResult.compensated
+                  ? `${lootResult.itemName} уже есть в вашем инвентаре. Вы получили 80% стоимости: ${lootResult.compensationLabel}`
+                  : lootResult.itemId === CURRENCY_IDS.COINS || lootResult.itemId === CURRENCY_IDS.GEMS
+                    ? `${lootResult.itemName} добавлены к балансу`
+                    : `${lootResult.itemName} добавлен в инвентарь`
               }
             </p>
             <button
@@ -572,21 +576,26 @@ export default function InventoryPage() {
                   key={i}
                   className={cn(
                     'flex items-center gap-2.5 rounded-xl px-3 py-2.5',
-                    r === 'empty' ? 'bg-zinc-500/5' : 'bg-violet-500/5',
+                    r === 'empty' ? 'bg-zinc-500/5' : r.compensated ? 'bg-amber-500/5' : 'bg-violet-500/5',
                   )}
                 >
                   <span className={cn(
                     'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sm',
-                    r === 'empty' ? 'bg-zinc-500/10 text-zinc-400' : 'bg-violet-500/10 text-violet-400',
+                    r === 'empty' ? 'bg-zinc-500/10 text-zinc-400' : r.compensated ? 'bg-amber-500/10 text-amber-400' : 'bg-violet-500/10 text-violet-400',
                   )}>
-                    {r === 'empty' ? <Frown className="h-4 w-4" /> : <Gift className="h-4 w-4" />}
+                    {r === 'empty' ? <Frown className="h-4 w-4" /> : r.compensated ? '🪙' : <Gift className="h-4 w-4" />}
                   </span>
-                  <span className={cn(
-                    'text-sm font-medium truncate',
-                    r === 'empty' ? 'text-[var(--fg-muted)]' : 'text-[var(--fg)]',
-                  )}>
-                    {r === 'empty' ? 'Ничего не выпало' : r.itemName}
-                  </span>
+                  <div className="min-w-0 flex-1">
+                    <span className={cn(
+                      'text-sm font-medium truncate block',
+                      r === 'empty' ? 'text-[var(--fg-muted)]' : 'text-[var(--fg)]',
+                    )}>
+                      {r === 'empty' ? 'Ничего не выпало' : r.itemName}
+                    </span>
+                    {r !== 'empty' && r.compensated && (
+                      <span className="text-xs text-amber-500">Компенсация: {r.compensationLabel}</span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
