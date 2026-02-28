@@ -691,6 +691,10 @@ export interface CraftRecipe {
   craftCost?: Record<CurrencyId, number>
   /** Источники фрагментов */
   sources?: FragmentSource[]
+  /** Максимальное количество крафтов (undefined/1 = одноразовый) */
+  maxCrafts?: number
+  /** Сколько раз уже скрафчено */
+  craftCount?: number
   /** Скрафчен ли предмет */
   crafted: boolean
   /** Когда скрафчен */

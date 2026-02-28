@@ -304,7 +304,7 @@ interface RpgStoreState {
   updateCraftRecipe: (id: CraftRecipeId, updater: (r: CraftRecipe) => CraftRecipe) => void
   deleteCraftRecipe: (id: CraftRecipeId) => void
   addFragment: (recipeId: CraftRecipeId, amount?: number) => void
-  craftItem: (recipeId: CraftRecipeId) => boolean | { compensated: true; coins: number; gems: number }
+  craftItem: (recipeId: CraftRecipeId) => boolean | { compensated: true; outOfStock?: boolean; coins: number; gems: number }
   tryRandomFragmentDrop: (taskId?: TaskId, isSubtask?: boolean) => void
 
   // Shop actions
@@ -1689,11 +1689,34 @@ export const useRpgStore = create<RpgStoreState>()(
             }
           }
 
+          const newCraftCount = (recipe.craftCount ?? 0) + 1
+          const maxCrafts = recipe.maxCrafts ?? 1
+          const isFullyDone = newCraftCount >= maxCrafts
+
           // Add item to inventory (only if resultItemId is set)
           if (recipe.resultItemId) {
             const resultItem = shopItems.find((i) => i.id === recipe.resultItemId)
             const isMediaItem = resultItem?.isVideoGame || resultItem?.isTvSerial
             const alreadyOwned = isMediaItem && inventory.some((e) => e.itemId === recipe.resultItemId)
+            const outOfStock = resultItem && resultItem.stock !== undefined && resultItem.stock === 0
+
+            if (outOfStock) {
+              // Item is out of stock in shop — give 70% of item cost as compensation
+              const coinCost = resultItem.cost[CURRENCY_IDS.COINS] ?? 0
+              const gemCost = resultItem.cost[CURRENCY_IDS.GEMS] ?? 0
+              if (coinCost > 0) addCurrency(CURRENCY_IDS.COINS, Math.floor(coinCost * 0.7))
+              if (gemCost > 0) addCurrency(CURRENCY_IDS.GEMS, Math.floor(gemCost * 0.7))
+              get().updateCraftRecipe(recipeId, (r) => ({
+                ...r,
+                craftCount: newCraftCount,
+                crafted: isFullyDone,
+                craftedAt: now(),
+                ...(isFullyDone ? {} : { fragmentsCollected: 0 }),
+              }))
+              updateStats((s) => ({ totalItemsCrafted: s.totalItemsCrafted + 1 }))
+              checkAchievements()
+              return { compensated: true, outOfStock: true, coins: Math.floor(coinCost * 0.7), gems: Math.floor(gemCost * 0.7) }
+            }
 
             if (isMediaItem && alreadyOwned) {
               // Item already in inventory — give 80% of item cost as compensation
@@ -1702,7 +1725,13 @@ export const useRpgStore = create<RpgStoreState>()(
               if (coinCost > 0) addCurrency(CURRENCY_IDS.COINS, Math.floor(coinCost * 0.8))
               if (gemCost > 0) addCurrency(CURRENCY_IDS.GEMS, Math.floor(gemCost * 0.8))
               // Mark recipe as crafted (compensation issued)
-              get().updateCraftRecipe(recipeId, (r) => ({ ...r, crafted: true, craftedAt: now() }))
+              get().updateCraftRecipe(recipeId, (r) => ({
+                ...r,
+                craftCount: newCraftCount,
+                crafted: isFullyDone,
+                craftedAt: now(),
+                ...(isFullyDone ? {} : { fragmentsCollected: 0 }),
+              }))
               updateStats((s) => ({ totalItemsCrafted: s.totalItemsCrafted + 1 }))
               checkAchievements()
               return { compensated: true, coins: Math.floor(coinCost * 0.8), gems: Math.floor(gemCost * 0.8) }
@@ -1710,14 +1739,28 @@ export const useRpgStore = create<RpgStoreState>()(
 
             addToInventory(recipe.resultItemId)
 
+            // Decrement stock in shop if item has limited stock
+            if (resultItem && resultItem.stock !== undefined && resultItem.stock > 0) {
+              updateShopItem(recipe.resultItemId, (prev) => ({
+                ...prev,
+                stock: (prev.stock ?? 1) - 1,
+              }))
+            }
+
             // If media item — mark as basePurchased in shop so user can buy episodes/time
             if (isMediaItem && resultItem) {
               updateShopItem(recipe.resultItemId, (prev) => ({ ...prev, basePurchased: true }))
             }
           }
 
-          // Mark as crafted
-          get().updateCraftRecipe(recipeId, (r) => ({ ...r, crafted: true, craftedAt: now() }))
+          // Update recipe: increment craftCount, reset fragments if more crafts remain
+          get().updateCraftRecipe(recipeId, (r) => ({
+            ...r,
+            craftCount: newCraftCount,
+            crafted: isFullyDone,
+            craftedAt: now(),
+            ...(isFullyDone ? {} : { fragmentsCollected: 0 }),
+          }))
 
           // Update stats
           updateStats((s) => ({ totalItemsCrafted: s.totalItemsCrafted + 1 }))

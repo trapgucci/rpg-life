@@ -44,10 +44,14 @@ interface RecipeCardProps {
 function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
   const deleteRecipe = useRpgStore((s) => s.deleteCraftRecipe)
   const craftItem = useRpgStore((s) => s.craftItem)
+  const allShopItems = useRpgStore((s) => s.shopItems)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   // Старые сохранённые данные могут не содержать fragmentSource
   const fragmentSource: any = (recipe as any).fragmentSource ?? { type: 'random_drop', dropChance: 0 }
+
+  const resultItem = recipe.resultItemId ? allShopItems.find((i) => i.id === recipe.resultItemId) : undefined
+  const isOutOfStock = !!(resultItem && resultItem.stock !== undefined && resultItem.stock === 0)
 
   const progress = recipe.fragmentsRequired > 0
     ? Math.min(1, recipe.fragmentsCollected / recipe.fragmentsRequired)
@@ -57,9 +61,7 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
   const rarityColor = RARITY_COLORS[recipe.resultRarity]
 
   const handleCraft = () => {
-    if (craftItem(recipe.id)) {
-      // Success!
-    }
+    craftItem(recipe.id)
   }
 
   return (
@@ -159,26 +161,35 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
 
         {/* Craft button */}
         {!recipe.crafted && (
-          <button
-            type="button"
-            onClick={handleCraft}
-            disabled={!canCraft}
-            className={cn(
-              'mt-4 w-full rounded-xl py-3 font-semibold transition-all duration-200',
-              canCraft
-                ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40'
-                : 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed'
+          <>
+            {isOutOfStock && canCraft && (
+              <p className="mt-3 text-[11px] text-red-500 text-center font-medium">
+                Предмет закончился — получите 70% стоимости
+              </p>
             )}
-          >
-            {canCraft ? (
-              <>
-                <Sparkles className="h-4 w-4 inline mr-2" />
-                Скрафтить!
-              </>
-            ) : (
-              `Нужно ещё ${recipe.fragmentsRequired - recipe.fragmentsCollected} фрагментов`
-            )}
-          </button>
+            <button
+              type="button"
+              onClick={handleCraft}
+              disabled={!canCraft}
+              className={cn(
+                'mt-2 w-full rounded-xl py-3 font-semibold transition-all duration-200',
+                canCraft
+                  ? isOutOfStock
+                    ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40'
+                    : 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40'
+                  : 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed'
+              )}
+            >
+              {canCraft ? (
+                <>
+                  <Sparkles className="h-4 w-4 inline mr-2" />
+                  {isOutOfStock ? 'Получить компенсацию' : 'Скрафтить!'}
+                </>
+              ) : (
+                `Нужно ещё ${recipe.fragmentsRequired - recipe.fragmentsCollected} фрагментов`
+              )}
+            </button>
+          </>
         )}
       </div>
 

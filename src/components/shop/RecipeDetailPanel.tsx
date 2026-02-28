@@ -92,6 +92,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
   const [editResultItemId, setEditResultItemId] = useState<string | null>(recipe.resultItemId || null)
   const [editCraftCostCoins, setEditCraftCostCoins] = useState(coinCost)
   const [editCraftCostGems, setEditCraftCostGems] = useState(gemCost)
+  const [editMaxCrafts, setEditMaxCrafts] = useState(recipe.maxCrafts ?? 1)
 
   const editSelectedItem = useMemo(() => editResultItemId ? allShopItems.find((i) => i.id === editResultItemId) : null, [editResultItemId, allShopItems])
   const editThemeColor = getItemTypeColor(editSelectedItem)
@@ -130,6 +131,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
     setEditResultItemId(r.resultItemId || null)
     setEditCraftCostCoins(cc?.coins ?? 0)
     setEditCraftCostGems(cc?.gems ?? 0)
+    setEditMaxCrafts(r.maxCrafts ?? 1)
     setShowTaskPicker(false)
     setTaskSearch('')
     setCollapsedTaskGroups(new Set())
@@ -213,6 +215,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
       resultName: selItem?.name ?? '',
       resultIcon: selItem?.icon ?? '',
       craftCost: { coins: editCraftCostCoins, gems: editCraftCostGems },
+      maxCrafts: editMaxCrafts,
     }
     updateRecipe(id, (r) => ({ ...r, ...data }))
   }
@@ -227,14 +230,17 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
   const isResultMediaItem = !!(resultItem?.isVideoGame || resultItem?.isTvSerial)
   const resultAlreadyOwned = isResultMediaItem && !!resultItem && inventory.some((e) => e.itemId === resultItem.id)
 
-  // Craft compensation state (shown after craft when item was already owned)
-  const [craftCompensation, setCraftCompensation] = useState<{ coins: number; gems: number } | null>(null)
+  // --- Out of stock check ---
+  const isResultOutOfStock = !!(resultItem && resultItem.stock !== undefined && resultItem.stock === 0)
+
+  // Craft compensation state (shown after craft when item was already owned or out of stock)
+  const [craftCompensation, setCraftCompensation] = useState<{ coins: number; gems: number; outOfStock?: boolean } | null>(null)
 
   // --- Craft handler ---
   const handleCraft = () => {
     const result = craftItem(recipe.id)
     if (result && typeof result === 'object' && 'compensated' in result) {
-      setCraftCompensation({ coins: result.coins, gems: result.gems })
+      setCraftCompensation({ coins: result.coins, gems: result.gems, outOfStock: result.outOfStock })
     }
   }
 
@@ -320,6 +326,15 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                     {sourceType === 'task_linked' && <><Crosshair className="h-3.5 w-3.5" /> Привязка к задачам{typeof fragmentSource?.dropChance === 'number' && fragmentSource.dropChance > 0 && ` ${fragmentSource.dropChance}%`}</>}
                   </span>
 
+                  {(recipe.maxCrafts ?? 1) > 1 && (
+                    <>
+                      <span className="w-px h-5 bg-[var(--border)] rounded-full self-center select-none" />
+                      <span className="inline-flex items-center gap-1.5 rounded-2xl bg-gradient-to-b from-violet-500/15 to-violet-500/5 px-3.5 py-1.5 text-sm font-medium text-violet-500 ring-1 ring-inset ring-violet-400/20 shadow-sm shadow-violet-500/10">
+                        {recipe.craftCount ?? 0}/{recipe.maxCrafts}
+                      </span>
+                    </>
+                  )}
+
                   {recipe.crafted && (
                     <>
                       <span className="w-px h-5 bg-[var(--border)] rounded-full self-center select-none" />
@@ -396,8 +411,29 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                     </div>
                   </div>
                 </div>
+                {/* Out of stock — compensation notice */}
+                {isResultOutOfStock && !recipe.crafted && (
+                  <div className="mt-3 pt-3 border-t border-[var(--border)]">
+                    <div className="flex items-start gap-2 rounded-xl bg-gradient-to-b from-red-500/15 to-red-500/5 ring-1 ring-inset ring-red-400/25 px-3 py-2.5">
+                      <span className="text-red-500 shrink-0 mt-0.5">🚫</span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-red-600 dark:text-red-400">Предмет закончился в магазине</p>
+                        <p className="text-xs text-[var(--fg-muted)] mt-0.5">
+                          При крафте вместо предмета вы получите 70% его стоимости
+                          {(resultItem?.cost[CURRENCY_IDS.COINS] ?? 0) > 0 && (
+                            <span className="font-bold text-red-600 dark:text-red-400"> 🪙 {Math.floor((resultItem.cost[CURRENCY_IDS.COINS] ?? 0) * 0.7)}</span>
+                          )}
+                          {(resultItem?.cost[CURRENCY_IDS.GEMS] ?? 0) > 0 && (
+                            <span className="font-bold text-blue-500"> 💎 {Math.floor((resultItem.cost[CURRENCY_IDS.GEMS] ?? 0) * 0.7)}</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Already owned media item — compensation notice */}
-                {isResultMediaItem && resultAlreadyOwned && !recipe.crafted && (
+                {!isResultOutOfStock && isResultMediaItem && resultAlreadyOwned && !recipe.crafted && (
                   <div className="mt-3 pt-3 border-t border-[var(--border)]">
                     <div className="flex items-start gap-2 rounded-xl bg-gradient-to-b from-amber-500/15 to-amber-500/5 ring-1 ring-inset ring-amber-400/25 px-3 py-2.5">
                       <span className="text-amber-500 shrink-0 mt-0.5">⚠️</span>
@@ -423,7 +459,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                     <div className="flex items-center gap-2 rounded-xl bg-gradient-to-b from-emerald-500/15 to-emerald-500/5 ring-1 ring-inset ring-emerald-400/25 px-3 py-2.5">
                       <span className="text-emerald-500 shrink-0">✅</span>
                       <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                        Компенсация выдана:
+                        {craftCompensation.outOfStock ? 'Компенсация за отсутствие в магазине:' : 'Компенсация выдана:'}
                         {craftCompensation.coins > 0 && <span className="ml-1">🪙 {craftCompensation.coins}</span>}
                         {craftCompensation.gems > 0 && <span className="ml-1">💎 {craftCompensation.gems}</span>}
                       </p>
@@ -575,6 +611,16 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                   </div>
                 )}
 
+                {/* Multi-craft counter */}
+                {(recipe.maxCrafts ?? 1) > 1 && (
+                  <div className="flex items-center justify-between py-2.5">
+                    <span className="text-xs text-[var(--fg-muted)]">Крафтов выполнено</span>
+                    <span className="text-xs font-bold" style={{ color: recipe.crafted ? '#10b981' : 'var(--fg)' }}>
+                      {recipe.craftCount ?? 0} / {recipe.maxCrafts}
+                    </span>
+                  </div>
+                )}
+
                 {/* Remaining */}
                 <div className="flex items-center justify-between py-2.5">
                   <span className="text-xs text-[var(--fg-muted)]">Осталось собрать</span>
@@ -705,6 +751,48 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                   <Package className="h-4 w-4" />
                   Выбрать предмет
                 </button>
+              )}
+            </div>
+
+            {/* Max crafts (edit) */}
+            <div className="glass rounded-2xl p-4">
+              <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Количество крафтов</label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditMaxCrafts((prev) => Math.max(1, prev - 1))}
+                  className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 shadow-sm shadow-red-500/10 hover:from-red-500/30 hover:to-red-500/15 hover:scale-105 active:scale-95"
+                >
+                  <span className="text-lg font-bold">−</span>
+                </button>
+                <input
+                  type="number"
+                  value={editMaxCrafts}
+                  onChange={(e) => {
+                    const v = Math.max(1, Number(e.target.value) || 1)
+                    const stockLimit = editSelectedItem?.stock
+                    setEditMaxCrafts(stockLimit !== undefined && stockLimit > 0 ? Math.min(v, stockLimit) : v)
+                  }}
+                  min={1}
+                  max={editSelectedItem?.stock !== undefined && editSelectedItem.stock > 0 ? editSelectedItem.stock : undefined}
+                  className="input w-full flex-1 min-w-0 h-11 py-0 text-center text-lg font-bold"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const stockLimit = editSelectedItem?.stock
+                    setEditMaxCrafts((prev) => {
+                      const next = prev + 1
+                      return stockLimit !== undefined && stockLimit > 0 ? Math.min(next, stockLimit) : next
+                    })
+                  }}
+                  className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-emerald-400/25 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10 hover:from-emerald-400/35 hover:to-emerald-500/20 hover:scale-105 active:scale-95"
+                >
+                  <span className="text-lg font-bold">+</span>
+                </button>
+              </div>
+              {editSelectedItem?.stock !== undefined && editSelectedItem.stock > 0 && (
+                <p className="text-[10px] text-[var(--fg-muted)] mt-2 text-center">Макс. {editSelectedItem.stock} (запас в магазине)</p>
               )}
             </div>
 
@@ -846,6 +934,9 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
           {hasCost && !canAfford && (
             <p className="text-xs text-red-500 text-center mb-2 font-medium">Недостаточно средств для крафта</p>
           )}
+          {isResultOutOfStock && (
+            <p className="text-xs text-red-500 text-center mb-2 font-medium">Предмет закончился — получите компенсацию 70%</p>
+          )}
           <button
             type="button"
             onClick={handleCraft}
@@ -854,12 +945,14 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
               'w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-semibold text-white transition-all duration-200',
               hasCost && !canAfford
                 ? 'bg-gray-400 cursor-not-allowed opacity-60'
-                : 'bg-gradient-to-r from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98]'
+                : isResultOutOfStock
+                  ? 'bg-gradient-to-r from-red-500 to-orange-500 shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:scale-[1.02] active:scale-[0.98]'
+                  : 'bg-gradient-to-r from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98]'
             )}
           >
             <Sparkles className="h-5 w-5" />
-            Крафтить!
-            {hasCost && (
+            {isResultOutOfStock ? 'Получить компенсацию' : 'Крафтить!'}
+            {hasCost && !isResultOutOfStock && (
               <span className="ml-1 flex items-center gap-2 text-sm opacity-90">
                 {coinCost > 0 && <span>🪙 {coinCost}</span>}
                 {gemCost > 0 && <span>💎 {gemCost}</span>}
@@ -955,7 +1048,14 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => { setEditResultItemId(item.id); setShowItemPicker(false); setItemSearch('') }}
+                    onClick={() => {
+                      setEditResultItemId(item.id)
+                      if (item.stock !== undefined && item.stock > 0) {
+                        setEditMaxCrafts((prev) => Math.min(prev, item.stock!))
+                      }
+                      setShowItemPicker(false)
+                      setItemSearch('')
+                    }}
                     className={cn(
                       'flex items-center gap-3 w-full rounded-lg p-2 text-left hover:bg-[var(--surface-elevated)] transition-colors',
                       editResultItemId === item.id && 'bg-[var(--accent-subtle)]'
