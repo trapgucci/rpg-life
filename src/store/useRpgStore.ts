@@ -324,7 +324,7 @@ interface RpgStoreState {
   getInventory: () => InventoryEntry[]
   addToInventory: (itemId: ItemId, quantity?: number) => void
   removeFromInventory: (itemId: ItemId, quantity?: number) => boolean
-  useItem: (itemId: ItemId) => boolean | { loot: { itemId: string; name: string; compensated?: boolean; compensationLabel?: string } | null } | { multiplier: true; itemId: ItemId } | { serial: true; itemId: ItemId } | { videogame: true; itemId: ItemId }
+  useItem: (itemId: ItemId, quantity?: number) => boolean | { loot: { itemId: string; name: string; compensated?: boolean; compensationLabel?: string } | null } | { multiplier: true; itemId: ItemId } | { serial: true; itemId: ItemId } | { videogame: true; itemId: ItemId }
 
   // Streak multiplier
   applyStreakMultiplier: (taskId: TaskId, itemId: ItemId) => boolean
@@ -1804,7 +1804,7 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         craftItem: (recipeId) => {
-          const { craftRecipes, addToInventory, deductCurrency, getCurrency, checkAchievements, addCurrency, inventory, shopItems, updateShopItem } = get()
+          const { craftRecipes, addToInventory, deductCurrency, getCurrency, checkAchievements, addCurrency, inventory, shopItems, updateShopItem, activeProfileId } = get()
           const recipe = craftRecipes.find((r) => r.id === recipeId)
           if (!recipe || recipe.crafted || recipe.fragmentsCollected < recipe.fragmentsRequired) return false
 
@@ -1894,6 +1894,18 @@ export const useRpgStore = create<RpgStoreState>()(
 
           // Update stats
           updateStats((s) => ({ totalItemsCrafted: s.totalItemsCrafted + 1 }))
+
+          // Log craft to usage history
+          if (activeProfileId && recipe.resultItemId) {
+            const resultItem = shopItems.find((i) => i.id === recipe.resultItemId)
+            addUsageEntry({
+              profileId: activeProfileId,
+              itemId: recipe.resultItemId,
+              itemName: resultItem?.name ?? recipe.fragmentName,
+              action: 'crafted' as const,
+              recipeName: recipe.fragmentName,
+            })
+          }
 
           checkAchievements()
           return true
@@ -2301,7 +2313,7 @@ export const useRpgStore = create<RpgStoreState>()(
           return true
         },
 
-        useItem: (itemId) => {
+        useItem: (itemId, quantity = 1) => {
           const { shopItems, inventory, getActiveProfile, updateProfile, removeFromInventory, openLootbox, activeProfileId } = get()
           const item = shopItems.find((i) => i.id === itemId)
           if (!item) return false
@@ -2352,23 +2364,24 @@ export const useRpgStore = create<RpgStoreState>()(
             return true
           }
 
-          // Generic usage (non-lootbox, non-discount, non-multiplier)
-          // Note: multiplier logging happens in applyStreakMultiplier where taskId is known
-          if (activeProfileId && !item.streakMultiplierEnabled) {
-            addUsageEntry({
-              profileId: activeProfileId,
-              itemId,
-              itemName: item.name,
-              action: 'used' as const,
-            })
-          }
-
           // Streak multiplier: don't consume yet — return signal to open task selection modal
           if (item.streakMultiplierEnabled) {
             return { multiplier: true as const, itemId }
           }
 
-          return removeFromInventory(itemId, 1)
+          // Generic usage (non-lootbox, non-discount, non-multiplier)
+          const useQty = Math.min(quantity, invEntry.quantity)
+          if (activeProfileId) {
+            addUsageEntry({
+              profileId: activeProfileId,
+              itemId,
+              itemName: item.name,
+              action: 'used' as const,
+              ...(useQty > 1 ? { quantity: useQty } : {}),
+            })
+          }
+
+          return removeFromInventory(itemId, useQty)
         },
 
         applyStreakMultiplier: (taskId, itemId) => {

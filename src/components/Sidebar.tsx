@@ -18,9 +18,9 @@ const navItems = [
   { to: '/', label: 'Задачи', icon: CheckSquare, color: '#6366f1' },
   { to: '/shop', label: 'Магазин', icon: ShoppingBag, color: '#f59e0b' },
   { to: '/inventory', label: 'Инвентарь', icon: Package, color: '#8b5cf6' },
+  { to: '/achievements', label: 'Достижения', icon: Trophy, color: '#eab308' },
   { to: '/reflection', label: 'Рефлексия', icon: Brain, color: '#14b8a6' },
   { to: '/status', label: 'Статус', icon: Activity, color: '#3b82f6' },
-  { to: '/achievements', label: 'Достижения', icon: Trophy, color: '#eab308' },
 ] as const
 
 const bottomItems = [

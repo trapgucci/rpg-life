@@ -15,6 +15,7 @@ import { CURRENCY_IDS } from '../../types/domain'
 import { RARITY_LABELS, RARITY_COLORS, RARITY_BADGE_CLASSES, migrateIcon, getItemTypeBadge, getItemTypeColor } from './shopUtils'
 import ConfirmModal from '../ConfirmModal'
 import { HabitIcon } from '../HabitIcon'
+import { ItemIconBadge } from '../ItemIconBadge'
 import IconSourcePicker from './IconSourcePicker'
 import EmojiPickerModal from './EmojiPickerModal'
 
@@ -361,19 +362,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
               <div className="glass rounded-2xl p-4">
                 <h3 className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Результат крафта</h3>
                 <div className="flex items-center gap-3">
-                  <div
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden ring-1 ring-inset shadow-sm"
-                    style={{
-                      background: `linear-gradient(to bottom, ${themeColor}35, ${themeColor}15)`,
-                      '--tw-ring-color': `${themeColor}40`,
-                    } as React.CSSProperties}
-                  >
-                    {resultItem.iconImage ? (
-                      <img src={resultItem.iconImage} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <HabitIcon iconName={migrateIcon(resultItem.icon, 'Package')} size={20} />
-                    )}
-                  </div>
+                  <ItemIconBadge item={resultItem} size="md" className="h-10 w-10" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-[var(--fg)] truncate">{resultItem.name}</p>
                     <div className="flex flex-wrap items-center gap-1 mt-1">
@@ -711,19 +700,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
               <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Результат крафта</label>
               {editSelectedItem ? (
                 <div className="flex items-center gap-3">
-                  <div
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden ring-1 ring-inset shadow-sm"
-                    style={{
-                      background: `linear-gradient(to bottom, ${editThemeColor}35, ${editThemeColor}15)`,
-                      '--tw-ring-color': `${editThemeColor}40`,
-                    } as React.CSSProperties}
-                  >
-                    {editSelectedItem.iconImage ? (
-                      <img src={editSelectedItem.iconImage} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <HabitIcon iconName={migrateIcon(editSelectedItem.icon, 'Package')} size={20} />
-                    )}
-                  </div>
+                  <ItemIconBadge item={editSelectedItem} size="md" className="h-10 w-10" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-[var(--fg)] truncate">{editSelectedItem.name}</p>
                   </div>
@@ -1054,19 +1031,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                       editResultItemId === item.id && 'bg-[var(--accent-subtle)]'
                     )}
                   >
-                    <div
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg overflow-hidden ring-1 ring-inset"
-                      style={{
-                        background: `linear-gradient(to bottom, ${iconBg}35, ${iconBg}15)`,
-                        '--tw-ring-color': `${iconBg}40`,
-                      } as React.CSSProperties}
-                    >
-                      {item.iconImage ? (
-                        <img src={item.iconImage} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <HabitIcon iconName={migrateIcon(item.icon, 'Package')} size={16} />
-                      )}
-                    </div>
+                    <ItemIconBadge item={item} size="sm" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-[var(--fg)] truncate">{item.name}</p>
                     </div>

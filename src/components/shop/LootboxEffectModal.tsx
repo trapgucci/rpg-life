@@ -1,12 +1,48 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import { cn } from '../../lib/cn'
 import { X, Plus, Trash2, ChevronRight, Sparkles, Box, Lightbulb, Check, Search } from 'lucide-react'
 import { CURRENCY_IDS } from '../../types/domain'
 import type { ShopItem, ItemGroup } from '../../types/domain'
-import { getItemIcon } from './shopUtils'
+import { getItemIcon, getItemTypeColor, RARITY_COLORS } from './shopUtils'
 import type { LootTableEntry } from './shopUtils'
 import { HabitIcon } from '../HabitIcon'
 import { useRpgStore } from '../../store/useRpgStore'
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const BATCH_SIZE = 30
+const CURRENCY_COLORS: Record<string, string> = {
+  [CURRENCY_IDS.COINS]: '#f59e0b',
+  [CURRENCY_IDS.GEMS]: '#a855f7',
+}
+
+// ─── Shared icon renderer ────────────────────────────────────────────────────
+
+function ItemIconBadge({ iconName, iconImage, color }: { iconName: string; iconImage?: string; color: string }) {
+  if (iconImage) {
+    return <img src={iconImage} alt="" className="h-8 w-8 rounded-lg object-cover shrink-0 shadow-sm" />
+  }
+  return (
+    <span
+      className="flex h-8 w-8 items-center justify-center rounded-lg shrink-0"
+      style={{
+        background: `linear-gradient(135deg, ${color}22, ${color}11)`,
+        boxShadow: `0 2px 6px ${color}30, inset 0 1px 0 ${color}15`,
+        color,
+      }}
+    >
+      <HabitIcon iconName={iconName} size={20} />
+    </span>
+  )
+}
+
+// ─── Helper: get color for a given item/currency id ──────────────────────────
+
+function getColorForId(id: string, shopItems: ShopItem[]): string {
+  if (CURRENCY_COLORS[id]) return CURRENCY_COLORS[id]
+  const item = shopItems.find((i) => i.id === id)
+  return item ? getItemTypeColor(item) : '#9ca3af'
+}
 
 // ─── Reward Picker Modal (multi-select) ──────────────────────────────────────
 
@@ -17,10 +53,14 @@ interface RewardPickerModalProps {
   onClose: () => void
 }
 
+type PickerOption = { id: string; name: string; iconName: string; iconImage?: string; groupId?: string | null; color: string }
+
 function RewardPickerModal({ shopItems, excludeIds = [], onSelect, onClose }: RewardPickerModalProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState('')
   const [groupFilter, setGroupFilter] = useState<string | null>(null)
+  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const allItemGroups = useRpgStore((s) => s.itemGroups)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const itemGroups = useMemo(() => allItemGroups.filter((g) => g.profileId === activeProfileId), [allItemGroups, activeProfileId])
@@ -39,17 +79,24 @@ function RewardPickerModal({ shopItems, excludeIds = [], onSelect, onClose }: Re
     onClose()
   }
 
-  const currencyOptions: { id: string; name: string; iconName: string; iconImage?: string; groupId?: string | null }[] = [
-    { id: CURRENCY_IDS.COINS, name: 'Монеты', iconName: 'Coins' },
-    { id: CURRENCY_IDS.GEMS, name: 'Кристаллы', iconName: 'Gem' },
+  const currencyOptions: PickerOption[] = [
+    { id: CURRENCY_IDS.COINS, name: 'Монеты', iconName: 'Coins', color: CURRENCY_COLORS[CURRENCY_IDS.COINS] },
+    { id: CURRENCY_IDS.GEMS, name: 'Кристаллы', iconName: 'Gem', color: CURRENCY_COLORS[CURRENCY_IDS.GEMS] },
   ]
-
-  const itemOptions = shopItems
-    .filter((i) => !excludeIds.includes(i.id))
-    .map((i) => ({ id: i.id, name: i.name, iconName: getItemIcon(i), iconImage: i.iconImage, groupId: i.groupId }))
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim()
+    const itemOptions: PickerOption[] = shopItems
+      .filter((i) => !excludeIds.includes(i.id))
+      .map((i) => ({
+        id: i.id,
+        name: i.name,
+        iconName: getItemIcon(i),
+        iconImage: i.iconImage,
+        groupId: i.groupId,
+        color: getItemTypeColor(i),
+      }))
+
     const filteredItems = itemOptions.filter((o) => {
       if (q && !o.name.toLowerCase().includes(q)) return false
       if (groupFilter && o.groupId !== groupFilter) return false
@@ -60,6 +107,25 @@ function RewardPickerModal({ shopItems, excludeIds = [], onSelect, onClose }: Re
       : groupFilter ? [] : currencyOptions
     return [...filteredCurrencies, ...filteredItems]
   }, [search, groupFilter, shopItems, excludeIds])
+
+  // Reset visible count when filter changes
+  const prevFilterKey = useRef('')
+  const filterKey = `${search}|${groupFilter}`
+  if (filterKey !== prevFilterKey.current) {
+    prevFilterKey.current = filterKey
+    if (visibleCount !== BATCH_SIZE) setVisibleCount(BATCH_SIZE)
+  }
+
+  const visibleItems = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
+  const hasMore = visibleCount < filtered.length
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current
+    if (!el || !hasMore) return
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 100) {
+      setVisibleCount((prev) => Math.min(prev + BATCH_SIZE, filtered.length))
+    }
+  }, [hasMore, filtered.length])
 
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -97,11 +163,11 @@ function RewardPickerModal({ shopItems, excludeIds = [], onSelect, onClose }: Re
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-1 mb-4">
+        <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto space-y-1 mb-4">
           {filtered.length === 0 && (
             <p className="text-sm text-[var(--fg-muted)] text-center py-8">Ничего не найдено</p>
           )}
-          {filtered.map((opt) => (
+          {visibleItems.map((opt) => (
             <button
               key={opt.id}
               type="button"
@@ -113,17 +179,16 @@ function RewardPickerModal({ shopItems, excludeIds = [], onSelect, onClose }: Re
                   : 'border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
               )}
             >
-              {opt.iconImage ? (
-                <img src={opt.iconImage} alt="" className="h-8 w-8 rounded-lg object-cover shrink-0" />
-              ) : (
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--surface-elevated)] text-[var(--fg-muted)] shrink-0">
-                  <HabitIcon iconName={opt.iconName} size={20} />
-                </span>
-              )}
+              <ItemIconBadge iconName={opt.iconName} iconImage={opt.iconImage} color={opt.color} />
               <span className="font-medium text-[var(--fg)] truncate">{opt.name}</span>
               {selected.has(opt.id) && <Check className="h-5 w-5 text-[var(--accent)] ml-auto shrink-0" />}
             </button>
           ))}
+          {hasMore && (
+            <p className="text-xs text-[var(--fg-muted)] text-center py-2">
+              Показано {visibleCount} из {filtered.length}…
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={onClose} className="btn-secondary flex-1">Отмена</button>
@@ -152,21 +217,28 @@ function RewardPickerModalSingle({
   const [selected, setSelected] = useState<string | null>(currentId)
   const [search, setSearch] = useState('')
   const [groupFilter, setGroupFilter] = useState<string | null>(null)
+  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const allItemGroups = useRpgStore((s) => s.itemGroups)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const itemGroups = useMemo(() => allItemGroups.filter((g) => g.profileId === activeProfileId), [allItemGroups, activeProfileId])
 
-  const currencyOptions: { id: string; name: string; iconName: string; iconImage?: string; groupId?: string | null }[] = [
-    { id: CURRENCY_IDS.COINS, name: 'Монеты', iconName: 'Coins' },
-    { id: CURRENCY_IDS.GEMS, name: 'Кристаллы', iconName: 'Gem' },
+  const currencyOptions: PickerOption[] = [
+    { id: CURRENCY_IDS.COINS, name: 'Монеты', iconName: 'Coins', color: CURRENCY_COLORS[CURRENCY_IDS.COINS] },
+    { id: CURRENCY_IDS.GEMS, name: 'Кристаллы', iconName: 'Gem', color: CURRENCY_COLORS[CURRENCY_IDS.GEMS] },
   ]
-
-  const itemOptions = shopItems.map((i) => ({
-    id: i.id, name: i.name, iconName: getItemIcon(i), iconImage: i.iconImage, groupId: i.groupId,
-  }))
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim()
+    const itemOptions: PickerOption[] = shopItems.map((i) => ({
+      id: i.id,
+      name: i.name,
+      iconName: getItemIcon(i),
+      iconImage: i.iconImage,
+      groupId: i.groupId,
+      color: getItemTypeColor(i),
+    }))
+
     const filteredItems = itemOptions.filter((o) => {
       if (q && !o.name.toLowerCase().includes(q)) return false
       if (groupFilter && o.groupId !== groupFilter) return false
@@ -177,6 +249,25 @@ function RewardPickerModalSingle({
       : groupFilter ? [] : currencyOptions
     return [...filteredCurrencies, ...filteredItems]
   }, [search, groupFilter, shopItems])
+
+  // Reset visible count when filter changes
+  const prevFilterKey = useRef('')
+  const filterKey = `${search}|${groupFilter}`
+  if (filterKey !== prevFilterKey.current) {
+    prevFilterKey.current = filterKey
+    if (visibleCount !== BATCH_SIZE) setVisibleCount(BATCH_SIZE)
+  }
+
+  const visibleItems = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
+  const hasMore = visibleCount < filtered.length
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current
+    if (!el || !hasMore) return
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 100) {
+      setVisibleCount((prev) => Math.min(prev + BATCH_SIZE, filtered.length))
+    }
+  }, [hasMore, filtered.length])
 
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -214,11 +305,11 @@ function RewardPickerModalSingle({
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-1 mb-4">
+        <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto space-y-1 mb-4">
           {filtered.length === 0 && (
             <p className="text-sm text-[var(--fg-muted)] text-center py-8">Ничего не найдено</p>
           )}
-          {filtered.map((opt) => (
+          {visibleItems.map((opt) => (
             <button
               key={opt.id}
               type="button"
@@ -228,17 +319,16 @@ function RewardPickerModalSingle({
                 selected === opt.id ? 'border-[var(--accent)] bg-[var(--accent-subtle)]' : 'border-[var(--border)] bg-[var(--surface)]'
               )}
             >
-              {opt.iconImage ? (
-                <img src={opt.iconImage} alt="" className="h-8 w-8 rounded-lg object-cover shrink-0" />
-              ) : (
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--surface-elevated)] text-[var(--fg-muted)] shrink-0">
-                  <HabitIcon iconName={opt.iconName} size={20} />
-                </span>
-              )}
+              <ItemIconBadge iconName={opt.iconName} iconImage={opt.iconImage} color={opt.color} />
               <span className="font-medium text-[var(--fg)] truncate">{opt.name}</span>
               {selected === opt.id && <Check className="h-5 w-5 text-[var(--accent)] ml-auto shrink-0" />}
             </button>
           ))}
+          {hasMore && (
+            <p className="text-xs text-[var(--fg-muted)] text-center py-2">
+              Показано {visibleCount} из {filtered.length}…
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={onClose} className="btn-secondary flex-1">Отмена</button>
@@ -338,6 +428,8 @@ export default function LootboxEffectModal({ lootTable: initial, shopItems, onSa
     return shopItems.find((i) => i.id === id)?.iconImage
   }
 
+  const getEntryColor = (id: string): string => getColorForId(id, shopItems)
+
   return (
     <div
       className="modal-backdrop"
@@ -367,86 +459,87 @@ export default function LootboxEffectModal({ lootTable: initial, shopItems, onSa
             </>
           ) : (
             <div className="space-y-4">
-              {entries.map((entry, index) => (
-                <div
-                  key={`${entry.id}-${index}`}
-                  className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] p-4"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      {getEntryIconImage(entry.id) ? (
-                        <img src={getEntryIconImage(entry.id)} alt="" className="h-8 w-8 rounded-lg object-cover shrink-0" />
-                      ) : (
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--surface)] text-[var(--fg-muted)] shrink-0">
-                          <HabitIcon iconName={getEntryIconName(entry.id)} size={20} />
-                        </span>
-                      )}
-                      <span className="font-medium text-[var(--fg)]">{getEntryName(entry.id)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setEditingIndex(index)}
-                        className="text-sm font-medium text-[var(--accent)] hover:underline"
-                      >
-                        Изменить
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeEntry(index)}
-                        className="icon-btn icon-btn-danger p-1"
-                        title="Удалить награду"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1">Количество</label>
+              {entries.map((entry, index) => {
+                const color = getEntryColor(entry.id)
+                return (
+                  <div
+                    key={`${entry.id}-${index}`}
+                    className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] p-4"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <ItemIconBadge
+                          iconName={getEntryIconName(entry.id)}
+                          iconImage={getEntryIconImage(entry.id)}
+                          color={color}
+                        />
+                        <span className="font-medium text-[var(--fg)]">{getEntryName(entry.id)}</span>
+                      </div>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => updateEntry(index, (e) => ({ ...e, quantity: Math.max(1, (e.quantity ?? 1) - 1) }))}
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)]"
+                          onClick={() => setEditingIndex(index)}
+                          className="text-sm font-medium text-[var(--accent)] hover:underline"
                         >
-                          −
+                          Изменить
                         </button>
-                        <input
-                          type="number"
-                          min={1}
-                          value={entry.quantity ?? 1}
-                          onChange={(ev) => updateEntry(index, (entry) => ({ ...entry, quantity: Math.max(1, Number(ev.target?.value) || 1) }))}
-                          className="input flex-1 text-center h-9"
-                        />
                         <button
                           type="button"
-                          onClick={() => updateEntry(index, (e) => ({ ...e, quantity: (e.quantity ?? 1) + 1 }))}
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)]"
+                          onClick={() => removeEntry(index)}
+                          className="icon-btn icon-btn-danger p-1"
+                          title="Удалить награду"
                         >
-                          +
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1">Шанс выпадения, %</label>
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={entry.weight}
-                        onChange={(ev) => {
-                          const newWeight = Number(ev.target?.value) || 0
-                          const otherSum = entries.reduce((sum, e, i) => (i === index ? sum : sum + e.weight), 0)
-                          const maxWeight = Math.max(0, 100 - otherSum)
-                          updateEntry(index, (entry) => ({ ...entry, weight: Math.min(maxWeight, Math.max(0, newWeight)) }))
-                        }}
-                        className="input w-full h-9"
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1">Количество</label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => updateEntry(index, (e) => ({ ...e, quantity: Math.max(1, (e.quantity ?? 1) - 1) }))}
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)]"
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            min={1}
+                            value={entry.quantity ?? 1}
+                            onChange={(ev) => updateEntry(index, (entry) => ({ ...entry, quantity: Math.max(1, Number(ev.target?.value) || 1) }))}
+                            className="input flex-1 text-center h-9"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => updateEntry(index, (e) => ({ ...e, quantity: (e.quantity ?? 1) + 1 }))}
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)]"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1">Шанс выпадения, %</label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={entry.weight}
+                          onChange={(ev) => {
+                            const newWeight = Number(ev.target?.value) || 0
+                            const otherSum = entries.reduce((sum, e, i) => (i === index ? sum : sum + e.weight), 0)
+                            const maxWeight = Math.max(0, 100 - otherSum)
+                            updateEntry(index, (entry) => ({ ...entry, weight: Math.min(maxWeight, Math.max(0, newWeight)) }))
+                          }}
+                          className="input w-full h-9"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 

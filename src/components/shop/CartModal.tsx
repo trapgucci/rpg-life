@@ -3,16 +3,9 @@ import { X, Trash2, Coins, Gem, ShoppingCart, Plus, Minus, Gift, TrendingUp, Per
 import { cn } from '../../lib/cn'
 import { useRpgStore } from '../../store/useRpgStore'
 import { CURRENCY_IDS } from '../../types/domain'
-import { getItemIcon, getItemTypeBadge } from './shopUtils'
-import { HabitIcon } from '../HabitIcon'
+import { getItemTypeBadge } from './shopUtils'
+import { ItemIconBadge } from '../ItemIconBadge'
 
-const TYPE_COLORS: Record<string, string> = {
-  lootbox: '#8b5cf6',
-  multiplier: '#f59e0b',
-  discount: '#ef4444',
-  videogame: '#06b6d4',
-  serial: '#ec4899',
-}
 
 export interface CartEntry {
   itemId: string
@@ -33,7 +26,6 @@ export default function CartModal({ cart, onRemove, onClear, onCheckout, onClose
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const activeShopDiscountPercent = useRpgStore((s) => s.activeShopDiscountPercent)
-  const allItemGroups = useRpgStore((s) => s.itemGroups)
 
   const profile = profiles.find((p) => p.id === activeProfileId)
   const coins = profile?.currencies[CURRENCY_IDS.COINS] ?? 0
@@ -110,8 +102,6 @@ export default function CartModal({ cart, onRemove, onClear, onCheckout, onClose
                     ? Math.round(gemCost * (1 - activeShopDiscountPercent / 100))
                     : gemCost
                 const typeBadge = getItemTypeBadge(e.item)
-                const group = e.item.groupId ? allItemGroups.find((g) => g.id === e.item.groupId) : null
-                const bgColor = group?.color ?? (typeBadge ? TYPE_COLORS[typeBadge.type] : '#9ca3af')
 
                 const totalItemCoins = effectiveCoinCost * e.quantity
                 const totalItemGems = effectiveGemCost * e.quantity
@@ -127,19 +117,7 @@ export default function CartModal({ cart, onRemove, onClear, onCheckout, onClose
                     className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5"
                   >
                     <div className="relative shrink-0">
-                      <div
-                        className="flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden ring-1 ring-inset"
-                        style={{
-                          background: `linear-gradient(135deg, ${bgColor}35, ${bgColor}15)`,
-                          '--tw-ring-color': `${bgColor}30`,
-                        } as React.CSSProperties}
-                      >
-                        {e.item.iconImage ? (
-                          <img src={e.item.iconImage} alt="" className="h-full w-full object-cover" style={{ imageRendering: 'auto' }} />
-                        ) : (
-                          <HabitIcon iconName={getItemIcon(e.item)} size={18} />
-                        )}
-                      </div>
+                      <ItemIconBadge item={e.item} size="sm" className="h-9 w-9" />
                       {typeBadge && (
                         <div
                           className={cn(

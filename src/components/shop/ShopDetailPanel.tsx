@@ -10,6 +10,7 @@ import {
 import ItemGroupSelectModal from './ItemGroupSelectModal'
 import IconSourcePicker from './IconSourcePicker'
 import { HabitIcon } from '../HabitIcon'
+import { ItemIconBadge } from '../ItemIconBadge'
 import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem, GameTimePackage, SerialSeason } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
@@ -954,20 +955,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
               <div className="flex-1 min-w-0 overflow-hidden">
                 {/* Icon + name */}
                 <div className="flex items-center gap-3 mb-3">
-                  <div
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl overflow-hidden transition-all ring-1 ring-inset shadow-md"
-                    style={{
-                      background: `linear-gradient(to bottom, ${iconBgColor}40, ${iconBgColor}20)`,
-                      boxShadow: `0 4px 12px ${iconBgColor}30`,
-                      '--tw-ring-color': `${iconBgColor}35`,
-                    } as React.CSSProperties}
-                  >
-                    {item.iconImage ? (
-                      <img src={item.iconImage} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <HabitIcon iconName={getItemIcon(item)} size={24} />
-                    )}
-                  </div>
+                  <ItemIconBadge item={item} size="md" />
                   <h2 className="text-xl font-bold text-[var(--fg)] break-words min-w-0">
                     {item.name}
                   </h2>

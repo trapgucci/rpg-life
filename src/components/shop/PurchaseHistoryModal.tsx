@@ -2,20 +2,13 @@ import { useMemo } from 'react'
 import { X, Gift, TrendingUp, Percent, Gamepad2, Clapperboard } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { useRpgStore } from '../../store/useRpgStore'
-import { getItemIcon, getItemTypeBadge } from './shopUtils'
-import { HabitIcon } from '../HabitIcon'
+import { getItemTypeBadge } from './shopUtils'
+import { ItemIconBadge } from '../ItemIconBadge'
 
 interface PurchaseHistoryModalProps {
   onClose: () => void
 }
 
-const TYPE_COLORS: Record<string, string> = {
-  lootbox: '#8b5cf6',
-  multiplier: '#f59e0b',
-  discount: '#ef4444',
-  videogame: '#06b6d4',
-  serial: '#ec4899',
-}
 
 function formatDateKey(timestamp: number): string {
   const d = new Date(timestamp)
@@ -33,7 +26,6 @@ export default function PurchaseHistoryModal({ onClose }: PurchaseHistoryModalPr
   const purchaseHistory = useRpgStore((s) => s.purchaseHistory)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const shopItems = useRpgStore((s) => s.shopItems)
-  const allItemGroups = useRpgStore((s) => s.itemGroups)
 
   const entries = useMemo(
     () =>
@@ -85,8 +77,6 @@ export default function PurchaseHistoryModal({ onClose }: PurchaseHistoryModalPr
                     {items.map((e, idx) => {
                       const it = shopItems.find((i) => i.id === e.itemId)
                       const typeBadge = it ? getItemTypeBadge(it) : null
-                      const group = it?.groupId ? allItemGroups.find((g) => g.id === it.groupId) : null
-                      const bgColor = group?.color ?? (typeBadge ? TYPE_COLORS[typeBadge.type] : '#9ca3af')
 
                       return (
                         <li
@@ -94,19 +84,11 @@ export default function PurchaseHistoryModal({ onClose }: PurchaseHistoryModalPr
                           className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5"
                         >
                           <div className="relative shrink-0">
-                            <div
-                              className="flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden ring-1 ring-inset"
-                              style={{
-                                background: `linear-gradient(135deg, ${bgColor}35, ${bgColor}15)`,
-                                '--tw-ring-color': `${bgColor}30`,
-                              } as React.CSSProperties}
-                            >
-                              {it?.iconImage ? (
-                                <img src={it.iconImage} alt="" className="h-full w-full object-cover" style={{ imageRendering: 'auto' }} />
-                              ) : (
-                                <HabitIcon iconName={it ? getItemIcon(it) : 'Sword'} size={18} />
-                              )}
-                            </div>
+                            {it ? (
+                              <ItemIconBadge item={it} size="sm" className="h-9 w-9" />
+                            ) : (
+                              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--surface-elevated)]" />
+                            )}
                             {typeBadge && (
                               <div
                                 className={cn(

@@ -4,8 +4,8 @@ import { Coins, Gem, Gift, Percent, ShoppingCart, TrendingUp, Gamepad2, Clapperb
 import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
-import { getItemIcon, getItemTypeBadge, getItemTypeColor } from './shopUtils'
-import { HabitIcon } from '../HabitIcon'
+import { getItemTypeBadge, getItemTypeColor } from './shopUtils'
+import { ItemIconBadge } from '../ItemIconBadge'
 
 interface ShopItemCardProps {
   item: ShopItem
@@ -84,25 +84,15 @@ export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: 
             />
           )}
 
-          <div
+          <ItemIconBadge
+            item={item}
+            size="lg"
+            groupColor={group?.color}
             className={cn(
-              'relative flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden transition-all duration-300',
-              'shadow-[inset_0_2px_8px_rgba(0,0,0,0.1),0_4px_12px_rgba(0,0,0,0.08)]',
-              'ring-2 ring-inset group-hover:scale-110',
-              selected && 'scale-110 shadow-[inset_0_2px_12px_rgba(0,0,0,0.15),0_6px_20px_rgba(0,0,0,0.12)]'
+              'group-hover:scale-110',
+              selected && 'scale-110'
             )}
-            style={{
-              background: `linear-gradient(135deg, ${iconBgColor}40, ${iconBgColor}25)`,
-              '--tw-ring-color': `${iconBgColor}40`,
-            } as React.CSSProperties}
-          >
-            {!item.iconImage && <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-transparent opacity-60" />}
-            {item.iconImage ? (
-              <img src={item.iconImage} alt="" className="relative h-full w-full object-cover z-10" style={{ imageRendering: 'auto' }} />
-            ) : (
-              <span className="relative z-10 drop-shadow-sm"><HabitIcon iconName={getItemIcon(item)} size={24} /></span>
-            )}
-          </div>
+          />
 
           {/* Type indicator badge */}
           {typeBadge && (

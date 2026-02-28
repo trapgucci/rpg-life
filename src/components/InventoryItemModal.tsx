@@ -6,14 +6,14 @@ import {
   ShoppingCart, Hammer,
 } from 'lucide-react'
 import Modal from './Modal'
-import { HabitIcon } from './HabitIcon'
 import { useRpgStore } from '../store/useRpgStore'
 import type { ShopItem, ItemGroup, SerialSeason } from '../types/domain'
 import {
-  getItemIcon, getItemTypeBadge,
+  getItemTypeBadge,
   RARITY_COLORS,
   type ItemTypeBadge,
 } from './shop/shopUtils'
+import { ItemIconBadge } from './ItemIconBadge'
 
 /* ─── Props ─────────────────────────────────────────────────────────────────── */
 
@@ -21,7 +21,7 @@ interface InventoryItemModalProps {
   isOpen: boolean
   itemId: string | null
   onClose: () => void
-  onUse: (itemId: string) => void
+  onUse: (itemId: string, quantity?: number) => void
   onDelete: (itemId: string) => void
   onOpenAll?: (itemId: string, quantity: number) => void
 }
@@ -55,7 +55,7 @@ export default function InventoryItemModal({
         acquiredAt={resolved.entry.acquiredAt}
         group={resolved.group}
         onClose={onClose}
-        onUse={() => onUse(resolved.item.id)}
+        onUse={(useQuantity) => onUse(resolved.item.id, useQuantity)}
         onDelete={() => onDelete(resolved.item.id)}
         onOpenAll={onOpenAll ? () => onOpenAll(resolved.item.id, resolved.entry.quantity) : undefined}
       />
@@ -71,7 +71,7 @@ interface ModalContentProps {
   acquiredAt: number
   group: ItemGroup | null
   onClose: () => void
-  onUse: () => void
+  onUse: (useQuantity?: number) => void
   onDelete: () => void
   onOpenAll?: () => void
 }
@@ -82,6 +82,8 @@ const ModalContent = memo(function ModalContent({
   const themeColor = group?.color ?? RARITY_COLORS[item.rarity]
   const typeBadge = getItemTypeBadge(item)
   const isMedia = item.isVideoGame || item.isTvSerial
+  const isPlainItem = !item.isLootBox && !item.streakMultiplierEnabled && !item.isDiscountVoucher && !item.isVideoGame && !item.isTvSerial
+  const [useQuantity, setUseQuantity] = useState(1)
 
   const purchaseHistory = useRpgStore((s) => s.purchaseHistory)
   const craftRecipes = useRpgStore((s) => s.craftRecipes)
@@ -120,31 +122,8 @@ const ModalContent = memo(function ModalContent({
       <div className="relative p-5 md:p-6">
         {/* ── Header ────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-4 mb-5">
-          {/* Icon — neumorphic */}
-          <div className="relative flex h-16 w-16 shrink-0 items-center justify-center">
-            <div
-              className="absolute inset-0 rounded-2xl blur-md opacity-40"
-              style={{ background: `linear-gradient(135deg, ${themeColor}60, ${themeColor}20)` }}
-            />
-            <div
-              className="relative flex h-16 w-16 items-center justify-center rounded-2xl overflow-hidden"
-              style={{
-                background: `linear-gradient(135deg, ${themeColor}40, ${themeColor}20)`,
-                boxShadow: `inset 2px 2px 4px rgba(255,255,255,0.25), inset -1px -1px 3px rgba(0,0,0,0.1), 0 4px 16px ${themeColor}30`,
-              }}
-            >
-              {!item.iconImage && (
-                <div className="absolute top-0 left-0 w-[55%] h-[55%] rounded-bl-full opacity-25" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.8), transparent)' }} />
-              )}
-              {item.iconImage ? (
-                <img src={item.iconImage} alt="" className="h-full w-full object-cover" style={{ imageRendering: 'auto' }} />
-              ) : (
-                <span className="relative z-10 drop-shadow-sm">
-                  <HabitIcon iconName={getItemIcon(item)} size={30} />
-                </span>
-              )}
-            </div>
-          </div>
+          {/* Icon — enamel pin */}
+          <ItemIconBadge item={item} size="lg" className="h-16 w-16" />
 
           {/* Title */}
           <div className="flex-1 min-w-0 flex items-center">
@@ -244,7 +223,7 @@ const ModalContent = memo(function ModalContent({
               <div className="flex gap-2.5">
                 <button
                   type="button"
-                  onClick={onUse}
+                  onClick={() => onUse()}
                   className="flex-1 flex items-center justify-center gap-2 rounded-2xl py-3.5 font-semibold text-white transition-all hover:scale-[1.01] active:scale-[0.97]"
                   style={{
                     background: `linear-gradient(135deg, ${themeColor}, ${themeColor}cc)`,
@@ -270,10 +249,62 @@ const ModalContent = memo(function ModalContent({
                   </button>
                 )}
               </div>
+            ) : isPlainItem && quantity > 1 ? (
+              /* Plain item with quantity > 1: show quantity picker */
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setUseQuantity((q) => Math.max(1, q - 1))}
+                    disabled={useQuantity <= 1}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] disabled:opacity-30 transition-all active:scale-90"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="text-2xl font-bold text-[var(--fg)] min-w-[3ch] text-center tabular-nums">{useQuantity}</span>
+                  <button
+                    type="button"
+                    onClick={() => setUseQuantity((q) => Math.min(quantity, q + 1))}
+                    disabled={useQuantity >= quantity}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] disabled:opacity-30 transition-all active:scale-90"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                  {quantity > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => setUseQuantity(quantity)}
+                      className={cn(
+                        'rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all',
+                        useQuantity === quantity
+                          ? 'text-white ring-1 ring-inset ring-white/20'
+                          : 'bg-[var(--surface)] text-[var(--fg-muted)] border border-[var(--border)] hover:bg-[var(--surface-elevated)]',
+                      )}
+                      style={useQuantity === quantity ? {
+                        background: `linear-gradient(135deg, ${themeColor}, ${themeColor}cc)`,
+                      } : undefined}
+                    >
+                      Все ({quantity})
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onUse(useQuantity)}
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl py-3.5 font-semibold text-white transition-all hover:scale-[1.01] active:scale-[0.97]"
+                  style={{
+                    background: `linear-gradient(135deg, ${themeColor}, ${themeColor}cc)`,
+                    boxShadow: `0 4px 16px ${themeColor}35, inset 0 1px 0 rgba(255,255,255,0.2)`,
+                  }}
+                >
+                  <Zap className="h-5 w-5" />
+                  Использовать{useQuantity > 1 ? ` (${useQuantity})` : ''}
+                </button>
+              </div>
             ) : (
               <button
                 type="button"
-                onClick={onUse}
+                onClick={() => onUse()}
                 className="w-full flex items-center justify-center gap-2 rounded-2xl py-3.5 font-semibold text-white transition-all hover:scale-[1.01] active:scale-[0.97]"
                 style={{
                   background: `linear-gradient(135deg, ${themeColor}, ${themeColor}cc)`,

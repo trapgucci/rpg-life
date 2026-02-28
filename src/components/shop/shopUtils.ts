@@ -196,12 +196,12 @@ export const ITEM_TYPE_COLORS: Record<string, string> = {
   serial: '#ec4899',
 }
 
-/** Get a theme color for an item based on its type. Falls back to rarity color for regular items. */
+/** Get a theme color for an item based on its type. Falls back to gray for regular items. */
 export function getItemTypeColor(item: ShopItem | null | undefined): string {
   if (!item) return '#9ca3af'
   const badge = getItemTypeBadge(item)
   if (badge) return ITEM_TYPE_COLORS[badge.type] ?? '#9ca3af'
-  return RARITY_COLORS[item.rarity] ?? '#9ca3af'
+  return '#9ca3af'
 }
 
 // ─── Filtering ──────────────────────────────────────────────────────────────

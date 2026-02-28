@@ -1,9 +1,9 @@
-import { memo, useMemo } from 'react'
+import { memo } from 'react'
 import { cn } from '../lib/cn'
 import { Gift, TrendingUp, Percent, Gamepad2, Clapperboard } from 'lucide-react'
-import { HabitIcon } from './HabitIcon'
 import type { ShopItem, ItemGroup } from '../types/domain'
-import { getItemIcon, getItemTypeBadge, RARITY_COLORS, type ItemTypeBadge } from './shop/shopUtils'
+import { getItemTypeBadge, type ItemTypeBadge } from './shop/shopUtils'
+import { ItemIconBadge } from './ItemIconBadge'
 
 /* ─── Type badge style map ──────────────────────────────────────────────────── */
 
@@ -30,16 +30,7 @@ interface InventoryItemCardProps {
 export default memo(function InventoryItemCard({
   item, quantity, group, onClick,
 }: InventoryItemCardProps) {
-  const iconBgColor = group?.color ?? RARITY_COLORS[item.rarity]
   const typeBadge = getItemTypeBadge(item)
-
-  const iconContainerStyle = useMemo(
-    () => ({
-      background: `linear-gradient(135deg, ${iconBgColor}40, ${iconBgColor}25)`,
-      '--tw-ring-color': `${iconBgColor}40`,
-    } as React.CSSProperties),
-    [iconBgColor],
-  )
 
   return (
     <button
@@ -64,30 +55,7 @@ export default memo(function InventoryItemCard({
 
       {/* Icon */}
       <div className="relative mb-2 mt-1">
-        <div
-          className={cn(
-            'relative flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden transition-all duration-300',
-            'shadow-[inset_0_2px_8px_rgba(0,0,0,0.1),0_4px_12px_rgba(0,0,0,0.08)]',
-            'ring-2 ring-inset group-hover:scale-110',
-          )}
-          style={iconContainerStyle}
-        >
-          {!item.iconImage && (
-            <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-transparent opacity-60" />
-          )}
-          {item.iconImage ? (
-            <img
-              src={item.iconImage}
-              alt=""
-              className="relative h-full w-full object-cover z-10"
-              style={{ imageRendering: 'auto' }}
-            />
-          ) : (
-            <span className="relative z-10 drop-shadow-sm">
-              <HabitIcon iconName={getItemIcon(item)} size={24} />
-            </span>
-          )}
-        </div>
+        <ItemIconBadge item={item} size="lg" groupColor={group?.color} className="group-hover:scale-110" />
       </div>
 
       {/* Name */}

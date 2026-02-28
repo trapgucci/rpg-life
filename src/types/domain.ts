@@ -558,7 +558,7 @@ export interface UsageHistoryEntry {
   itemId: ItemId
   itemName: string
   timestamp: number
-  action: 'used' | 'opened_lootbox' | 'activated_discount' | 'activated_multiplier' | 'deactivated_multiplier' | 'deleted'
+  action: 'used' | 'opened_lootbox' | 'activated_discount' | 'activated_multiplier' | 'deactivated_multiplier' | 'deleted' | 'crafted'
   /** Для игр: сколько часов использовано */
   gameHoursUsed?: number
   /** Для сериалов: номер сезона */
@@ -579,6 +579,10 @@ export interface UsageHistoryEntry {
   discountPercent?: number
   /** Для удаления: количество удалённых */
   deletedQuantity?: number
+  /** Для использования/удаления: количество (если > 1) */
+  quantity?: number
+  /** Для крафта: название рецепта/фрагмента */
+  recipeName?: string
 }
 
 /** Currencies (e.g. Gold, Diamonds) */

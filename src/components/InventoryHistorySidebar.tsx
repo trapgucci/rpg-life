@@ -1,9 +1,8 @@
 import { memo, useMemo } from 'react'
-import { Clock, Zap, XCircle, Gamepad2, Tv, Timer, Gift, Percent, Trash2 } from 'lucide-react'
+import { Clock, Zap, XCircle, Gamepad2, Tv, Timer, Gift, Percent, Hammer, Package } from 'lucide-react'
 import { useRpgStore } from '../store/useRpgStore'
-import { HabitIcon } from './HabitIcon'
-import { getItemIcon } from './shop/shopUtils'
-import type { ShopItem, UsageHistoryEntry } from '../types/domain'
+import { ItemIconBadge } from './ItemIconBadge'
+import type { ShopItem, ItemGroup, UsageHistoryEntry } from '../types/domain'
 
 /* ─── Action labels ─────────────────────────────────────────────────────────── */
 
@@ -31,6 +30,10 @@ const ACTION_LABELS: Record<string, { label: string; cls: string }> = {
   deleted: {
     label: 'Удалено',
     cls: 'bg-zinc-500/15 text-zinc-400',
+  },
+  crafted: {
+    label: 'Скрафчено',
+    cls: 'bg-purple-500/15 text-purple-500',
   },
 }
 
@@ -75,6 +78,8 @@ interface TimelineEntry {
   lootResultName?: string | null
   discountPercent?: number
   deletedQuantity?: number
+  quantity?: number
+  recipeName?: string
 }
 
 /* ─── Component ─────────────────────────────────────────────────────────────── */
@@ -84,6 +89,13 @@ export default function InventoryHistorySidebar() {
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const shopItems = useRpgStore((s) => s.shopItems)
   const displayLimit = useRpgStore((s) => s.settings.historyDisplayLimit ?? 50)
+  const itemGroups = useRpgStore((s) => s.itemGroups)
+
+  const groupMap = useMemo(() => {
+    const map = new Map<string, ItemGroup>()
+    for (const g of itemGroups) map.set(g.id, g)
+    return map
+  }, [itemGroups])
 
   const shopItemMap = useMemo(() => {
     const map = new Map<string, ShopItem>()
@@ -111,6 +123,8 @@ export default function InventoryHistorySidebar() {
         lootResultName: e.lootResultName,
         discountPercent: e.discountPercent,
         deletedQuantity: e.deletedQuantity,
+        quantity: e.quantity,
+        recipeName: e.recipeName,
       }))
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, displayLimit)
@@ -148,6 +162,7 @@ export default function InventoryHistorySidebar() {
                 key={`${event.timestamp}-${event.itemId}-${idx}`}
                 event={event}
                 shopItemMap={shopItemMap}
+                groupMap={groupMap}
                 usageHistory={usageHistory}
               />
             ))}
@@ -230,6 +245,29 @@ const DetailLine = memo(function DetailLine({ event }: { event: TimelineEntry })
     )
   }
 
+  // Crafted
+  if (event.action === 'crafted') {
+    return (
+      <p className="flex items-center gap-1 text-[10px] text-[var(--fg-muted)] truncate mt-0.5">
+        <Hammer className="h-2.5 w-2.5 shrink-0 text-purple-400" />
+        {event.recipeName
+          ? <span className="truncate text-purple-400">{event.recipeName}</span>
+          : <span className="truncate">Крафт</span>
+        }
+      </p>
+    )
+  }
+
+  // Generic used with quantity > 1
+  if (event.action === 'used' && event.quantity && event.quantity > 1) {
+    return (
+      <p className="flex items-center gap-1 text-[10px] text-[var(--fg-muted)] truncate mt-0.5">
+        <Zap className="h-2.5 w-2.5 shrink-0" />
+        Количество: <span className="font-medium text-blue-400">{event.quantity}</span>
+      </p>
+    )
+  }
+
   // Deleted from inventory — badge is enough, no detail line needed
 
   return null
@@ -272,31 +310,32 @@ const MultiplierStatusBadge = memo(function MultiplierStatusBadge({
 const HistoryEntry = memo(function HistoryEntry({
   event,
   shopItemMap,
+  groupMap,
   usageHistory,
 }: {
   event: TimelineEntry
   shopItemMap: Map<string, ShopItem>
+  groupMap: Map<string, ItemGroup>
   usageHistory: UsageHistoryEntry[]
 }) {
   const shopItem = shopItemMap.get(event.itemId)
   const actionInfo = ACTION_LABELS[event.action] ?? ACTION_LABELS.used
 
-  const iconDisplay = useMemo(() => {
-    if (!shopItem) return { type: 'icon' as const, value: 'Package' }
-    if (shopItem.iconImage) return { type: 'image' as const, value: shopItem.iconImage }
-    return { type: 'icon' as const, value: getItemIcon(shopItem) }
-  }, [shopItem])
+  const groupColor = useMemo(() => {
+    if (!shopItem?.groupId) return undefined
+    return groupMap.get(shopItem.groupId)?.color
+  }, [shopItem?.groupId, groupMap])
 
   return (
     <div className="flex items-start gap-2 rounded-xl px-2 py-2 hover:bg-[var(--surface)] transition-colors">
       {/* Icon */}
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-elevated)] overflow-hidden text-[var(--fg-muted)] mt-0.5">
-        {iconDisplay.type === 'image' ? (
-          <img src={iconDisplay.value} alt="" className="h-5 w-5 rounded object-cover" />
-        ) : (
-          <HabitIcon iconName={iconDisplay.value} size={14} />
-        )}
-      </span>
+      {shopItem ? (
+        <ItemIconBadge item={shopItem} size="sm" groupColor={groupColor} className="mt-0.5" />
+      ) : (
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-elevated)] overflow-hidden text-[var(--fg-muted)] mt-0.5">
+          <Package className="h-4 w-4" />
+        </span>
+      )}
 
       {/* Content */}
       <div className="flex-1 min-w-0">
@@ -308,7 +347,7 @@ const HistoryEntry = memo(function HistoryEntry({
 
         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
           <span className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[9px] font-medium ${actionInfo.cls}`}>
-            <Zap className="h-2.5 w-2.5" />
+            {event.action === 'crafted' ? <Hammer className="h-2.5 w-2.5" /> : <Zap className="h-2.5 w-2.5" />}
             {actionInfo.label}
           </span>
           {event.action === 'activated_multiplier' && (

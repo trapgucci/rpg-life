@@ -195,8 +195,8 @@ export default function InventoryPage() {
   }, [])
 
   // ── Handlers ─────────────────────────────────────────────────────────────
-  const handleUse = useCallback((itemId: string) => {
-    const result = useItem(itemId)
+  const handleUse = useCallback((itemId: string, quantity?: number) => {
+    const result = useItem(itemId, quantity)
     // Handle lootbox result
     if (result && typeof result === 'object' && 'loot' in result) {
       setDetailModalItemId(null)
@@ -223,7 +223,7 @@ export default function InventoryPage() {
     }
     // Close modal if item is fully consumed
     const entry = inventory.find((e) => e.itemId === itemId)
-    if (entry && entry.quantity <= 1) {
+    if (entry && entry.quantity <= (quantity ?? 1)) {
       setDetailModalItemId(null)
     }
   }, [useItem, inventory])
