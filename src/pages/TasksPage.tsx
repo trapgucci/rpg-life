@@ -8,6 +8,7 @@ import TaskDetailPanel from '../components/TaskDetailPanel'
 import { useRpgStore } from '../store/useRpgStore'
 import ConfirmModal from '../components/ConfirmModal'
 import type { TaskRpg, TaskGroupId } from '../types/domain'
+import { getItemTypeColor } from '../components/shop/shopUtils'
 
 /** Специальный id для «Без группы» */
 const NO_GROUP_ID: TaskGroupId | null = null
@@ -53,6 +54,7 @@ export default function TasksPage() {
   const resetRecurringTasks = useRpgStore((s) => s.resetRecurringTasks)
   const getTaskRewardPreview = useRpgStore((s) => s.getTaskRewardPreview)
   const getCraftRecipes = useRpgStore((s) => s.getCraftRecipes)
+  const shopItems = useRpgStore((s) => s.shopItems)
 
   // Debug mode
   const debugDaysOffset = useRpgStore((s) => s.debugDaysOffset)
@@ -211,8 +213,9 @@ export default function TasksPage() {
         fragmentName: recipe.fragmentName,
         fragmentIcon: recipe.fragmentIcon,
         fragmentIconImage: recipe.fragmentIconImage,
-        fragmentColor: recipe.fragmentColor || '#a855f7',
+        fragmentColor: recipe.fragmentColor || getItemTypeColor(shopItems.find((i) => i.id === recipe.resultItemId)),
         dropChance: fs.dropChance ?? 0,
+        sourceType: fs.type === 'task_linked' ? 'task_linked' : 'random_drop',
       }
       if (fs.type === 'random_drop') {
         // random_drop applies to all tasks

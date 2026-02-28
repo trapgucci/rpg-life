@@ -100,6 +100,7 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
       fragmentName: fragmentName.trim(),
       fragmentIcon,
       fragmentIconImage: fragmentIconImage || undefined,
+      fragmentColor: getItemTypeColor(selectedItem),
       fragmentsRequired,
       resultRarity,
       fragmentSource,

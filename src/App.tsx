@@ -4,7 +4,7 @@ import Layout from './components/Layout'
 import TasksPage from './pages/TasksPage'
 import ShopPage from './pages/ShopPage'
 import InventoryPage from './pages/InventoryPage'
-import BankPage from './pages/BankPage'
+import ReflectionPage from './pages/ReflectionPage'
 import StatusPage from './pages/StatusPage'
 import AchievementsPage from './pages/AchievementsPage'
 import SettingsPage from './pages/SettingsPage'
@@ -78,7 +78,7 @@ function App() {
           <Route index element={<TasksPage />} />
           <Route path="shop" element={<ShopPage />} />
           <Route path="inventory" element={<InventoryPage />} />
-          <Route path="bank" element={<BankPage />} />
+          <Route path="reflection" element={<ReflectionPage />} />
           <Route path="status" element={<StatusPage />} />
           <Route path="achievements" element={<AchievementsPage />} />
           <Route path="settings" element={<SettingsPage />} />

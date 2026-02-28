@@ -200,6 +200,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
       fragmentName: editFragmentName.trim(),
       fragmentIcon: editFragmentIcon,
       fragmentIconImage: editFragmentIconImage || undefined,
+      fragmentColor: getItemTypeColor(selItem),
       fragmentsRequired: editFragmentsRequired,
       resultRarity: editResultRarity,
       fragmentSource: fragmentSourceData,

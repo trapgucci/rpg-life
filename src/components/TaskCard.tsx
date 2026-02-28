@@ -42,6 +42,7 @@ export interface TaskCardFragment {
   fragmentIconImage?: string
   fragmentColor: string
   dropChance: number
+  sourceType: 'random_drop' | 'task_linked'
 }
 
 interface TaskCardProps {
@@ -172,34 +173,14 @@ export default function TaskCard({ task, selected, onSelect, rewards, fragments 
               />
             )}
 
-            {/* Fragment drop badges */}
-            {fragments && fragments.length > 0 && fragments.map((frag) => (
+            {/* Fragment drop indicator (task_linked only) */}
+            {fragments && fragments.some(f => f.sourceType === 'task_linked') && (
               <span
-                key={frag.id}
-                className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-semibold shadow-sm ring-1 ring-inset"
-                style={{
-                  background: `linear-gradient(to bottom, ${frag.fragmentColor}20, ${frag.fragmentColor}08)`,
-                  color: frag.fragmentColor,
-                  '--tw-ring-color': `${frag.fragmentColor}30`,
-                  boxShadow: `0 1px 3px ${frag.fragmentColor}15`,
-                } as React.CSSProperties}
+                className="inline-flex items-center justify-center rounded-xl p-1.5 shadow-sm ring-1 ring-inset ring-purple-400/25 bg-gradient-to-b from-purple-500/20 to-purple-500/10 text-purple-500"
               >
-                <span
-                  className="flex h-4 w-4 items-center justify-center rounded-[5px] shrink-0"
-                  style={{
-                    background: `linear-gradient(135deg, ${frag.fragmentColor}cc, ${frag.fragmentColor}80)`,
-                    boxShadow: `inset 1px 1px 2px rgba(255,255,255,0.3), 0 1px 3px ${frag.fragmentColor}40`,
-                  }}
-                >
-                  {frag.fragmentIconImage ? (
-                    <img src={frag.fragmentIconImage} alt="" className="h-full w-full rounded-[5px] object-cover" />
-                  ) : (
-                    <HabitIcon iconName={frag.fragmentIcon || 'Puzzle'} size={10} className="text-white drop-shadow-sm" />
-                  )}
-                </span>
-                {frag.fragmentName}
+                <HabitIcon iconName="Puzzle" size={14} />
               </span>
-            ))}
+            )}
 
             {/* Recurrence */}
             {task.recurrence !== 'once' && (

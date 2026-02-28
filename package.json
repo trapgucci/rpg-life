@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "electron:dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "electron:build": "tsc -b && vite build && electron-builder",
-    "electron:start": "electron ."
+    "electron:start": "electron .",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "main": "electron/main.js",
   "dependencies": {
@@ -40,6 +42,7 @@
     "globals": "^16.3.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.39.1",
-    "vite": "^7.1.2"
+    "vite": "^7.1.2",
+    "vitest": "^4.0.18"
   }
 }

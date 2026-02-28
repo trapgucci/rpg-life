@@ -16,6 +16,7 @@ import ConfirmModal from './ConfirmModal'
 import RewardBadge from './RewardBadge'
 import { HabitIcon } from './HabitIcon'
 import { TaskCurrentCycleBlock, TaskMultiplierBlock, TaskStatsBlock, TaskHistoryBlock } from './TaskCycleSections'
+import { getItemTypeColor } from './shop/shopUtils'
 import { getNextAvailableDate, getRelativeTimeRu, getSubtaskXp, isTodayScheduled } from '../lib/taskCycleUtils'
 
 const DIFFICULTY_LABELS: Record<TaskDifficulty, string> = {
@@ -23,13 +24,6 @@ const DIFFICULTY_LABELS: Record<TaskDifficulty, string> = {
   medium: 'Средняя',
   hard: 'Сложная',
   veryHard: 'Очень сложная',
-}
-
-const DIFFICULTY_COLORS: Record<TaskDifficulty, string> = {
-  easy: '#10b981',
-  medium: '#3b82f6',
-  hard: '#f59e0b',
-  veryHard: '#ef4444',
 }
 
 const RECURRENCE_LABELS: Record<TaskRecurrence, string> = {
@@ -83,6 +77,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const getCraftRecipes = useRpgStore((s) => s.getCraftRecipes)
+  const shopItems = useRpgStore((s) => s.shopItems)
 
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(task.title)
@@ -145,7 +140,6 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   }, [getCraftRecipes, task.id])
 
   const canComplete = canCompleteTask(task)
-  const diffColor = DIFFICULTY_COLORS[task.difficulty]
 
   const progress =
     task.kind === 'counter'
@@ -1043,26 +1037,6 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   )
                 })
 
-                // Сложность (только если есть атрибуты)
-                if (taskAttrs.length > 0) {
-                  badges.push(
-                    <span
-                      key="difficulty"
-                      className="rounded-2xl px-3.5 py-1.5 text-sm font-medium shadow-sm"
-                      style={{
-                        background: `linear-gradient(to bottom, ${diffColor}22, ${diffColor}10)`,
-                        color: diffColor,
-                        boxShadow: `0 1px 3px ${diffColor}15, inset 0 1px 0 ${diffColor}15`,
-                        outline: `1px solid ${diffColor}25`,
-                        outlineOffset: '-1px',
-                      }}
-                    >
-                      <Zap className="h-3.5 w-3.5 inline mr-1" />
-                      {DIFFICULTY_LABELS[task.difficulty]}
-                    </span>
-                  )
-                }
-
                 // Повтор
                 if (task.recurrence !== 'once') {
                   badges.push(
@@ -1113,7 +1087,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
 
                 // Вставляем точки-разделители между группами: архив | атрибуты+сложность | повтор | приоритет
                 const archiveCount = task.canceledAt ? 1 : 0
-                const attrCount = taskAttrs.filter(Boolean).length + (taskAttrs.length > 0 ? 1 : 0) // attrs + difficulty
+                const attrCount = taskAttrs.filter(Boolean).length
                 const groups: React.ReactNode[][] = []
                 if (archiveCount > 0) groups.push(badges.slice(0, archiveCount))
                 if (attrCount > 0) groups.push(badges.slice(archiveCount, archiveCount + attrCount))
@@ -1179,7 +1153,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                       >
                         +{xp}
                       </p>
-                      <p className="text-xs text-[var(--fg-muted)]">XP опыта</p>
+                      <p className="text-xs text-[var(--fg-muted)]">XP опыта{!isCustomXp && ` (${DIFFICULTY_LABELS[task.difficulty].toLowerCase()})`}</p>
                     </div>
                   </div>
                 )}
@@ -1218,14 +1192,14 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   {linkedFragments.map((recipe) => {
                     const fs = recipe.fragmentSource
                     const chance = fs?.dropChance ?? 0
-                    const fragmentColor = recipe.fragmentColor || '#a855f7'
+                    const fragmentColor = recipe.fragmentColor || getItemTypeColor(shopItems.find((i) => i.id === recipe.resultItemId))
                     const isTaskLinked = fs?.type === 'task_linked'
                     return (
                       <div
                         key={recipe.id}
                         className="flex items-center gap-3 rounded-2xl p-3 ring-1 ring-inset shadow-sm"
                         style={{
-                          background: `linear-gradient(135deg, ${fragmentColor}12, ${fragmentColor}06, rgba(168,85,247,0.04))`,
+                          background: `linear-gradient(135deg, ${fragmentColor}12, ${fragmentColor}06, ${fragmentColor}0a)`,
                           boxShadow: `0 2px 8px ${fragmentColor}12`,
                           '--tw-ring-color': `${fragmentColor}25`,
                         } as React.CSSProperties}
