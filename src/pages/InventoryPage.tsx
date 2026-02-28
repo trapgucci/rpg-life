@@ -1,11 +1,10 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { cn } from '../lib/cn'
-import { Package, Search, X, Clock, Gift, Frown } from 'lucide-react'
+import { Package, Search, X, Clock, Gift, Frown, Minus, Plus, Trash2 } from 'lucide-react'
 import { useRpgStore } from '../store/useRpgStore'
 import InventoryItemCard from '../components/InventoryItemCard'
 import InventoryItemModal from '../components/InventoryItemModal'
 import InventoryHistorySidebar from '../components/InventoryHistorySidebar'
-import ConfirmModal from '../components/ConfirmModal'
 import StreakMultiplierModal from '../components/StreakMultiplierModal'
 import Modal from '../components/Modal'
 import type { ShopItem, InventoryEntry, ItemGroup } from '../types/domain'
@@ -41,6 +40,7 @@ export default function InventoryPage() {
   const [showSearch, setShowSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
+  const [deleteQuantity, setDeleteQuantity] = useState(1)
   const [showMobileHistory, setShowMobileHistory] = useState(false)
   const [lootResult, setLootResult] = useState<{ itemId: string; itemName: string; compensated?: boolean; compensationLabel?: string } | 'empty' | null>(null)
   const [batchLootResults, setBatchLootResults] = useState<Array<{ itemId: string; itemName: string; compensated?: boolean; compensationLabel?: string } | 'empty'> | null>(null)
@@ -247,6 +247,7 @@ export default function InventoryPage() {
   }, [useItem])
 
   const handleDelete = useCallback((itemId: string) => {
+    setDeleteQuantity(1)
     setDeletingItemId(itemId)
   }, [])
 
@@ -264,21 +265,21 @@ export default function InventoryPage() {
             itemName: item.name,
             timestamp: Date.now(),
             action: 'deleted' as const,
-            deletedQuantity: 1,
+            deletedQuantity: deleteQuantity,
           },
         ].slice(-500),
       }))
     }
-    removeFromInventory(deletingItemId, 1)
-    // Close modal if removing last unit
+    removeFromInventory(deletingItemId, deleteQuantity)
+    // Close modal if removing last units
     if (detailModalItemId === deletingItemId) {
       const entry = inventory.find((e) => e.itemId === deletingItemId)
-      if (entry && entry.quantity <= 1) {
+      if (entry && entry.quantity <= deleteQuantity) {
         setDetailModalItemId(null)
       }
     }
     setDeletingItemId(null)
-  }, [deletingItemId, detailModalItemId, inventory, removeFromInventory, shopItems, activeProfileId])
+  }, [deletingItemId, deleteQuantity, detailModalItemId, inventory, removeFromInventory, shopItems, activeProfileId])
 
   const handleCancelDelete = useCallback(() => setDeletingItemId(null), [])
   const handleCloseModal = useCallback(() => setDetailModalItemId(null), [])
@@ -496,17 +497,72 @@ export default function InventoryPage() {
         onApplied={() => setMultiplierItemId(null)}
       />
 
-      {/* Delete confirmation */}
-      <ConfirmModal
-        isOpen={deletingItemId !== null}
-        title="Удалить предмет?"
-        message="Предмет будет удалён из инвентаря."
-        confirmText="Удалить"
-        cancelText="Отмена"
-        variant="danger"
-        onConfirm={handleConfirmDelete}
-        onCancel={handleCancelDelete}
-      />
+      {/* Delete confirmation with quantity picker */}
+      {deletingItemId !== null && (() => {
+        const entry = inventory.find((e) => e.itemId === deletingItemId)
+        const delItem = shopItems.find((i) => i.id === deletingItemId)
+        const maxQty = entry?.quantity ?? 1
+        return (
+          <Modal isOpen onClose={handleCancelDelete} size="sm" showCloseButton={false} closeOnBackdropClick={false} zIndex={10001}>
+            <div className="p-6 flex flex-col items-center text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/15 mb-4">
+                <Trash2 className="h-7 w-7 text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-[var(--fg)] mb-1">Удалить предмет?</h3>
+              <p className="text-sm text-[var(--fg-muted)] mb-5 max-w-[280px]">
+                {delItem?.name ?? 'Предмет'} будет удалён из инвентаря
+              </p>
+
+              {maxQty > 1 && (
+                <div className="flex items-center gap-3 mb-5">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteQuantity((q) => Math.max(1, q - 1))}
+                    disabled={deleteQuantity <= 1}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] disabled:opacity-30 transition-all active:scale-90"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="text-2xl font-bold text-[var(--fg)] min-w-[3ch] tabular-nums">{deleteQuantity}</span>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteQuantity((q) => Math.min(maxQty, q + 1))}
+                    disabled={deleteQuantity >= maxQty}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] disabled:opacity-30 transition-all active:scale-90"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteQuantity(maxQty)}
+                    className={cn(
+                      'rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all',
+                      deleteQuantity === maxQty
+                        ? 'bg-red-500/15 text-red-500 ring-1 ring-inset ring-red-400/25'
+                        : 'bg-[var(--surface)] text-[var(--fg-muted)] border border-[var(--border)] hover:bg-[var(--surface-elevated)]',
+                    )}
+                  >
+                    Все ({maxQty})
+                  </button>
+                </div>
+              )}
+
+              <div className="flex gap-3 w-full">
+                <button type="button" onClick={handleCancelDelete} className="btn-secondary flex-1 py-2.5">
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  className="flex-1 rounded-xl py-2.5 font-semibold transition-all duration-200 active:scale-95 bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/25"
+                >
+                  Удалить{maxQty > 1 ? ` (${deleteQuantity})` : ''}
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )
+      })()}
 
       {/* Lootbox result modal */}
       {lootResult !== null && (

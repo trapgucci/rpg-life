@@ -22,7 +22,8 @@ interface ShopItemFormProps {
 
 export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: ShopItemFormProps) {
   const addItem = useRpgStore((s) => s.addShopItem)
-  const shopItems = useRpgStore((s) => s.shopItems)
+  const allShopItems = useRpgStore((s) => s.shopItems)
+  const shopItems = useMemo(() => allShopItems.filter((i) => !i.deletedFromShop), [allShopItems])
   const allItemGroups = useRpgStore((s) => s.itemGroups)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
 

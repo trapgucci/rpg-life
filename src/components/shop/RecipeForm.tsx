@@ -33,7 +33,7 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
   const allTaskGroups = useRpgStore((s) => s.taskGroups)
   const itemGroups = useMemo(() => activeProfileId ? allItemGroups.filter((g) => g.profileId === activeProfileId).sort((a, b) => a.sortOrder - b.sortOrder) : [], [allItemGroups, activeProfileId])
   const taskGroups = useMemo(() => activeProfileId ? allTaskGroups.filter((g) => g.profileId === activeProfileId).sort((a, b) => a.sortOrder - b.sortOrder) : [], [allTaskGroups, activeProfileId])
-  const profileItems = useMemo(() => activeProfileId ? allShopItems.filter((i) => (i as any).profileId === activeProfileId || !(i as any).profileId) : allShopItems, [allShopItems, activeProfileId])
+  const profileItems = useMemo(() => activeProfileId ? allShopItems.filter((i) => !i.deletedFromShop && ((i as any).profileId === activeProfileId || !(i as any).profileId)) : allShopItems.filter((i) => !i.deletedFromShop), [allShopItems, activeProfileId])
 
   const [fragmentName, setFragmentName] = useState(recipe?.fragmentName ?? '')
   const [fragmentIcon, setFragmentIcon] = useState(migrateIcon(recipe?.fragmentIcon, 'Puzzle'))

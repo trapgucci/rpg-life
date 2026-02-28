@@ -36,7 +36,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
   const getCurrency = useRpgStore((s) => s.getCurrency)
   const itemGroups = useMemo(() => activeProfileId ? allItemGroups.filter((g) => g.profileId === activeProfileId).sort((a, b) => a.sortOrder - b.sortOrder) : [], [allItemGroups, activeProfileId])
   const taskGroupsList = useMemo(() => activeProfileId ? allTaskGroups.filter((g) => g.profileId === activeProfileId).sort((a, b) => a.sortOrder - b.sortOrder) : [], [allTaskGroups, activeProfileId])
-  const profileItems = useMemo(() => activeProfileId ? allShopItems.filter((i) => (i as any).profileId === activeProfileId || !(i as any).profileId) : allShopItems, [allShopItems, activeProfileId])
+  const profileItems = useMemo(() => activeProfileId ? allShopItems.filter((i) => !i.deletedFromShop && ((i as any).profileId === activeProfileId || !(i as any).profileId)) : allShopItems.filter((i) => !i.deletedFromShop), [allShopItems, activeProfileId])
 
   // --- Fragment source (runtime extended field) ---
   const rawSource = (recipe as any).fragmentSource

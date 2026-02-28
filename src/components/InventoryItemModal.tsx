@@ -1,8 +1,9 @@
 import { memo, useMemo, useState } from 'react'
 import { cn } from '../lib/cn'
 import {
-  X, Trash2, Zap, Folder, Clock, Check, Minus, Plus,
+  X, Trash2, Zap, Clock, Check, Minus, Plus,
   Gift, TrendingUp, Percent, Gamepad2, Clapperboard,
+  ShoppingCart, Hammer,
 } from 'lucide-react'
 import Modal from './Modal'
 import { HabitIcon } from './HabitIcon'
@@ -10,42 +11,9 @@ import { useRpgStore } from '../store/useRpgStore'
 import type { ShopItem, ItemGroup, SerialSeason } from '../types/domain'
 import {
   getItemIcon, getItemTypeBadge,
-  RARITY_LABELS, RARITY_BADGE_CLASSES, RARITY_COLORS,
+  RARITY_COLORS,
   type ItemTypeBadge,
 } from './shop/shopUtils'
-
-/* ─── Type badge style map ──────────────────────────────────────────────────── */
-
-const TYPE_BADGE_STYLES: Record<ItemTypeBadge['type'], { cls: string; Icon: typeof Gift }> = {
-  lootbox: {
-    cls: 'bg-gradient-to-b from-violet-500/20 to-violet-500/10 text-violet-500 ring-1 ring-inset ring-violet-400/25',
-    Icon: Gift,
-  },
-  multiplier: {
-    cls: 'bg-gradient-to-b from-amber-500/20 to-amber-500/10 text-amber-500 ring-1 ring-inset ring-amber-400/25',
-    Icon: TrendingUp,
-  },
-  discount: {
-    cls: 'bg-gradient-to-b from-red-500/20 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/25',
-    Icon: Percent,
-  },
-  videogame: {
-    cls: 'bg-gradient-to-b from-cyan-500/20 to-cyan-500/10 text-cyan-500 ring-1 ring-inset ring-cyan-400/25',
-    Icon: Gamepad2,
-  },
-  serial: {
-    cls: 'bg-gradient-to-b from-pink-500/20 to-pink-500/10 text-pink-500 ring-1 ring-inset ring-pink-400/25',
-    Icon: Clapperboard,
-  },
-}
-
-const PROPERTY_ICON_COLORS: Record<string, string> = {
-  lootbox: 'text-violet-500',
-  multiplier: 'text-amber-500',
-  discount: 'text-red-500',
-  videogame: 'text-cyan-500',
-  serial: 'text-pink-500',
-}
 
 /* ─── Props ─────────────────────────────────────────────────────────────────── */
 
@@ -111,8 +79,22 @@ interface ModalContentProps {
 const ModalContent = memo(function ModalContent({
   item, quantity, acquiredAt, group, onClose, onUse, onDelete, onOpenAll,
 }: ModalContentProps) {
-  const iconBgColor = group?.color ?? RARITY_COLORS[item.rarity]
+  const themeColor = group?.color ?? RARITY_COLORS[item.rarity]
   const typeBadge = getItemTypeBadge(item)
+  const isMedia = item.isVideoGame || item.isTvSerial
+
+  const purchaseHistory = useRpgStore((s) => s.purchaseHistory)
+  const craftRecipes = useRpgStore((s) => s.craftRecipes)
+
+  const acquisitionMethod = useMemo(() => {
+    if (!isMedia) return null
+    const wasCrafted = craftRecipes.some((r) => r.resultItemId === item.id && r.crafted)
+    if (wasCrafted) return 'crafted' as const
+    const wasPurchased = purchaseHistory.some((e) => e.itemId === item.id && !e.seasonNumber && !e.packageName)
+    if (wasPurchased) return 'purchased' as const
+    return 'purchased' as const
+  }, [isMedia, item.id, craftRecipes, purchaseHistory])
+
   const acquiredDate = useMemo(
     () =>
       new Date(acquiredAt).toLocaleDateString('ru-RU', {
@@ -123,155 +105,168 @@ const ModalContent = memo(function ModalContent({
     [acquiredAt],
   )
 
-  const accentStyle = useMemo(
-    () => ({
-      background: `linear-gradient(90deg, ${iconBgColor}, ${iconBgColor}40)`,
-    }),
-    [iconBgColor],
-  )
-
-  const iconContainerStyle = useMemo(
-    () => ({
-      background: `linear-gradient(135deg, ${iconBgColor}40, ${iconBgColor}20)`,
-      boxShadow: `0 4px 12px ${iconBgColor}30`,
-      '--tw-ring-color': `${iconBgColor}35`,
-    } as React.CSSProperties),
-    [iconBgColor],
-  )
-
   return (
-    <div className="relative">
-      {/* Accent strip */}
-      <div className="absolute top-0 left-0 right-0 h-[3px] z-10" style={accentStyle} />
+    <div className="relative overflow-hidden">
+      {/* ── Background accent glow ──────────────────────────────────────── */}
+      <div
+        className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-3xl opacity-[0.07] pointer-events-none"
+        style={{ background: themeColor }}
+      />
+      <div
+        className="absolute -bottom-12 -left-12 w-36 h-36 rounded-full blur-3xl opacity-[0.05] pointer-events-none"
+        style={{ background: themeColor }}
+      />
 
-      <div className="p-5 md:p-6">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3 min-w-0">
+      <div className="relative p-5 md:p-6">
+        {/* ── Header ────────────────────────────────────────────────────── */}
+        <div className="flex items-center gap-4 mb-5">
+          {/* Icon — neumorphic */}
+          <div className="relative flex h-16 w-16 shrink-0 items-center justify-center">
             <div
-              className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl overflow-hidden ring-2 ring-inset shadow-md"
-              style={iconContainerStyle}
+              className="absolute inset-0 rounded-2xl blur-md opacity-40"
+              style={{ background: `linear-gradient(135deg, ${themeColor}60, ${themeColor}20)` }}
+            />
+            <div
+              className="relative flex h-16 w-16 items-center justify-center rounded-2xl overflow-hidden"
+              style={{
+                background: `linear-gradient(135deg, ${themeColor}40, ${themeColor}20)`,
+                boxShadow: `inset 2px 2px 4px rgba(255,255,255,0.25), inset -1px -1px 3px rgba(0,0,0,0.1), 0 4px 16px ${themeColor}30`,
+              }}
             >
               {!item.iconImage && (
-                <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-transparent opacity-60" />
+                <div className="absolute top-0 left-0 w-[55%] h-[55%] rounded-bl-full opacity-25" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.8), transparent)' }} />
               )}
               {item.iconImage ? (
                 <img src={item.iconImage} alt="" className="h-full w-full object-cover" style={{ imageRendering: 'auto' }} />
               ) : (
                 <span className="relative z-10 drop-shadow-sm">
-                  <HabitIcon iconName={getItemIcon(item)} size={28} />
+                  <HabitIcon iconName={getItemIcon(item)} size={30} />
                 </span>
               )}
             </div>
-            <div className="min-w-0">
-              <h2 className="text-xl font-bold text-[var(--fg)] break-words">{item.name}</h2>
-            </div>
           </div>
 
-          <button type="button" onClick={onClose} className="icon-btn shrink-0" title="Закрыть">
-            <X className="h-5 w-5" />
+          {/* Title */}
+          <div className="flex-1 min-w-0 flex items-center">
+            <h2 className="text-xl font-bold text-[var(--fg)] break-words leading-tight">{item.name}</h2>
+          </div>
+
+          {/* Close */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-elevated)]/60 text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)] backdrop-blur-sm ring-1 ring-inset ring-[var(--border)]/50 transition-all active:scale-90"
+          >
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Badges row */}
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <span
-            className={cn(
-              'inline-flex items-center rounded-2xl px-3 py-1.5 text-xs font-medium',
-              RARITY_BADGE_CLASSES[item.rarity],
-            )}
-          >
-            {RARITY_LABELS[item.rarity]}
-          </span>
-
-          {typeBadge && (
-            <>
-              <span className="w-px h-5 bg-[var(--border)] rounded-full" />
-              <TypeBadgeChip badge={typeBadge} />
-            </>
-          )}
-
-          {group && (
-            <>
-              <span className="w-px h-5 bg-[var(--border)] rounded-full" />
-              <span className="inline-flex items-center gap-1.5 rounded-2xl px-3 py-1.5 text-xs font-medium bg-[var(--surface)] text-[var(--fg-secondary)] border border-[var(--border)]">
-                <Folder className="h-3.5 w-3.5 shrink-0" style={group.color ? { color: group.color } : undefined} />
-                {group.name}
-              </span>
-            </>
-          )}
-        </div>
-
-        {/* Description */}
+        {/* ── Description ───────────────────────────────────────────────── */}
         {item.description && (
-          <p className="text-[var(--fg-muted)] text-sm leading-relaxed break-words mb-6">
+          <p className="text-sm text-[var(--fg-muted)] leading-relaxed break-words mb-5">
             {item.description}
           </p>
         )}
 
-        {/* Info block */}
-        <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-4 mb-6">
-          <h3 className="text-sm font-semibold text-[var(--fg)] mb-3">Информация</h3>
+        {/* ── Info cards ────────────────────────────────────────────────── */}
+        <div
+          className="glass rounded-2xl p-4 mb-5"
+          style={{
+            boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)`,
+          }}
+        >
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-[var(--surface-card)] p-3 text-center">
-              <p className="text-2xl font-bold text-[var(--fg)]">{quantity}</p>
-              <p className="text-xs text-[var(--fg-muted)] mt-1">В наличии</p>
-            </div>
-            <div className="rounded-xl bg-[var(--surface-card)] p-3 text-center">
+            {/* Quantity or Acquisition method */}
+            {isMedia ? (
+              <div
+                className="rounded-xl px-4 py-3 flex flex-col items-center justify-center"
+                style={{
+                  background: acquisitionMethod === 'crafted'
+                    ? 'linear-gradient(135deg, rgba(168,85,247,0.1), rgba(168,85,247,0.04))'
+                    : `linear-gradient(135deg, ${themeColor}12, ${themeColor}06)`,
+                  boxShadow: acquisitionMethod === 'crafted'
+                    ? 'inset 0 1px 0 rgba(255,255,255,0.05), 0 0 0 1px rgba(168,85,247,0.15)'
+                    : `inset 0 1px 0 rgba(255,255,255,0.05), 0 0 0 1px ${themeColor}15`,
+                }}
+              >
+                {acquisitionMethod === 'crafted' ? (
+                  <Hammer className="h-4 w-4 text-purple-500 mb-1" />
+                ) : (
+                  <ShoppingCart className="h-4 w-4 mb-1" style={{ color: themeColor }} />
+                )}
+                <p className="text-[11px] text-[var(--fg-muted)]">
+                  {acquisitionMethod === 'crafted' ? 'Скрафчено' : 'Куплено'}
+                </p>
+              </div>
+            ) : (
+              <div
+                className="rounded-xl px-4 py-3 text-center"
+                style={{
+                  background: `linear-gradient(135deg, ${themeColor}12, ${themeColor}06)`,
+                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05), 0 0 0 1px ${themeColor}15`,
+                }}
+              >
+                <p className="text-2xl font-bold text-[var(--fg)] tabular-nums">{quantity}</p>
+                <p className="text-[11px] text-[var(--fg-muted)] mt-0.5">В наличии</p>
+              </div>
+            )}
+
+            {/* Acquired date */}
+            <div
+              className="rounded-xl px-4 py-3 text-center"
+              style={{
+                background: 'linear-gradient(135deg, var(--surface-elevated), transparent)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 0 0 1px var(--border)',
+              }}
+            >
               <Clock className="h-4 w-4 text-[var(--fg-muted)] mx-auto mb-1" />
-              <p className="text-xs text-[var(--fg-muted)]">{acquiredDate}</p>
-              <p className="text-[10px] text-[var(--fg-muted)] mt-0.5">Получено</p>
+              <p className="text-[11px] text-[var(--fg-muted)]">{acquiredDate}</p>
+              <p className="text-[10px] text-[var(--fg-muted)] mt-0.5 opacity-60">Получено</p>
             </div>
           </div>
         </div>
 
-        {/* Properties block */}
+        {/* ── Properties ────────────────────────────────────────────────── */}
         {typeBadge && <PropertiesBlock item={item} />}
 
-        {/* Game time balance for video games */}
+        {/* ── Game time (video games) ───────────────────────────────────── */}
         {item.isVideoGame && <GameTimeBlock item={item} />}
 
-        {/* Episodes for serials */}
+        {/* ── Episodes (serials) ────────────────────────────────────────── */}
         {item.isTvSerial && item.serialSeasons && item.serialSeasons.length > 0 && (
           <SerialEpisodesBlock itemId={item.id} seasons={item.serialSeasons} />
         )}
 
-        {/* Action buttons */}
-        <div className="flex flex-col gap-3">
-          {/* Hide "Use" button for serials and video games — interaction is inline */}
+        {/* ── Action buttons ────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-2.5 mt-1">
           {!item.isTvSerial && !item.isVideoGame && (
             item.isLootBox ? (
-              <div className="flex gap-2">
+              <div className="flex gap-2.5">
                 <button
                   type="button"
                   onClick={onUse}
-                  className={cn(
-                    'flex-1 rounded-2xl py-4 font-semibold transition-all duration-200',
-                    'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] text-white',
-                    'shadow-lg shadow-[var(--accent)]/25',
-                    'hover:shadow-xl hover:scale-[1.01] active:scale-[0.98]',
-                  )}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-2xl py-3.5 font-semibold text-white transition-all hover:scale-[1.01] active:scale-[0.97]"
+                  style={{
+                    background: `linear-gradient(135deg, ${themeColor}, ${themeColor}cc)`,
+                    boxShadow: `0 4px 16px ${themeColor}35, inset 0 1px 0 rgba(255,255,255,0.2)`,
+                  }}
                 >
-                  <span className="flex items-center justify-center gap-2">
-                    <Gift className="h-5 w-5" />
-                    Открыть
-                  </span>
+                  <Gift className="h-5 w-5" />
+                  Открыть
                 </button>
                 {quantity > 1 && onOpenAll && (
                   <button
                     type="button"
                     onClick={onOpenAll}
-                    className={cn(
-                      'flex-1 rounded-2xl py-4 font-semibold transition-all duration-200',
-                      'bg-gradient-to-r from-violet-500 to-violet-600 text-white',
-                      'shadow-lg shadow-violet-500/25',
-                      'hover:shadow-xl hover:scale-[1.01] active:scale-[0.98]',
-                    )}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-2xl py-3.5 font-semibold transition-all hover:scale-[1.01] active:scale-[0.97]"
+                    style={{
+                      background: `linear-gradient(135deg, ${themeColor}20, ${themeColor}10)`,
+                      color: themeColor,
+                      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06), 0 0 0 1px ${themeColor}25`,
+                    }}
                   >
-                    <span className="flex items-center justify-center gap-2">
-                      <Gift className="h-5 w-5" />
-                      Открыть все ({quantity})
-                    </span>
+                    <Gift className="h-5 w-5" />
+                    Все ({quantity})
                   </button>
                 )}
               </div>
@@ -279,17 +274,14 @@ const ModalContent = memo(function ModalContent({
               <button
                 type="button"
                 onClick={onUse}
-                className={cn(
-                  'w-full rounded-2xl py-4 font-semibold transition-all duration-200',
-                  'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] text-white',
-                  'shadow-lg shadow-[var(--accent)]/25',
-                  'hover:shadow-xl hover:scale-[1.01] active:scale-[0.98]',
-                )}
+                className="w-full flex items-center justify-center gap-2 rounded-2xl py-3.5 font-semibold text-white transition-all hover:scale-[1.01] active:scale-[0.97]"
+                style={{
+                  background: `linear-gradient(135deg, ${themeColor}, ${themeColor}cc)`,
+                  boxShadow: `0 4px 16px ${themeColor}35, inset 0 1px 0 rgba(255,255,255,0.2)`,
+                }}
               >
-                <span className="flex items-center justify-center gap-2">
-                  <Zap className="h-5 w-5" />
-                  Использовать
-                </span>
+                <Zap className="h-5 w-5" />
+                Использовать
               </button>
             )
           )}
@@ -297,16 +289,14 @@ const ModalContent = memo(function ModalContent({
           <button
             type="button"
             onClick={onDelete}
-            className={cn(
-              'w-full rounded-2xl py-3.5 font-semibold transition-all duration-200',
-              'border border-red-500/30 text-red-500',
-              'hover:bg-red-500/10 active:scale-[0.98]',
-            )}
+            className="w-full flex items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-red-500 transition-all hover:scale-[1.01] active:scale-[0.97]"
+            style={{
+              background: 'linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.03))',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 1px rgba(239,68,68,0.15)',
+            }}
           >
-            <span className="flex items-center justify-center gap-2">
-              <Trash2 className="h-4 w-4" />
-              Удалить из инвентаря
-            </span>
+            <Trash2 className="h-4 w-4" />
+            Удалить из инвентаря
           </button>
         </div>
       </div>
@@ -316,40 +306,33 @@ const ModalContent = memo(function ModalContent({
 
 /* ─── Sub-components ────────────────────────────────────────────────────────── */
 
-const TypeBadgeChip = memo(function TypeBadgeChip({ badge }: { badge: ItemTypeBadge }) {
-  const style = TYPE_BADGE_STYLES[badge.type]
-  const { Icon } = style
-  return (
-    <span className={cn('inline-flex items-center gap-1.5 rounded-2xl px-3 py-1.5 text-xs font-medium', style.cls)}>
-      <Icon className="h-3.5 w-3.5" />
-      {badge.label}
-    </span>
-  )
-})
+const PROPERTY_COLORS: Record<string, string> = {
+  lootbox: '#8b5cf6',
+  multiplier: '#f59e0b',
+  discount: '#ef4444',
+  videogame: '#06b6d4',
+  serial: '#ec4899',
+}
 
 const PropertiesBlock = memo(function PropertiesBlock({ item }: { item: ShopItem }) {
   const properties: Array<{
     key: string
     Icon: typeof Gift
-    colorCls: string
+    color: string
     title: string
     description: string
   }> = []
 
   if (item.isLootBox) {
     properties.push({
-      key: 'lootbox',
-      Icon: Gift,
-      colorCls: PROPERTY_ICON_COLORS.lootbox,
+      key: 'lootbox', Icon: Gift, color: PROPERTY_COLORS.lootbox,
       title: 'Лутбокс',
       description: 'Содержит случайный предмет. Используйте, чтобы открыть.',
     })
   }
   if (item.streakMultiplierEnabled) {
     properties.push({
-      key: 'multiplier',
-      Icon: TrendingUp,
-      colorCls: PROPERTY_ICON_COLORS.multiplier,
+      key: 'multiplier', Icon: TrendingUp, color: PROPERTY_COLORS.multiplier,
       title: item.streakMultiplierMode === 'instant'
         ? `Множитель x${item.streakMultiplierValue ?? 1.5} (инстант)`
         : `Множитель x${item.streakMultiplierValue ?? 1.5}`,
@@ -360,27 +343,21 @@ const PropertiesBlock = memo(function PropertiesBlock({ item }: { item: ShopItem
   }
   if (item.isDiscountVoucher) {
     properties.push({
-      key: 'discount',
-      Icon: Percent,
-      colorCls: PROPERTY_ICON_COLORS.discount,
+      key: 'discount', Icon: Percent, color: PROPERTY_COLORS.discount,
       title: `Скидка ${item.discountPercent ?? 10}%`,
       description: 'Активирует скидку на следующую покупку в магазине.',
     })
   }
   if (item.isVideoGame) {
     properties.push({
-      key: 'videogame',
-      Icon: Gamepad2,
-      colorCls: PROPERTY_ICON_COLORS.videogame,
+      key: 'videogame', Icon: Gamepad2, color: PROPERTY_COLORS.videogame,
       title: 'Видеоигра',
-      description: `Всего наиграно: ${Math.round((item.gameTimeTotalMinutes ?? 0) / 60 * 10) / 10} ч.`,
+      description: `Всего наиграно: ${Math.round((item.gameTimePlayedMinutes ?? 0) / 60 * 10) / 10} ч.`,
     })
   }
   if (item.isTvSerial) {
     properties.push({
-      key: 'serial',
-      Icon: Clapperboard,
-      colorCls: PROPERTY_ICON_COLORS.serial,
+      key: 'serial', Icon: Clapperboard, color: PROPERTY_COLORS.serial,
       title: 'Сериал',
       description: `${item.serialSeasons?.length ?? 0} сезонов`,
     })
@@ -389,16 +366,36 @@ const PropertiesBlock = memo(function PropertiesBlock({ item }: { item: ShopItem
   if (properties.length === 0) return null
 
   return (
-    <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-4 mb-6">
-      <h3 className="text-sm font-semibold text-[var(--fg)] mb-3">Свойства</h3>
+    <div
+      className="glass rounded-2xl p-4 mb-5"
+      style={{
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)',
+      }}
+    >
+      <h3 className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Свойства</h3>
       <div className="space-y-2">
-        {properties.map(({ key, Icon, colorCls, title, description }) => (
-          <div key={key} className="rounded-xl bg-[var(--surface-card)] p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Icon className={cn('h-4 w-4', colorCls)} />
-              <span className="text-sm font-medium text-[var(--fg)]">{title}</span>
+        {properties.map(({ key, Icon, color, title, description }) => (
+          <div
+            key={key}
+            className="flex items-start gap-3 rounded-xl px-3 py-2.5"
+            style={{
+              background: `linear-gradient(135deg, ${color}10, ${color}05)`,
+              boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 1px ${color}15`,
+            }}
+          >
+            <div
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg mt-0.5"
+              style={{
+                background: `linear-gradient(135deg, ${color}25, ${color}10)`,
+                boxShadow: `inset 1px 1px 2px rgba(255,255,255,0.15), 0 2px 6px ${color}20`,
+              }}
+            >
+              <Icon className="h-4 w-4" style={{ color }} />
             </div>
-            <p className="text-xs text-[var(--fg-muted)]">{description}</p>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-[var(--fg)]">{title}</p>
+              <p className="text-[11px] text-[var(--fg-muted)] mt-0.5 leading-relaxed">{description}</p>
+            </div>
           </div>
         ))}
       </div>
@@ -424,25 +421,55 @@ function GameTimeBlock({ item }: { item: ShopItem }) {
     setHoursInput('')
   }
 
+  const color = PROPERTY_COLORS.videogame
+
   return (
-    <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-4 mb-6">
-      <h3 className="text-sm font-semibold text-[var(--fg)] mb-3">Игровое время</h3>
+    <div
+      className="glass rounded-2xl p-4 mb-5 relative overflow-hidden"
+      style={{
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)',
+      }}
+    >
+      <div
+        className="absolute -top-6 -right-6 w-20 h-20 rounded-full blur-3xl opacity-10 pointer-events-none"
+        style={{ background: color }}
+      />
+
+      <h3 className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Игровое время</h3>
 
       {/* Balance */}
-      <div className="flex items-center gap-3 rounded-xl bg-[var(--surface-card)] px-4 py-3 mb-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-cyan-500/15 to-cyan-500/5 text-cyan-500 ring-1 ring-inset ring-cyan-400/20 shadow-sm shadow-cyan-500/10">
-          <Clock className="h-4 w-4" />
+      <div
+        className="flex items-center gap-3 rounded-xl px-4 py-3 mb-3"
+        style={{
+          background: `linear-gradient(135deg, ${color}12, ${color}06)`,
+          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05), 0 0 0 1px ${color}15`,
+        }}
+      >
+        <div
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+          style={{
+            background: `linear-gradient(135deg, ${color}30, ${color}15)`,
+            boxShadow: `inset 1px 1px 2px rgba(255,255,255,0.15), 0 2px 6px ${color}25`,
+          }}
+        >
+          <Clock className="h-4 w-4" style={{ color }} />
         </div>
         <div>
           <p className="text-lg font-bold text-[var(--fg)]">{timeStr}</p>
-          <p className="text-xs text-[var(--fg-muted)]">В запасе</p>
+          <p className="text-[11px] text-[var(--fg-muted)]">В запасе</p>
         </div>
       </div>
 
       {/* Use game time */}
       {total > 0 && (
-        <div className="rounded-xl bg-[var(--surface-card)] p-3">
-          <p className="text-xs font-medium text-[var(--fg-muted)] mb-2">Использовать часы</p>
+        <div
+          className="rounded-xl p-3"
+          style={{
+            background: 'linear-gradient(135deg, var(--surface-elevated), transparent)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 1px var(--border)',
+          }}
+        >
+          <p className="text-[11px] font-semibold text-[var(--fg-muted)] mb-2">Использовать часы</p>
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <input
@@ -452,7 +479,18 @@ function GameTimeBlock({ item }: { item: ShopItem }) {
                 onChange={(e) => setHoursInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleUse()}
                 placeholder="0"
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 pr-8 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all tabular-nums"
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 pr-8 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] outline-none transition-all tabular-nums"
+                style={{
+                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.06)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = color
+                  e.currentTarget.style.boxShadow = `inset 0 2px 4px rgba(0,0,0,0.06), 0 0 0 1px ${color}40`
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = ''
+                  e.currentTarget.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.06)'
+                }}
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--fg-muted)]">ч</span>
             </div>
@@ -463,9 +501,13 @@ function GameTimeBlock({ item }: { item: ShopItem }) {
               className={cn(
                 'flex h-10 items-center gap-1.5 rounded-xl px-4 text-sm font-semibold transition-all',
                 canUse
-                  ? 'bg-gradient-to-b from-cyan-500 to-cyan-600 text-white shadow-sm shadow-cyan-500/25 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]'
-                  : 'bg-[var(--surface)] text-[var(--fg-muted)] opacity-50 cursor-not-allowed',
+                  ? 'text-white hover:scale-[1.02] active:scale-[0.97]'
+                  : 'bg-[var(--surface)] text-[var(--fg-muted)] opacity-40 cursor-not-allowed',
               )}
+              style={canUse ? {
+                background: `linear-gradient(135deg, ${color}, ${color}cc)`,
+                boxShadow: `0 4px 12px ${color}30, inset 0 1px 0 rgba(255,255,255,0.2)`,
+              } : undefined}
             >
               <Gamepad2 className="h-4 w-4" />
               Играть
@@ -478,7 +520,7 @@ function GameTimeBlock({ item }: { item: ShopItem }) {
       )}
 
       {total === 0 && (
-        <p className="text-xs text-[var(--fg-muted)] text-center py-2">Купите пакеты времени в магазине</p>
+        <p className="text-[11px] text-[var(--fg-muted)] text-center py-2 opacity-60">Купите пакеты времени в магазине</p>
       )}
     </div>
   )
@@ -486,6 +528,7 @@ function GameTimeBlock({ item }: { item: ShopItem }) {
 
 const SerialEpisodesBlock = memo(function SerialEpisodesBlock({ itemId, seasons }: { itemId: string; seasons: SerialSeason[] }) {
   const useEpisode = useRpgStore((s) => s.useEpisode)
+  const color = PROPERTY_COLORS.serial
 
   const purchasedSeasons = seasons.filter((s) => s.episodes.some((e) => e.purchased))
   if (purchasedSeasons.length === 0) return null
@@ -495,11 +538,21 @@ const SerialEpisodesBlock = memo(function SerialEpisodesBlock({ itemId, seasons 
   const usedEp = seasons.reduce((sum, s) => sum + s.episodes.filter((e) => e.purchased && e.used).length, 0)
 
   return (
-    <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-4 mb-6">
+    <div
+      className="glass rounded-2xl p-4 mb-5 relative overflow-hidden"
+      style={{
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)',
+      }}
+    >
+      <div
+        className="absolute -top-6 -right-6 w-20 h-20 rounded-full blur-3xl opacity-10 pointer-events-none"
+        style={{ background: color }}
+      />
+
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-[var(--fg)]">Серии</h3>
-        <span className="text-xs text-[var(--fg-muted)]">
-          {usedEp > 0 && <span className="text-emerald-500">{usedEp} просм.</span>}
+        <h3 className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider">Серии</h3>
+        <span className="text-[11px] text-[var(--fg-muted)]">
+          {usedEp > 0 && <span style={{ color: '#10b981' }}>{usedEp} просм.</span>}
           {usedEp > 0 && ' · '}
           {purchasedEp} / {totalEp} купл.
         </span>
@@ -509,9 +562,16 @@ const SerialEpisodesBlock = memo(function SerialEpisodesBlock({ itemId, seasons 
           const purchased = season.episodes.filter((e) => e.purchased)
           const usedInSeason = purchased.filter((e) => e.used).length
           return (
-            <div key={season.id} className="rounded-xl bg-[var(--surface-card)] p-3">
+            <div
+              key={season.id}
+              className="rounded-xl p-3"
+              style={{
+                background: `linear-gradient(135deg, ${color}10, ${color}05)`,
+                boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 1px ${color}15`,
+              }}
+            >
               <div className="flex items-center gap-2 mb-2">
-                <Clapperboard className="h-4 w-4 text-pink-500" />
+                <Clapperboard className="h-4 w-4" style={{ color }} />
                 <span className="text-sm font-medium text-[var(--fg)]">Сезон {season.number}</span>
                 <span className="text-[10px] text-[var(--fg-muted)]">{usedInSeason}/{purchased.length}</span>
               </div>
@@ -520,7 +580,12 @@ const SerialEpisodesBlock = memo(function SerialEpisodesBlock({ itemId, seasons 
                   ep.used ? (
                     <span
                       key={ep.id}
-                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-emerald-500 bg-emerald-500/10 ring-1 ring-inset ring-emerald-400/20"
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold"
+                      style={{
+                        color: '#10b981',
+                        background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.05))',
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 1px rgba(16,185,129,0.2)',
+                      }}
                     >
                       <Check className="h-3 w-3" />
                       Серия {ep.number}
@@ -530,7 +595,12 @@ const SerialEpisodesBlock = memo(function SerialEpisodesBlock({ itemId, seasons 
                       key={ep.id}
                       type="button"
                       onClick={() => useEpisode(itemId, season.id, ep.id)}
-                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-pink-500 bg-pink-500/10 ring-1 ring-inset ring-pink-400/20 hover:bg-pink-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold cursor-pointer transition-all hover:scale-105 active:scale-95"
+                      style={{
+                        color,
+                        background: `linear-gradient(135deg, ${color}15, ${color}08)`,
+                        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 1px ${color}20`,
+                      }}
                     >
                       <Zap className="h-3 w-3" />
                       Серия {ep.number}

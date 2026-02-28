@@ -484,8 +484,10 @@ export interface ShopItem {
   isVideoGame?: boolean
   /** Пакеты времени для видеоигры: [{ hours, cost }] */
   gameTimePackages?: GameTimePackage[]
-  /** Суммарное накопленное время (в минутах) */
+  /** Суммарное накопленное время (в минутах) — текущий запас */
   gameTimeTotalMinutes?: number
+  /** Всего наигранных минут (увеличивается при использовании часов) */
+  gameTimePlayedMinutes?: number
   /** Сериал: серии разбиты по сезонам с индивидуальной ценой за серию */
   isTvSerial?: boolean
   /** Настройки сезонов сериала */
@@ -494,6 +496,8 @@ export interface ShopItem {
   stock?: number
   /** Базовая покупка сделана (для isVideoGame / isTvSerial — после покупки открываются сессии/серии) */
   basePurchased?: boolean
+  /** Предмет удалён из магазина, но остаётся в инвентаре */
+  deletedFromShop?: boolean
 }
 
 /** Сезон сериала */

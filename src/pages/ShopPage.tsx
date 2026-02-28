@@ -197,7 +197,7 @@ export default function ShopPage() {
   // ── Derived data ─────────────────────────────────────────────────────────
 
   const profileItems = useMemo(
-    () => activeProfileId ? shopItems.filter((i) => i.profileId === activeProfileId && i.stock !== 0) : [],
+    () => activeProfileId ? shopItems.filter((i) => i.profileId === activeProfileId && i.stock !== 0 && !i.deletedFromShop) : [],
     [shopItems, activeProfileId],
   )
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
 import {
@@ -45,6 +45,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const allItemGroups = useRpgStore((s) => s.itemGroups)
   const shopItems = useRpgStore((s) => s.shopItems)
+  const activeShopItems = useMemo(() => shopItems.filter((i) => !i.deletedFromShop), [shopItems])
   const purchaseHistory = useRpgStore((s) => s.purchaseHistory)
   const craftRecipes = useRpgStore((s) => s.craftRecipes)
   const allTasks = useRpgStore((s) => s.tasks)
@@ -130,6 +131,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
   const [showDiscountModal, setShowDiscountModal] = useState(false)
   const [showGroupModal, setShowGroupModal] = useState(false)
   const [showIconSource, setShowIconSource] = useState(false)
+  const [showGameCompletedConfirm, setShowGameCompletedConfirm] = useState(false)
   const [showPurchaseConfirm, setShowPurchaseConfirm] = useState(false)
 
   const iconFileInputRef = useRef<HTMLInputElement>(null)
@@ -1525,6 +1527,16 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                 {(!item.gameTimePackages || item.gameTimePackages.length === 0) && (
                   <p className="text-xs text-[var(--fg-muted)] text-center">Нет пакетов времени. Настройте их в режиме редактирования.</p>
                 )}
+
+                {/* Game completed button */}
+                <button
+                  type="button"
+                  onClick={() => setShowGameCompletedConfirm(true)}
+                  className="w-full mt-4 flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-semibold text-cyan-600 dark:text-cyan-400 bg-gradient-to-r from-cyan-500/15 to-cyan-500/5 ring-1 ring-inset ring-cyan-400/20 shadow-sm shadow-cyan-500/10 backdrop-blur-sm hover:from-cyan-500/25 hover:to-cyan-500/10 hover:shadow-md hover:shadow-cyan-500/15 active:scale-[0.97] transition-all"
+                >
+                  <Check className="h-4 w-4" />
+                  Игра пройдена
+                </button>
               </div>
             )}
 
@@ -1724,6 +1736,22 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
         variant="danger"
       />
 
+      {/* Game completed confirmation */}
+      <ConfirmModal
+        isOpen={showGameCompletedConfirm}
+        onConfirm={() => {
+          setShowGameCompletedConfirm(false)
+          deleteShopItem(item.id)
+          onDeselect?.()
+        }}
+        onCancel={() => setShowGameCompletedConfirm(false)}
+        title="Игра пройдена?"
+        message={`«${item.name}» будет убрана из магазина. Предмет останется в инвентаре.`}
+        confirmText="Пройдена"
+        cancelText="Отмена"
+        variant="info"
+      />
+
       {/* Unsaved changes confirmation */}
       <ConfirmModal
         isOpen={showUnsavedConfirm}
@@ -1758,7 +1786,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
       {showLootboxModal && (
         <LootboxEffectModal
           lootTable={editLootTable}
-          shopItems={shopItems}
+          shopItems={activeShopItems}
           onSave={setEditLootTable}
           onClose={() => setShowLootboxModal(false)}
         />

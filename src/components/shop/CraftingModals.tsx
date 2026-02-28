@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { cn } from '../../lib/cn'
 import { X, Plus, Trash2, ChevronRight, Check } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
@@ -132,7 +132,8 @@ interface CraftingCreateItemModalProps {
 }
 
 export function CraftingCreateItemModal({ onClose, defaultResultName, defaultResultIcon }: CraftingCreateItemModalProps) {
-  const shopItems = useRpgStore((s) => s.shopItems)
+  const allShopItems = useRpgStore((s) => s.shopItems)
+  const shopItems = useMemo(() => allShopItems.filter((i) => !i.deletedFromShop), [allShopItems])
   const [recipeName, setRecipeName] = useState('')
   const [recipeDescription, setRecipeDescription] = useState('')
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([])
@@ -291,7 +292,8 @@ interface CraftingMaterialModalProps {
 }
 
 export function CraftingMaterialModal({ onClose, defaultIngredientName, defaultIngredientIcon }: CraftingMaterialModalProps) {
-  const shopItems = useRpgStore((s) => s.shopItems)
+  const allShopItems = useRpgStore((s) => s.shopItems)
+  const shopItems = useMemo(() => allShopItems.filter((i) => !i.deletedFromShop), [allShopItems])
   const [recipeName, setRecipeName] = useState('')
   const [recipeDescription, setRecipeDescription] = useState('')
   const [mainIngredientQuantity, setMainIngredientQuantity] = useState(1)

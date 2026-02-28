@@ -1772,7 +1772,14 @@ export const useRpgStore = create<RpgStoreState>()(
           }))
         },
 
-        deleteShopItem: (id) => set((s) => ({ shopItems: s.shopItems.filter((i) => i.id !== id) })),
+        deleteShopItem: (id) => set((s) => {
+          const hasInventory = s.inventory.some((e) => e.itemId === id)
+          if (hasInventory) {
+            // Soft-delete: предмет остаётся для инвентаря, но скрыт из магазина
+            return { shopItems: s.shopItems.map((i) => i.id === id ? { ...i, deletedFromShop: true } : i) }
+          }
+          return { shopItems: s.shopItems.filter((i) => i.id !== id) }
+        }),
 
         purchaseItem: (itemId) => {
           const { shopItems, deductCurrency, addToInventory, openLootbox, activeShopDiscountPercent, activeProfileId } = get()
@@ -1962,6 +1969,7 @@ export const useRpgStore = create<RpgStoreState>()(
           updateShopItem(itemId, (prev) => ({
             ...prev,
             gameTimeTotalMinutes: (prev.gameTimeTotalMinutes ?? 0) - minutes,
+            gameTimePlayedMinutes: (prev.gameTimePlayedMinutes ?? 0) + minutes,
           }))
 
           if (activeProfileId) {
@@ -2088,19 +2096,22 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         removeFromInventory: (itemId, quantity = 1) => {
-          const { inventory } = get()
+          const { inventory, shopItems } = get()
           const existing = inventory.find((e) => e.itemId === itemId)
           if (!existing || existing.quantity < quantity) return false
 
+          const fullyRemoved = existing.quantity === quantity
           set((s) => {
-            if (existing.quantity === quantity) {
-              return { inventory: s.inventory.filter((e) => e.itemId !== itemId) }
-            }
-            return {
-              inventory: s.inventory.map((e) =>
-                e.itemId === itemId ? { ...e, quantity: e.quantity - quantity } : e
-              ),
-            }
+            const nextInventory = fullyRemoved
+              ? s.inventory.filter((e) => e.itemId !== itemId)
+              : s.inventory.map((e) =>
+                  e.itemId === itemId ? { ...e, quantity: e.quantity - quantity } : e
+                )
+            // Если предмет полностью убран из инвентаря и был soft-deleted из магазина — удаляем окончательно
+            const nextShopItems = fullyRemoved && shopItems.find((i) => i.id === itemId)?.deletedFromShop
+              ? s.shopItems.filter((i) => i.id !== itemId)
+              : s.shopItems
+            return { inventory: nextInventory, shopItems: nextShopItems }
           })
           return true
         },
