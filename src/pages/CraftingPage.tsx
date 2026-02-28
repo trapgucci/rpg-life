@@ -48,7 +48,7 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   // Старые сохранённые данные могут не содержать fragmentSource
-  const fragmentSource: any = (recipe as any).fragmentSource ?? { type: 'random_drop', dropChance: 0 }
+  const fragmentSource = recipe.fragmentSource ?? { type: 'random_drop' as const, dropChance: 0 }
 
   const resultItem = recipe.resultItemId ? allShopItems.find((i) => i.id === recipe.resultItemId) : undefined
   const isOutOfStock = !!(resultItem && resultItem.stock !== undefined && resultItem.stock === 0)
@@ -229,11 +229,11 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
   const [resultItemName, setResultItemName] = useState(recipe?.resultItemName ?? '')
   const [resultRarity, setResultRarity] = useState<ItemRarity>(recipe?.resultRarity ?? 'rare')
   const [sourceType, setSourceType] = useState<FragmentSourceType>(
-    recipe?.fragmentSource.type ?? 'random_drop'
+    recipe?.fragmentSource?.type ?? 'random_drop'
   )
-  const [dropChance, setDropChance] = useState(recipe?.fragmentSource.dropChance ?? 15)
+  const [dropChance, setDropChance] = useState(recipe?.fragmentSource?.dropChance ?? 15)
   const [linkedTaskIds, setLinkedTaskIds] = useState<string[]>(
-    recipe?.fragmentSource.linkedTaskIds ?? []
+    recipe?.fragmentSource?.linkedTaskIds ?? []
   )
 
   const handleSubmit = (e: React.FormEvent) => {

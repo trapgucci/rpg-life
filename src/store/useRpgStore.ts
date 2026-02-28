@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { persist, createJSONStorage } from 'zustand/middleware'
+import { persist } from 'zustand/middleware'
+import { vaultStorage, VAULT_READ_FILES } from '../lib/vaultStorage'
 import { isSameDay, getStartOfDay, getStartOfWeek, getStartOfMonth, getStartOfYear } from '../lib/dateUtils'
 import { getCurrentCycleStart as calcCycleStart, getCycleEndDate, getSubtaskXp } from '../lib/taskCycleUtils'
 import type {
@@ -334,8 +335,111 @@ interface RpgStoreState {
   resetProgress: () => void
 }
 
+// ─── Vault Persist Storage Adapter ──────────────────────────────────────────
+// Zustand 5 persist expects StorageValue<S> = { state: S; version?: number }
+
+import type { PersistStorage, StorageValue } from 'zustand/middleware'
+
+let _writeTimer: ReturnType<typeof setTimeout> | null = null
+const WRITE_DEBOUNCE_MS = 500
+
+function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
+  return {
+    getItem: async (): Promise<StorageValue<Partial<RpgStoreState>> | null> => {
+      const results = await Promise.all(
+        VAULT_READ_FILES.map((f) => vaultStorage.read(f))
+      )
+
+      const [
+        profileData, settingsData, tasks, taskGroups,
+        habits, shopItems, itemGroups, inventory,
+        achievements, craftRecipes, purchaseHistory,
+        usageHistory, stats,
+      ] = results as [
+        { profiles: unknown[]; activeProfileId: string | null } | null,
+        { settings: unknown; activeShopDiscountPercent: number | null } | null,
+        unknown[] | null,
+        unknown[] | null,
+        unknown[] | null,
+        unknown[] | null,
+        unknown[] | null,
+        unknown[] | null,
+        unknown[] | null,
+        unknown[] | null,
+        unknown[] | null,
+        unknown[] | null,
+        unknown | null,
+      ]
+
+      // If all files are null, there's no persisted state
+      const allNull = results.every((r) => r === null)
+      if (allNull) return null
+
+      return {
+        state: {
+          profiles: profileData?.profiles as Profile[] ?? [],
+          activeProfileId: (profileData?.activeProfileId as ProfileId) ?? null,
+          settings: settingsData?.settings as AppSettings ?? undefined,
+          activeShopDiscountPercent: settingsData?.activeShopDiscountPercent ?? null,
+          tasks: tasks as TaskRpg[] ?? [],
+          taskGroups: taskGroups as TaskGroup[] ?? [],
+          habits: habits as Habit[] ?? [],
+          shopItems: shopItems as ShopItem[] ?? [],
+          itemGroups: itemGroups as ItemGroup[] ?? [],
+          inventory: inventory as InventoryEntry[] ?? [],
+          achievements: achievements as Achievement[] ?? [],
+          craftRecipes: craftRecipes as CraftRecipe[] ?? [],
+          purchaseHistory: purchaseHistory as PurchaseHistoryEntry[] ?? [],
+          usageHistory: usageHistory as UsageHistoryEntry[] ?? [],
+          stats: stats as RpgStoreState['stats'] ?? undefined,
+        } as Partial<RpgStoreState>,
+      }
+    },
+
+    setItem: async (_name: string, value: StorageValue<Partial<RpgStoreState>>): Promise<void> => {
+      // Debounce writes to avoid excessive disk I/O
+      if (_writeTimer) clearTimeout(_writeTimer)
+      _writeTimer = setTimeout(async () => {
+        try {
+          const state = value.state
+          await Promise.all([
+            vaultStorage.write('profile.json', {
+              profiles: state.profiles,
+              activeProfileId: state.activeProfileId,
+            }),
+            vaultStorage.write('settings.json', {
+              settings: state.settings,
+              activeShopDiscountPercent: state.activeShopDiscountPercent,
+            }),
+            vaultStorage.write('tasks.json', state.tasks),
+            vaultStorage.write('task-groups.json', state.taskGroups),
+            vaultStorage.write('habits.json', state.habits),
+            vaultStorage.write('shop-items.json', state.shopItems),
+            vaultStorage.write('item-groups.json', state.itemGroups),
+            vaultStorage.write('inventory.json', state.inventory),
+            vaultStorage.write('achievements.json', state.achievements),
+            vaultStorage.write('craft-recipes.json', state.craftRecipes),
+            vaultStorage.write('purchase-history.json', state.purchaseHistory),
+            vaultStorage.write('usage-history.json', state.usageHistory),
+            vaultStorage.write('stats.json', state.stats),
+          ])
+        } catch (err) {
+          console.error('[vault] Failed to write state:', err)
+        }
+      }, WRITE_DEBOUNCE_MS)
+    },
+
+    removeItem: async (): Promise<void> => {
+      // No-op: we don't delete vault files
+    },
+  }
+}
+
 // Initialize store with default profile if needed (called once after rehydration)
 let storeInitialized = false
+
+// Защита от двойной покупки при быстром нажатии
+const _purchasingLock = new Set<string>()
 
 export const useRpgStore = create<RpgStoreState>()(
   persist(
@@ -1222,6 +1326,32 @@ export const useRpgStore = create<RpgStoreState>()(
               }
             }
 
+            // Для timesPerWeek: если неделя сменилась и задача ещё не полностью выполнена (isCompleted = false),
+            // нужно сбросить weeklyCompletedThisWeek, чтобы в новой неделе счёт начинался с 0
+            if (task.recurrence === 'weekly' && !task.isCompleted && !task.canceledAt) {
+              const rsw = task.recurrenceSettings
+              if (rsw?.weeklyMode === 'timesPerWeek' && rsw.weeklyWeekStart != null) {
+                const currentWeek = getStartOfWeek(nowTime)
+                if (rsw.weeklyWeekStart !== currentWeek) {
+                  updateTask(task.id, t => ({
+                    ...t,
+                    currentCycleStart: nowTime,
+                    lastCompletedAt: undefined,
+                    ...(t.kind === 'counter' ? { current: 0 } : {}),
+                    ...(t.kind === 'nested' ? {
+                      subtasks: t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
+                    } : {}),
+                    recurrenceSettings: {
+                      ...t.recurrenceSettings,
+                      weeklyCompletedThisWeek: 0,
+                      weeklyWeekStart: currentWeek,
+                    },
+                  }))
+                  return
+                }
+              }
+            }
+
             if (!task.lastCompletedAt || !task.isCompleted) return
 
             const shouldReset = (() => {
@@ -1328,9 +1458,9 @@ export const useRpgStore = create<RpgStoreState>()(
           const { tasks } = get()
           const task = tasks.find((t) => t.id === id)
           if (!task || task.kind !== 'counter') return
-          
+
           const newCurrent = Math.max(0, task.current - 1)
-          get().updateTask(id, (t) => t.kind === 'counter' ? { ...t, current: newCurrent, isCompleted: false } : t)
+          get().updateTask(id, (t) => t.kind === 'counter' ? { ...t, current: newCurrent, isCompleted: newCurrent >= t.target } : t)
         },
 
         toggleSubtask: (taskId, subtaskId) => {
@@ -1679,7 +1809,7 @@ export const useRpgStore = create<RpgStoreState>()(
           if (!recipe || recipe.crafted || recipe.fragmentsCollected < recipe.fragmentsRequired) return false
 
           // Deduct craft cost if any
-          const craftCost = (recipe as any).craftCost as Record<string, number> | undefined
+          const craftCost = recipe.craftCost
           if (craftCost) {
             for (const [currId, amount] of Object.entries(craftCost)) {
               if (amount > 0 && getCurrency(currId) < amount) return false
@@ -1773,9 +1903,7 @@ export const useRpgStore = create<RpgStoreState>()(
           const recipes = get().getCraftRecipes().filter((r) => !r.crafted)
 
           recipes.forEach((recipe) => {
-            const fs = (recipe as any).fragmentSource as
-              | { type?: string; dropChance?: number; linkedTaskIds?: string[]; streakRequired?: number; allowSubtaskDrop?: boolean }
-              | undefined
+            const fs = recipe.fragmentSource
             if (!fs || !fs.type) return
 
             // If this is a subtask completion, only drop if allowSubtaskDrop is enabled
@@ -1825,6 +1953,11 @@ export const useRpgStore = create<RpgStoreState>()(
         }),
 
         purchaseItem: (itemId) => {
+          // Защита от двойной покупки при быстром нажатии
+          if (_purchasingLock.has(itemId)) return false
+          _purchasingLock.add(itemId)
+
+          try {
           const { shopItems, deductCurrency, addToInventory, openLootbox, activeShopDiscountPercent, activeProfileId } = get()
           const item = shopItems.find((i) => i.id === itemId)
           if (!item) return false
@@ -1835,10 +1968,7 @@ export const useRpgStore = create<RpgStoreState>()(
             activeShopDiscountPercent != null && coinCost > 0
               ? Math.round(coinCost * (1 - activeShopDiscountPercent / 100))
               : coinCost
-          const effectiveGemCost =
-            activeShopDiscountPercent != null && gemCost > 0
-              ? Math.round(gemCost * (1 - activeShopDiscountPercent / 100))
-              : gemCost
+          const effectiveGemCost = gemCost // скидка не применяется к кристаллам
           const effectiveCosts = { ...item.cost, [CURRENCY_IDS.COINS]: effectiveCoinCost, [CURRENCY_IDS.GEMS]: effectiveGemCost }
 
           for (const [currencyId, cost] of Object.entries(effectiveCosts)) {
@@ -1906,6 +2036,9 @@ export const useRpgStore = create<RpgStoreState>()(
 
           addToInventory(itemId)
           return true
+          } finally {
+            _purchasingLock.delete(itemId)
+          }
         },
 
         openLootbox: (itemId) => {
@@ -1914,6 +2047,13 @@ export const useRpgStore = create<RpgStoreState>()(
           if (!item || !item.isLootBox || !item.lootTable) return null
 
           const totalWeight = item.lootTable.reduce((sum, entry) => sum + entry.weight, 0)
+          if (totalWeight <= 0) {
+            // Все веса нулевые — компенсация 50% стоимости лутбокса монетами
+            const lbCoinCost = item.cost[CURRENCY_IDS.COINS] ?? 0
+            const comp = Math.floor(lbCoinCost * 0.5)
+            if (comp > 0) addCurrency(CURRENCY_IDS.COINS, comp)
+            return { itemId: 'empty', name: `Пусто (компенсация 🪙 ${comp})`, compensated: true, compensationLabel: `🪙 ${comp}` }
+          }
           const random = Math.random() * 100 // 0..100; оставшиеся (100 - totalWeight)% — шанс ничего не выпасть
           if (random >= totalWeight) return null
 
@@ -2123,6 +2263,7 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         addToInventory: (itemId, quantity = 1) => {
+          if (quantity <= 0 || !Number.isFinite(quantity)) return
           set((s) => {
             const existing = s.inventory.find((e) => e.itemId === itemId)
             if (existing) {
@@ -2139,6 +2280,7 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         removeFromInventory: (itemId, quantity = 1) => {
+          if (quantity <= 0 || !Number.isFinite(quantity)) return false
           const { inventory, shopItems } = get()
           const existing = inventory.find((e) => e.itemId === itemId)
           if (!existing || existing.quantity < quantity) return false
@@ -2160,9 +2302,11 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         useItem: (itemId) => {
-          const { shopItems, getActiveProfile, updateProfile, removeFromInventory, openLootbox, activeProfileId } = get()
+          const { shopItems, inventory, getActiveProfile, updateProfile, removeFromInventory, openLootbox, activeProfileId } = get()
           const item = shopItems.find((i) => i.id === itemId)
           if (!item) return false
+          const invEntry = inventory.find((e) => e.itemId === itemId)
+          if (!invEntry || invEntry.quantity <= 0) return false
 
           // Serial: don't consume, don't log — return signal to show episode list in inventory modal
           if (item.isTvSerial) {
@@ -2176,6 +2320,7 @@ export const useRpgStore = create<RpgStoreState>()(
 
           // Lootbox: open, log result, and return
           if (item.isLootBox) {
+            if (!removeFromInventory(itemId, 1)) return false
             const loot = openLootbox(itemId)
             if (activeProfileId) {
               addUsageEntry({
@@ -2186,13 +2331,14 @@ export const useRpgStore = create<RpgStoreState>()(
                 lootResultName: loot?.name ?? null,
               })
             }
-            removeFromInventory(itemId, 1)
             return { loot }
           }
 
-          // Discount voucher: log with percent, activate, and return
+          // Discount voucher: remove from inventory first, then activate
           if (item.isDiscountVoucher && (item.discountPercent ?? 0) > 0) {
             const percent = Math.min(85, Math.max(1, item.discountPercent ?? 0))
+            const removed = removeFromInventory(itemId, 1)
+            if (!removed) return false
             if (activeProfileId) {
               addUsageEntry({
                 profileId: activeProfileId,
@@ -2203,7 +2349,7 @@ export const useRpgStore = create<RpgStoreState>()(
               })
             }
             set(() => ({ activeShopDiscountPercent: percent }))
-            return removeFromInventory(itemId, 1)
+            return true
           }
 
           // Generic usage (non-lootbox, non-discount, non-multiplier)
@@ -2367,8 +2513,8 @@ export const useRpgStore = create<RpgStoreState>()(
       }
     },
     {
-      name: 'rpg-life-store-v2',
-      storage: createJSONStorage(() => localStorage),
+      name: 'rpg-life-vault',
+      storage: createVaultStorage(),
       partialize: (s) => ({
         profiles: s.profiles,
         activeProfileId: s.activeProfileId,

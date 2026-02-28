@@ -449,6 +449,7 @@ export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
 
 export interface ShopItem {
   id: ItemId
+  profileId?: ProfileId
   name: string
   description?: string
   /** Эмодзи/иконка товара (по умолчанию по типу: лутбокс, талон, меч) */
@@ -654,10 +655,14 @@ export type FragmentSourceType = 'task_linked' | 'streak_reward' | 'random_drop'
 
 export interface FragmentSource {
   type: FragmentSourceType
-  /** ID задачи (для task_linked) */
+  /** ID задачи (для task_linked) — @deprecated используй linkedTaskIds */
   taskId?: TaskId
-  /** Шанс дропа 0.0-1.0 (для random_drop) */
+  /** Массив привязанных задач (для task_linked) */
+  linkedTaskIds?: TaskId[]
+  /** Шанс дропа в процентах 0-100 (для random_drop и task_linked) */
   dropChance?: number
+  /** Разрешить дроп при выполнении подзадачи */
+  allowSubtaskDrop?: boolean
   /** Необходимая длина стрика для получения фрагмента (для streak_reward) */
   streakRequired?: number
 }
@@ -689,8 +694,8 @@ export interface CraftRecipe {
   resultIcon: string
   /** Стоимость крафта (по валютам). Если не задано или всё 0 — крафт бесплатный */
   craftCost?: Record<CurrencyId, number>
-  /** Источники фрагментов */
-  sources?: FragmentSource[]
+  /** Источник фрагментов */
+  fragmentSource?: FragmentSource
   /** Максимальное количество крафтов (undefined/1 = одноразовый) */
   maxCrafts?: number
   /** Сколько раз уже скрафчено */

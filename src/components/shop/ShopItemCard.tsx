@@ -44,10 +44,7 @@ export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: 
     activeShopDiscountPercent != null && coinCost > 0
       ? Math.round(coinCost * (1 - activeShopDiscountPercent / 100))
       : coinCost
-  const effectiveGemCost =
-    activeShopDiscountPercent != null && gemCost > 0
-      ? Math.round(gemCost * (1 - activeShopDiscountPercent / 100))
-      : gemCost
+  const effectiveGemCost = gemCost // скидка не применяется к кристаллам
   const canAfford = coins >= effectiveCoinCost && gems >= effectiveGemCost
   const availableForPurchase = item.availableForPurchase !== false
   const canGetForFree = item.canGetForFree === true
@@ -164,14 +161,7 @@ export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: 
             {availableForPurchase && !canGetForFree && gemCost > 0 && !(item.isTvSerial && basePurchased) && !(item.isVideoGame && basePurchased) && (
               <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-bold bg-gradient-to-b from-purple-500/20 to-purple-500/10 text-purple-600 dark:text-purple-400 ring-1 ring-inset ring-purple-400/25 shadow-sm shadow-purple-500/10">
                 <Gem className="h-3.5 w-3.5" />
-                {activeShopDiscountPercent != null && effectiveGemCost < gemCost ? (
-                  <>
-                    <span className="line-through opacity-60 text-[10px]">{gemCost}</span>
-                    <span className="font-black">{effectiveGemCost}</span>
-                  </>
-                ) : (
-                  <span className="font-black">{gemCost.toLocaleString('ru-RU')}</span>
-                )}
+                <span className="font-black">{gemCost.toLocaleString('ru-RU')}</span>
               </span>
             )}
 

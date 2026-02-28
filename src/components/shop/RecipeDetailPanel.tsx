@@ -36,21 +36,17 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
   const getCurrency = useRpgStore((s) => s.getCurrency)
   const itemGroups = useMemo(() => activeProfileId ? allItemGroups.filter((g) => g.profileId === activeProfileId).sort((a, b) => a.sortOrder - b.sortOrder) : [], [allItemGroups, activeProfileId])
   const taskGroupsList = useMemo(() => activeProfileId ? allTaskGroups.filter((g) => g.profileId === activeProfileId).sort((a, b) => a.sortOrder - b.sortOrder) : [], [allTaskGroups, activeProfileId])
-  const profileItems = useMemo(() => activeProfileId ? allShopItems.filter((i) => !i.deletedFromShop && ((i as any).profileId === activeProfileId || !(i as any).profileId)) : allShopItems.filter((i) => !i.deletedFromShop), [allShopItems, activeProfileId])
+  const profileItems = useMemo(() => activeProfileId ? allShopItems.filter((i) => !i.deletedFromShop && (i.profileId === activeProfileId || !i.profileId)) : allShopItems.filter((i) => !i.deletedFromShop), [allShopItems, activeProfileId])
 
-  // --- Fragment source (runtime extended field) ---
-  const rawSource = (recipe as any).fragmentSource
-  const fragmentSource: { type?: string; dropChance?: number; linkedTaskIds?: string[]; streakRequired?: number; allowSubtaskDrop?: boolean } =
-    rawSource != null && typeof rawSource === 'object'
-      ? rawSource
-      : { type: 'random_drop', dropChance: 0 }
+  // --- Fragment source ---
+  const fragmentSource = recipe.fragmentSource ?? { type: 'random_drop' as const, dropChance: 0 }
   // Migrate old habit_linked to random_drop
   const rawType = fragmentSource?.type ?? 'random_drop'
   const sourceType = (rawType === 'habit_linked' ? 'random_drop' : rawType) as FragmentSourceType
 
   // --- Result item ---
   const resultItem = useMemo(() => recipe.resultItemId ? allShopItems.find((i) => i.id === recipe.resultItemId) : null, [recipe.resultItemId, allShopItems])
-  const craftCost = (recipe as any).craftCost as Record<string, number> | undefined
+  const craftCost = recipe.craftCost
   const coinCost = craftCost?.coins ?? 0
   const gemCost = craftCost?.gems ?? 0
   const hasCost = coinCost > 0 || gemCost > 0
@@ -82,7 +78,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
   // --- Edit state ---
   const [editFragmentName, setEditFragmentName] = useState(recipe.fragmentName)
   const [editFragmentIcon, setEditFragmentIcon] = useState(migrateIcon(recipe.fragmentIcon, 'Puzzle'))
-  const [editFragmentIconImage, setEditFragmentIconImage] = useState((recipe as any).fragmentIconImage ?? '')
+  const [editFragmentIconImage, setEditFragmentIconImage] = useState(recipe.fragmentIconImage ?? '')
   const [editFragmentsRequired, setEditFragmentsRequired] = useState(recipe.fragmentsRequired)
   const [editResultRarity, setEditResultRarity] = useState<ItemRarity>(recipe.resultRarity)
   const [editSourceType, setEditSourceType] = useState<FragmentSourceType>(sourceType)
@@ -112,16 +108,14 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
   const pendingRecipeRef = useRef<CraftRecipe | null>(null)
 
   const resetEditState = (r: CraftRecipe) => {
-    const src = (r as any).fragmentSource
-    const fs: { type?: string; dropChance?: number; linkedTaskIds?: string[]; streakRequired?: number; allowSubtaskDrop?: boolean } =
-      src != null && typeof src === 'object' ? src : { type: 'random_drop', dropChance: 0 }
-    const fsType = fs?.type ?? 'random_drop'
-    const cc = (r as any).craftCost as Record<string, number> | undefined
+    const fs = r.fragmentSource ?? { type: 'random_drop' as const, dropChance: 0 }
+    const fsType = fs.type ?? 'random_drop'
+    const cc = r.craftCost
 
     setIsEditing(false)
     setEditFragmentName(r.fragmentName)
     setEditFragmentIcon(migrateIcon(r.fragmentIcon, 'Puzzle'))
-    setEditFragmentIconImage((r as any).fragmentIconImage ?? '')
+    setEditFragmentIconImage(r.fragmentIconImage ?? '')
     setEditFragmentsRequired(r.fragmentsRequired)
     setEditResultRarity(r.resultRarity)
     setEditSourceType((fsType === 'habit_linked' ? 'random_drop' : fsType) as FragmentSourceType)
@@ -145,15 +139,13 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
     const prev = prevRecipeRef.current
     if (prev.id !== recipe.id) {
       if (isEditing) {
-        const prevSrc = (prev as any).fragmentSource
-        const prevFs: { type?: string; dropChance?: number; linkedTaskIds?: string[]; streakRequired?: number } =
-          prevSrc != null && typeof prevSrc === 'object' ? prevSrc : { type: 'random_drop', dropChance: 0 }
+        const prevFs = prev.fragmentSource ?? { type: 'random_drop' as const, dropChance: 0 }
         const prevSourceType = (prevFs?.type ?? 'random_drop') as FragmentSourceType
 
         const changed =
           editFragmentName !== prev.fragmentName ||
           editFragmentIcon !== prev.fragmentIcon ||
-          editFragmentIconImage !== ((prev as any).fragmentIconImage ?? '') ||
+          editFragmentIconImage !== (prev.fragmentIconImage ?? '') ||
           editFragmentsRequired !== prev.fragmentsRequired ||
           editResultRarity !== prev.resultRarity ||
           editSourceType !== prevSourceType ||
@@ -250,7 +242,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
     task_linked: { iconName: 'Crosshair', label: 'Привязка к задачам', description: 'Конкретные задачи' },
   }
 
-  const fragmentIconImage = (recipe as any).fragmentIconImage ?? ''
+  const fragmentIconImage = recipe.fragmentIconImage ?? ''
 
   return (
     <div className="glass-card relative flex h-full flex-col rounded-2xl overflow-hidden">

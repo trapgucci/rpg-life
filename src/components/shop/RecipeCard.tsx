@@ -1,8 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { cn } from '../../lib/cn'
-import { Trash2, CheckCircle2, Sparkles, Dice5, Crosshair } from 'lucide-react'
+import { CheckCircle2, Sparkles, Dice5, Crosshair } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
-import ConfirmModal from '../ConfirmModal'
 import type { CraftRecipe } from '../../types/domain'
 import { migrateIcon, getItemTypeColor } from './shopUtils'
 import { HabitIcon } from '../HabitIcon'
@@ -14,19 +13,13 @@ interface RecipeCardProps {
 }
 
 export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardProps) {
-  const deleteRecipe = useRpgStore((s) => s.deleteCraftRecipe)
   const allShopItems = useRpgStore((s) => s.shopItems)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const resultItem = useMemo(() => recipe?.resultItemId ? allShopItems.find((i) => i.id === recipe.resultItemId) : null, [recipe?.resultItemId, allShopItems])
 
   if (!recipe) return null
 
-  const rawSource = (recipe as any).fragmentSource
-  const fragmentSource: { type?: string; dropChance?: number; linkedTaskIds?: string[]; streakRequired?: number } =
-    rawSource != null && typeof rawSource === 'object'
-      ? rawSource
-      : { type: 'random_drop', dropChance: 0 }
+  const fragmentSource = recipe.fragmentSource ?? { type: 'random_drop' as const, dropChance: 0 }
   const rawType = fragmentSource?.type ?? 'random_drop'
   const sourceType = rawType === 'habit_linked' ? 'random_drop' : rawType
 
@@ -36,7 +29,7 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
 
   const canCraft = recipe.fragmentsCollected >= recipe.fragmentsRequired && !recipe.crafted
   const themeColor = getItemTypeColor(resultItem)
-  const fragmentIconImage = (recipe as any).fragmentIconImage ?? ''
+  const fragmentIconImage = recipe.fragmentIconImage ?? ''
 
   return (
     <button
@@ -149,29 +142,6 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
         )}
       </div>
 
-      {/* Hover actions */}
-      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true) }}
-          className="icon-btn icon-btn-danger icon-btn-compact"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      <ConfirmModal
-        isOpen={showDeleteConfirm}
-        title="Удалить фрагмент?"
-        message="Фрагмент будет удалён безвозвратно."
-        variant="danger"
-        confirmText="Удалить"
-        onConfirm={() => {
-          deleteRecipe(recipe.id)
-          setShowDeleteConfirm(false)
-        }}
-        onCancel={() => setShowDeleteConfirm(false)}
-      />
     </button>
   )
 }

@@ -204,13 +204,13 @@ export default function TasksPage() {
     const recipes = getCraftRecipes().filter((r) => !r.crafted)
     const fragmentMap = new Map<string, TaskCardFragment[]>()
     for (const recipe of recipes) {
-      const fs = (recipe as any).fragmentSource as { type?: string; dropChance?: number; linkedTaskIds?: string[] } | undefined
+      const fs = recipe.fragmentSource
       if (!fs) continue
       const frag: TaskCardFragment = {
         id: recipe.id,
         fragmentName: recipe.fragmentName,
         fragmentIcon: recipe.fragmentIcon,
-        fragmentIconImage: (recipe as any).fragmentIconImage,
+        fragmentIconImage: recipe.fragmentIconImage,
         fragmentColor: recipe.fragmentColor || '#a855f7',
         dropChance: fs.dropChance ?? 0,
       }

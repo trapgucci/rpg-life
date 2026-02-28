@@ -133,7 +133,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const linkedFragments = useMemo(() => {
     const recipes = getCraftRecipes().filter((r) => !r.crafted)
     return recipes.filter((recipe) => {
-      const fs = (recipe as any).fragmentSource as { type?: string; linkedTaskIds?: string[] } | undefined
+      const fs = recipe.fragmentSource
       if (!fs) return false
       if (fs.type === 'random_drop') return true
       if (fs.type === 'task_linked') {
@@ -1216,7 +1216,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 <div className="space-y-2 mt-3 pt-3 border-t border-[var(--border)]">
                   <p className="text-[10px] font-semibold text-[var(--fg-muted)] uppercase tracking-wider">Шанс дропа фрагментов</p>
                   {linkedFragments.map((recipe) => {
-                    const fs = (recipe as any).fragmentSource as { dropChance?: number; type?: string } | undefined
+                    const fs = recipe.fragmentSource
                     const chance = fs?.dropChance ?? 0
                     const fragmentColor = recipe.fragmentColor || '#a855f7'
                     const isTaskLinked = fs?.type === 'task_linked'
@@ -1264,8 +1264,8 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                               className="absolute top-0 left-0 w-[60%] h-[60%] rounded-bl-full opacity-30"
                               style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.8), transparent)' }}
                             />
-                            {(recipe as any).fragmentIconImage ? (
-                              <img src={(recipe as any).fragmentIconImage} alt="" className="h-full w-full object-cover" />
+                            {recipe.fragmentIconImage ? (
+                              <img src={recipe.fragmentIconImage} alt="" className="h-full w-full object-cover" />
                             ) : (
                               <HabitIcon iconName={recipe.fragmentIcon || 'Puzzle'} size={18} className="text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]" />
                             )}

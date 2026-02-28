@@ -57,10 +57,7 @@ export default function CartModal({ cart, onRemove, onClear, onCheckout, onClose
         activeShopDiscountPercent != null && coinCost > 0
           ? Math.round(coinCost * (1 - activeShopDiscountPercent / 100))
           : coinCost
-      const effectiveGemCost =
-        activeShopDiscountPercent != null && gemCost > 0
-          ? Math.round(gemCost * (1 - activeShopDiscountPercent / 100))
-          : gemCost
+      const effectiveGemCost = gemCost // скидка не применяется к кристаллам
       totalCoins += effectiveCoinCost * e.quantity
       totalGems += effectiveGemCost * e.quantity
     }

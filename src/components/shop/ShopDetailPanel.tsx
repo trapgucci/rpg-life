@@ -54,7 +54,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
   const itemRecipe = craftRecipes.find((r) => r.resultItemId === item.id && !r.crafted)
   const recipeLinkedTasks = itemRecipe
     ? (() => {
-        const src = (itemRecipe as any).fragmentSource
+        const src = itemRecipe.fragmentSource
         if (src?.type === 'task_linked' && Array.isArray(src.linkedTaskIds)) {
           return src.linkedTaskIds
             .map((id: string) => allTasks.find((t) => t.id === id))
@@ -85,10 +85,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
     activeShopDiscountPercent != null && coinCostRaw > 0
       ? Math.round(coinCostRaw * (1 - activeShopDiscountPercent / 100))
       : coinCostRaw
-  const effectiveGemCost =
-    activeShopDiscountPercent != null && gemCostRaw > 0
-      ? Math.round(gemCostRaw * (1 - activeShopDiscountPercent / 100))
-      : gemCostRaw
+  const effectiveGemCost = gemCostRaw // скидка не применяется к кристаллам
   const canAfford = coins >= effectiveCoinCost && gems >= effectiveGemCost
   const availableForPurchase = item.availableForPurchase !== false
   const canGetForFree = item.canGetForFree === true
@@ -151,7 +148,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
     setEditCanGetForFree(i.canGetForFree === true)
     setEditCoinCost(i.cost[CURRENCY_IDS.COINS] ?? 0)
     setEditGemCost(i.cost[CURRENCY_IDS.GEMS] ?? 0)
-    setEditStock((i as any).stock)
+    setEditStock(i.stock)
     setEditIsLootBox(i.isLootBox)
     setEditLootTable(i.lootTable ?? [])
     setEditStreakMultiplierEnabled(i.streakMultiplierEnabled ?? false)
@@ -180,7 +177,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
       editCanGetForFree !== (prev.canGetForFree === true) ||
       editCoinCost !== (prev.cost[CURRENCY_IDS.COINS] ?? 0) ||
       editGemCost !== (prev.cost[CURRENCY_IDS.GEMS] ?? 0) ||
-      editStock !== (prev as any).stock ||
+      editStock !== prev.stock ||
       editIsLootBox !== prev.isLootBox ||
       JSON.stringify(editLootTable) !== JSON.stringify(prev.lootTable ?? []) ||
       editStreakMultiplierEnabled !== (prev.streakMultiplierEnabled ?? false) ||
@@ -1034,14 +1031,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                       <Gem className="h-4 w-4 text-purple-600 dark:text-purple-400" strokeWidth={2.5} />
                     </div>
                     <div>
-                      {activeShopDiscountPercent != null && effectiveGemCost < gemCostRaw ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold text-purple-600 dark:text-purple-400 line-through opacity-60">{gemCostRaw}</span>
-                          <span className="text-lg font-bold text-purple-600 dark:text-purple-400">{effectiveGemCost}</span>
-                        </div>
-                      ) : (
-                        <p className="text-lg font-bold text-purple-600 dark:text-purple-400">{gemCostRaw}</p>
-                      )}
+                      <p className="text-lg font-bold text-purple-600 dark:text-purple-400">{gemCostRaw}</p>
                       <p className="text-xs text-[var(--fg-muted)]">Кристаллов</p>
                     </div>
                   </div>
@@ -1063,7 +1053,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                 )}
 
                 {/* Discount indicator */}
-                {activeShopDiscountPercent != null && availableForPurchase && !canGetForFree && (coinCostRaw > 0 || gemCostRaw > 0) && (
+                {activeShopDiscountPercent != null && availableForPurchase && !canGetForFree && coinCostRaw > 0 && (
                   <span className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-b from-red-500/20 to-red-500/10 px-2 py-1 text-xs font-semibold text-red-500 ring-1 ring-inset ring-red-400/25">
                     <Percent className="h-3 w-3" />
                     -{activeShopDiscountPercent}%
@@ -1328,10 +1318,10 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
 
             {/* ── Crafting info block ───────────────────────────────────── */}
             {itemRecipe && (() => {
-              const recipeSrc = (itemRecipe as any).fragmentSource
+              const recipeSrc = itemRecipe.fragmentSource
               const recipeSourceType = recipeSrc?.type === 'task_linked' ? 'task_linked' : 'random_drop'
               const recipeDropChance = recipeSrc?.dropChance ?? 0
-              const recipeCraftCost = (itemRecipe as any).craftCost as Record<string, number> | undefined
+              const recipeCraftCost = itemRecipe.craftCost
               const recipeCoinCost = recipeCraftCost?.coins ?? 0
               const recipeGemCost = recipeCraftCost?.gems ?? 0
               const recipeProgress = itemRecipe.fragmentsRequired > 0
@@ -1376,8 +1366,8 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                           className="absolute top-0 left-0 w-[60%] h-[60%] rounded-bl-full opacity-30"
                           style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.8), transparent)' }}
                         />
-                        {(itemRecipe as any).fragmentIconImage ? (
-                          <img src={(itemRecipe as any).fragmentIconImage} alt="" className="h-full w-full object-cover" />
+                        {itemRecipe.fragmentIconImage ? (
+                          <img src={itemRecipe.fragmentIconImage} alt="" className="h-full w-full object-cover" />
                         ) : (
                           <HabitIcon iconName={migrateIcon(itemRecipe.fragmentIcon, 'Puzzle')} size={16} className="text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]" />
                         )}

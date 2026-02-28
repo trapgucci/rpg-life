@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { TaskKind } from '../types/domain'
+import type { TaskDifficulty, TaskKind } from '../types/domain'
 
 interface Props {
   onSubmit: (data: { title: string; kind: TaskKind; difficulty: 'easy' | 'normal' | 'hard' }) => void
@@ -33,9 +33,9 @@ function TaskForm({ onSubmit }: Props) {
         <option value="daily">Ежедневная</option>
         <option value="habit">Привычка</option>
       </select>
-      <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as any)}>
+      <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as TaskDifficulty)}>
         <option value="easy">Лёгкая</option>
-        <option value="normal">Нормальная</option>
+        <option value="medium">Нормальная</option>
         <option value="hard">Сложная</option>
       </select>
       <button type="submit">Добавить</button>

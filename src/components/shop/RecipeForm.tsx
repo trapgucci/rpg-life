@@ -33,11 +33,11 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
   const allTaskGroups = useRpgStore((s) => s.taskGroups)
   const itemGroups = useMemo(() => activeProfileId ? allItemGroups.filter((g) => g.profileId === activeProfileId).sort((a, b) => a.sortOrder - b.sortOrder) : [], [allItemGroups, activeProfileId])
   const taskGroups = useMemo(() => activeProfileId ? allTaskGroups.filter((g) => g.profileId === activeProfileId).sort((a, b) => a.sortOrder - b.sortOrder) : [], [allTaskGroups, activeProfileId])
-  const profileItems = useMemo(() => activeProfileId ? allShopItems.filter((i) => !i.deletedFromShop && ((i as any).profileId === activeProfileId || !(i as any).profileId)) : allShopItems.filter((i) => !i.deletedFromShop), [allShopItems, activeProfileId])
+  const profileItems = useMemo(() => activeProfileId ? allShopItems.filter((i) => !i.deletedFromShop && (i.profileId === activeProfileId || !i.profileId)) : allShopItems.filter((i) => !i.deletedFromShop), [allShopItems, activeProfileId])
 
   const [fragmentName, setFragmentName] = useState(recipe?.fragmentName ?? '')
   const [fragmentIcon, setFragmentIcon] = useState(migrateIcon(recipe?.fragmentIcon, 'Puzzle'))
-  const [fragmentIconImage, setFragmentIconImage] = useState((recipe as any)?.fragmentIconImage ?? '')
+  const [fragmentIconImage, setFragmentIconImage] = useState(recipe?.fragmentIconImage ?? '')
   const [fragmentsRequired, setFragmentsRequired] = useState(recipe?.fragmentsRequired ?? 5)
   const [resultRarity, setResultRarity] = useState<ItemRarity>(recipe?.resultRarity ?? 'common')
 
@@ -51,18 +51,18 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
   const [maxCrafts, setMaxCrafts] = useState(recipe?.maxCrafts ?? 1)
 
   // Craft cost
-  const existingCraftCost = (recipe as any)?.craftCost as Record<string, number> | undefined
+  const existingCraftCost = recipe?.craftCost
   const [craftCostCoins, setCraftCostCoins] = useState(existingCraftCost?.coins ?? 0)
   const [craftCostGems, setCraftCostGems] = useState(existingCraftCost?.gems ?? 0)
 
   // Migrate old habit_linked to random_drop
-  const rawSourceType = (recipe as any)?.fragmentSource?.type ?? 'random_drop'
+  const rawSourceType = recipe?.fragmentSource?.type ?? 'random_drop'
   const migratedSourceType = rawSourceType === 'habit_linked' ? 'random_drop' : rawSourceType
   const [sourceType, setSourceType] = useState<FragmentSourceType>(migratedSourceType)
-  const [dropChance, setDropChance] = useState((recipe as any)?.fragmentSource?.dropChance ?? 15)
-  const [allowSubtaskDrop, setAllowSubtaskDrop] = useState<boolean>((recipe as any)?.fragmentSource?.allowSubtaskDrop ?? false)
+  const [dropChance, setDropChance] = useState(recipe?.fragmentSource?.dropChance ?? 15)
+  const [allowSubtaskDrop, setAllowSubtaskDrop] = useState<boolean>(recipe?.fragmentSource?.allowSubtaskDrop ?? false)
   const [linkedTaskIds, setLinkedTaskIds] = useState<string[]>(
-    (recipe as any)?.fragmentSource?.linkedTaskIds ?? []
+    recipe?.fragmentSource?.linkedTaskIds ?? []
   )
   const [showTaskPicker, setShowTaskPicker] = useState(false)
   const [taskSearch, setTaskSearch] = useState('')
