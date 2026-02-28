@@ -4,7 +4,7 @@ import { Coins, Gem, Gift, Percent, ShoppingCart, TrendingUp, Gamepad2, Clapperb
 import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
-import { getItemIcon, getItemTypeBadge } from './shopUtils'
+import { getItemIcon, getItemTypeBadge, getItemTypeColor } from './shopUtils'
 import { HabitIcon } from '../HabitIcon'
 
 interface ShopItemCardProps {
@@ -26,6 +26,7 @@ export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: 
     () => craftRecipes.some((r) => r.resultItemId === item.id && !r.crafted),
     [craftRecipes, item.id],
   )
+  const craftColor = useMemo(() => hasCraftRecipe ? getItemTypeColor(item) : '#9ca3af', [hasCraftRecipe, item])
 
   const profile = profiles.find((p) => p.id === activeProfileId)
   const coins = profile?.currencies[CURRENCY_IDS.COINS] ?? 0
@@ -196,10 +197,27 @@ export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: 
               </span>
             )}
 
-            {/* Craftable badge */}
+            {/* Craftable badge — glassmorphic neumorphism */}
             {hasCraftRecipe && (
-              <span className="inline-flex items-center justify-center rounded-xl h-6 w-6 bg-gradient-to-b from-emerald-500/20 to-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10">
-                <Hammer className="h-3.5 w-3.5" />
+              <span
+                className="relative inline-flex items-center justify-center rounded-xl h-6 w-6 overflow-hidden backdrop-blur-md"
+                style={{
+                  background: `linear-gradient(135deg, ${craftColor}30, ${craftColor}15)`,
+                  boxShadow: `
+                    inset 1px 1px 2px rgba(255,255,255,0.25),
+                    inset -1px -1px 2px rgba(0,0,0,0.08),
+                    0 2px 6px ${craftColor}25,
+                    0 0 0 1px ${craftColor}30
+                  `,
+                  color: craftColor,
+                }}
+              >
+                {/* Glass highlight */}
+                <span
+                  className="absolute top-0 left-0 w-[65%] h-[55%] rounded-br-full pointer-events-none"
+                  style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.35), transparent)' }}
+                />
+                <Hammer className="relative h-3.5 w-3.5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)]" />
               </span>
             )}
 

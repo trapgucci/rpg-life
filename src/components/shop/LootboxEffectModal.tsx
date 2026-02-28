@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { cn } from '../../lib/cn'
-import { X, Plus, Trash2, ChevronRight, Sparkles, Box, Lightbulb, Check } from 'lucide-react'
+import { X, Plus, Trash2, ChevronRight, Sparkles, Box, Lightbulb, Check, Search } from 'lucide-react'
 import { CURRENCY_IDS } from '../../types/domain'
-import type { ShopItem } from '../../types/domain'
+import type { ShopItem, ItemGroup } from '../../types/domain'
 import { getItemIcon } from './shopUtils'
 import type { LootTableEntry } from './shopUtils'
 import { HabitIcon } from '../HabitIcon'
+import { useRpgStore } from '../../store/useRpgStore'
 
 // ─── Reward Picker Modal (multi-select) ──────────────────────────────────────
 
@@ -18,6 +19,11 @@ interface RewardPickerModalProps {
 
 function RewardPickerModal({ shopItems, excludeIds = [], onSelect, onClose }: RewardPickerModalProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [search, setSearch] = useState('')
+  const [groupFilter, setGroupFilter] = useState<string | null>(null)
+  const allItemGroups = useRpgStore((s) => s.itemGroups)
+  const activeProfileId = useRpgStore((s) => s.activeProfileId)
+  const itemGroups = useMemo(() => allItemGroups.filter((g) => g.profileId === activeProfileId), [allItemGroups, activeProfileId])
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -33,11 +39,27 @@ function RewardPickerModal({ shopItems, excludeIds = [], onSelect, onClose }: Re
     onClose()
   }
 
-  const options = [
+  const currencyOptions: { id: string; name: string; iconName: string; iconImage?: string; groupId?: string | null }[] = [
     { id: CURRENCY_IDS.COINS, name: 'Монеты', iconName: 'Coins' },
     { id: CURRENCY_IDS.GEMS, name: 'Кристаллы', iconName: 'Gem' },
-    ...shopItems.filter((i) => !excludeIds.includes(i.id)).map((i) => ({ id: i.id, name: i.name, iconName: getItemIcon(i) })),
   ]
+
+  const itemOptions = shopItems
+    .filter((i) => !excludeIds.includes(i.id))
+    .map((i) => ({ id: i.id, name: i.name, iconName: getItemIcon(i), iconImage: i.iconImage, groupId: i.groupId }))
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim()
+    const filteredItems = itemOptions.filter((o) => {
+      if (q && !o.name.toLowerCase().includes(q)) return false
+      if (groupFilter && o.groupId !== groupFilter) return false
+      return true
+    })
+    const filteredCurrencies = q
+      ? currencyOptions.filter((o) => o.name.toLowerCase().includes(q))
+      : groupFilter ? [] : currencyOptions
+    return [...filteredCurrencies, ...filteredItems]
+  }, [search, groupFilter, shopItems, excludeIds])
 
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -48,8 +70,38 @@ function RewardPickerModal({ shopItems, excludeIds = [], onSelect, onClose }: Re
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        {/* Search + group filter */}
+        <div className="flex gap-2 mb-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--fg-muted)]" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Поиск..."
+              className="input w-full pl-9 h-9 text-sm"
+            />
+          </div>
+          {itemGroups.length > 0 && (
+            <select
+              value={groupFilter ?? ''}
+              onChange={(e) => setGroupFilter(e.target.value || null)}
+              className="select h-9 text-sm min-w-[120px]"
+            >
+              <option value="">Все группы</option>
+              {itemGroups.map((g) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          )}
+        </div>
+
         <div className="flex-1 overflow-y-auto space-y-1 mb-4">
-          {options.map((opt) => (
+          {filtered.length === 0 && (
+            <p className="text-sm text-[var(--fg-muted)] text-center py-8">Ничего не найдено</p>
+          )}
+          {filtered.map((opt) => (
             <button
               key={opt.id}
               type="button"
@@ -61,15 +113,23 @@ function RewardPickerModal({ shopItems, excludeIds = [], onSelect, onClose }: Re
                   : 'border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
               )}
             >
-              <span className="text-[var(--fg-muted)]"><HabitIcon iconName={opt.iconName} size={24} /></span>
-              <span className="font-medium text-[var(--fg)]">{opt.name}</span>
-              {selected.has(opt.id) && <Check className="h-5 w-5 text-[var(--accent)] ml-auto" />}
+              {opt.iconImage ? (
+                <img src={opt.iconImage} alt="" className="h-8 w-8 rounded-lg object-cover shrink-0" />
+              ) : (
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--surface-elevated)] text-[var(--fg-muted)] shrink-0">
+                  <HabitIcon iconName={opt.iconName} size={20} />
+                </span>
+              )}
+              <span className="font-medium text-[var(--fg)] truncate">{opt.name}</span>
+              {selected.has(opt.id) && <Check className="h-5 w-5 text-[var(--accent)] ml-auto shrink-0" />}
             </button>
           ))}
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={onClose} className="btn-secondary flex-1">Отмена</button>
-          <button type="button" onClick={handleConfirm} className="btn-primary flex-1">Добавить</button>
+          <button type="button" onClick={handleConfirm} disabled={selected.size === 0} className="btn-primary flex-1">
+            Добавить{selected.size > 0 && ` (${selected.size})`}
+          </button>
         </div>
       </div>
     </div>
@@ -90,12 +150,33 @@ function RewardPickerModalSingle({
   onClose: () => void
 }) {
   const [selected, setSelected] = useState<string | null>(currentId)
+  const [search, setSearch] = useState('')
+  const [groupFilter, setGroupFilter] = useState<string | null>(null)
+  const allItemGroups = useRpgStore((s) => s.itemGroups)
+  const activeProfileId = useRpgStore((s) => s.activeProfileId)
+  const itemGroups = useMemo(() => allItemGroups.filter((g) => g.profileId === activeProfileId), [allItemGroups, activeProfileId])
 
-  const options = [
+  const currencyOptions: { id: string; name: string; iconName: string; iconImage?: string; groupId?: string | null }[] = [
     { id: CURRENCY_IDS.COINS, name: 'Монеты', iconName: 'Coins' },
     { id: CURRENCY_IDS.GEMS, name: 'Кристаллы', iconName: 'Gem' },
-    ...shopItems.map((i) => ({ id: i.id, name: i.name, iconName: getItemIcon(i) })),
   ]
+
+  const itemOptions = shopItems.map((i) => ({
+    id: i.id, name: i.name, iconName: getItemIcon(i), iconImage: i.iconImage, groupId: i.groupId,
+  }))
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim()
+    const filteredItems = itemOptions.filter((o) => {
+      if (q && !o.name.toLowerCase().includes(q)) return false
+      if (groupFilter && o.groupId !== groupFilter) return false
+      return true
+    })
+    const filteredCurrencies = q
+      ? currencyOptions.filter((o) => o.name.toLowerCase().includes(q))
+      : groupFilter ? [] : currencyOptions
+    return [...filteredCurrencies, ...filteredItems]
+  }, [search, groupFilter, shopItems])
 
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -106,8 +187,38 @@ function RewardPickerModalSingle({
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        {/* Search + group filter */}
+        <div className="flex gap-2 mb-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--fg-muted)]" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Поиск..."
+              className="input w-full pl-9 h-9 text-sm"
+            />
+          </div>
+          {itemGroups.length > 0 && (
+            <select
+              value={groupFilter ?? ''}
+              onChange={(e) => setGroupFilter(e.target.value || null)}
+              className="select h-9 text-sm min-w-[120px]"
+            >
+              <option value="">Все группы</option>
+              {itemGroups.map((g) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          )}
+        </div>
+
         <div className="flex-1 overflow-y-auto space-y-1 mb-4">
-          {options.map((opt) => (
+          {filtered.length === 0 && (
+            <p className="text-sm text-[var(--fg-muted)] text-center py-8">Ничего не найдено</p>
+          )}
+          {filtered.map((opt) => (
             <button
               key={opt.id}
               type="button"
@@ -117,9 +228,15 @@ function RewardPickerModalSingle({
                 selected === opt.id ? 'border-[var(--accent)] bg-[var(--accent-subtle)]' : 'border-[var(--border)] bg-[var(--surface)]'
               )}
             >
-              <span className="text-[var(--fg-muted)]"><HabitIcon iconName={opt.iconName} size={24} /></span>
-              <span className="font-medium text-[var(--fg)]">{opt.name}</span>
-              {selected === opt.id && <Check className="h-5 w-5 text-[var(--accent)] ml-auto" />}
+              {opt.iconImage ? (
+                <img src={opt.iconImage} alt="" className="h-8 w-8 rounded-lg object-cover shrink-0" />
+              ) : (
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--surface-elevated)] text-[var(--fg-muted)] shrink-0">
+                  <HabitIcon iconName={opt.iconName} size={20} />
+                </span>
+              )}
+              <span className="font-medium text-[var(--fg)] truncate">{opt.name}</span>
+              {selected === opt.id && <Check className="h-5 w-5 text-[var(--accent)] ml-auto shrink-0" />}
             </button>
           ))}
         </div>
@@ -158,11 +275,21 @@ export default function LootboxEffectModal({ lootTable: initial, shopItems, onSa
   const totalPercentCorrect = entries.reduce((s, e) => s + e.weight, 0)
 
   const addRewards = (ids: string[]) => {
-    const weightPer = ids.length ? 100 / ids.length : 0
-    setEntries((prev) => [
-      ...prev,
-      ...ids.map((id) => ({ id, weight: Math.round(weightPer), quantity: 1 })),
-    ])
+    setEntries((prev) => {
+      const existingSum = prev.reduce((s, e) => s + e.weight, 0)
+      const remaining = Math.max(0, 100 - existingSum)
+      const count = ids.length
+      if (count === 0) return prev
+      const weightPer = remaining > 0 ? Math.floor((remaining / count) * 100) / 100 : 0
+      const newEntries = ids.map((id, i) => ({
+        id,
+        weight: i === count - 1 && remaining > 0
+          ? Math.round((remaining - weightPer * (count - 1)) * 100) / 100
+          : weightPer,
+        quantity: 1,
+      }))
+      return [...prev, ...newEntries]
+    })
     setShowPicker(false)
   }
 
@@ -206,6 +333,11 @@ export default function LootboxEffectModal({ lootTable: initial, shopItems, onSa
     return it ? getItemIcon(it) : 'Sword'
   }
 
+  const getEntryIconImage = (id: string): string | undefined => {
+    if (id === CURRENCY_IDS.COINS || id === CURRENCY_IDS.GEMS) return undefined
+    return shopItems.find((i) => i.id === id)?.iconImage
+  }
+
   return (
     <div
       className="modal-backdrop"
@@ -242,7 +374,13 @@ export default function LootboxEffectModal({ lootTable: initial, shopItems, onSa
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <span className="text-[var(--fg-muted)]"><HabitIcon iconName={getEntryIconName(entry.id)} size={24} /></span>
+                      {getEntryIconImage(entry.id) ? (
+                        <img src={getEntryIconImage(entry.id)} alt="" className="h-8 w-8 rounded-lg object-cover shrink-0" />
+                      ) : (
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--surface)] text-[var(--fg-muted)] shrink-0">
+                          <HabitIcon iconName={getEntryIconName(entry.id)} size={20} />
+                        </span>
+                      )}
                       <span className="font-medium text-[var(--fg)]">{getEntryName(entry.id)}</span>
                     </div>
                     <div className="flex items-center gap-2">

@@ -5,7 +5,7 @@ import {
   X, Pencil, Trash2, Coins, Gem, Gift, Percent, ShoppingCart,
   ChevronRight, Settings, Folder, TrendingUp, Gamepad2, Plus, Clock,
   Clapperboard, ChevronDown, Check, Package, Hammer, Puzzle, Crosshair, Dice5,
-  BarChart3,
+  BarChart3, Sparkles,
 } from 'lucide-react'
 import ItemGroupSelectModal from './ItemGroupSelectModal'
 import IconSourcePicker from './IconSourcePicker'
@@ -1385,12 +1385,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-[var(--fg)] truncate">{itemRecipe.fragmentName}</p>
-                        <span className="text-[11px] font-bold text-[var(--fg-muted)] shrink-0 tabular-nums">
-                          {itemRecipe.fragmentsCollected}/{itemRecipe.fragmentsRequired}
-                        </span>
-                      </div>
+                      <p className="text-sm font-semibold text-[var(--fg)] truncate">{itemRecipe.fragmentName}</p>
                       {/* Progress bar */}
                       <div className="mt-1.5 h-1.5 rounded-full bg-[var(--border)]/60 overflow-hidden">
                         <div
@@ -1405,6 +1400,14 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                       </div>
                     </div>
                   </div>
+
+                  {/* Multi-craft counter */}
+                  {(itemRecipe.maxCrafts ?? 1) > 1 && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-[var(--fg-muted)] mb-3">
+                      <Sparkles className="h-2.5 w-2.5 shrink-0 opacity-50" />
+                      <span>Крафтов: <span className="font-semibold text-[var(--fg)]">{itemRecipe.craftCount ?? 0}/{itemRecipe.maxCrafts}</span></span>
+                    </div>
+                  )}
 
                   {/* Cost chips */}
                   {(recipeCoinCost > 0 || recipeGemCost > 0) && (

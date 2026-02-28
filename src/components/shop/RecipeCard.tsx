@@ -112,6 +112,11 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
               {sourceType === 'task_linked' && <><Crosshair className="h-3 w-3" /> Задачи{typeof fragmentSource?.dropChance === 'number' && fragmentSource.dropChance > 0 && ` ${fragmentSource.dropChance}%`}</>}
               {sourceType === 'random_drop' && <><Dice5 className="h-3 w-3" /> Дроп{typeof fragmentSource?.dropChance === 'number' && fragmentSource.dropChance > 0 && ` ${fragmentSource.dropChance}%`}</>}
             </span>
+            {(recipe.maxCrafts ?? 1) > 1 && (
+              <span className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-b from-violet-500/15 to-violet-500/5 px-2 py-0.5 text-xs font-semibold text-violet-500 ring-1 ring-inset ring-violet-400/20 shadow-sm shadow-violet-500/10">
+                {recipe.craftCount ?? 0}/{recipe.maxCrafts}
+              </span>
+            )}
           </div>
 
           {/* Progress */}

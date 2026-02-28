@@ -187,8 +187,10 @@ export default function InventoryPage() {
     const container = scrollContainerRef.current
     if (el && container) {
       const stickyNavHeight = 52
-      const elTop = el.offsetTop - stickyNavHeight
-      container.scrollTo({ top: elTop, behavior: 'smooth' })
+      const containerRect = container.getBoundingClientRect()
+      const elRect = el.getBoundingClientRect()
+      const scrollTop = container.scrollTop + (elRect.top - containerRect.top) - stickyNavHeight
+      container.scrollTo({ top: scrollTop, behavior: 'smooth' })
     }
   }, [])
 
@@ -374,7 +376,7 @@ export default function InventoryPage() {
         <div ref={scrollContainerRef} className="flex-1 min-w-0 overflow-y-auto no-scrollbar">
           {/* Sticky group navigation */}
           {hasGroups && (
-            <div className="sticky top-0 z-10 pb-2 pt-1 px-1">
+            <div className="sticky top-0 z-10 pb-2 pt-1 px-1 bg-[var(--bg)]/95 backdrop-blur-md">
               <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
                 {nonEmptyGroupIds.map((groupId) => {
                   const groupData = groupedInventory.get(groupId)

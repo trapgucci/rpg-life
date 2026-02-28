@@ -47,6 +47,9 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
   const [itemGroupFilter, setItemGroupFilter] = useState<string | null>(null)
   const [itemSearch, setItemSearch] = useState('')
 
+  // Max crafts
+  const [maxCrafts, setMaxCrafts] = useState(recipe?.maxCrafts ?? 1)
+
   // Craft cost
   const existingCraftCost = (recipe as any)?.craftCost as Record<string, number> | undefined
   const [craftCostCoins, setCraftCostCoins] = useState(existingCraftCost?.coins ?? 0)
@@ -104,6 +107,7 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
       resultName: selectedItem?.name ?? '',
       resultIcon: selectedItem?.icon ?? '',
       craftCost: { coins: craftCostCoins, gems: craftCostGems },
+      maxCrafts,
     }
 
     if (recipe) {
@@ -258,6 +262,51 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
               <Package className="h-4 w-4" />
               Выбрать предмет
             </button>
+          )}
+        </div>
+
+        {/* ─── Max crafts ─── */}
+        <div className="glass rounded-2xl p-4">
+          <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Количество крафтов</label>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMaxCrafts((prev) => Math.max(1, prev - 1))}
+              className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 shadow-sm shadow-red-500/10 hover:from-red-500/30 hover:to-red-500/15 hover:scale-105 active:scale-95"
+            >
+              <span className="text-lg font-bold">−</span>
+            </button>
+            <input
+              type="number"
+              value={maxCrafts}
+              onChange={(e) => {
+                const v = Math.max(1, Number(e.target.value) || 1)
+                const stockLimit = selectedItem?.stock
+                setMaxCrafts(stockLimit !== undefined && stockLimit > 0 ? Math.min(v, stockLimit) : v)
+              }}
+              min={1}
+              max={selectedItem?.stock !== undefined && selectedItem.stock > 0 ? selectedItem.stock : undefined}
+              className="input w-full flex-1 min-w-0 h-11 py-0 text-center text-lg font-bold"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const stockLimit = selectedItem?.stock
+                setMaxCrafts((prev) => {
+                  const next = prev + 1
+                  return stockLimit !== undefined && stockLimit > 0 ? Math.min(next, stockLimit) : next
+                })
+              }}
+              className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-emerald-400/25 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/10 hover:from-emerald-400/35 hover:to-emerald-500/20 hover:scale-105 active:scale-95"
+            >
+              <span className="text-lg font-bold">+</span>
+            </button>
+          </div>
+          {selectedItem?.stock !== undefined && selectedItem.stock > 0 && (
+            <p className="text-[10px] text-[var(--fg-muted)] mt-2 text-center">Макс. {selectedItem.stock} (запас в магазине)</p>
+          )}
+          {maxCrafts === 1 && (
+            <p className="text-[10px] text-[var(--fg-muted)] mt-2 text-center">Одноразовый крафт</p>
           )}
         </div>
 
@@ -512,7 +561,15 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => { setResultItemId(item.id); setShowItemPicker(false); setItemSearch('') }}
+                    onClick={() => {
+                      setResultItemId(item.id)
+                      // Clamp maxCrafts to new item's stock
+                      if (item.stock !== undefined && item.stock > 0) {
+                        setMaxCrafts((prev) => Math.min(prev, item.stock!))
+                      }
+                      setShowItemPicker(false)
+                      setItemSearch('')
+                    }}
                     className={cn(
                       'flex items-center gap-3 w-full rounded-lg p-2 text-left hover:bg-[var(--surface-elevated)] transition-colors',
                       resultItemId === item.id && 'bg-[var(--accent-subtle)]'
