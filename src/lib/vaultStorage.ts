@@ -69,6 +69,7 @@ export const VAULT_FILES = {
   activeProfileId: 'profile.json', // stored together with profiles
   taskGroups: 'task-groups.json',
   itemGroups: 'item-groups.json',
+  achievementGroups: 'achievement-groups.json',
   tasks: 'tasks.json',
   habits: 'habits.json',
   achievements: 'achievements.json',
@@ -92,6 +93,7 @@ export const VAULT_READ_FILES = [
   'habits.json',
   'shop-items.json',
   'item-groups.json',
+  'achievement-groups.json',
   'inventory.json',
   'achievements.json',
   'craft-recipes.json',

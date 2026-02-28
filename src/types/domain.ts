@@ -7,6 +7,7 @@ export type ItemGroupId = string
 export type ItemId = string
 export type CurrencyId = string
 export type AchievementId = string
+export type AchievementGroupId = string
 export type HabitId = string
 export type CraftRecipeId = string
 
@@ -606,6 +607,18 @@ export const CURRENCY_IDS = {
   GEMS: 'gems' as CurrencyId,
 }
 
+// ─── Achievement Groups ─────────────────────────────────────────────────────
+
+export interface AchievementGroup {
+  id: AchievementGroupId
+  profileId: ProfileId
+  name: string
+  icon: string
+  sortOrder: number
+  createdAt: number
+  updatedAt: number
+}
+
 // ─── Achievements System ────────────────────────────────────────────────────
 
 /** Тип условия для достижения */
@@ -629,6 +642,8 @@ export interface AchievementCondition {
 export interface Achievement {
   id: AchievementId
   profileId: ProfileId
+  /** Группа достижения; null = без группы */
+  groupId?: AchievementGroupId | null
   title: string
   description: string
   icon: string

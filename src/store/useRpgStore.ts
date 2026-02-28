@@ -18,6 +18,8 @@ import type {
   HabitId,
   Achievement,
   AchievementId,
+  AchievementGroup,
+  AchievementGroupId,
   CraftRecipe,
   CraftRecipeId,
   ShopItem,
@@ -197,6 +199,7 @@ interface RpgStoreState {
   activeProfileId: ProfileId | null
   taskGroups: TaskGroup[]
   itemGroups: ItemGroup[]
+  achievementGroups: AchievementGroup[]
   tasks: TaskRpg[]
   habits: Habit[]
   achievements: Achievement[]
@@ -291,6 +294,13 @@ interface RpgStoreState {
   clickHabitNegative: (id: HabitId, asNextDay?: boolean) => void
   resetDailyHabits: () => void
 
+  // Achievement group actions
+  getAchievementGroups: () => AchievementGroup[]
+  addAchievementGroup: (name: string) => AchievementGroup
+  updateAchievementGroup: (id: AchievementGroupId, updater: (g: AchievementGroup) => AchievementGroup) => void
+  deleteAchievementGroup: (id: AchievementGroupId) => void
+  reorderAchievementGroups: (orderedIds: AchievementGroupId[]) => void
+
   // Achievement actions
   getAchievements: () => Achievement[]
   addAchievement: (achievement: Omit<Achievement, 'id' | 'createdAt' | 'updatedAt' | 'profileId' | 'unlocked' | 'unlockedAt' | 'currentProgress'>) => Achievement
@@ -344,6 +354,42 @@ let _writeTimer: ReturnType<typeof setTimeout> | null = null
 const WRITE_DEBOUNCE_MS = 500
 
 function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
+  // Migrate from old zustand localStorage format (rpg-life-store-v2) to vault files
+  const migrateFromLegacy = async (): Promise<StorageValue<Partial<RpgStoreState>> | null> => {
+    if (vaultStorage.isElectron()) return null
+    try {
+      const raw = localStorage.getItem('rpg-life-store-v2')
+      if (!raw) return null
+      const parsed = JSON.parse(raw) as StorageValue<Partial<RpgStoreState>>
+      if (!parsed?.state) return null
+      console.info('[vault] Migrating data from rpg-life-store-v2 to vault files...')
+      // Write all slices to vault format so next load uses vault
+      const s = parsed.state
+      await Promise.all([
+        vaultStorage.write('profile.json', { profiles: s.profiles, activeProfileId: s.activeProfileId }),
+        vaultStorage.write('settings.json', { settings: s.settings, activeShopDiscountPercent: s.activeShopDiscountPercent }),
+        vaultStorage.write('tasks.json', s.tasks ?? []),
+        vaultStorage.write('task-groups.json', s.taskGroups ?? []),
+        vaultStorage.write('habits.json', s.habits ?? []),
+        vaultStorage.write('shop-items.json', s.shopItems ?? []),
+        vaultStorage.write('item-groups.json', s.itemGroups ?? []),
+        vaultStorage.write('achievement-groups.json', s.achievementGroups ?? []),
+        vaultStorage.write('inventory.json', s.inventory ?? []),
+        vaultStorage.write('achievements.json', s.achievements ?? []),
+        vaultStorage.write('craft-recipes.json', s.craftRecipes ?? []),
+        vaultStorage.write('purchase-history.json', s.purchaseHistory ?? []),
+        vaultStorage.write('usage-history.json', s.usageHistory ?? []),
+        vaultStorage.write('stats.json', s.stats ?? undefined),
+      ])
+      localStorage.removeItem('rpg-life-store-v2')
+      console.info('[vault] Migration complete, old key removed.')
+      return parsed
+    } catch (err) {
+      console.error('[vault] Legacy migration failed:', err)
+      return null
+    }
+  }
+
   return {
     getItem: async (): Promise<StorageValue<Partial<RpgStoreState>> | null> => {
       const results = await Promise.all(
@@ -352,7 +398,7 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
 
       const [
         profileData, settingsData, tasks, taskGroups,
-        habits, shopItems, itemGroups, inventory,
+        habits, shopItems, itemGroups, achievementGroups, inventory,
         achievements, craftRecipes, purchaseHistory,
         usageHistory, stats,
       ] = results as [
@@ -368,12 +414,17 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
         unknown[] | null,
         unknown[] | null,
         unknown[] | null,
+        unknown[] | null,
         unknown | null,
       ]
 
-      // If all files are null, there's no persisted state
+      // If all files are null, try migrating from legacy localStorage format
       const allNull = results.every((r) => r === null)
-      if (allNull) return null
+      if (allNull) {
+        const legacy = await migrateFromLegacy()
+        if (legacy) return legacy
+        return null
+      }
 
       return {
         state: {
@@ -386,6 +437,7 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
           habits: habits as Habit[] ?? [],
           shopItems: shopItems as ShopItem[] ?? [],
           itemGroups: itemGroups as ItemGroup[] ?? [],
+          achievementGroups: achievementGroups as AchievementGroup[] ?? [],
           inventory: inventory as InventoryEntry[] ?? [],
           achievements: achievements as Achievement[] ?? [],
           craftRecipes: craftRecipes as CraftRecipe[] ?? [],
@@ -416,6 +468,7 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
             vaultStorage.write('habits.json', state.habits),
             vaultStorage.write('shop-items.json', state.shopItems),
             vaultStorage.write('item-groups.json', state.itemGroups),
+            vaultStorage.write('achievement-groups.json', state.achievementGroups),
             vaultStorage.write('inventory.json', state.inventory),
             vaultStorage.write('achievements.json', state.achievements),
             vaultStorage.write('craft-recipes.json', state.craftRecipes),
@@ -491,6 +544,7 @@ export const useRpgStore = create<RpgStoreState>()(
         activeProfileId: null,
         taskGroups: [],
         itemGroups: [],
+        achievementGroups: [],
         tasks: [],
         habits: [],
         achievements: [],
@@ -1673,6 +1727,71 @@ export const useRpgStore = create<RpgStoreState>()(
           }))
         },
 
+        // ─── Achievement Groups ──────────────────────────────────────────
+        getAchievementGroups: () => {
+          const { achievementGroups, activeProfileId } = get()
+          return activeProfileId
+            ? achievementGroups
+                .filter((g) => g.profileId === activeProfileId)
+                .slice()
+                .sort((a, b) => a.sortOrder - b.sortOrder)
+            : []
+        },
+
+        addAchievementGroup: (name) => {
+          const profile = get().getActiveProfile()
+          if (!profile) throw new Error('No active profile')
+          const groups = get().getAchievementGroups()
+          const sortOrder =
+            groups.length === 0 ? 0 : Math.max(...groups.map((g) => g.sortOrder), 0) + 1
+          const newGroup: AchievementGroup = {
+            id: crypto.randomUUID(),
+            profileId: profile.id,
+            name: name.trim(),
+            icon: '📁',
+            sortOrder,
+            createdAt: now(),
+            updatedAt: now(),
+          }
+          set((s) => ({ achievementGroups: [...s.achievementGroups, newGroup] }))
+          return newGroup
+        },
+
+        updateAchievementGroup: (id, updater) => {
+          set((s) => ({
+            achievementGroups: s.achievementGroups.map((g) =>
+              g.id === id ? { ...updater(g), updatedAt: now() } : g
+            ),
+          }))
+        },
+
+        deleteAchievementGroup: (id) => {
+          set((s) => ({
+            achievementGroups: s.achievementGroups.filter((g) => g.id !== id),
+            achievements: s.achievements.map((a) =>
+              a.groupId === id ? { ...a, groupId: null } : a
+            ),
+          }))
+        },
+
+        reorderAchievementGroups: (orderedIds) => {
+          const { achievementGroups, activeProfileId } = get()
+          if (!activeProfileId) return
+          const idSet = new Set(orderedIds)
+          const reordered = orderedIds
+            .map((id, index) => {
+              const g = achievementGroups.find((g) => g.id === id && g.profileId === activeProfileId)
+              return g ? { ...g, sortOrder: index, updatedAt: now() } : null
+            })
+            .filter((g): g is AchievementGroup => g != null)
+          const rest = achievementGroups.filter((g) => g.profileId === activeProfileId && !idSet.has(g.id))
+          const maxSo = reordered.length - 1
+          rest.forEach((g, i) => reordered.push({ ...g, sortOrder: maxSo + 1 + i, updatedAt: now() }))
+          set((s) => ({
+            achievementGroups: s.achievementGroups.filter((g) => g.profileId !== activeProfileId).concat(reordered),
+          }))
+        },
+
         // ─── Achievements ─────────────────────────────────────────────────
         getAchievements: () => {
           const { achievements, activeProfileId } = get()
@@ -2505,6 +2624,7 @@ export const useRpgStore = create<RpgStoreState>()(
             profiles: [defaultProfile],
             activeProfileId: defaultProfile.id,
             taskGroups: [],
+            achievementGroups: [],
             tasks: [],
             habits: [],
             achievements: [],
@@ -2533,6 +2653,7 @@ export const useRpgStore = create<RpgStoreState>()(
         activeProfileId: s.activeProfileId,
         taskGroups: s.taskGroups,
         itemGroups: s.itemGroups,
+        achievementGroups: s.achievementGroups,
         tasks: s.tasks,
         habits: s.habits,
         achievements: s.achievements,
@@ -2564,6 +2685,7 @@ export const useRpgStore = create<RpgStoreState>()(
 
         if (!state.taskGroups) useRpgStore.setState({ taskGroups: [] })
         if (!state.itemGroups) useRpgStore.setState({ itemGroups: [] })
+        if (!state.achievementGroups) useRpgStore.setState({ achievementGroups: [] })
         if (!state.tasks) useRpgStore.setState({ tasks: [] })
 
         // Migrate settings to add taskDifficultyXp if missing
