@@ -1868,19 +1868,54 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         unlockAchievement: (id) => {
-          const { achievements, addCurrency, addToInventory } = get()
+          const { achievements, addCurrency, addToInventory, shopItems } = get()
           const ach = achievements.find((a) => a.id === id)
           if (!ach || ach.unlocked) return
 
-          // Give rewards
+          // Give coins & gems
           if (ach.rewardCoins > 0) addCurrency(CURRENCY_IDS.COINS, ach.rewardCoins)
           if (ach.rewardGems > 0) addCurrency(CURRENCY_IDS.GEMS, ach.rewardGems)
-          if (ach.rewardItemId) addToInventory(ach.rewardItemId)
+
+          // Give XP to attribute
+          if (ach.rewardAttributeId && ach.rewardXp > 0) {
+            const profile = get().getActiveProfile()
+            if (profile) {
+              const nextAttrs = addXpToAttribute(profile, ach.rewardAttributeId, ach.rewardXp)
+              set((s) => ({
+                profiles: s.profiles.map((p) =>
+                  p.id === profile.id ? { ...p, attributes: nextAttrs } : p
+                ),
+              }))
+            }
+          }
+
+          // Give item rewards (with stock/compensation logic)
+          // Support both new rewardItems[] and legacy rewardItemId
+          const itemsToGive: { itemId: string; quantity: number }[] = ach.rewardItems?.length
+            ? ach.rewardItems
+            : ach.rewardItemId
+              ? [{ itemId: ach.rewardItemId, quantity: ach.rewardItemQuantity ?? 1 }]
+              : []
+
+          for (const ri of itemsToGive) {
+            const item = shopItems.find((i) => i.id === ri.itemId)
+            if (!item) continue
+            const qty = ri.quantity
+            if (item.stock !== undefined && item.stock < qty) {
+              const available = Math.max(0, item.stock)
+              if (available > 0) addToInventory(ri.itemId, available)
+              const deficit = qty - available
+              const itemCoinCost = item.cost?.coins ?? 0
+              if (deficit > 0 && itemCoinCost > 0) {
+                addCurrency(CURRENCY_IDS.COINS, itemCoinCost * deficit)
+              }
+            } else {
+              addToInventory(ri.itemId, qty)
+            }
+          }
 
           // Mark as unlocked
           get().updateAchievement(id, (a) => ({ ...a, unlocked: true, unlockedAt: now() }))
-
-          // TODO: Show notification
         },
 
         // ─── Crafting ─────────────────────────────────────────────────────

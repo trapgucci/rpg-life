@@ -498,6 +498,16 @@ html.dark,
     margin: 0;
   }
 
+  /* Hide number input spin buttons (generic utility) */
+  .no-spin::-webkit-outer-spin-button,
+  .no-spin::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .no-spin {
+    -moz-appearance: textfield;
+  }
+
   /* Stock input: large centered infinity symbol when unlimited */
   .input.input-stock-infinite::placeholder {
     font-size: 1.5rem;

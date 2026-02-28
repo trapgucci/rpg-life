@@ -655,8 +655,20 @@ export interface Achievement {
   rewardGems: number
   /** Награда: XP */
   rewardXp: number
-  /** Награда: ID предмета */
+  /** Награда: ID атрибута для XP (только один) */
+  rewardAttributeId?: AttributeId
+  /** Награда: сложность (определяет XP) */
+  rewardDifficulty?: TaskDifficulty
+  /** Награда: кастомный XP (переопределяет сложность) */
+  rewardCustomXp?: number
+  /** Награда: ID предмета (deprecated, используй rewardItems) */
   rewardItemId?: ItemId
+  /** Награда: количество предметов (deprecated, используй rewardItems) */
+  rewardItemQuantity?: number
+  /** Награда: массив предметов [{itemId, quantity}] */
+  rewardItems?: { itemId: ItemId; quantity: number }[]
+  /** Условия (тумблеры) */
+  conditions?: AchievementToggleConditions
   /** Разблокировано? */
   unlocked: boolean
   /** Когда разблокировано */
@@ -665,6 +677,26 @@ export interface Achievement {
   currentProgress: number
   createdAt: number
   updatedAt: number
+}
+
+/** Тумблер-условия для достижений (пока без логики, только UI) */
+export interface AchievementToggleConditions {
+  /** Без подсказок */
+  noHints?: boolean
+  /** Без пропусков */
+  noSkips?: boolean
+  /** Подряд без перерыва */
+  consecutive?: boolean
+  /** Только в определённый день недели */
+  specificDay?: boolean
+  /** За один сеанс */
+  singleSession?: boolean
+  /** Без ошибок */
+  noMistakes?: boolean
+  /** В ограниченное время */
+  timeLimited?: boolean
+  /** Соло (без помощи) */
+  solo?: boolean
 }
 
 // ─── Crafting System ────────────────────────────────────────────────────────

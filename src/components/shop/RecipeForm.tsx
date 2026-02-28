@@ -546,7 +546,7 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
                         : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)]'
                     )}
                   >
-                    <Folder className="h-3 w-3" style={{ color: g.color || undefined }} />
+                    <Folder className="h-3.5 w-3.5 shrink-0" style={{ color: g.color || undefined }} />
                     {g.name}
                   </button>
                 ))}
@@ -739,7 +739,7 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
                           : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)]'
                       )}
                     >
-                      <Folder className="h-3 w-3" style={{ color: g.color || undefined }} />
+                      <Folder className="h-3.5 w-3.5 shrink-0" style={{ color: g.color || undefined }} />
                       {g.name}
                     </button>
                   ))}
