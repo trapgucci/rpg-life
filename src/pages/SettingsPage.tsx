@@ -2,13 +2,14 @@ import { useState } from 'react'
 import {
   Settings, User, Palette, Bell, Database,
   Plus, Pencil, Trash2, X, Save, Download, Upload,
-  Sun, Moon, Monitor, Check, AlertTriangle, Clock
+  Sun, Moon, Monitor, Check, AlertTriangle, Clock, FolderOpen
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
 import type { Attribute, ThemeMode, AccentColor } from '../types/domain'
 import { ACCENT_COLORS } from '../types/domain'
 import ConfirmModal from '../components/ConfirmModal'
+import { vaultStorage } from '../lib/vaultStorage'
 
 // ─── Profile Section ────────────────────────────────────────────────────────
 
@@ -444,6 +445,13 @@ function DataSection() {
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [showResetFinalConfirm, setShowResetFinalConfirm] = useState(false)
 
+  const handleChoosePath = async () => {
+    const newPath = await vaultStorage.choosePath()
+    if (newPath) {
+      window.location.reload()
+    }
+  }
+
   const handleExport = () => {
     const json = exportData()
     const blob = new Blob([json], { type: 'application/json' })
@@ -519,6 +527,17 @@ function DataSection() {
           ))}
         </div>
       </div>
+
+      {vaultStorage.isElectron() && (
+        <button
+          type="button"
+          onClick={handleChoosePath}
+          className="w-full flex items-center justify-center gap-2 btn-secondary mb-4"
+        >
+          <FolderOpen className="h-4 w-4" />
+          Сменить папку данных
+        </button>
+      )}
 
       <div className="grid grid-cols-2 gap-3 mb-4">
         <button

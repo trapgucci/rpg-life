@@ -36,7 +36,11 @@
       "Bash(git stash pop:*)",
       "Bash(git push:*)",
       "Bash(xargs basename -a)",
-      "Bash(npx vitest run)"
+      "Bash(npx vitest run)",
+      "Bash(chmod +x /Users/mercedes/Desktop/rpg-life/node_modules/.bin/electron)",
+      "Bash(chmod +x /Users/mercedes/Desktop/rpg-life/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)",
+      "Bash(grep -c \"profileId\" /Users/mercedes/Desktop/rpg-life/src/pages/*.tsx)",
+      "Bash(grep -c \"profileId\" /Users/mercedes/Desktop/rpg-life/src/components/**/*.tsx)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Jahseh\\Desktop\\rpg-life"

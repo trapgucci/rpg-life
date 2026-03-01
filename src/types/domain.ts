@@ -680,6 +680,8 @@ export interface Achievement {
   conditions?: AchievementToggleConditions
   /** Повторяемое достижение (сбрасывается после выполнения) */
   repeatable?: boolean
+  /** Сколько раз выполнено всего (для повторяемых). 0 или undefined = ни разу */
+  completionCount?: number
   /** Готово к разблокировке (условия выполнены, ждёт ручного забора) */
   readyToUnlock?: boolean
   /** Разблокировано? */

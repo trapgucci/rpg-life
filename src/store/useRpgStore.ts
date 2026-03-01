@@ -230,6 +230,10 @@ interface RpgStoreState {
     lastActiveDate: number
   }
 
+  // Hydration flag
+  _hasHydrated: boolean
+  setHasHydrated: (v: boolean) => void
+
   // Settings actions
   updateSettings: (settings: Partial<AppSettings>) => void
 
@@ -557,6 +561,7 @@ export const useRpgStore = create<RpgStoreState>()(
         activeShopDiscountPercent: null,
         settings: { ...DEFAULT_SETTINGS },
         debugDaysOffset: 0,
+        _hasHydrated: false,
         stats: {
           totalTasksCompleted: 0,
           totalHabitsPositive: 0,
@@ -568,6 +573,8 @@ export const useRpgStore = create<RpgStoreState>()(
           bestStreak: 0,
           lastActiveDate: 0,
         },
+
+        setHasHydrated: (v) => set({ _hasHydrated: v }),
 
         // ─── Settings ─────────────────────────────────────────────────────
         updateSettings: (newSettings) => {
@@ -1748,8 +1755,12 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         addAchievementGroup: (name, color) => {
-          const profile = get().getActiveProfile()
-          if (!profile) throw new Error('No active profile')
+          let profile = get().getActiveProfile()
+          if (!profile) {
+            const defaultProfile = createDefaultProfile('Моя жизнь')
+            set((s) => ({ profiles: [...s.profiles, defaultProfile], activeProfileId: defaultProfile.id }))
+            profile = defaultProfile
+          }
           const groups = get().getAchievementGroups()
           const sortOrder =
             groups.length === 0 ? 0 : Math.max(...groups.map((g) => g.sortOrder), 0) + 1
@@ -1839,7 +1850,7 @@ export const useRpgStore = create<RpgStoreState>()(
           const todayStart = getTodayStart()
 
           achievements.forEach((ach) => {
-            if (ach.unlocked) return
+            if (ach.unlocked && !ach.repeatable) return
 
             let progress = 0
             const target = ach.condition.targetValue ?? 0
@@ -1904,7 +1915,9 @@ export const useRpgStore = create<RpgStoreState>()(
         unlockAchievement: (id) => {
           const { achievements, addCurrency, addToInventory, shopItems } = get()
           const ach = achievements.find((a) => a.id === id)
-          if (!ach || ach.unlocked) return
+          if (!ach) return
+          // Для неповторяемых — не разблокировать повторно
+          if (!ach.repeatable && ach.unlocked) return
 
           // Give coins & gems
           if (ach.rewardCoins > 0) addCurrency(CURRENCY_IDS.COINS, ach.rewardCoins)
@@ -1948,8 +1961,19 @@ export const useRpgStore = create<RpgStoreState>()(
             }
           }
 
-          // Mark as unlocked, clear readyToUnlock
-          get().updateAchievement(id, (a) => ({ ...a, unlocked: true, readyToUnlock: false, unlockedAt: now() }))
+          // Mark as unlocked (or reset for repeatable)
+          if (ach.repeatable) {
+            get().updateAchievement(id, (a) => ({
+              ...a,
+              unlocked: false,
+              readyToUnlock: false,
+              currentProgress: 0,
+              completionCount: (a.completionCount ?? 0) + 1,
+              unlockedAt: now(),
+            }))
+          } else {
+            get().updateAchievement(id, (a) => ({ ...a, unlocked: true, readyToUnlock: false, unlockedAt: now() }))
+          }
         },
 
         // ─── Crafting ─────────────────────────────────────────────────────
@@ -2834,6 +2858,8 @@ export const useRpgStore = create<RpgStoreState>()(
 
         // Пересчитать прогресс достижений при загрузке (attribute_level, tasks_completed и т.д.)
         setTimeout(() => useRpgStore.getState().checkAchievements(), 0)
+
+        useRpgStore.getState().setHasHydrated(true)
       },
     }
   )

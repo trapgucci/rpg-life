@@ -103,19 +103,28 @@ function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDet
     ? shopItems.find((i) => i.id === achievement.condition.itemId)
     : null
 
+  const pluralize = (n: number, one: string, few: string, many: string): string => {
+    const abs = Math.abs(n) % 100
+    const mod10 = abs % 10
+    if (abs > 10 && abs < 20) return many
+    if (mod10 === 1) return one
+    if (mod10 >= 2 && mod10 <= 4) return few
+    return many
+  }
+
   const getConditionText = () => {
     const { type, targetValue } = achievement.condition
     switch (type) {
       case 'tasks_completed':
-        return `Выполните ${targetValue} задач`
+        return `Выполните ${targetValue} ${pluralize(targetValue, 'задачу', 'задачи', 'задач')}`
       case 'task_completed_today':
-        return `«${condTask?.title ?? 'задача'}» выполнена ${targetValue} раз сегодня`
+        return `«${condTask?.title ?? 'задача'}» выполнена ${targetValue} ${pluralize(targetValue, 'раз', 'раза', 'раз')} сегодня`
       case 'task_completed_total':
-        return `«${condTask?.title ?? 'задача'}» выполнена ${targetValue} раз за всё время`
+        return `«${condTask?.title ?? 'задача'}» выполнена ${targetValue} ${pluralize(targetValue, 'раз', 'раза', 'раз')} за всё время`
       case 'task_streak':
-        return `Серия ${targetValue} для «${condTask?.title ?? 'задача'}»`
+        return `Стрик ${targetValue} для «${condTask?.title ?? 'задача'}»`
       case 'item_used':
-        return `«${condItem?.name ?? 'предмет'}» использован ${targetValue} раз`
+        return `«${condItem?.name ?? 'предмет'}» использован ${targetValue} ${pluralize(targetValue, 'раз', 'раза', 'раз')}`
       case 'attribute_level':
         return `Достигните уровня ${targetValue} в ${attr?.name ?? 'атрибуте'}`
       case 'coins_earned_spent':
@@ -155,7 +164,7 @@ function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDet
         <div className="flex justify-center pt-2 pb-4">
           <div
             className={cn(
-              'flex h-20 w-20 items-center justify-center rounded-2xl text-4xl',
+              'relative flex h-20 w-20 items-center justify-center rounded-2xl text-[52px]',
               achievement.unlocked && 'achievement-shimmer achievement-icon-wrapper'
             )}
             style={
@@ -173,7 +182,7 @@ function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDet
                   }
             }
           >
-            {achievement.icon}
+            <span className="achievement-icon-emoji">{achievement.icon}</span>
           </div>
         </div>
 
@@ -186,10 +195,12 @@ function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDet
         )}
 
         {/* Condition */}
-        <p className="mt-3 text-xs text-[var(--fg-muted)] text-center flex items-center justify-center gap-1">
-          <Target className="h-3 w-3" />
-          {getConditionText()}
-        </p>
+        <div className="mt-4 w-full rounded-xl bg-[var(--accent)]/8 border border-[var(--accent)]/25 px-4 py-3">
+          <p className="text-[10px] uppercase tracking-widest text-[var(--fg-muted)] mb-1 text-center">Условие</p>
+          <p className="text-sm text-[var(--accent)] text-center font-semibold">
+            {getConditionText()}
+          </p>
+        </div>
 
         {/* Progress bar */}
         {!achievement.unlocked && achievement.condition.type !== 'custom' && (
@@ -215,27 +226,31 @@ function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDet
           {achievement.rewardXp > 0 && (
             <span className="inline-flex items-center gap-1 rounded-lg bg-purple-500/10 px-2 py-1 text-xs font-medium text-purple-500">
               <Zap className="h-3 w-3" />
-              +{achievement.rewardXp} XP
+              {achievement.rewardXp} XP
               {rewardAttr && <span className="opacity-75">→ {rewardAttr.icon}</span>}
             </span>
           )}
           {achievement.rewardCoins > 0 && (
             <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-600 dark:text-amber-400">
               <Coins className="h-3 w-3" />
-              +{achievement.rewardCoins}
+              {achievement.rewardCoins}
             </span>
           )}
           {achievement.rewardGems > 0 && (
             <span className="inline-flex items-center gap-1 rounded-lg bg-cyan-500/10 px-2 py-1 text-xs font-medium text-cyan-600 dark:text-cyan-400">
               <Gem className="h-3 w-3" strokeWidth={2.5} />
-              +{achievement.rewardGems}
+              {achievement.rewardGems}
             </span>
           )}
           {rewardItemsList.map(({ itemId, quantity, item }) => (
-            <span key={itemId} className="inline-flex items-center gap-1 rounded-lg bg-indigo-500/10 px-2 py-1 text-xs font-medium text-indigo-500">
-              <span className="text-sm">{item!.icon || '📦'}</span>
+            <span key={itemId} className="relative inline-flex items-center gap-1 rounded-lg bg-indigo-500/10 px-2 py-1 text-xs font-medium text-indigo-500">
+              <ItemIconBadge item={item!} size="xs" />
               {item!.name}
-              {quantity > 1 && ` ×${quantity}`}
+              {quantity > 1 && (
+                <span className="absolute -top-1 -right-1 text-[8px] font-bold leading-none bg-indigo-500 text-white rounded-full w-3 h-3 flex items-center justify-center z-10">
+                  ×{quantity}
+                </span>
+              )}
             </span>
           ))}
         </div>
@@ -244,6 +259,13 @@ function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDet
         {achievement.unlocked && achievement.unlockedAt && (
           <p className="mt-3 text-xs text-[var(--fg-muted)] text-center">
             Разблокировано: {new Date(achievement.unlockedAt).toLocaleDateString('ru-RU')}
+          </p>
+        )}
+
+        {/* Repeatable: completion count & current lap */}
+        {achievement.repeatable && (achievement.completionCount ?? 0) > 0 && (
+          <p className="mt-2 text-xs text-cyan-400 text-center font-semibold">
+            Выполнено: {achievement.completionCount} {pluralize(achievement.completionCount ?? 0, 'раз', 'раза', 'раз')} · Круг {(achievement.completionCount ?? 0) + 1}
           </p>
         )}
 
@@ -1903,9 +1925,9 @@ function FolderCard({ group, achievements, onOpen, onEditIcon, onEdit, onDelete 
         onClick={(e) => { e.stopPropagation(); onEditIcon() }}
         title="Изменить иконку"
         style={{
-          background: `linear-gradient(145deg, ${color}33, ${color}11)`,
-          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 8px ${color}44`,
-          border: `1.5px solid ${color}55`,
+          background: 'var(--surface-elevated)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 8px rgba(0,0,0,0.15)',
+          border: '1.5px solid var(--border)',
         }}
       >
         {group.icon || '📁'}
@@ -1955,6 +1977,19 @@ function AchievementListItem({ achievement, onClick, groupColor }: AchievementLi
   const isReady = !achievement.unlocked && achievement.readyToUnlock
   // Use group color for grouped achievements, gold for ungrouped
   const iconColor = groupColor ?? '#f59e0b'
+  const shopItems = useRpgStore((s) => s.shopItems)
+  const profiles = useRpgStore((s) => s.profiles)
+  const activeProfileId = useRpgStore((s) => s.activeProfileId)
+  const attributes = profiles.find((p) => p.id === activeProfileId)?.attributes ?? []
+  const rewardAttr = achievement.rewardAttributeId ? attributes.find((a) => a.id === achievement.rewardAttributeId) : null
+  const rewardItemsList = useMemo(() => {
+    const items = achievement.rewardItems?.length
+      ? achievement.rewardItems
+      : achievement.rewardItemId
+        ? [{ itemId: achievement.rewardItemId, quantity: achievement.rewardItemQuantity ?? 1 }]
+        : []
+    return items.map((ri) => ({ ...ri, item: shopItems.find((i) => i.id === ri.itemId) })).filter((ri) => ri.item)
+  }, [achievement, shopItems])
 
   return (
     <button
@@ -1991,7 +2026,10 @@ function AchievementListItem({ achievement, onClick, groupColor }: AchievementLi
                 }) as React.CSSProperties
         }
       >
-        <span style={achievement.unlocked || isReady ? undefined : { filter: 'grayscale(1) opacity(0.4)' }}>
+        <span
+          className={achievement.unlocked || isReady ? 'achievement-icon-emoji' : undefined}
+          style={achievement.unlocked || isReady ? undefined : { filter: 'grayscale(1) opacity(0.4)' }}
+        >
           {achievement.icon}
         </span>
         {!achievement.unlocked && !isReady && (
@@ -2010,6 +2048,11 @@ function AchievementListItem({ achievement, onClick, groupColor }: AchievementLi
           )}>
             {achievement.title}
           </span>
+          {achievement.repeatable && (achievement.completionCount ?? 0) > 0 && (
+            <span className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold bg-cyan-500/15 text-cyan-400 shrink-0">
+              ×{achievement.completionCount}
+            </span>
+          )}
           {achievement.unlocked && (
             <Check className="h-3.5 w-3.5 shrink-0 text-amber-500" />
           )}
@@ -2041,15 +2084,44 @@ function AchievementListItem({ achievement, onClick, groupColor }: AchievementLi
           </div>
         )}
 
-        {/* Rewards preview */}
-        {achievement.unlocked && (
-          <div className="flex gap-2 mt-1">
+        {/* Rewards preview — always visible */}
+        {(achievement.rewardXp > 0 || achievement.rewardCoins > 0 || achievement.rewardGems > 0 || rewardItemsList.length > 0) && (
+          <div className="flex flex-wrap gap-1 mt-1" style={{ opacity: achievement.unlocked ? 1 : 0.45 }}>
             {achievement.rewardXp > 0 && (
-              <span className="text-[11px] text-purple-500 font-medium">+{achievement.rewardXp} XP</span>
+              <span
+                className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
+                style={{
+                  background: rewardAttr ? `${rewardAttr.color}22` : 'rgb(168 85 247 / 0.15)',
+                  color: rewardAttr?.color ?? '#a855f7',
+                }}
+              >
+                <Zap className="h-3 w-3" />
+                {achievement.rewardXp} XP
+              </span>
             )}
             {achievement.rewardCoins > 0 && (
-              <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">+{achievement.rewardCoins} 🪙</span>
+              <span className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold bg-amber-500/15 text-amber-400">
+                <Coins className="h-3 w-3" />
+                {achievement.rewardCoins}
+              </span>
             )}
+            {achievement.rewardGems > 0 && (
+              <span className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold bg-cyan-500/15 text-cyan-400">
+                <Gem className="h-3 w-3" strokeWidth={2.5} />
+                {achievement.rewardGems}
+              </span>
+            )}
+            {rewardItemsList.map(({ itemId, quantity, item }) => (
+              <span key={itemId} className="relative inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[11px] font-semibold bg-indigo-500/15 text-indigo-400">
+                <ItemIconBadge item={item!} size="xs" />
+                {item!.name}
+                {quantity > 1 && (
+                  <span className="absolute -top-1 -right-1 text-[8px] font-bold leading-none bg-indigo-500 text-white rounded-full w-3 h-3 flex items-center justify-center z-10">
+                    ×{quantity}
+                  </span>
+                )}
+              </span>
+            ))}
           </div>
         )}
       </div>
@@ -2241,7 +2313,7 @@ export default function AchievementsPage() {
       {!openFolderId && (
         <>
           {/* Folder grid */}
-          {achievementGroups.length === 0 && ungroupedAchievements.length === 0 ? (
+          {achievementGroups.length === 0 && ungroupedAchievements.length === 0 && !isAddingFolder ? (
             <div className="glass-card flex flex-col items-center justify-center rounded-2xl py-16">
               <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-amber-500/10 mb-4">
                 <Award className="h-10 w-10 text-amber-500" />

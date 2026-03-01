@@ -12,6 +12,14 @@ dist
 dist-ssr
 *.local
 
+# Vault data files (user data, should not be committed)
+*.json
+!package.json
+!package-lock.json
+!tsconfig*.json
+!tailwind.config.js
+!postcss.config.js
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

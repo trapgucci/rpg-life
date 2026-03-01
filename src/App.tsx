@@ -16,14 +16,17 @@ import { vaultStorage } from './lib/vaultStorage'
 
 function App() {
   const settings = useRpgStore((s) => s.settings)
+  const hasHydrated = useRpgStore((s) => s._hasHydrated)
   const [vaultReady, setVaultReady] = useState(!vaultStorage.isElectron())
   const [checkingVault, setCheckingVault] = useState(vaultStorage.isElectron())
 
-  // Check if vault is already configured on mount
+  // Check if vault is already configured on mount, and init it
   useEffect(() => {
     if (!vaultStorage.isElectron()) return
-    vaultStorage.getPath().then((p) => {
+    vaultStorage.getPath().then(async (p) => {
       if (p) {
+        // Re-init to ensure vault dir exists and is writable
+        await vaultStorage.init(p)
         setVaultReady(true)
       }
       setCheckingVault(false)
@@ -56,8 +59,11 @@ function App() {
     useRpgStore.getState().resetDailyHabits()
   }, [])
 
-  // Show nothing while checking vault path
+  // Show nothing while checking vault configuration
   if (checkingVault) return null
+
+  // Wait for store to finish rehydrating from vault
+  if (!hasHydrated) return null
 
   // Show vault setup on first Electron launch
   if (!vaultReady) {

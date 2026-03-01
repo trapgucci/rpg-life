@@ -1071,3 +1071,10 @@ html.dark,
   pointer-events: none;
   z-index: -1;
 }
+
+/* Achievement emoji icon: drop-shadow + backdrop circle */
+.achievement-icon-emoji {
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.65));
+  position: relative;
+  z-index: 1;
+}

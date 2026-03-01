@@ -15,6 +15,13 @@ interface SizeConfig {
 }
 
 const SIZES: Record<string, SizeConfig> = {
+  xs: {
+    container: 'h-4 w-4',
+    icon: 10,
+    radius: 'rounded',
+    shadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 1px 3px rgba(0,0,0,0.2)',
+    hoverShadow: 'inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 6px rgba(0,0,0,0.25)',
+  },
   sm: {
     container: 'h-8 w-8',
     icon: 16,
@@ -42,7 +49,7 @@ const SIZES: Record<string, SizeConfig> = {
 
 interface ItemIconBadgeProps {
   item: ShopItem
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
   groupColor?: string
   className?: string
   onClick?: (e: React.MouseEvent) => void
