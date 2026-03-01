@@ -234,7 +234,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                     <span className="text-sm font-bold">−</span>
                   </button>
                   <input type="number" min={0} value={coinCost || ''} placeholder="0" onChange={(e) => setCoinCost(e.target.value === '' ? 0 : Math.max(0, Number(e.target.value)))} onBlur={(e) => { if (e.target.value === '') setCoinCost(0) }} className="input w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold placeholder:text-[var(--fg-muted)]/40" />
-                  <button type="button" onClick={() => setCoinCost((p) => p + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
+                  <button type="button" onClick={() => setCoinCost((p) => p + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-indigo-500/35 to-indigo-600/20 text-indigo-400 ring-1 ring-inset ring-indigo-500/35 shadow-sm shadow-indigo-600/10 hover:from-indigo-500/50 hover:to-indigo-600/35 hover:text-indigo-300 hover:scale-105 active:scale-95">
                     <span className="text-sm font-bold">+</span>
                   </button>
                 </div>
@@ -247,7 +247,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                     <span className="text-sm font-bold">−</span>
                   </button>
                   <input type="number" min={0} value={gemCost || ''} placeholder="0" onChange={(e) => setGemCost(e.target.value === '' ? 0 : Math.max(0, Number(e.target.value)))} onBlur={(e) => { if (e.target.value === '') setGemCost(0) }} className="input w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold placeholder:text-[var(--fg-muted)]/40" />
-                  <button type="button" onClick={() => setGemCost((p) => p + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
+                  <button type="button" onClick={() => setGemCost((p) => p + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-indigo-500/35 to-indigo-600/20 text-indigo-400 ring-1 ring-inset ring-indigo-500/35 shadow-sm shadow-indigo-600/10 hover:from-indigo-500/50 hover:to-indigo-600/35 hover:text-indigo-300 hover:scale-105 active:scale-95">
                     <span className="text-sm font-bold">+</span>
                   </button>
                 </div>
@@ -263,7 +263,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                       <span className="text-sm font-bold">−</span>
                     </button>
                     <input type="number" min={1} value={stock ?? ''} onChange={(e) => { const v = e.target.value; setStock(v ? Math.max(1, Number(v) || 1) : undefined) }} placeholder="∞" className="input input-stock-infinite w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold" />
-                    <button type="button" onClick={() => setStock((p) => (p == null ? 1 : p + 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
+                    <button type="button" onClick={() => setStock((p) => (p == null ? 1 : p + 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-indigo-500/35 to-indigo-600/20 text-indigo-400 ring-1 ring-inset ring-indigo-500/35 shadow-sm shadow-indigo-600/10 hover:from-indigo-500/50 hover:to-indigo-600/35 hover:text-indigo-300 hover:scale-105 active:scale-95">
                       <span className="text-sm font-bold">+</span>
                     </button>
                   </div>

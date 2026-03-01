@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useRef } from 'react'
 import { cn } from '../../lib/cn'
-import { X, Plus, Trash2, Sparkles, Box, Lightbulb, Check, Search, Percent, Hash, Gift, Minus, Scale, Coins, Gem, Folder } from 'lucide-react'
+import { X, Plus, Trash2, Sparkles, Box, Lightbulb, Check, Search, Percent, Hash, Gift, Minus, Scale, Coins, Gem, Folder, TrendingUp, Gamepad2, Clapperboard } from 'lucide-react'
 import { CURRENCY_IDS } from '../../types/domain'
 import type { ShopItem, ItemGroup } from '../../types/domain'
 import { getItemIcon, getItemTypeColor, getItemTypeBadge, RARITY_COLORS } from './shopUtils'
@@ -208,7 +208,27 @@ function RewardPickerModal({ shopItems, excludeIds = [], onSelect, onClose }: Re
                 )}
               >
                 {shopItem ? (
-                  <SharedItemIconBadge item={shopItem} size="sm" />
+                  <div className="relative shrink-0">
+                    <SharedItemIconBadge item={shopItem} size="sm" />
+                    {badge && (
+                      <div className={cn(
+                        'absolute -top-1 -right-1 z-20 flex h-4 w-4 items-center justify-center rounded-md',
+                        'shadow-[0_2px_6px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.4)]',
+                        'ring-1 ring-[var(--surface-card)]',
+                        badge.type === 'lootbox' && 'bg-gradient-to-br from-violet-400 to-violet-600',
+                        badge.type === 'multiplier' && 'bg-gradient-to-br from-amber-400 to-orange-500',
+                        badge.type === 'discount' && 'bg-gradient-to-br from-red-400 to-rose-600',
+                        badge.type === 'videogame' && 'bg-gradient-to-br from-cyan-400 to-cyan-600',
+                        badge.type === 'serial' && 'bg-gradient-to-br from-pink-400 to-rose-600',
+                      )}>
+                        {badge.type === 'lootbox' && <Gift className="h-2.5 w-2.5 text-white drop-shadow" />}
+                        {badge.type === 'multiplier' && <TrendingUp className="h-2.5 w-2.5 text-white drop-shadow" />}
+                        {badge.type === 'discount' && <Percent className="h-2.5 w-2.5 text-white drop-shadow" />}
+                        {badge.type === 'videogame' && <Gamepad2 className="h-2.5 w-2.5 text-white drop-shadow" />}
+                        {badge.type === 'serial' && <Clapperboard className="h-2.5 w-2.5 text-white drop-shadow" />}
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <ItemIconBadge iconName={opt.iconName} iconImage={opt.iconImage} color={opt.color} />
                 )}
@@ -406,7 +426,27 @@ function RewardPickerModalSingle({
                 )}
               >
                 {shopItem ? (
-                  <SharedItemIconBadge item={shopItem} size="sm" />
+                  <div className="relative shrink-0">
+                    <SharedItemIconBadge item={shopItem} size="sm" />
+                    {badge && (
+                      <div className={cn(
+                        'absolute -top-1 -right-1 z-20 flex h-4 w-4 items-center justify-center rounded-md',
+                        'shadow-[0_2px_6px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.4)]',
+                        'ring-1 ring-[var(--surface-card)]',
+                        badge.type === 'lootbox' && 'bg-gradient-to-br from-violet-400 to-violet-600',
+                        badge.type === 'multiplier' && 'bg-gradient-to-br from-amber-400 to-orange-500',
+                        badge.type === 'discount' && 'bg-gradient-to-br from-red-400 to-rose-600',
+                        badge.type === 'videogame' && 'bg-gradient-to-br from-cyan-400 to-cyan-600',
+                        badge.type === 'serial' && 'bg-gradient-to-br from-pink-400 to-rose-600',
+                      )}>
+                        {badge.type === 'lootbox' && <Gift className="h-2.5 w-2.5 text-white drop-shadow" />}
+                        {badge.type === 'multiplier' && <TrendingUp className="h-2.5 w-2.5 text-white drop-shadow" />}
+                        {badge.type === 'discount' && <Percent className="h-2.5 w-2.5 text-white drop-shadow" />}
+                        {badge.type === 'videogame' && <Gamepad2 className="h-2.5 w-2.5 text-white drop-shadow" />}
+                        {badge.type === 'serial' && <Clapperboard className="h-2.5 w-2.5 text-white drop-shadow" />}
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <ItemIconBadge iconName={opt.iconName} iconImage={opt.iconImage} color={opt.color} />
                 )}

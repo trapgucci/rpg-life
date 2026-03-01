@@ -141,7 +141,7 @@ function HabitCreateForm({ onCreated }: HabitCreateFormProps) {
               <span className="text-[var(--fg-muted)]">XP:</span>
               <input
                 type="number"
-                value={positiveXp}
+                value={positiveXp || ''}
                 onChange={(e) => setPositiveXp(Number(e.target.value) || 0)}
                 className="w-20 rounded-lg border border-[var(--border)] bg-transparent px-2 py-1 text-right"
               />
@@ -158,7 +158,7 @@ function HabitCreateForm({ onCreated }: HabitCreateFormProps) {
               <span className="text-[var(--fg-muted)]">XP:</span>
               <input
                 type="number"
-                value={negativeXp}
+                value={negativeXp || ''}
                 onChange={(e) => setNegativeXp(Number(e.target.value) || 0)}
                 className="w-20 rounded-lg border border-[var(--border)] bg-transparent px-2 py-1 text-right"
               />

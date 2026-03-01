@@ -622,14 +622,15 @@ export interface AchievementGroup {
 // ─── Achievements System ────────────────────────────────────────────────────
 
 /** Тип условия для достижения */
-export type AchievementConditionType = 
-  | 'tasks_completed'      // Выполнено N задач
-  | 'habits_positive'      // N положительных привычек
-  | 'attribute_level'      // Атрибут достиг уровня N
-  | 'streak_days'          // Streak N дней
-  | 'coins_earned'         // Заработано N монет
-  | 'items_crafted'        // Скрафчено N предметов
-  | 'custom'               // Разблокировать вручную
+export type AchievementConditionType =
+  | 'tasks_completed'        // Выполнено N задач (всего)
+  | 'task_completed_today'   // Задача N выполнена X раз сегодня
+  | 'task_completed_total'   // Задача N выполнена X раз за всё время
+  | 'task_streak'            // Серия для конкретной задачи N
+  | 'item_used'              // Предмет N использован X раз
+  | 'attribute_level'        // Атрибут достиг уровня N
+  | 'coins_earned_spent'     // Монет заработано / потрачено
+  | 'custom'                 // Разблокировать вручную
 
 export interface AchievementCondition {
   type: AchievementConditionType
@@ -637,6 +638,12 @@ export interface AchievementCondition {
   targetValue: number
   /** ID атрибута (для attribute_level) */
   attributeId?: AttributeId
+  /** ID задачи (для task_completed_today, task_completed_total, task_streak) */
+  taskId?: TaskId
+  /** ID предмета (для item_used) */
+  itemId?: ItemId
+  /** Режим для coins_earned_spent: заработано или потрачено */
+  coinMode?: 'earned' | 'spent'
 }
 
 export interface Achievement {
@@ -669,6 +676,10 @@ export interface Achievement {
   rewardItems?: { itemId: ItemId; quantity: number }[]
   /** Условия (тумблеры) */
   conditions?: AchievementToggleConditions
+  /** Повторяемое достижение (сбрасывается после выполнения) */
+  repeatable?: boolean
+  /** Готово к разблокировке (условия выполнены, ждёт ручного забора) */
+  readyToUnlock?: boolean
   /** Разблокировано? */
   unlocked: boolean
   /** Когда разблокировано */

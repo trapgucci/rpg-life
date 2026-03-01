@@ -302,7 +302,7 @@ export default function InventoryPage() {
             <div className="min-w-0">
               <h1 className="text-base md:text-lg font-bold text-[var(--fg)]">Инвентарь</h1>
               <p className="text-[10px] md:text-xs text-[var(--fg-muted)]">
-                {totalUniqueItems} предметов, {totalQuantity} шт.
+                {totalQuantity} предметов
               </p>
             </div>
           </div>

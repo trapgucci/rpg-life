@@ -688,7 +688,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                 <button type="button" onClick={() => setEditFragmentsRequired((prev) => Math.max(1, prev - 1))} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-1 ring-inset ring-red-400/25 shadow-sm hover:scale-105 active:scale-95">
                   <span className="text-lg font-bold">−</span>
                 </button>
-                <input type="number" value={editFragmentsRequired} onChange={(e) => setEditFragmentsRequired(Math.max(1, Number(e.target.value) || 1))} min={1} className="input w-full flex-1 min-w-0 h-11 py-0 text-center text-lg font-bold" />
+                <input type="number" value={editFragmentsRequired || ''} onChange={(e) => setEditFragmentsRequired(Math.max(1, Number(e.target.value) || 1))} min={1} className="input w-full flex-1 min-w-0 h-11 py-0 text-center text-lg font-bold" />
                 <button type="button" onClick={() => setEditFragmentsRequired((prev) => prev + 1)} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-emerald-400/25 to-emerald-500/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-sm hover:scale-105 active:scale-95">
                   <span className="text-lg font-bold">+</span>
                 </button>
@@ -737,7 +737,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                 </button>
                 <input
                   type="number"
-                  value={editMaxCrafts}
+                  value={editMaxCrafts || ''}
                   onChange={(e) => {
                     const v = Math.max(1, Number(e.target.value) || 1)
                     const stockLimit = editSelectedItem?.stock
@@ -777,7 +777,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                   </div>
                   <input
                     type="number"
-                    value={editCraftCostCoins}
+                    value={editCraftCostCoins || ''}
                     onChange={(e) => setEditCraftCostCoins(Math.max(0, Number(e.target.value) || 0))}
                     min={0}
                     className="input w-full h-10 py-0 text-center text-sm font-bold"
@@ -790,7 +790,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                   </div>
                   <input
                     type="number"
-                    value={editCraftCostGems}
+                    value={editCraftCostGems || ''}
                     onChange={(e) => setEditCraftCostGems(Math.max(0, Number(e.target.value) || 0))}
                     min={0}
                     className="input w-full h-10 py-0 text-center text-sm font-bold"
@@ -866,7 +866,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                   <div className="flex items-center gap-3">
                     <input type="range" min={1} max={100} value={editDropChance} onChange={(e) => setEditDropChance(Number(e.target.value))} className="flex-1 accent-[var(--accent)]" />
                     <div className="flex items-center gap-1">
-                      <input type="number" value={editDropChance} onChange={(e) => setEditDropChance(Math.max(1, Math.min(100, Number(e.target.value) || 1)))} min={1} max={100} className="input w-16 text-center h-9 py-0 text-sm font-bold" />
+                      <input type="number" value={editDropChance || ''} onChange={(e) => setEditDropChance(Math.max(1, Math.min(100, Number(e.target.value) || 1)))} min={1} max={100} className="input w-16 text-center h-9 py-0 text-sm font-bold" />
                       <span className="text-sm font-bold text-[var(--fg-muted)]">%</span>
                     </div>
                   </div>

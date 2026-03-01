@@ -210,7 +210,7 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
             </button>
             <input
               type="number"
-              value={fragmentsRequired}
+              value={fragmentsRequired || ''}
               onChange={(e) => setFragmentsRequired(Math.max(1, Number(e.target.value) || 1))}
               min={1}
               className="input w-full flex-1 min-w-0 h-11 py-0 text-center text-lg font-bold"
@@ -279,7 +279,7 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
             </button>
             <input
               type="number"
-              value={maxCrafts}
+              value={maxCrafts || ''}
               onChange={(e) => {
                 const v = Math.max(1, Number(e.target.value) || 1)
                 const stockLimit = selectedItem?.stock
@@ -322,7 +322,7 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
               </div>
               <input
                 type="number"
-                value={craftCostCoins}
+                value={craftCostCoins || ''}
                 onChange={(e) => setCraftCostCoins(Math.max(0, Number(e.target.value) || 0))}
                 min={0}
                 className="input w-full h-10 py-0 text-center text-sm font-bold"
@@ -335,7 +335,7 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
               </div>
               <input
                 type="number"
-                value={craftCostGems}
+                value={craftCostGems || ''}
                 onChange={(e) => setCraftCostGems(Math.max(0, Number(e.target.value) || 0))}
                 min={0}
                 className="input w-full h-10 py-0 text-center text-sm font-bold"
@@ -458,7 +458,7 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
                 <div className="flex items-center gap-1">
                   <input
                     type="number"
-                    value={dropChance}
+                    value={dropChance || ''}
                     onChange={(e) => setDropChance(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
                     min={1}
                     max={100}

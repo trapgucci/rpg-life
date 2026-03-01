@@ -459,7 +459,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                           <span className="text-sm font-bold">−</span>
                         </button>
                         <input type="number" min={0} value={editCoinCost || ''} placeholder="0" onChange={(e) => setEditCoinCost(e.target.value === '' ? 0 : Math.max(0, Number(e.target.value)))} onBlur={(e) => { if (e.target.value === '') setEditCoinCost(0) }} className="input w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold placeholder:text-[var(--fg-muted)]/40" />
-                        <button type="button" onClick={() => setEditCoinCost((prev) => prev + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
+                        <button type="button" onClick={() => setEditCoinCost((prev) => prev + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-indigo-500/35 to-indigo-600/20 text-indigo-400 ring-1 ring-inset ring-indigo-500/35 shadow-sm shadow-indigo-600/10 hover:from-indigo-500/50 hover:to-indigo-600/35 hover:text-indigo-300 hover:scale-105 active:scale-95">
                           <span className="text-sm font-bold">+</span>
                         </button>
                       </div>
@@ -472,7 +472,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                           <span className="text-sm font-bold">−</span>
                         </button>
                         <input type="number" min={0} value={editGemCost || ''} placeholder="0" onChange={(e) => setEditGemCost(e.target.value === '' ? 0 : Math.max(0, Number(e.target.value)))} onBlur={(e) => { if (e.target.value === '') setEditGemCost(0) }} className="input w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold placeholder:text-[var(--fg-muted)]/40" />
-                        <button type="button" onClick={() => setEditGemCost((prev) => prev + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
+                        <button type="button" onClick={() => setEditGemCost((prev) => prev + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-indigo-500/35 to-indigo-600/20 text-indigo-400 ring-1 ring-inset ring-indigo-500/35 shadow-sm shadow-indigo-600/10 hover:from-indigo-500/50 hover:to-indigo-600/35 hover:text-indigo-300 hover:scale-105 active:scale-95">
                           <span className="text-sm font-bold">+</span>
                         </button>
                       </div>
@@ -488,7 +488,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                             <span className="text-sm font-bold">−</span>
                           </button>
                           <input type="number" min={1} value={editStock ?? ''} onChange={(e) => { const value = e.target.value; setEditStock(value ? Math.max(1, Number(value) || 1) : undefined) }} placeholder="∞" className="input input-stock-infinite w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold" />
-                          <button type="button" onClick={() => setEditStock((prev) => (prev == null ? 1 : prev + 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
+                          <button type="button" onClick={() => setEditStock((prev) => (prev == null ? 1 : prev + 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-indigo-500/35 to-indigo-600/20 text-indigo-400 ring-1 ring-inset ring-indigo-500/35 shadow-sm shadow-indigo-600/10 hover:from-indigo-500/50 hover:to-indigo-600/35 hover:text-indigo-300 hover:scale-105 active:scale-95">
                             <span className="text-sm font-bold">+</span>
                           </button>
                         </div>
@@ -510,7 +510,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                         <span className="text-lg font-bold">−</span>
                       </button>
                       <input type="number" min={1} value={editStock ?? ''} onChange={(e) => { const value = e.target.value; setEditStock(value ? Math.max(1, Number(value) || 1) : undefined) }} placeholder="∞" className="input input-stock-infinite w-full flex-1 min-w-0 h-11 py-0 text-center text-lg font-bold" />
-                      <button type="button" onClick={() => setEditStock((prev) => (prev == null ? 1 : prev + 1))} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
+                      <button type="button" onClick={() => setEditStock((prev) => (prev == null ? 1 : prev + 1))} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-indigo-500/35 to-indigo-600/20 text-indigo-400 ring-1 ring-inset ring-indigo-500/35 shadow-sm shadow-indigo-600/10 hover:from-indigo-500/50 hover:to-indigo-600/35 hover:text-indigo-300 hover:scale-105 active:scale-95">
                         <span className="text-lg font-bold">+</span>
                       </button>
                     </div>
@@ -1196,110 +1196,84 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                     </div>
                     <span className="text-xs font-bold text-[var(--fg-muted)] uppercase tracking-wider">Возможный дроп</span>
                   </div>
-                  {/* Items list */}
-                  <div className="space-y-2.5">
-                    {item.lootTable.map((entry, idx) => {
-                      const lootItem = shopItems.find((i) => i.id === entry.id)
-                      const entryName =
-                        entry.id === CURRENCY_IDS.COINS ? 'Монеты'
-                        : entry.id === CURRENCY_IDS.GEMS ? 'Кристаллы'
-                        : lootItem?.name ?? entry.id
-                      const entryIconName =
-                        entry.id === CURRENCY_IDS.COINS ? 'Coins'
-                        : entry.id === CURRENCY_IDS.GEMS ? 'Gem'
-                        : lootItem ? getItemIcon(lootItem) : 'Sword'
-                      const entryIconImage = lootItem?.iconImage
-                      const lootGroup = lootItem?.groupId ? allItemGroups.find((g) => g.id === lootItem.groupId) : null
-                      const lootTypeBadge = lootItem ? getItemTypeBadge(lootItem) : null
-                      const entryColor =
-                        entry.id === CURRENCY_IDS.COINS ? '#f59e0b'
-                        : entry.id === CURRENCY_IDS.GEMS ? '#a855f7'
-                        : lootTypeBadge ? getItemTypeColor(lootItem)
-                        : lootGroup?.color ?? '#9ca3af'
-                      const maxWeight = Math.max(...item.lootTable!.map((e) => e.weight))
+                  {/* Items grid */}
+                  {(() => {
+                    const maxWeight = Math.max(...item.lootTable!.map((e) => e.weight))
+                    const cols = item.lootTable!.length >= 6 ? 'grid-cols-4' : 'grid-cols-3'
+                    return (
+                      <div className={`grid ${cols} gap-2`}>
+                        {item.lootTable.map((entry, idx) => {
+                          const lootItem = shopItems.find((i) => i.id === entry.id)
+                          const entryName =
+                            entry.id === CURRENCY_IDS.COINS ? 'Монеты'
+                            : entry.id === CURRENCY_IDS.GEMS ? 'Кристаллы'
+                            : lootItem?.name ?? entry.id
+                          const entryIconName =
+                            entry.id === CURRENCY_IDS.COINS ? 'Coins'
+                            : entry.id === CURRENCY_IDS.GEMS ? 'Gem'
+                            : lootItem ? getItemIcon(lootItem) : 'Sword'
+                          const lootGroup = lootItem?.groupId ? allItemGroups.find((g) => g.id === lootItem.groupId) : null
+                          const lootTypeBadge = lootItem ? getItemTypeBadge(lootItem) : null
+                          const entryColor =
+                            entry.id === CURRENCY_IDS.COINS ? '#f59e0b'
+                            : entry.id === CURRENCY_IDS.GEMS ? '#a855f7'
+                            : lootTypeBadge ? getItemTypeColor(lootItem)
+                            : lootGroup?.color ?? '#9ca3af'
+                          const isTop = entry.weight >= maxWeight
 
-                      return (
-                        <div
-                          key={`${entry.id}-${idx}`}
-                          className="relative rounded-xl overflow-hidden transition-all duration-200 hover:translate-y-[-1px]"
-                          style={{
-                            background: `linear-gradient(135deg, ${entryColor}0a, ${entryColor}04)`,
-                            border: `1px solid ${entryColor}18`,
-                            boxShadow: `
-                              4px 4px 10px var(--neu-item-dark),
-                              -3px -3px 8px var(--neu-item-light),
-                              inset 0 1px 0 var(--neu-item-inset-light),
-                              inset 0 0 0 0.5px ${entryColor}10
-                            `,
-                          }}
-                        >
-                          <div className="flex items-center gap-3 px-3.5 py-2.5">
-                            {/* Item icon — neumorphic inset */}
+                          return (
                             <div
-                              className="relative shrink-0 flex h-10 w-10 items-center justify-center rounded-xl"
+                              key={`${entry.id}-${idx}`}
+                              className="relative rounded-xl p-2.5 flex flex-col items-center gap-1.5 transition-all duration-200 hover:translate-y-[-1px]"
                               style={{
-                                background: `linear-gradient(135deg, ${entryColor}22, ${entryColor}0c)`,
-                                boxShadow: `
-                                  inset 2px 2px 4px ${entryColor}15,
-                                  inset -1px -1px 3px var(--neu-icon-inset-light),
-                                  2px 2px 6px ${entryColor}10,
-                                  -1px -1px 4px var(--neu-icon-inset-light)
-                                `,
-                                border: `1px solid ${entryColor}20`,
-                                color: entryColor,
-                              } as React.CSSProperties}
+                                background: `linear-gradient(135deg, ${entryColor}0a, ${entryColor}04)`,
+                                border: `1px solid ${entryColor}18`,
+                                boxShadow: isTop ? `0 0 12px ${entryColor}25` : undefined,
+                              }}
                             >
-                              {entryIconImage ? (
-                                <img src={entryIconImage} alt="" className="h-full w-full object-cover rounded-xl" />
-                              ) : (
-                                <HabitIcon iconName={entryIconName} size={20} />
-                              )}
-                            </div>
-                            {/* Quantity badge */}
-                            {(entry.quantity ?? 1) > 1 && (
+                              {/* Percent badge */}
                               <span
-                                className="shrink-0 rounded-lg px-1.5 py-0.5 text-[10px] font-bold text-white"
-                                style={{
-                                  background: `linear-gradient(135deg, ${entryColor}, ${entryColor}cc)`,
-                                  boxShadow: `0 2px 6px ${entryColor}40`,
-                                }}
+                                className="absolute top-1.5 right-1.5 text-[9px] font-bold tabular-nums leading-none"
+                                style={{ color: entryColor }}
                               >
-                                x{entry.quantity}
+                                {entry.weight}%
                               </span>
-                            )}
-                            {/* Name + drop bar */}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-[var(--fg)] truncate">{entryName}</p>
-                              <div className="flex items-center gap-2 mt-1.5">
+                              {/* Icon */}
+                              {lootItem ? (
+                                <ItemIconBadge
+                                  item={lootItem}
+                                  size="sm"
+                                  groupColor={lootGroup?.color}
+                                />
+                              ) : (
                                 <div
-                                  className="flex-1 h-[5px] rounded-full overflow-hidden"
+                                  className="flex h-8 w-8 items-center justify-center rounded-lg"
                                   style={{
-                                    background: `${entryColor}12`,
-                                    boxShadow: `inset 1px 1px 3px ${entryColor}10, inset -1px -1px 2px var(--neu-inset-bar-light)`,
-                                  }}
+                                    background: `linear-gradient(145deg, ${entryColor}ee, ${entryColor}99)`,
+                                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.2), 0 2px 6px rgba(0,0,0,0.2)',
+                                    color: 'white',
+                                  } as React.CSSProperties}
                                 >
-                                  <div
-                                    className="h-full rounded-full transition-all duration-500"
-                                    style={{
-                                      width: `${maxWeight > 0 ? (entry.weight / maxWeight) * 100 : 0}%`,
-                                      background: `linear-gradient(90deg, ${entryColor}cc, ${entryColor})`,
-                                      boxShadow: `0 0 8px ${entryColor}50`,
-                                    }}
-                                  />
+                                  <HabitIcon iconName={entryIconName} size={16} />
                                 </div>
+                              )}
+                              {/* Name */}
+                              <p className="text-[11px] font-medium text-[var(--fg)] truncate w-full text-center">{entryName}</p>
+                              {/* Quantity */}
+                              {(entry.quantity ?? 1) > 1 && (
                                 <span
-                                  className="shrink-0 text-xs font-bold tabular-nums"
+                                  className="text-[10px] font-bold"
                                   style={{ color: entryColor }}
                                 >
-                                  {entry.weight}%
+                                  x{entry.quantity}
                                 </span>
-                              </div>
+                              )}
                             </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
+                          )
+                        })}
+                      </div>
+                    )
+                  })()}
                 </div>
               )}
             </div>

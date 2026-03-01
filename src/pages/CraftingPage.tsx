@@ -288,7 +288,7 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
               <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Нужно фрагментов</label>
               <input
                 type="number"
-                value={fragmentsRequired}
+                value={fragmentsRequired || ''}
                 onChange={(e) => setFragmentsRequired(Number(e.target.value) || 1)}
                 min={1}
                 className="input w-full"
@@ -387,7 +387,7 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
               </label>
               <input
                 type="number"
-                value={dropChance}
+                value={dropChance || ''}
                 onChange={(e) => setDropChance(Number(e.target.value) || 1)}
                 min={1}
                 max={100}

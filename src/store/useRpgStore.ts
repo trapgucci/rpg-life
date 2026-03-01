@@ -223,6 +223,7 @@ interface RpgStoreState {
     totalHabitsPositive: number
     totalHabitsNegative: number
     totalCoinsEarned: number
+    totalCoinsSpent: number
     totalItemsCrafted: number
     currentStreak: number
     bestStreak: number
@@ -561,6 +562,7 @@ export const useRpgStore = create<RpgStoreState>()(
           totalHabitsPositive: 0,
           totalHabitsNegative: 0,
           totalCoinsEarned: 0,
+          totalCoinsSpent: 0,
           totalItemsCrafted: 0,
           currentStreak: 0,
           bestStreak: 0,
@@ -651,6 +653,10 @@ export const useRpgStore = create<RpgStoreState>()(
             ...p,
             currencies: { ...p.currencies, [currencyId]: current - amount },
           }))
+          if (currencyId === CURRENCY_IDS.COINS) {
+            updateStats((s) => ({ totalCoinsSpent: (s.totalCoinsSpent ?? 0) + amount }))
+            get().checkAchievements()
+          }
           return true
         },
 
@@ -985,9 +991,8 @@ export const useRpgStore = create<RpgStoreState>()(
           // Instant recurrence: награды выданы — сбрасываем задачу для повторного выполнения
           // Награды за подзадачи НЕ забираются — игрок их заработал
           if (task.recurrence === 'instant') {
-            updateStats((s) => ({ totalTasksCompleted: s.totalTasksCompleted + 1 }))
+            // Instant-задачи НЕ считаются в totalTasksCompleted (для достижений)
             tryRandomFragmentDrop(task.id)
-            checkAchievements()
 
             // Увеличиваем счетчик выполнений для byCount
             const newCompletedCount = (task.recurrenceSettings?.completedCount ?? 0) + 1
@@ -1017,6 +1022,7 @@ export const useRpgStore = create<RpgStoreState>()(
             // Если лимит достигнут — помечаем задачу как завершенную и архивируем
             if (isRecurrenceCompleted || (updatedSettings && updatedSettings.endMode === 'byCount' && updatedSettings.endCount && newCompletedCount >= updatedSettings.endCount)) {
               updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), canceledAt: now(), archiveReason: 'completed' as TaskArchiveReason, recurrenceSettings: updatedSettings, ...historyFields, ...smUpdate }))
+              checkAchievements()
               return
             }
 
@@ -1050,6 +1056,7 @@ export const useRpgStore = create<RpgStoreState>()(
                 return { ...t, ...base }
               })
             }
+            checkAchievements()
             return
           }
 
@@ -1058,7 +1065,6 @@ export const useRpgStore = create<RpgStoreState>()(
               task.recurrence === 'monthly' || task.recurrence === 'yearly' || task.recurrence === 'custom') {
             updateStats((s) => ({ totalTasksCompleted: s.totalTasksCompleted + 1 }))
             tryRandomFragmentDrop(task.id)
-            checkAchievements()
 
             // Увеличиваем счетчик выполнений для byCount
             const newCompletedCount = (task.recurrenceSettings?.completedCount ?? 0) + 1
@@ -1099,6 +1105,7 @@ export const useRpgStore = create<RpgStoreState>()(
             // Если лимит достигнут — помечаем задачу как завершенную и архивируем
             if (isRecurrenceCompleted || (updatedSettings && updatedSettings.endMode === 'byCount' && updatedSettings.endCount && newCompletedCount >= updatedSettings.endCount)) {
               updateTask(id, (t) => ({ ...t, isCompleted: true, completedAt: now(), canceledAt: now(), archiveReason: 'completed' as TaskArchiveReason, lastCompletedAt: now(), recurrenceSettings: updatedSettings, ...historyFields, ...smUpdate }))
+              checkAchievements()
               return
             }
 
@@ -1122,6 +1129,7 @@ export const useRpgStore = create<RpgStoreState>()(
                 // Для counter — сбрасываем прогресс после каждого выполнения (если не все разы использованы)
                 ...(t.kind === 'counter' && !allDone ? { current: 0 } : {}),
               }))
+              checkAchievements()
               return
             }
 
@@ -1138,6 +1146,7 @@ export const useRpgStore = create<RpgStoreState>()(
                 subtasks: t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
               } : {})
             }))
+            checkAchievements()
             return
           }
 
@@ -1811,6 +1820,7 @@ export const useRpgStore = create<RpgStoreState>()(
             updatedAt: now(),
           }
           set((s) => ({ achievements: [newAchievement, ...s.achievements] }))
+          get().checkAchievements()
           return newAchievement
         },
 
@@ -1823,47 +1833,70 @@ export const useRpgStore = create<RpgStoreState>()(
         deleteAchievement: (id) => set((s) => ({ achievements: s.achievements.filter((a) => a.id !== id) })),
 
         checkAchievements: () => {
-          const { achievements, stats, getAttributes, unlockAchievement } = get()
+          const { achievements, stats, getAttributes, unlockAchievement, tasks, usageHistory } = get()
           const attributes = getAttributes()
+          const todayStart = getTodayStart()
 
           achievements.forEach((ach) => {
             if (ach.unlocked) return
 
             let progress = 0
-            let target = ach.condition.targetValue
+            const target = ach.condition.targetValue ?? 0
 
             switch (ach.condition.type) {
               case 'tasks_completed':
                 progress = stats.totalTasksCompleted
                 break
-              case 'habits_positive':
-                progress = stats.totalHabitsPositive
-                break
-              case 'attribute_level':
+              case 'attribute_level': {
                 const attr = attributes.find((a) => a.id === ach.condition.attributeId)
                 progress = attr?.level ?? 0
                 break
-              case 'streak_days':
-                progress = stats.currentStreak
+              }
+              case 'coins_earned_spent':
+                progress = ach.condition.coinMode === 'spent'
+                  ? (stats.totalCoinsSpent ?? 0)
+                  : stats.totalCoinsEarned
                 break
-              case 'coins_earned':
-                progress = stats.totalCoinsEarned
+              case 'task_completed_today': {
+                const task = tasks.find((t) => t.id === ach.condition.taskId)
+                if (!task) return
+                progress = (task.completionHistory ?? []).filter(
+                  (r) => r.status === 'completed' && r.completedAt && r.completedAt >= todayStart
+                ).length
                 break
-              case 'items_crafted':
-                progress = stats.totalItemsCrafted
+              }
+              case 'task_completed_total': {
+                const taskTotal = tasks.find((t) => t.id === ach.condition.taskId)
+                if (!taskTotal) return
+                progress = (taskTotal.completionHistory ?? []).filter(
+                  (r) => r.status === 'completed'
+                ).length
                 break
+              }
+              case 'task_streak': {
+                const taskStreak = tasks.find((t) => t.id === ach.condition.taskId)
+                if (!taskStreak) return
+                progress = taskStreak.currentStreak ?? 0
+                break
+              }
+              case 'item_used': {
+                const itemId = ach.condition.itemId
+                if (!itemId) return
+                const USAGE_ACTIONS = new Set(['used', 'opened_lootbox', 'activated_discount', 'activated_multiplier'])
+                progress = usageHistory.filter(
+                  (e) => e.itemId === itemId && USAGE_ACTIONS.has(e.action)
+                ).length
+                break
+              }
               case 'custom':
                 // Manual unlock only
                 return
             }
 
-            // Update progress
-            get().updateAchievement(ach.id, (a) => ({ ...a, currentProgress: progress }))
-
-            // Check if unlocked
-            if (progress >= target) {
-              unlockAchievement(ach.id)
-            }
+            // Update progress (ensure valid number)
+            const safeProgress = Number.isFinite(progress) ? progress : 0
+            const ready = target > 0 && safeProgress >= target
+            get().updateAchievement(ach.id, (a) => ({ ...a, currentProgress: safeProgress, readyToUnlock: ready }))
           })
         },
 
@@ -1914,8 +1947,8 @@ export const useRpgStore = create<RpgStoreState>()(
             }
           }
 
-          // Mark as unlocked
-          get().updateAchievement(id, (a) => ({ ...a, unlocked: true, unlockedAt: now() }))
+          // Mark as unlocked, clear readyToUnlock
+          get().updateAchievement(id, (a) => ({ ...a, unlocked: true, readyToUnlock: false, unlockedAt: now() }))
         },
 
         // ─── Crafting ─────────────────────────────────────────────────────
@@ -2468,7 +2501,7 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         useItem: (itemId, quantity = 1) => {
-          const { shopItems, inventory, getActiveProfile, updateProfile, removeFromInventory, openLootbox, activeProfileId } = get()
+          const { shopItems, inventory, getActiveProfile, updateProfile, removeFromInventory, openLootbox, activeProfileId, checkAchievements } = get()
           const item = shopItems.find((i) => i.id === itemId)
           if (!item) return false
           const invEntry = inventory.find((e) => e.itemId === itemId)
@@ -2497,6 +2530,7 @@ export const useRpgStore = create<RpgStoreState>()(
                 lootResultName: loot?.name ?? null,
               })
             }
+            checkAchievements()
             return { loot }
           }
 
@@ -2515,6 +2549,7 @@ export const useRpgStore = create<RpgStoreState>()(
               })
             }
             set(() => ({ activeShopDiscountPercent: percent }))
+            checkAchievements()
             return true
           }
 
@@ -2535,11 +2570,13 @@ export const useRpgStore = create<RpgStoreState>()(
             })
           }
 
-          return removeFromInventory(itemId, useQty)
+          const result = removeFromInventory(itemId, useQty)
+          checkAchievements()
+          return result
         },
 
         applyStreakMultiplier: (taskId, itemId) => {
-          const { tasks, shopItems, updateTask, removeFromInventory, activeProfileId } = get()
+          const { tasks, shopItems, updateTask, removeFromInventory, activeProfileId, checkAchievements } = get()
           const task = tasks.find((t) => t.id === taskId)
           const item = shopItems.find((i) => i.id === itemId)
           if (!task || !item || !item.streakMultiplierEnabled) return false
@@ -2582,6 +2619,7 @@ export const useRpgStore = create<RpgStoreState>()(
 
           // Remove item from inventory
           removeFromInventory(itemId, 1)
+          checkAchievements()
           return true
         },
 
@@ -2671,6 +2709,7 @@ export const useRpgStore = create<RpgStoreState>()(
               totalHabitsPositive: 0,
               totalHabitsNegative: 0,
               totalCoinsEarned: 0,
+              totalCoinsSpent: 0,
               totalItemsCrafted: 0,
               currentStreak: 0,
               bestStreak: 0,
@@ -2791,6 +2830,9 @@ export const useRpgStore = create<RpgStoreState>()(
           useRpgStore.setState({ activeProfileId: profiles[0].id })
         }
         storeInitialized = true
+
+        // Пересчитать прогресс достижений при загрузке (attribute_level, tasks_completed и т.д.)
+        setTimeout(() => useRpgStore.getState().checkAchievements(), 0)
       },
     }
   )

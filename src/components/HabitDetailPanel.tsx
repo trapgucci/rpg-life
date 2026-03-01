@@ -394,7 +394,7 @@ export default function HabitDetailPanel({ habit, onDeselect, experimentalMode }
                       <span className="text-[var(--fg-muted)]">XP<span className="text-amber-400">*</span>:</span>
                       <input
                         type="number"
-                        value={editPositiveXp}
+                        value={editPositiveXp || ''}
                         onChange={(e) => setEditPositiveXp(Number(e.target.value) || 0)}
                         className="w-20 rounded-lg border border-[var(--border)] bg-transparent px-2 py-1 text-right"
                       />
@@ -422,7 +422,7 @@ export default function HabitDetailPanel({ habit, onDeselect, experimentalMode }
                       <span className="text-[var(--fg-muted)]">XP<span className="text-amber-400">*</span>:</span>
                       <input
                         type="number"
-                        value={editNegativeXp}
+                        value={editNegativeXp || ''}
                         onChange={(e) => setEditNegativeXp(Number(e.target.value) || 0)}
                         className="w-20 rounded-lg border border-[var(--border)] bg-transparent px-2 py-1 text-right"
                       />
