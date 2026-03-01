@@ -297,7 +297,7 @@ interface RpgStoreState {
 
   // Achievement group actions
   getAchievementGroups: () => AchievementGroup[]
-  addAchievementGroup: (name: string) => AchievementGroup
+  addAchievementGroup: (name: string, color?: string) => AchievementGroup
   updateAchievementGroup: (id: AchievementGroupId, updater: (g: AchievementGroup) => AchievementGroup) => void
   deleteAchievementGroup: (id: AchievementGroupId) => void
   reorderAchievementGroups: (orderedIds: AchievementGroupId[]) => void
@@ -1747,7 +1747,7 @@ export const useRpgStore = create<RpgStoreState>()(
             : []
         },
 
-        addAchievementGroup: (name) => {
+        addAchievementGroup: (name, color) => {
           const profile = get().getActiveProfile()
           if (!profile) throw new Error('No active profile')
           const groups = get().getAchievementGroups()
@@ -1758,6 +1758,7 @@ export const useRpgStore = create<RpgStoreState>()(
             profileId: profile.id,
             name: name.trim(),
             icon: '📁',
+            color: color ?? '#6b7280',
             sortOrder,
             createdAt: now(),
             updatedAt: now(),

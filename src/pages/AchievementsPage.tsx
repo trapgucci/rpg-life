@@ -42,6 +42,18 @@ const FOLDER_ICONS = [
   '🏠', '💼', '🎓', '🌱', '🧪', '🔬', '🎭', '🏄'
 ]
 
+const FOLDER_COLORS = [
+  '#6b7280', // серый (дефолт)
+  '#f59e0b', // янтарный
+  '#ef4444', // красный
+  '#10b981', // зелёный
+  '#3b82f6', // синий
+  '#8b5cf6', // фиолетовый
+  '#ec4899', // розовый
+  '#06b6d4', // голубой
+  '#f97316', // оранжевый
+]
+
 const NO_GROUP_ID = '__none__' as AchievementGroupId
 
 // ─── Achievement Detail Modal ─────────────────────────────────────────────────
@@ -144,7 +156,7 @@ function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDet
           <div
             className={cn(
               'flex h-20 w-20 items-center justify-center rounded-2xl text-4xl',
-              achievement.unlocked && 'achievement-shimmer'
+              achievement.unlocked && 'achievement-shimmer achievement-icon-wrapper'
             )}
             style={
               achievement.unlocked
@@ -1848,15 +1860,20 @@ function FolderCard({ group, achievements, onOpen, onEditIcon, onEdit, onDelete 
   const total = achievements.length
   const unlocked = achievements.filter((a) => a.unlocked).length
   const progress = total > 0 ? unlocked / total : 0
+  const color = group.color ?? '#6b7280'
 
   return (
     <button
       type="button"
       onClick={onOpen}
       className="group/folder relative flex flex-col items-center gap-3 rounded-2xl p-6 pt-8 pb-5 transition-all duration-200 cursor-pointer
-                 bg-[var(--surface-card)] border border-[var(--border)] hover:border-[var(--border-accent)] hover:shadow-lg
+                 bg-[var(--surface-card)] border border-[var(--border)] hover:shadow-lg
                  backdrop-blur-[16px] min-h-[200px]"
-      style={{ boxShadow: 'var(--shadow)' }}
+      style={{
+        boxShadow: 'var(--shadow)',
+        borderLeftColor: color,
+        borderLeftWidth: '3px',
+      }}
     >
       {/* Edit/Delete actions — top right on hover */}
       <div className="absolute top-2 right-2 flex gap-0.5 opacity-0 group-hover/folder:opacity-100 transition-opacity"
@@ -1886,8 +1903,9 @@ function FolderCard({ group, achievements, onOpen, onEditIcon, onEdit, onDelete 
         onClick={(e) => { e.stopPropagation(); onEditIcon() }}
         title="Изменить иконку"
         style={{
-          background: 'var(--surface-elevated)',
-          boxShadow: 'inset 0 1px 0 var(--neu-inset-light), 0 2px 8px var(--neu-shadow-dark)',
+          background: `linear-gradient(145deg, ${color}33, ${color}11)`,
+          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 8px ${color}44`,
+          border: `1.5px solid ${color}55`,
         }}
       >
         {group.icon || '📁'}
@@ -1908,9 +1926,7 @@ function FolderCard({ group, achievements, onOpen, onEditIcon, onEdit, onDelete 
             className="h-full rounded-full transition-all duration-500 ease-out"
             style={{
               width: `${progress * 100}%`,
-              background: progress >= 1
-                ? 'linear-gradient(90deg, #fbbf24, #f59e0b)'
-                : 'linear-gradient(90deg, var(--accent), var(--accent-light))',
+              background: `linear-gradient(90deg, ${color}, ${color}bb)`,
             }}
           />
         </div>
@@ -1927,15 +1943,18 @@ function FolderCard({ group, achievements, onOpen, onEditIcon, onEdit, onDelete 
 interface AchievementListItemProps {
   achievement: Achievement
   onClick: () => void
+  groupColor?: string
 }
 
-function AchievementListItem({ achievement, onClick }: AchievementListItemProps) {
+function AchievementListItem({ achievement, onClick, groupColor }: AchievementListItemProps) {
   const safeCurrentProgress = Number.isFinite(achievement.currentProgress) ? achievement.currentProgress : 0
   const safeTargetValue = Number.isFinite(achievement.condition.targetValue) ? achievement.condition.targetValue : 0
   const progress = safeTargetValue > 0
     ? Math.min(1, safeCurrentProgress / safeTargetValue)
     : 0
   const isReady = !achievement.unlocked && achievement.readyToUnlock
+  // Use group color for grouped achievements, gold for ungrouped
+  const iconColor = groupColor ?? '#f59e0b'
 
   return (
     <button
@@ -1952,23 +1971,24 @@ function AchievementListItem({ achievement, onClick }: AchievementListItemProps)
       <div
         className={cn(
           'relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl',
-          achievement.unlocked && 'achievement-shimmer'
+          achievement.unlocked && 'achievement-shimmer achievement-icon-wrapper'
         )}
         style={
-          achievement.unlocked
+          (achievement.unlocked
             ? {
-                background: 'linear-gradient(145deg, #fbbf24ee, #f59e0bee)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 8px rgba(251,191,36,0.3)',
+                background: `linear-gradient(145deg, ${iconColor}ee, ${iconColor}bb)`,
+                boxShadow: `inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 8px ${iconColor}4d`,
+                '--ach-glow': `${iconColor}88`,
               }
             : isReady
               ? {
-                  background: 'linear-gradient(145deg, #fbbf2488, #f59e0b88)',
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.25), 0 2px 6px rgba(251,191,36,0.2)',
+                  background: `linear-gradient(145deg, ${iconColor}88, ${iconColor}66)`,
+                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.25), 0 2px 6px ${iconColor}33`,
                 }
               : {
                   background: 'var(--surface)',
                   boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)',
-                }
+                }) as React.CSSProperties
         }
       >
         <span style={achievement.unlocked || isReady ? undefined : { filter: 'grayscale(1) opacity(0.4)' }}>
@@ -2069,11 +2089,13 @@ export default function AchievementsPage() {
   // Folder creation
   const [isAddingFolder, setIsAddingFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
+  const [newFolderColor, setNewFolderColor] = useState('#6b7280')
   const newFolderInputRef = useRef<HTMLInputElement>(null)
 
   // Folder rename
   const [editingFolderId, setEditingFolderId] = useState<AchievementGroupId | null>(null)
   const [editingFolderName, setEditingFolderName] = useState('')
+  const [editingFolderColor, setEditingFolderColor] = useState('#6b7280')
   const editFolderInputRef = useRef<HTMLInputElement>(null)
 
   // Folder icon picker
@@ -2103,8 +2125,9 @@ export default function AchievementsPage() {
   const handleAddFolder = () => {
     const name = newFolderName.trim()
     if (!name) { setIsAddingFolder(false); return }
-    addAchievementGroup(name)
+    addAchievementGroup(name, newFolderColor)
     setNewFolderName('')
+    setNewFolderColor('#6b7280')
     setIsAddingFolder(false)
   }
 
@@ -2112,10 +2135,11 @@ export default function AchievementsPage() {
     if (!editingFolderId) return
     const name = editingFolderName.trim()
     if (name) {
-      updateAchievementGroup(editingFolderId, (g) => ({ ...g, name }))
+      updateAchievementGroup(editingFolderId, (g) => ({ ...g, name, color: editingFolderColor }))
     }
     setEditingFolderId(null)
     setEditingFolderName('')
+    setEditingFolderColor('#6b7280')
   }
 
   const handleDeleteFolder = () => {
@@ -2240,6 +2264,7 @@ export default function AchievementsPage() {
                   onEdit={() => {
                     setEditingFolderId(group.id)
                     setEditingFolderName(group.name)
+                    setEditingFolderColor(group.color ?? '#6b7280')
                   }}
                   onDelete={() => setDeletingFolderId(group.id)}
                 />
@@ -2294,8 +2319,9 @@ export default function AchievementsPage() {
                   <div
                     className="flex h-16 w-16 items-center justify-center rounded-2xl text-3xl"
                     style={{
-                      background: 'var(--surface-elevated)',
-                      boxShadow: 'inset 0 1px 0 var(--neu-inset-light), 0 2px 8px var(--neu-shadow-dark)',
+                      background: `linear-gradient(145deg, ${newFolderColor}33, ${newFolderColor}11)`,
+                      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 8px ${newFolderColor}33`,
+                      border: `2px solid ${newFolderColor}55`,
                     }}
                   >
                     📁
@@ -2307,12 +2333,44 @@ export default function AchievementsPage() {
                     onChange={(e) => setNewFolderName(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleAddFolder()
-                      if (e.key === 'Escape') { setIsAddingFolder(false); setNewFolderName('') }
+                      if (e.key === 'Escape') { setIsAddingFolder(false); setNewFolderName(''); setNewFolderColor('#6b7280') }
                     }}
-                    onBlur={handleAddFolder}
                     placeholder="Название..."
                     className="input py-1.5 px-3 text-sm w-full text-center"
                   />
+                  {/* Color picker */}
+                  <div className="flex flex-wrap gap-1.5 justify-center">
+                    {FOLDER_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setNewFolderColor(c)}
+                        className="h-5 w-5 rounded-full transition-transform hover:scale-110"
+                        style={{
+                          background: c,
+                          outline: newFolderColor === c ? `2px solid ${c}` : 'none',
+                          outlineOffset: '2px',
+                          boxShadow: newFolderColor === c ? `0 0 0 1px var(--surface-card)` : 'none',
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex gap-2 w-full">
+                    <button
+                      type="button"
+                      onClick={() => { setIsAddingFolder(false); setNewFolderName(''); setNewFolderColor('#6b7280') }}
+                      className="btn-secondary flex-1 py-1 text-xs"
+                    >
+                      Отмена
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddFolder}
+                      className="btn-primary flex-1 py-1 text-xs"
+                    >
+                      Создать
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -2340,6 +2398,7 @@ export default function AchievementsPage() {
                   key={achievement.id}
                   achievement={achievement}
                   onClick={() => setSelectedAchievement(achievement)}
+                  groupColor={openFolder?.color}
                 />
               ))}
             </div>
@@ -2380,7 +2439,7 @@ export default function AchievementsPage() {
       {editingFolder && (
         <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && handleSaveFolder()}>
           <div className="modal-content max-w-xs">
-            <h3 className="text-lg font-bold text-[var(--fg)] mb-4">Переименовать папку</h3>
+            <h3 className="text-lg font-bold text-[var(--fg)] mb-4">Редактировать папку</h3>
             <input
               ref={editFolderInputRef}
               type="text"
@@ -2388,15 +2447,33 @@ export default function AchievementsPage() {
               onChange={(e) => setEditingFolderName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSaveFolder()
-                if (e.key === 'Escape') { setEditingFolderId(null); setEditingFolderName('') }
+                if (e.key === 'Escape') { setEditingFolderId(null); setEditingFolderName(''); setEditingFolderColor('#6b7280') }
               }}
-              className="input w-full mb-4"
+              className="input w-full mb-3"
               autoFocus
             />
+            {/* Color picker */}
+            <p className="text-xs text-[var(--fg-muted)] mb-2">Цвет папки</p>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {FOLDER_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setEditingFolderColor(c)}
+                  className="h-6 w-6 rounded-full transition-transform hover:scale-110"
+                  style={{
+                    background: c,
+                    outline: editingFolderColor === c ? `2px solid ${c}` : 'none',
+                    outlineOffset: '2px',
+                    boxShadow: editingFolderColor === c ? `0 0 0 1px var(--surface-card)` : 'none',
+                  }}
+                />
+              ))}
+            </div>
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => { setEditingFolderId(null); setEditingFolderName('') }}
+                onClick={() => { setEditingFolderId(null); setEditingFolderName(''); setEditingFolderColor('#6b7280') }}
                 className="btn-secondary flex-1"
               >
                 Отмена

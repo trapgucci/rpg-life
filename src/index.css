@@ -985,22 +985,42 @@ html.dark,
   animation: habit-success-pulse 0.6s ease-out;
 }
 
-/* Achievement trophy shimmer */
-@keyframes achievement-shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+/* Achievement trophy glow pulse */
+@keyframes achievement-glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px var(--ach-glow, rgba(245,158,11,0.3)); }
+  50% { box-shadow: 0 0 18px var(--ach-glow, rgba(245,158,11,0.6)), 0 0 30px var(--ach-glow, rgba(245,158,11,0.2)); }
 }
 .achievement-shimmer {
+  animation: achievement-glow-pulse 2.5s ease-in-out infinite;
+}
+.achievement-shimmer::after { display: none; }
+
+/* Achievement icon tilt + shine on hover */
+@keyframes achievement-shine {
+  0% { transform: translateX(-100%) rotate(25deg); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateX(200%) rotate(25deg); opacity: 0; }
+}
+.achievement-icon-wrapper {
+  transition: transform 0.2s ease;
+  transform-style: preserve-3d;
   position: relative;
   overflow: hidden;
 }
-.achievement-shimmer::after {
+.achievement-icon-wrapper:hover {
+  transform: perspective(200px) rotateY(12deg) rotateX(-6deg) scale(1.08);
+}
+.achievement-icon-wrapper::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-  animation: achievement-shimmer 2s infinite;
+  background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.45) 50%, transparent 70%);
+  transform: translateX(-100%) rotate(25deg);
   pointer-events: none;
+  z-index: 2;
+}
+.achievement-icon-wrapper:hover::before {
+  animation: achievement-shine 0.5s ease-out forwards;
 }
 
 /* Achievement ready-to-claim — rotating border glow */

@@ -614,6 +614,8 @@ export interface AchievementGroup {
   profileId: ProfileId
   name: string
   icon: string
+  /** Цвет папки (hex) — используется как акцент иконок ачивок внутри */
+  color?: string
   sortOrder: number
   createdAt: number
   updatedAt: number
