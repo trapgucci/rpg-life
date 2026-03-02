@@ -81,6 +81,9 @@ export const VAULT_FILES = {
   activeShopDiscountPercent: 'settings.json', // stored together with settings
   settings: 'settings.json',
   stats: 'stats.json',
+  noteFolders: 'note-folders.json',
+  notes: 'notes.json',
+  dailyReports: 'daily-reports.json',
 } as const
 
 // Files that need to be read (deduplicated since profile.json and settings.json
@@ -100,4 +103,7 @@ export const VAULT_READ_FILES = [
   'purchase-history.json',
   'usage-history.json',
   'stats.json',
+  'note-folders.json',
+  'notes.json',
+  'daily-reports.json',
 ] as const

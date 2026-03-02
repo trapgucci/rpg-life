@@ -33,6 +33,15 @@ import type {
   CompletedSubtaskRecord,
   TaskArchiveReason,
   RecurrenceSettings,
+  NoteFolder,
+  NoteFolderId,
+  Note,
+  NoteId,
+  DailyReport,
+  DailyReportId,
+  TiptapContent,
+  MoodLevel,
+  DailySnapshot,
 } from '../types/domain'
 import {
   TASK_XP_BY_DIFFICULTY,
@@ -344,6 +353,31 @@ interface RpgStoreState {
   // Streak multiplier
   applyStreakMultiplier: (taskId: TaskId, itemId: ItemId) => boolean
 
+  // ─── Reflection (Notes + Daily Reports) ────────────────────────────────
+  noteFolders: NoteFolder[]
+  notes: Note[]
+  dailyReports: DailyReport[]
+
+  // Note folder actions
+  getNoteFolders: () => NoteFolder[]
+  addNoteFolder: (name: string, icon?: string, color?: string) => NoteFolder
+  updateNoteFolder: (id: NoteFolderId, updater: (f: NoteFolder) => NoteFolder) => void
+  deleteNoteFolder: (id: NoteFolderId) => void
+  setFolderTemplate: (id: NoteFolderId, template: TiptapContent | null, templateName?: string) => void
+
+  // Note actions
+  getNotes: () => Note[]
+  addNote: (partial: { title: string; folderId?: NoteFolderId | null; content?: TiptapContent; linkedTaskIds?: TaskId[]; linkedItemIds?: ItemId[] }) => Note
+  updateNote: (id: NoteId, updater: (n: Note) => Note) => void
+  deleteNote: (id: NoteId) => void
+
+  // Daily report actions
+  getDailyReports: () => DailyReport[]
+  getDailyReport: (dateKey: string) => DailyReport | null
+  setDailyMood: (dateKey: string, mood: MoodLevel) => void
+  setDailyThoughts: (dateKey: string, thoughts: string) => void
+  generateDailySnapshot: (dateKey: string) => DailySnapshot
+
   // Export/Import
   exportData: () => string
   importData: (json: string) => boolean
@@ -385,6 +419,9 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
         vaultStorage.write('purchase-history.json', s.purchaseHistory ?? []),
         vaultStorage.write('usage-history.json', s.usageHistory ?? []),
         vaultStorage.write('stats.json', s.stats ?? undefined),
+        vaultStorage.write('note-folders.json', s.noteFolders ?? []),
+        vaultStorage.write('notes.json', s.notes ?? []),
+        vaultStorage.write('daily-reports.json', s.dailyReports ?? []),
       ])
       localStorage.removeItem('rpg-life-store-v2')
       console.info('[vault] Migration complete, old key removed.')
@@ -406,6 +443,7 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
         habits, shopItems, itemGroups, achievementGroups, inventory,
         achievements, craftRecipes, purchaseHistory,
         usageHistory, stats,
+        noteFolders, notes, dailyReports,
       ] = results as [
         { profiles: unknown[]; activeProfileId: string | null } | null,
         { settings: unknown; activeShopDiscountPercent: number | null } | null,
@@ -421,6 +459,9 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
         unknown[] | null,
         unknown[] | null,
         unknown | null,
+        unknown[] | null,
+        unknown[] | null,
+        unknown[] | null,
       ]
 
       // If all files are null, try migrating from legacy localStorage format
@@ -449,6 +490,9 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
           purchaseHistory: purchaseHistory as PurchaseHistoryEntry[] ?? [],
           usageHistory: usageHistory as UsageHistoryEntry[] ?? [],
           stats: stats as RpgStoreState['stats'] ?? undefined,
+          noteFolders: noteFolders as NoteFolder[] ?? [],
+          notes: notes as Note[] ?? [],
+          dailyReports: dailyReports as DailyReport[] ?? [],
         } as Partial<RpgStoreState>,
       }
     },
@@ -480,6 +524,9 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
             vaultStorage.write('purchase-history.json', state.purchaseHistory),
             vaultStorage.write('usage-history.json', state.usageHistory),
             vaultStorage.write('stats.json', state.stats),
+            vaultStorage.write('note-folders.json', state.noteFolders),
+            vaultStorage.write('notes.json', state.notes),
+            vaultStorage.write('daily-reports.json', state.dailyReports),
           ])
         } catch (err) {
           console.error('[vault] Failed to write state:', err)
@@ -2664,6 +2711,296 @@ export const useRpgStore = create<RpgStoreState>()(
           set({ debugDaysOffset: 0 })
         },
 
+        // ─── Reflection (Notes + Daily Reports) ──────────────────────────
+
+        noteFolders: [],
+        notes: [],
+        dailyReports: [],
+
+        getNoteFolders: () => {
+          const { noteFolders, activeProfileId } = get()
+          return noteFolders
+            .filter((f) => f.profileId === activeProfileId)
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+        },
+
+        addNoteFolder: (name, icon = '📁', color = '#14b8a6') => {
+          const { activeProfileId, noteFolders } = get()
+          const folder: NoteFolder = {
+            id: crypto.randomUUID(),
+            profileId: activeProfileId!,
+            name,
+            icon,
+            color,
+            template: null,
+            sortOrder: noteFolders.filter((f) => f.profileId === activeProfileId).length,
+            createdAt: now(),
+            updatedAt: now(),
+          }
+          set({ noteFolders: [...noteFolders, folder] })
+          return folder
+        },
+
+        updateNoteFolder: (id, updater) => {
+          set((s) => ({
+            noteFolders: s.noteFolders.map((f) =>
+              f.id === id ? { ...updater(f), updatedAt: now() } : f
+            ),
+          }))
+        },
+
+        deleteNoteFolder: (id) => {
+          set((s) => ({
+            noteFolders: s.noteFolders.filter((f) => f.id !== id),
+            // Перемещаем заметки в «без папки»
+            notes: s.notes.map((n) => (n.folderId === id ? { ...n, folderId: null } : n)),
+          }))
+        },
+
+        setFolderTemplate: (id, template, templateName) => {
+          set((s) => ({
+            noteFolders: s.noteFolders.map((f) =>
+              f.id === id ? { ...f, template, templateName, updatedAt: now() } : f
+            ),
+          }))
+        },
+
+        getNotes: () => {
+          const { notes, activeProfileId } = get()
+          return notes
+            .filter((n) => n.profileId === activeProfileId)
+            .sort((a, b) => {
+              // Pinned first, then by updatedAt desc
+              if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+              return b.updatedAt - a.updatedAt
+            })
+        },
+
+        addNote: (partial) => {
+          const { activeProfileId, notes, noteFolders } = get()
+          const folderId = partial.folderId ?? null
+          // Если у папки есть шаблон и контент не передан, применить шаблон
+          const folder = folderId ? noteFolders.find((f) => f.id === folderId) : null
+          const content = partial.content ?? folder?.template ?? { type: 'doc' as const, content: [] }
+          const note: Note = {
+            id: crypto.randomUUID(),
+            profileId: activeProfileId!,
+            folderId,
+            title: partial.title,
+            content,
+            excerpt: '',
+            mediaFiles: [],
+            linkedTaskIds: partial.linkedTaskIds ?? [],
+            linkedItemIds: partial.linkedItemIds ?? [],
+            pinned: false,
+            createdAt: now(),
+            updatedAt: now(),
+          }
+          set({ notes: [...notes, note] })
+          return note
+        },
+
+        updateNote: (id, updater) => {
+          set((s) => ({
+            notes: s.notes.map((n) =>
+              n.id === id ? { ...updater(n), updatedAt: now() } : n
+            ),
+          }))
+        },
+
+        deleteNote: (id) => {
+          set((s) => ({ notes: s.notes.filter((n) => n.id !== id) }))
+        },
+
+        getDailyReports: () => {
+          const { dailyReports, activeProfileId } = get()
+          return dailyReports
+            .filter((r) => r.profileId === activeProfileId)
+            .sort((a, b) => b.dateKey.localeCompare(a.dateKey))
+        },
+
+        getDailyReport: (dateKey) => {
+          const { dailyReports, activeProfileId } = get()
+          return dailyReports.find((r) => r.profileId === activeProfileId && r.dateKey === dateKey) ?? null
+        },
+
+        setDailyMood: (dateKey, mood) => {
+          const { dailyReports, activeProfileId } = get()
+          const existing = dailyReports.find((r) => r.profileId === activeProfileId && r.dateKey === dateKey)
+          if (existing) {
+            set({
+              dailyReports: dailyReports.map((r) =>
+                r.id === existing.id ? { ...r, mood, updatedAt: now() } : r
+              ),
+            })
+          } else {
+            set({
+              dailyReports: [...dailyReports, {
+                id: crypto.randomUUID(),
+                profileId: activeProfileId!,
+                dateKey,
+                mood,
+                thoughts: '',
+                createdAt: now(),
+                updatedAt: now(),
+              }],
+            })
+          }
+        },
+
+        setDailyThoughts: (dateKey, thoughts) => {
+          const { dailyReports, activeProfileId } = get()
+          const existing = dailyReports.find((r) => r.profileId === activeProfileId && r.dateKey === dateKey)
+          if (existing) {
+            set({
+              dailyReports: dailyReports.map((r) =>
+                r.id === existing.id ? { ...r, thoughts, updatedAt: now() } : r
+              ),
+            })
+          } else {
+            set({
+              dailyReports: [...dailyReports, {
+                id: crypto.randomUUID(),
+                profileId: activeProfileId!,
+                dateKey,
+                mood: null,
+                thoughts,
+                createdAt: now(),
+                updatedAt: now(),
+              }],
+            })
+          }
+        },
+
+        generateDailySnapshot: (dateKey) => {
+          const state = get()
+          const pid = state.activeProfileId
+          // Parse day boundaries
+          const [y, m, d] = dateKey.split('-').map(Number)
+          const dayStart = new Date(y, m - 1, d, 0, 0, 0, 0).getTime()
+          const dayEnd = new Date(y, m - 1, d, 23, 59, 59, 999).getTime()
+
+          // Tasks completed that day
+          const profileTasks = state.tasks.filter((t) => t.profileId === pid)
+          const taskMap = new Map<string, { taskId: string; title: string; count: number; groupId: string | null }>()
+          for (const task of profileTasks) {
+            const records = (task.completionHistory ?? []).filter(
+              (r) => r.status === 'completed' && r.completedAt && r.completedAt >= dayStart && r.completedAt <= dayEnd
+            )
+            if (records.length > 0) {
+              taskMap.set(task.id, {
+                taskId: task.id,
+                title: task.title,
+                count: records.length,
+                groupId: task.groupId ?? null,
+              })
+            }
+          }
+
+          // Group tasks by groupId
+          const groupMap = new Map<string | null, typeof taskMap extends Map<string, infer V> ? V[] : never>()
+          for (const t of taskMap.values()) {
+            const arr = groupMap.get(t.groupId) ?? []
+            arr.push(t)
+            groupMap.set(t.groupId, arr)
+          }
+
+          const tasksCompleted = Array.from(groupMap.entries()).map(([groupId, tasks]) => {
+            const group = groupId ? state.taskGroups.find((g) => g.id === groupId) : null
+            return {
+              groupId,
+              groupName: group?.name ?? 'Без группы',
+              tasks: tasks.map(({ taskId, title, count }) => ({ taskId, title, count })),
+            }
+          })
+
+          let totalTasksCompleted = 0
+          for (const g of tasksCompleted) {
+            for (const t of g.tasks) totalTasksCompleted += t.count
+          }
+
+          // Habits
+          const profileHabits = state.habits.filter((h) => h.profileId === pid)
+          const habitsPositive: DailySnapshot['habitsPositive'] = []
+          const habitsNegative: DailySnapshot['habitsNegative'] = []
+          for (const h of profileHabits) {
+            const dc = h.dailyCompletion?.[dateKey]
+            if (dc === 'positive') habitsPositive.push({ habitId: h.id, title: h.title })
+            if (dc === 'negative') habitsNegative.push({ habitId: h.id, title: h.title })
+          }
+
+          // Purchases
+          const purchaseMap = new Map<string, { itemId: string; name: string; count: number }>()
+          for (const p of state.purchaseHistory) {
+            if (p.profileId === pid && p.timestamp >= dayStart && p.timestamp <= dayEnd) {
+              const existing = purchaseMap.get(p.itemId)
+              if (existing) existing.count++
+              else purchaseMap.set(p.itemId, { itemId: p.itemId, name: p.itemName, count: 1 })
+            }
+          }
+
+          // Usage
+          const usageMap = new Map<string, { itemId: string; name: string; count: number }>()
+          for (const u of state.usageHistory) {
+            if (u.profileId === pid && u.timestamp >= dayStart && u.timestamp <= dayEnd && u.action === 'used') {
+              const existing = usageMap.get(u.itemId)
+              if (existing) existing.count++
+              else usageMap.set(u.itemId, { itemId: u.itemId, name: u.itemName, count: 1 })
+            }
+          }
+
+          // Achievements unlocked
+          const achievementsUnlocked = state.achievements
+            .filter((a) => a.profileId === pid && a.unlockedAt && a.unlockedAt >= dayStart && a.unlockedAt <= dayEnd)
+            .map((a) => ({ achievementId: a.id, title: a.title, icon: a.icon }))
+
+          // XP & coins from task completions
+          let xpEarned = 0
+          let coinsEarned = 0
+          let coinsSpent = 0
+          for (const task of profileTasks) {
+            for (const r of task.completionHistory ?? []) {
+              if (r.status === 'completed' && r.completedAt && r.completedAt >= dayStart && r.completedAt <= dayEnd) {
+                xpEarned += r.xpEarned ?? 0
+                coinsEarned += r.coinsEarned ?? 0
+              }
+            }
+          }
+          for (const p of state.purchaseHistory) {
+            if (p.profileId === pid && p.timestamp >= dayStart && p.timestamp <= dayEnd) {
+              // Cost lookup from shopItems
+              const item = state.shopItems.find((si) => si.id === p.itemId)
+              if (item?.cost?.coins) coinsSpent += item.cost.coins
+            }
+          }
+
+          // Active streaks (only meaningful for today)
+          const activeStreaks: DailySnapshot['activeStreaks'] = []
+          const todayKey = getDateKey(now())
+          if (dateKey === todayKey) {
+            for (const task of profileTasks) {
+              if ((task.currentStreak ?? 0) > 0) {
+                activeStreaks.push({ taskId: task.id, title: task.title, streak: task.currentStreak! })
+              }
+            }
+            activeStreaks.sort((a, b) => b.streak - a.streak)
+          }
+
+          return {
+            tasksCompleted,
+            totalTasksCompleted,
+            habitsPositive,
+            habitsNegative,
+            itemsPurchased: Array.from(purchaseMap.values()),
+            itemsUsed: Array.from(usageMap.values()),
+            achievementsUnlocked,
+            xpEarned,
+            coinsEarned,
+            coinsSpent,
+            activeStreaks,
+          }
+        },
+
         // ─── Export/Import ────────────────────────────────────────────────
         exportData: () => {
           const state = get()
@@ -2685,6 +3022,9 @@ export const useRpgStore = create<RpgStoreState>()(
             activeShopDiscountPercent: state.activeShopDiscountPercent,
             settings: state.settings,
             stats: state.stats,
+            noteFolders: state.noteFolders,
+            notes: state.notes,
+            dailyReports: state.dailyReports,
           }
           return JSON.stringify(exportObj, null, 2)
         },
@@ -2709,6 +3049,9 @@ export const useRpgStore = create<RpgStoreState>()(
               activeShopDiscountPercent: data.activeShopDiscountPercent ?? null,
               settings: { ...DEFAULT_SETTINGS, ...data.settings },
               stats: data.stats ?? get().stats,
+              noteFolders: data.noteFolders ?? [],
+              notes: data.notes ?? [],
+              dailyReports: data.dailyReports ?? [],
             })
             return true
           } catch {
@@ -2729,6 +3072,9 @@ export const useRpgStore = create<RpgStoreState>()(
             craftRecipes: [],
             inventory: [],
             activeShopDiscountPercent: null,
+            noteFolders: [],
+            notes: [],
+            dailyReports: [],
             stats: {
               totalTasksCompleted: 0,
               totalHabitsPositive: 0,
@@ -2764,6 +3110,9 @@ export const useRpgStore = create<RpgStoreState>()(
         activeShopDiscountPercent: s.activeShopDiscountPercent,
         settings: s.settings,
         stats: s.stats,
+        noteFolders: s.noteFolders,
+        notes: s.notes,
+        dailyReports: s.dailyReports,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return
@@ -2786,6 +3135,9 @@ export const useRpgStore = create<RpgStoreState>()(
         if (!state.itemGroups) useRpgStore.setState({ itemGroups: [] })
         if (!state.achievementGroups) useRpgStore.setState({ achievementGroups: [] })
         if (!state.tasks) useRpgStore.setState({ tasks: [] })
+        if (!state.noteFolders) useRpgStore.setState({ noteFolders: [] })
+        if (!state.notes) useRpgStore.setState({ notes: [] })
+        if (!state.dailyReports) useRpgStore.setState({ dailyReports: [] })
 
         // Migrate settings to add taskDifficultyXp if missing
         if (state.settings && !state.settings.taskDifficultyXp) {

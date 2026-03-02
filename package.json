@@ -16,6 +16,13 @@
   },
   "main": "electron/main.cjs",
   "dependencies": {
+    "@tiptap/extension-image": "^3.20.0",
+    "@tiptap/extension-link": "^3.20.0",
+    "@tiptap/extension-placeholder": "^3.20.0",
+    "@tiptap/extension-underline": "^3.20.0",
+    "@tiptap/pm": "^3.20.0",
+    "@tiptap/react": "^3.20.0",
+    "@tiptap/starter-kit": "^3.20.0",
     "autoprefixer": "^10.4.24",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",

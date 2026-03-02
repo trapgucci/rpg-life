@@ -1078,3 +1078,113 @@ html.dark,
   position: relative;
   z-index: 1;
 }
+
+/* ─── Tiptap Editor Styles ─────────────────────────────────────────────────── */
+
+.tiptap {
+  outline: none;
+}
+
+.tiptap > * + * {
+  margin-top: 0.5em;
+}
+
+.tiptap h1 {
+  font-size: 1.5em;
+  font-weight: 700;
+  color: var(--fg);
+  margin-top: 1em;
+  margin-bottom: 0.25em;
+}
+
+.tiptap h2 {
+  font-size: 1.25em;
+  font-weight: 600;
+  color: var(--fg);
+  margin-top: 0.75em;
+  margin-bottom: 0.25em;
+}
+
+.tiptap h3 {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: var(--fg);
+  margin-top: 0.5em;
+  margin-bottom: 0.25em;
+}
+
+.tiptap p {
+  color: var(--fg);
+  line-height: 1.65;
+}
+
+.tiptap ul {
+  list-style: disc;
+  padding-left: 1.5em;
+}
+
+.tiptap ol {
+  list-style: decimal;
+  padding-left: 1.5em;
+}
+
+.tiptap li {
+  color: var(--fg);
+}
+
+.tiptap li > p {
+  margin: 0;
+}
+
+.tiptap blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 1em;
+  margin-left: 0;
+  color: var(--fg-muted);
+  font-style: italic;
+}
+
+.tiptap a {
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tiptap img {
+  max-width: 100%;
+  border-radius: 0.75rem;
+  margin: 0.5em 0;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.tiptap img:hover {
+  opacity: 0.9;
+}
+
+.tiptap code {
+  background: var(--surface-elevated);
+  padding: 0.15em 0.4em;
+  border-radius: 0.25em;
+  font-size: 0.9em;
+}
+
+.tiptap pre {
+  background: var(--surface-elevated);
+  border-radius: 0.5em;
+  padding: 0.75em 1em;
+  overflow-x: auto;
+}
+
+.tiptap pre code {
+  background: none;
+  padding: 0;
+}
+
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--fg-muted);
+  pointer-events: none;
+  height: 0;
+}

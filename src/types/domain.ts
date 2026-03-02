@@ -774,6 +774,100 @@ export interface CraftRecipe {
   updatedAt: number
 }
 
+// ─── Reflection System (Notes + Daily Reports) ──────────────────────────────
+
+export type NoteId = string
+export type NoteFolderId = string
+export type DailyReportId = string
+
+/** Tiptap editor JSON document */
+export type TiptapContent = { type: 'doc'; content: unknown[] }
+
+/** Mood level 1-5 */
+export type MoodLevel = 1 | 2 | 3 | 4 | 5
+
+export const MOOD_CONFIG: Record<MoodLevel, { emoji: string; label: string; color: string }> = {
+  1: { emoji: '😫', label: 'Ужасно', color: '#ef4444' },
+  2: { emoji: '😕', label: 'Плохо', color: '#f97316' },
+  3: { emoji: '😐', label: 'Нормально', color: '#eab308' },
+  4: { emoji: '🙂', label: 'Хорошо', color: '#22c55e' },
+  5: { emoji: '😁', label: 'Отлично', color: '#14b8a6' },
+}
+
+/** Папка для заметок */
+export interface NoteFolder {
+  id: NoteFolderId
+  profileId: ProfileId
+  name: string
+  /** Эмодзи-иконка */
+  icon: string
+  /** Цвет папки (hex) */
+  color: string
+  /** Шаблон заметки (Tiptap JSON); null = без шаблона */
+  template: TiptapContent | null
+  /** Название шаблона, напр. "После тренировки" */
+  templateName?: string
+  sortOrder: number
+  createdAt: number
+  updatedAt: number
+}
+
+/** Заметка */
+export interface Note {
+  id: NoteId
+  profileId: ProfileId
+  /** Папка; null = без папки */
+  folderId: NoteFolderId | null
+  title: string
+  /** Контент в Tiptap JSON формате */
+  content: TiptapContent
+  /** Текстовый отрывок для превью (~200 символов) */
+  excerpt: string
+  /** Пути к медиафайлам (из vaultStorage.saveMedia) */
+  mediaFiles: string[]
+  /** Привязанные задачи */
+  linkedTaskIds: TaskId[]
+  /** Привязанные предметы */
+  linkedItemIds: ItemId[]
+  /** Закреплена вверху */
+  pinned: boolean
+  createdAt: number
+  updatedAt: number
+}
+
+/** Ежедневный отчёт (настроение + мысли) */
+export interface DailyReport {
+  id: DailyReportId
+  profileId: ProfileId
+  /** Дата в формате YYYY-MM-DD */
+  dateKey: string
+  /** Настроение 1-5 */
+  mood: MoodLevel | null
+  /** Мысли за день (свободный текст) */
+  thoughts: string
+  createdAt: number
+  updatedAt: number
+}
+
+/** Автоматический снимок дня (вычисляется из данных приложения) */
+export interface DailySnapshot {
+  tasksCompleted: {
+    groupId: string | null
+    groupName: string
+    tasks: { taskId: TaskId; title: string; count: number }[]
+  }[]
+  totalTasksCompleted: number
+  habitsPositive: { habitId: HabitId; title: string }[]
+  habitsNegative: { habitId: HabitId; title: string }[]
+  itemsPurchased: { itemId: ItemId; name: string; count: number }[]
+  itemsUsed: { itemId: ItemId; name: string; count: number }[]
+  achievementsUnlocked: { achievementId: AchievementId; title: string; icon: string }[]
+  xpEarned: number
+  coinsEarned: number
+  coinsSpent: number
+  activeStreaks: { taskId: TaskId; title: string; streak: number }[]
+}
+
 // ─── App Settings ───────────────────────────────────────────────────────────
 
 export type ThemeMode = 'light' | 'dark' | 'system'
