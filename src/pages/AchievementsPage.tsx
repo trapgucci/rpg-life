@@ -9,10 +9,12 @@ import {
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
+import { useShallow } from 'zustand/react/shallow'
 import ConfirmModal from '../components/ConfirmModal'
 import Modal from '../components/Modal'
 import { ItemIconBadge } from '../components/ItemIconBadge'
 import { getItemTypeBadge, getItemTypeColor } from '../components/shop/shopUtils'
+import { useNotifications } from '../hooks/useNotifications'
 import type {
   Achievement, AchievementConditionType, AchievementGroup,
   AchievementGroupId, AttributeId, TaskDifficulty, ItemId, TaskId,
@@ -66,13 +68,19 @@ interface AchievementDetailModalProps {
 }
 
 function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDetailModalProps) {
+  const { notifyAchievement } = useNotifications()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const { profiles, activeProfileId, shopItems } = useRpgStore(
+    useShallow((s) => ({
+      profiles: s.profiles,
+      activeProfileId: s.activeProfileId,
+      shopItems: s.shopItems,
+    }))
+  )
+
   const deleteAchievement = useRpgStore((s) => s.deleteAchievement)
   const unlockAchievement = useRpgStore((s) => s.unlockAchievement)
   const markAchievementReady = useRpgStore((s) => s.markAchievementReady)
-  const profiles = useRpgStore((s) => s.profiles)
-  const activeProfileId = useRpgStore((s) => s.activeProfileId)
-  const shopItems = useRpgStore((s) => s.shopItems)
 
   const profile = profiles.find((p) => p.id === activeProfileId)
   const attributes = profile?.attributes ?? []
@@ -306,6 +314,7 @@ function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDet
             type="button"
             onClick={() => {
               const result = unlockAchievement(achievement.id)
+              notifyAchievement(achievement.title)
 
               // Компенсация из достижения — сложить доп. монеты/кристаллы
               let extraCoins = 0, extraGems = 0

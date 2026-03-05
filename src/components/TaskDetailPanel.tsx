@@ -18,6 +18,7 @@ import RewardBadge from './RewardBadge'
 import { HabitIcon } from './HabitIcon'
 import { TaskCurrentCycleBlock, TaskMultiplierBlock, TaskStatsBlock, TaskHistoryBlock } from './TaskCycleSections'
 import { getItemTypeColor } from './shop/shopUtils'
+import { useNotifications } from '../hooks/useNotifications'
 import { getNextAvailableDate, getRelativeTimeRu, getSubtaskXp, isTodayScheduled } from '../lib/taskCycleUtils'
 
 const DIFFICULTY_LABELS: Record<TaskDifficulty, string> = {
@@ -63,6 +64,7 @@ interface TaskDetailPanelProps {
 }
 
 export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelProps) {
+  const { notifyTaskComplete } = useNotifications()
   const getTaskRewardPreview = useRpgStore((s) => s.getTaskRewardPreview)
   const completeTask = useRpgStore((s) => s.completeTask)
   const canCompleteTask = useRpgStore((s) => s.canCompleteTask)
@@ -268,6 +270,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
       xp: reward.xp,
       gems: reward.gems,
     })
+    notifyTaskComplete(task.title, reward.xp, reward.coins)
     // Для instant задач НЕ десeлектим — задача сбрасывается и готова к повторному выполнению
     if (task.recurrence !== 'instant') {
       onDeselect?.()

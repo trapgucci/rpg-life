@@ -1,7 +1,6 @@
-import { memo, useMemo } from 'react'
+import { memo } from 'react'
 import { cn } from '../../lib/cn'
 import { Coins, Gem, Gift, Percent, ShoppingCart, TrendingUp, Gamepad2, Clapperboard, Check, Hammer, Trophy } from 'lucide-react'
-import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
 import { getItemTypeBadge, getItemTypeColor } from './shopUtils'
@@ -12,47 +11,30 @@ interface ShopItemCardProps {
   selected?: boolean
   onSelect: () => void
   onAddToCart?: (itemId: string) => void
+  coins: number
+  gems: number
+  discountPercent: number | null
+  groupColor: string | null
+  hasCraftRecipe: boolean
+  isAchievementReward: boolean
 }
 
-export default memo(function ShopItemCard({ item, selected, onSelect, onAddToCart }: ShopItemCardProps) {
-  const activeShopDiscountPercent = useRpgStore((s) => s.activeShopDiscountPercent)
-  const profiles = useRpgStore((s) => s.profiles)
-  const activeProfileId = useRpgStore((s) => s.activeProfileId)
-  const allItemGroups = useRpgStore((s) => s.itemGroups)
-  const craftRecipes = useRpgStore((s) => s.craftRecipes)
-  const achievements = useRpgStore((s) => s.achievements)
-
-  // Check if this item has an active (non-crafted) recipe
-  const hasCraftRecipe = useMemo(
-    () => craftRecipes.some((r) => r.resultItemId === item.id && !r.crafted),
-    [craftRecipes, item.id],
-  )
-
-  // Check if this item is a reward from any achievement
-  const isAchievementReward = useMemo(
-    () => achievements.some((a) =>
-      (a.rewardItems?.some((ri) => ri.itemId === item.id)) ||
-      (a.rewardItemId === item.id)
-    ),
-    [achievements, item.id],
-  )
-  const craftColor = useMemo(() => hasCraftRecipe ? getItemTypeColor(item) : '#9ca3af', [hasCraftRecipe, item])
-
-  const profile = profiles.find((p) => p.id === activeProfileId)
-  const coins = profile?.currencies[CURRENCY_IDS.COINS] ?? 0
-  const gems = profile?.currencies[CURRENCY_IDS.GEMS] ?? 0
-  const group = item.groupId ? allItemGroups.find((g) => g.id === item.groupId) : null
+export default memo(function ShopItemCard({
+  item, selected, onSelect, onAddToCart,
+  coins, gems, discountPercent, groupColor, hasCraftRecipe, isAchievementReward,
+}: ShopItemCardProps) {
   const typeBadge = getItemTypeBadge(item)
   const typeColor = typeBadge
     ? ({ lootbox: '#8b5cf6', multiplier: '#f59e0b', discount: '#ef4444', videogame: '#06b6d4', serial: '#ec4899' })[typeBadge.type]
     : '#9ca3af'
-  const iconBgColor = group?.color ?? typeColor
+  const iconBgColor = groupColor ?? typeColor
+  const craftColor = hasCraftRecipe ? getItemTypeColor(item) : '#9ca3af'
 
   const coinCost = item.cost?.[CURRENCY_IDS.COINS] ?? 0
   const gemCost = item.cost?.[CURRENCY_IDS.GEMS] ?? 0
   const effectiveCoinCost =
-    activeShopDiscountPercent != null && coinCost > 0
-      ? Math.round(coinCost * (1 - activeShopDiscountPercent / 100))
+    discountPercent != null && coinCost > 0
+      ? Math.round(coinCost * (1 - discountPercent / 100))
       : coinCost
   const effectiveGemCost = gemCost // скидка не применяется к кристаллам
   const canAfford = coins >= effectiveCoinCost && gems >= effectiveGemCost
@@ -96,7 +78,7 @@ export default memo(function ShopItemCard({ item, selected, onSelect, onAddToCar
           <ItemIconBadge
             item={item}
             size="lg"
-            groupColor={group?.color}
+            groupColor={groupColor ?? undefined}
             className={cn(
               'group-hover:scale-110',
               selected && 'scale-110'
@@ -146,7 +128,7 @@ export default memo(function ShopItemCard({ item, selected, onSelect, onAddToCar
                 )}
               >
                 <Coins className="h-3.5 w-3.5" />
-                {activeShopDiscountPercent != null && effectiveCoinCost < coinCost ? (
+                {discountPercent != null && effectiveCoinCost < coinCost ? (
                   <>
                     <span className="line-through opacity-60 text-[10px]">{coinCost}</span>
                     <span className="font-black">{effectiveCoinCost}</span>

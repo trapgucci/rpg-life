@@ -421,6 +421,22 @@ function NotificationsSection() {
             />
           </label>
         ))}
+
+        {/* Время ежедневного напоминания */}
+        {settings.notifyDailyReminder && (
+          <div className="flex items-center justify-between rounded-xl bg-[var(--surface)] p-4">
+            <div>
+              <p className="font-medium text-[var(--fg)]">Время напоминания</p>
+              <p className="text-xs text-[var(--fg-muted)]">Когда присылать ежедневное уведомление</p>
+            </div>
+            <input
+              type="time"
+              value={settings.dailyReminderTime || '09:00'}
+              onChange={(e) => updateSettings({ dailyReminderTime: e.target.value })}
+              className="rounded-lg bg-[var(--surface-elevated)] px-3 py-1.5 text-sm text-[var(--fg)] border border-[var(--border)]"
+            />
+          </div>
+        )}
       </div>
     </div>
   )

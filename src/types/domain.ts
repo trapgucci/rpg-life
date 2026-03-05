@@ -904,6 +904,10 @@ export interface AppSettings {
   notificationsEnabled: boolean
   notifyDailyTasks: boolean
   notifyAchievements: boolean
+  notifyLevelUp: boolean
+  notifyDailyReminder: boolean
+  /** Время ежедневного напоминания (HH:MM) */
+  dailyReminderTime: string
   language: 'ru' | 'en'
   /** Настройки XP для сложностей задач */
   taskDifficultyXp: {
@@ -922,6 +926,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   notificationsEnabled: true,
   notifyDailyTasks: true,
   notifyAchievements: true,
+  notifyLevelUp: true,
+  notifyDailyReminder: true,
+  dailyReminderTime: '09:00',
   language: 'ru',
   taskDifficultyXp: {
     easy: 10,

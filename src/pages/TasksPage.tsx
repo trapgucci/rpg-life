@@ -7,6 +7,7 @@ import TaskCreateForm from '../components/TaskCreateForm'
 import TaskCard, { type TaskCardFragment } from '../components/TaskCard'
 import TaskDetailPanel from '../components/TaskDetailPanel'
 import { useRpgStore } from '../store/useRpgStore'
+import { useShallow } from 'zustand/react/shallow'
 import ConfirmModal from '../components/ConfirmModal'
 import type { TaskRpg, TaskGroupId } from '../types/domain'
 import { getItemTypeColor } from '../components/shop/shopUtils'
@@ -46,9 +47,15 @@ const PRIORITY_ORDER: Record<string, number> = {
 }
 
 export default function TasksPage() {
-  const tasks = useRpgStore((s) => s.tasks)
-  const activeProfileId = useRpgStore((s) => s.activeProfileId)
-  const taskGroupsRaw = useRpgStore((s) => s.taskGroups)
+  const { tasks, activeProfileId, taskGroupsRaw, shopItems } = useRpgStore(
+    useShallow((s) => ({
+      tasks: s.tasks,
+      activeProfileId: s.activeProfileId,
+      taskGroupsRaw: s.taskGroups,
+      shopItems: s.shopItems,
+    }))
+  )
+
   const addTaskGroup = useRpgStore((s) => s.addTaskGroup)
   const updateTaskGroup = useRpgStore((s) => s.updateTaskGroup)
   const deleteTaskGroup = useRpgStore((s) => s.deleteTaskGroup)
@@ -56,7 +63,6 @@ export default function TasksPage() {
   const resetRecurringTasks = useRpgStore((s) => s.resetRecurringTasks)
   const getTaskRewardPreview = useRpgStore((s) => s.getTaskRewardPreview)
   const getCraftRecipes = useRpgStore((s) => s.getCraftRecipes)
-  const shopItems = useRpgStore((s) => s.shopItems)
 
   const taskGroups = useMemo(
     () =>

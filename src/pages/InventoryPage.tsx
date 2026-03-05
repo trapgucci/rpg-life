@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { cn } from '../lib/cn'
 import { Package, Search, X, Clock, Gift, Frown, Minus, Plus, Trash2, Coins, Gem } from 'lucide-react'
 import { useRpgStore } from '../store/useRpgStore'
+import { useShallow } from 'zustand/react/shallow'
 import InventoryItemCard from '../components/InventoryItemCard'
 import InventoryItemModal from '../components/InventoryItemModal'
 import InventoryHistorySidebar from '../components/InventoryHistorySidebar'
@@ -28,10 +29,15 @@ interface GroupBucket {
 
 export default function InventoryPage() {
   // ── Store ──────────────────────────────────────────────────────────────────
-  const shopItems = useRpgStore((s) => s.shopItems)
-  const inventory = useRpgStore((s) => s.inventory)
-  const allItemGroups = useRpgStore((s) => s.itemGroups)
-  const activeProfileId = useRpgStore((s) => s.activeProfileId)
+  const { shopItems, inventory, allItemGroups, activeProfileId } = useRpgStore(
+    useShallow((s) => ({
+      shopItems: s.shopItems,
+      inventory: s.inventory,
+      allItemGroups: s.itemGroups,
+      activeProfileId: s.activeProfileId,
+    }))
+  )
+
   const removeFromInventory = useRpgStore((s) => s.removeFromInventory)
   const useItem = useRpgStore((s) => s.useItem)
 

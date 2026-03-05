@@ -10,6 +10,7 @@ import StatusPage from './pages/StatusPage'
 import AchievementsPage from './pages/AchievementsPage'
 import SettingsPage from './pages/SettingsPage'
 import RewardNotifications from './components/RewardNotifications'
+import NotificationWatcher from './components/NotificationWatcher'
 import VaultSetup from './components/VaultSetup'
 import { useRpgStore } from './store/useRpgStore'
 import { ACCENT_COLORS } from './types/domain'
@@ -85,6 +86,7 @@ function App() {
         }}
       />
       <RewardNotifications />
+      <NotificationWatcher />
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<TasksPage />} />

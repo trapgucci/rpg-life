@@ -21,14 +21,15 @@ export function useNotifications() {
   const showNotification = useCallback(async (
     title: string,
     body: string,
-    type: 'achievement' | 'reminder' | 'general' = 'general'
+    type: 'achievement' | 'reminder' | 'general' | 'levelup' = 'general'
   ) => {
     // Check if notifications are enabled
     if (!settings.notificationsEnabled) return false
     
     // Check specific notification types
     if (type === 'achievement' && !settings.notifyAchievements) return false
-    if (type === 'reminder' && !settings.notifyDailyTasks) return false
+    if (type === 'reminder' && !settings.notifyDailyReminder) return false
+    if (type === 'levelup' && !settings.notifyLevelUp) return false
 
     // Use Electron notification if available
     if (window.electronAPI?.showNotification) {
@@ -50,7 +51,7 @@ export function useNotifications() {
     }
 
     return false
-  }, [settings.notificationsEnabled, settings.notifyAchievements, settings.notifyDailyTasks])
+  }, [settings.notificationsEnabled, settings.notifyAchievements, settings.notifyDailyReminder, settings.notifyLevelUp])
 
   const notifyAchievement = useCallback((achievementTitle: string) => {
     return showNotification(
@@ -83,7 +84,7 @@ export function useNotifications() {
     const body = attributeName
       ? `${attributeName} теперь уровня ${level}`
       : `Вы достигли уровня ${level}!`
-    return showNotification(title, body, 'general')
+    return showNotification(title, body, 'levelup')
   }, [showNotification])
 
   return {

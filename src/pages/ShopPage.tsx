@@ -7,6 +7,7 @@ import {
   Package, Puzzle, Palette,
 } from 'lucide-react'
 import { rpgToast } from '../components/RpgToast'
+import { CURRENCY_IDS } from '../types/domain'
 
 const GROUP_COLORS = [
   '#ef4444', '#f97316', '#f59e0b', '#eab308',
@@ -16,6 +17,7 @@ const GROUP_COLORS = [
   '#f43f5e', '#78716c', '#9ca3af', '#64748b',
 ]
 import { useRpgStore } from '../store/useRpgStore'
+import { useShallow } from 'zustand/react/shallow'
 import ConfirmModal from '../components/ConfirmModal'
 
 import ShopItemCard from '../components/shop/ShopItemCard'
@@ -51,10 +53,17 @@ type Tab = 'shop' | 'fragments'
 
 export default function ShopPage() {
   // ── Store ────────────────────────────────────────────────────────────────
-  const shopItems = useRpgStore((s) => s.shopItems)
-  const craftRecipes = useRpgStore((s) => s.craftRecipes)
-  const activeProfileId = useRpgStore((s) => s.activeProfileId)
-  const allItemGroups = useRpgStore((s) => s.itemGroups)
+  const { shopItems, craftRecipes, activeProfileId, allItemGroups, profiles, achievements, activeShopDiscountPercent } = useRpgStore(
+    useShallow((s) => ({
+      shopItems: s.shopItems,
+      craftRecipes: s.craftRecipes,
+      activeProfileId: s.activeProfileId,
+      allItemGroups: s.itemGroups,
+      profiles: s.profiles,
+      achievements: s.achievements,
+      activeShopDiscountPercent: s.activeShopDiscountPercent,
+    }))
+  )
 
   const itemGroups = useMemo(
     () =>
@@ -66,6 +75,38 @@ export default function ShopPage() {
         : [],
     [allItemGroups, activeProfileId],
   )
+
+  // ── Precomputed data for ShopItemCard ────────────────────────────────────
+  const profile = profiles.find((p) => p.id === activeProfileId)
+  const coins = profile?.currencies[CURRENCY_IDS.COINS] ?? 0
+  const gems = profile?.currencies[CURRENCY_IDS.GEMS] ?? 0
+
+  const craftableItemIds = useMemo(() => {
+    const set = new Set<string>()
+    for (const r of craftRecipes) {
+      if (!r.crafted) set.add(r.resultItemId)
+    }
+    return set
+  }, [craftRecipes])
+
+  const achievementRewardItemIds = useMemo(() => {
+    const set = new Set<string>()
+    for (const a of achievements) {
+      if (a.rewardItems?.length) {
+        for (const ri of a.rewardItems) set.add(ri.itemId)
+      }
+      if (a.rewardItemId) set.add(a.rewardItemId)
+    }
+    return set
+  }, [achievements])
+
+  const groupColorMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const g of allItemGroups) {
+      if (g.color) map.set(g.id, g.color)
+    }
+    return map
+  }, [allItemGroups])
 
   // ── Local state ──────────────────────────────────────────────────────────
   const [tab, setTab] = useState<Tab>('shop')
@@ -893,6 +934,12 @@ export default function ShopPage() {
                     selected={item.id === selectedItemId}
                     onSelect={() => handleSelectItem(item.id)}
                     onAddToCart={addToCart}
+                    coins={coins}
+                    gems={gems}
+                    discountPercent={activeShopDiscountPercent}
+                    groupColor={item.groupId ? groupColorMap.get(item.groupId) ?? null : null}
+                    hasCraftRecipe={craftableItemIds.has(item.id)}
+                    isAchievementReward={achievementRewardItemIds.has(item.id)}
                   />
                 ))}
               </div>
