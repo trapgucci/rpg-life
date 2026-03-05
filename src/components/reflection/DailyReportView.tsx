@@ -2,7 +2,7 @@ import { useMemo, useRef, useEffect, useCallback, useState } from 'react'
 import {
   CheckSquare, ShoppingBag, Trophy,
   Flame, Coins, Zap, MessageCircle, ImagePlus, X,
-  Gem, ChevronDown, ChevronRight,
+  Gem, ChevronDown, ChevronRight, Plus, Trash2, ClipboardCheck,
 } from 'lucide-react'
 import MoodTracker from './MoodTracker'
 import MoodChart from './MoodChart'
@@ -11,7 +11,7 @@ import { useRpgStore } from '../../store/useRpgStore'
 import { formatDateRu } from '../../lib/reflectionUtils'
 import { vaultStorage } from '../../lib/vaultStorage'
 import { resizeImageFile } from '../../lib/resizeImage'
-import type { DailySnapshot, MoodLevel } from '../../types/domain'
+import type { DailySnapshot, MoodLevel, DailyCondition } from '../../types/domain'
 
 interface DailyReportViewProps {
   dateKey: string
@@ -157,6 +157,189 @@ function TaskRow({ task }: { task: SnapshotTask }) {
   )
 }
 
+const CONDITION_ICONS = ['✅', '📸', '💪', '📖', '🧘', '💊', '🥗', '🏃', '💧', '🎯', '✍️', '🧹']
+
+function ConditionsSection({
+  dateKey, getConditionsForDate, conditionEntries, toggleConditionEntry,
+  deleteDailyCondition, showAddCondition, setShowAddCondition,
+  newConditionName, setNewConditionName, newConditionIcon, setNewConditionIcon,
+  addDailyCondition, sectionNeuStyle,
+}: {
+  dateKey: string
+  getConditionsForDate: (dateKey: string) => DailyCondition[]
+  conditionEntries: { conditionId: string; dateKey: string; checked: boolean }[]
+  toggleConditionEntry: (conditionId: string, dateKey: string) => void
+  deleteDailyCondition: (id: string) => void
+  showAddCondition: boolean
+  setShowAddCondition: (v: boolean) => void
+  newConditionName: string
+  setNewConditionName: (v: string) => void
+  newConditionIcon: string
+  setNewConditionIcon: (v: string) => void
+  addDailyCondition: (name: string, icon?: string) => void
+  sectionNeuStyle: React.CSSProperties
+}) {
+  const conditions = getConditionsForDate(dateKey)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
+  const handleAdd = () => {
+    if (!newConditionName.trim()) return
+    addDailyCondition(newConditionName.trim(), newConditionIcon)
+    setNewConditionName('')
+    setNewConditionIcon('✅')
+    setShowAddCondition(false)
+  }
+
+  return (
+    <div className="rounded-2xl p-4" style={sectionNeuStyle}>
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div
+            className="flex h-8 w-8 items-center justify-center rounded-xl"
+            style={{
+              background: 'linear-gradient(145deg, #22c55e25, #22c55e15)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 6px #22c55e20',
+              border: '1px solid #22c55e20',
+            }}
+          >
+            <ClipboardCheck className="h-4 w-4" style={{ color: '#22c55e' }} />
+          </div>
+          <h3 className="text-sm font-semibold text-[var(--fg)]">Условия дня</h3>
+        </div>
+      </div>
+
+      {/* Condition checklist */}
+      {conditions.length > 0 && (
+        <div className="flex flex-col gap-1 mb-2">
+          {conditions.map((cond) => {
+            const entry = conditionEntries.find(
+              (e) => e.conditionId === cond.id && e.dateKey === dateKey
+            )
+            const checked = entry?.checked ?? false
+            const isDeleting = confirmDeleteId === cond.id
+
+            return (
+              <div
+                key={cond.id}
+                className="group flex items-center gap-2.5 rounded-xl px-3 py-2 transition-all hover:bg-[var(--surface-elevated)]/60"
+              >
+                <button
+                  onClick={() => toggleConditionEntry(cond.id, dateKey)}
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-all"
+                  style={{
+                    borderColor: checked ? '#22c55e' : 'var(--border)',
+                    background: checked
+                      ? 'linear-gradient(145deg, #22c55e, #16a34a)'
+                      : 'transparent',
+                    boxShadow: checked
+                      ? '0 2px 6px rgba(34,197,94,0.3), inset 0 1px 0 rgba(255,255,255,0.2)'
+                      : 'none',
+                  }}
+                >
+                  {checked && (
+                    <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2.5 6L5 8.5L9.5 3.5" />
+                    </svg>
+                  )}
+                </button>
+                <span className="text-sm select-none" title={cond.icon}>{cond.icon}</span>
+                <span
+                  className={`flex-1 text-sm transition-colors ${
+                    checked ? 'text-[var(--fg-muted)] line-through' : 'text-[var(--fg)]'
+                  }`}
+                >
+                  {cond.name}
+                </span>
+
+                {/* Delete (two-step) */}
+                {isDeleting ? (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => { deleteDailyCondition(cond.id); setConfirmDeleteId(null) }}
+                      className="rounded-md px-2 py-0.5 text-[10px] font-medium bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors"
+                    >
+                      Удалить
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteId(null)}
+                      className="rounded-md px-2 py-0.5 text-[10px] font-medium bg-[var(--surface-elevated)] text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
+                    >
+                      Нет
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDeleteId(cond.id)}
+                    className="hidden group-hover:flex h-5 w-5 items-center justify-center rounded-md text-[var(--fg-muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Add condition form */}
+      {showAddCondition ? (
+        <div className="flex flex-col gap-2 rounded-xl border border-dashed border-[var(--accent)]/40 bg-[var(--accent)]/[0.03] p-3">
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1 flex-wrap">
+              {CONDITION_ICONS.map((icon) => (
+                <button
+                  key={icon}
+                  onClick={() => setNewConditionIcon(icon)}
+                  className={`flex h-7 w-7 items-center justify-center rounded-lg text-sm transition-all ${
+                    newConditionIcon === icon
+                      ? 'bg-[var(--accent)]/20 ring-1 ring-[var(--accent)]/40 scale-110'
+                      : 'hover:bg-[var(--surface-elevated)]'
+                  }`}
+                >
+                  {icon}
+                </button>
+              ))}
+            </div>
+          </div>
+          <input
+            type="text"
+            value={newConditionName}
+            onChange={(e) => setNewConditionName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setShowAddCondition(false) }}
+            placeholder="Название условия..."
+            className="input w-full text-sm"
+            autoFocus
+          />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleAdd}
+              disabled={!newConditionName.trim()}
+              className="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-40"
+              style={{ background: 'linear-gradient(145deg, #22c55e, #16a34a)' }}
+            >
+              Добавить
+            </button>
+            <button
+              onClick={() => { setShowAddCondition(false); setNewConditionName('') }}
+              className="rounded-lg px-3 py-1.5 text-xs font-medium text-[var(--fg-muted)] bg-[var(--surface-elevated)] hover:text-[var(--fg)] transition-colors"
+            >
+              Отмена
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowAddCondition(true)}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] py-2.5 text-xs font-medium text-[var(--fg-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Добавить условие
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function DailyReportView({ dateKey }: DailyReportViewProps) {
   const generateDailySnapshot = useRpgStore((s) => s.generateDailySnapshot)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
@@ -165,6 +348,17 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
   const setThoughts = useRpgStore((s) => s.setDailyThoughts)
   const addPhoto = useRpgStore((s) => s.addDailyPhoto)
   const removePhoto = useRpgStore((s) => s.removeDailyPhoto)
+
+  // Daily conditions
+  const getConditionsForDate = useRpgStore((s) => s.getConditionsForDate)
+  const addDailyCondition = useRpgStore((s) => s.addDailyCondition)
+  const deleteDailyCondition = useRpgStore((s) => s.deleteDailyCondition)
+  const toggleConditionEntry = useRpgStore((s) => s.toggleConditionEntry)
+  const allConditionEntries = useRpgStore((s) => s.dailyConditionEntries) ?? []
+
+  const [showAddCondition, setShowAddCondition] = useState(false)
+  const [newConditionName, setNewConditionName] = useState('')
+  const [newConditionIcon, setNewConditionIcon] = useState('✅')
 
   const report = useMemo(
     () => rawReports.find((r) => r.profileId === activeProfileId && r.dateKey === dateKey) ?? null,
@@ -440,6 +634,23 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
         <p className="text-sm font-medium text-[var(--fg)]">Как прошёл день?</p>
         <MoodTracker value={report?.mood ?? null} onChange={(mood: MoodLevel) => setMood(dateKey, mood)} />
       </div>
+
+      {/* Daily Conditions */}
+      <ConditionsSection
+        dateKey={dateKey}
+        getConditionsForDate={getConditionsForDate}
+        conditionEntries={allConditionEntries}
+        toggleConditionEntry={toggleConditionEntry}
+        deleteDailyCondition={deleteDailyCondition}
+        showAddCondition={showAddCondition}
+        setShowAddCondition={setShowAddCondition}
+        newConditionName={newConditionName}
+        setNewConditionName={setNewConditionName}
+        newConditionIcon={newConditionIcon}
+        setNewConditionIcon={setNewConditionIcon}
+        addDailyCondition={addDailyCondition}
+        sectionNeuStyle={sectionNeuStyle}
+      />
 
       {/* Tasks */}
       {snapshot.tasksCompleted.length > 0 && (

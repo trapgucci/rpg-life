@@ -91,6 +91,8 @@ export const VAULT_FILES = {
   noteFolders: 'note-folders.json',
   notes: 'notes.json',
   dailyReports: 'daily-reports.json',
+  dailyConditions: 'daily-conditions.json',
+  dailyConditionEntries: 'daily-condition-entries.json',
 } as const
 
 // Files that need to be read (deduplicated since profile.json and settings.json
@@ -112,4 +114,6 @@ export const VAULT_READ_FILES = [
   'note-folders.json',
   'notes.json',
   'daily-reports.json',
+  'daily-conditions.json',
+  'daily-condition-entries.json',
 ] as const

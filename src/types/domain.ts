@@ -575,6 +575,7 @@ export type AchievementConditionType =
   | 'attribute_level'        // Атрибут достиг уровня N
   | 'coins_earned_spent'     // Монет заработано / потрачено
   | 'gems_earned_spent'      // Кристаллов заработано / потрачено
+  | 'condition_checked'      // Условие дневника выполнено N раз
   | 'custom'                 // Разблокировать вручную
 
 export interface AchievementCondition {
@@ -587,6 +588,8 @@ export interface AchievementCondition {
   taskId?: TaskId
   /** ID предмета (для item_used) */
   itemId?: ItemId
+  /** ID условия дневника (для condition_checked) */
+  conditionId?: DailyConditionId
   /** Режим для coins_earned_spent: заработано или потрачено */
   coinMode?: 'earned' | 'spent'
 }
@@ -717,6 +720,35 @@ export interface CraftRecipe {
   craftedAt?: number
   createdAt: number
   updatedAt: number
+}
+
+// ─── Daily Conditions (Checklist goals in daily reports) ─────────────────────
+
+export type DailyConditionId = string
+
+/** Условие дневника — ежедневный чекбокс (например "Фото тела") */
+export interface DailyCondition {
+  id: DailyConditionId
+  profileId: ProfileId
+  /** Название условия */
+  name: string
+  /** Эмодзи/иконка */
+  icon: string
+  /** Дата создания (YYYY-MM-DD) — условие появляется начиная с этого дня */
+  activeFrom: string
+  /** Дата удаления (YYYY-MM-DD) — условие скрывается начиная со следующего дня. null = активно */
+  activeUntil: string | null
+  createdAt: number
+  updatedAt: number
+}
+
+/** Запись о выполнении условия в конкретный день */
+export interface DailyConditionEntry {
+  conditionId: DailyConditionId
+  /** Дата (YYYY-MM-DD) */
+  dateKey: string
+  /** Выполнено ли */
+  checked: boolean
 }
 
 // ─── Reflection System (Notes + Daily Reports) ──────────────────────────────

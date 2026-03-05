@@ -9,6 +9,8 @@ export interface ElectronVaultAPI {
   readMedia: (relativePath: string) => Promise<string | null>
   deleteMedia: (relativePath: string) => Promise<boolean>
   init: (customPath?: string) => Promise<string>
+  listBackups: () => Promise<{ name: string; timestamp: string }[]>
+  restoreBackup: (backupName: string) => Promise<{ restoredFiles: number; preRestoreBackup: string }>
 }
 
 declare global {

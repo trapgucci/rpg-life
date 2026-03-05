@@ -5,7 +5,7 @@ import {
   FolderOpen, ChevronDown, Minus, Package, ShoppingBag,
   Search, Folder, ListChecks, BarChart3,
   Hand, TrendingUp, Gamepad2, Clapperboard, Gift, Percent, RefreshCw,
-  CalendarCheck, History, Flame, Wallet, Repeat, Calendar, CheckSquare, Hash, ClipboardList
+  CalendarCheck, History, Flame, Wallet, Repeat, Calendar, CheckSquare, Hash, ClipboardList, ClipboardCheck
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
@@ -16,7 +16,7 @@ import { getItemTypeBadge, getItemTypeColor } from '../components/shop/shopUtils
 import type {
   Achievement, AchievementConditionType, AchievementGroup,
   AchievementGroupId, AttributeId, TaskDifficulty, ItemId, TaskId,
-  ShopItem, TaskRpg, TaskRecurrence
+  ShopItem, TaskRpg, TaskRecurrence, DailyCondition, DailyConditionId,
 } from '../types/domain'
 import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
 import { rpgToast } from '../components/RpgToast'
@@ -370,6 +370,7 @@ const CONDITION_TYPES: {
   { value: 'attribute_level', label: 'Уровень атрибута', description: 'Один из ваших атрибутов должен достичь указанного уровня', icon: BarChart3, color: '#8b5cf6' },
   { value: 'coins_earned_spent', label: 'Монет заработано / потрачено', description: 'Суммарное количество монет, заработанных или потраченных за всё время', icon: Wallet, color: '#eab308' },
   { value: 'gems_earned_spent', label: 'Кристаллов заработано / потрачено', description: 'Суммарное количество кристаллов, заработанных или потраченных за всё время', icon: Gem, color: '#a855f7' },
+  { value: 'condition_checked', label: 'Условие дневника', description: 'Условие из дневника выполнено указанное количество раз (галочки по дням)', icon: ClipboardCheck, color: '#22c55e' },
   { value: 'custom', label: 'Ручная разблокировка', description: 'Без автоматического отслеживания — вы разблокируете достижение вручную', icon: Hand, color: '#6b7280' },
 ]
 
@@ -600,23 +601,26 @@ interface ConditionPickerModalProps {
   conditionAttributeId: AttributeId | null
   conditionTaskId: TaskId | null
   conditionItemId: ItemId | null
+  conditionConditionId: DailyConditionId | null
   conditionCoinMode: 'earned' | 'spent'
   attributes: { id: AttributeId; name: string; icon: string; color: string }[]
   tasks: TaskRpg[]
   shopItems: ShopItem[]
-  onApply: (type: AchievementConditionType, target: number, attrId: AttributeId | null, taskId: TaskId | null, itemId: ItemId | null, coinMode: 'earned' | 'spent') => void
+  dailyConditions: DailyCondition[]
+  onApply: (type: AchievementConditionType, target: number, attrId: AttributeId | null, taskId: TaskId | null, itemId: ItemId | null, coinMode: 'earned' | 'spent', condId: DailyConditionId | null) => void
 }
 
 const TASK_CONDITION_TYPES: AchievementConditionType[] = ['task_completed_today', 'task_completed_total', 'task_streak']
 
 function ConditionPickerModal({
-  isOpen, onClose, selectedType, targetValue, conditionAttributeId, conditionTaskId, conditionItemId, conditionCoinMode, attributes, tasks, shopItems, onApply,
+  isOpen, onClose, selectedType, targetValue, conditionAttributeId, conditionTaskId, conditionItemId, conditionConditionId, conditionCoinMode, attributes, tasks, shopItems, dailyConditions, onApply,
 }: ConditionPickerModalProps) {
   const [localType, setLocalType] = useState(selectedType)
   const [localTarget, setLocalTarget] = useState(targetValue)
   const [localAttrId, setLocalAttrId] = useState<AttributeId | null>(conditionAttributeId)
   const [localTaskId, setLocalTaskId] = useState<TaskId | null>(conditionTaskId)
   const [localItemId, setLocalItemId] = useState<ItemId | null>(conditionItemId)
+  const [localCondId, setLocalCondId] = useState<DailyConditionId | null>(conditionConditionId)
   const [localCoinMode, setLocalCoinMode] = useState<'earned' | 'spent'>(conditionCoinMode)
   const [taskSearch, setTaskSearch] = useState('')
   const [itemSearch, setItemSearch] = useState('')
@@ -629,16 +633,18 @@ function ConditionPickerModal({
       setLocalAttrId(conditionAttributeId)
       setLocalTaskId(conditionTaskId)
       setLocalItemId(conditionItemId)
+      setLocalCondId(conditionConditionId)
       setLocalCoinMode(conditionCoinMode)
       setTaskSearch('')
       setItemSearch('')
     }
-  }, [isOpen, selectedType, targetValue, conditionAttributeId, conditionTaskId, conditionItemId, conditionCoinMode])
+  }, [isOpen, selectedType, targetValue, conditionAttributeId, conditionTaskId, conditionItemId, conditionConditionId, conditionCoinMode])
 
   const selectedCondition = CONDITION_TYPES.find((c) => c.value === localType)!
 
   const needsTask = TASK_CONDITION_TYPES.includes(localType)
   const needsItem = localType === 'item_used'
+  const needsCondition = localType === 'condition_checked'
 
   const MAX_VISIBLE = 30
 
@@ -663,6 +669,7 @@ function ConditionPickerModal({
       needsTask ? localTaskId : null,
       needsItem ? localItemId : null,
       localCoinMode,
+      needsCondition ? localCondId : null,
     )
     onClose()
   }
@@ -1076,6 +1083,55 @@ function ConditionPickerModal({
           </div>
         )}
 
+        {/* Daily condition selector — for condition_checked */}
+        {needsCondition && (
+          <div
+            className="rounded-2xl border border-[var(--border)] p-4 space-y-3"
+            style={{
+              background: 'linear-gradient(135deg, var(--surface-card) 0%, var(--surface) 100%)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 16px rgba(0,0,0,0.08)',
+            }}
+          >
+            <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider flex items-center gap-2">
+              <ClipboardCheck className="h-3.5 w-3.5" />
+              Выберите условие дневника
+            </label>
+            {dailyConditions.length === 0 ? (
+              <p className="text-xs text-[var(--fg-muted)] text-center py-4">
+                Нет условий. Создайте условие в Дневнике.
+              </p>
+            ) : (
+              <div className="max-h-52 overflow-y-auto space-y-1 scrollbar-thin">
+                {dailyConditions.map((cond) => {
+                  const isSelected = localCondId === cond.id
+                  return (
+                    <button
+                      key={cond.id}
+                      type="button"
+                      onClick={() => setLocalCondId(isSelected ? null : cond.id)}
+                      className={cn(
+                        'w-full flex items-center gap-2.5 rounded-xl border-2 px-3 py-2.5 text-left transition-all',
+                        isSelected
+                          ? 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-md shadow-[var(--accent)]/10'
+                          : 'border-transparent hover:bg-[var(--surface-elevated)]'
+                      )}
+                    >
+                      <span className="text-base">{cond.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm truncate text-[var(--fg)]">{cond.name}</p>
+                        <p className="text-[10px] mt-0.5 text-[var(--fg-muted)]">
+                          с {cond.activeFrom}{cond.activeUntil ? ` до ${cond.activeUntil}` : ''}
+                        </p>
+                      </div>
+                      {isSelected && <Check className="h-3.5 w-3.5 text-[var(--accent)]" />}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Apply button */}
         <button
           type="button"
@@ -1097,6 +1153,8 @@ function AchievementForm({ achievement, onClose, defaultGroupId }: AchievementFo
   const shopItems = useRpgStore((s) => s.shopItems)
   const allTasks = useRpgStore((s) => s.tasks)
   const settings = useRpgStore((s) => s.settings)
+
+  const dailyConditions = useRpgStore((s) => s.getDailyConditions)()
 
   const profile = profiles.find((p) => p.id === activeProfileId)
   const attributes = profile?.attributes ?? []
@@ -1129,6 +1187,9 @@ function AchievementForm({ achievement, onClose, defaultGroupId }: AchievementFo
   )
   const [conditionItemId, setConditionItemId] = useState<ItemId | null>(
     achievement?.condition.itemId ?? null
+  )
+  const [conditionConditionId, setConditionConditionId] = useState<DailyConditionId | null>(
+    achievement?.condition.conditionId ?? null
   )
   const [conditionCoinMode, setConditionCoinMode] = useState<'earned' | 'spent'>(
     achievement?.condition.coinMode ?? 'earned'
@@ -1182,6 +1243,7 @@ function AchievementForm({ achievement, onClose, defaultGroupId }: AchievementFo
         conditionAttributeId !== (d.condition.attributeId ?? null) ||
         conditionTaskId !== (d.condition.taskId ?? null) ||
         conditionItemId !== (d.condition.itemId ?? null) ||
+        conditionConditionId !== (d.condition.conditionId ?? null) ||
         conditionCoinMode !== (d.condition.coinMode ?? 'earned') ||
         rewardCoins !== d.rewardCoins ||
         rewardGems !== d.rewardGems ||
@@ -1268,6 +1330,7 @@ function AchievementForm({ achievement, onClose, defaultGroupId }: AchievementFo
         attributeId: conditionType === 'attribute_level' ? conditionAttributeId : undefined,
         taskId: TASK_CONDITION_TYPES.includes(conditionType) ? conditionTaskId : undefined,
         itemId: conditionType === 'item_used' ? conditionItemId : undefined,
+        conditionId: conditionType === 'condition_checked' ? conditionConditionId : undefined,
         coinMode: (conditionType === 'coins_earned_spent' || conditionType === 'gems_earned_spent') ? conditionCoinMode : undefined,
       },
       rewardXp: rewardAttributeId ? effectiveXp : 0,
@@ -1700,6 +1763,9 @@ function AchievementForm({ achievement, onClose, defaultGroupId }: AchievementFo
             const condItem = conditionType === 'item_used'
               ? shopItems.find((i) => i.id === conditionItemId)
               : null
+            const condDailyCond = conditionType === 'condition_checked'
+              ? dailyConditions.find((c) => c.id === conditionConditionId)
+              : null
             return (
               <button
                 type="button"
@@ -1752,6 +1818,11 @@ function AchievementForm({ achievement, onClose, defaultGroupId }: AchievementFo
                       {condItem && (
                         <span className="ml-1.5 text-[var(--fg-muted)] font-medium">
                           ({condItem.icon || '📦'} {condItem.name})
+                        </span>
+                      )}
+                      {condDailyCond && (
+                        <span className="ml-1.5 text-[var(--fg-muted)] font-medium">
+                          ({condDailyCond.icon} {condDailyCond.name})
                         </span>
                       )}
                       {(conditionType === 'coins_earned_spent' || conditionType === 'gems_earned_spent') && (
@@ -1840,16 +1911,19 @@ function AchievementForm({ achievement, onClose, defaultGroupId }: AchievementFo
       conditionAttributeId={conditionAttributeId}
       conditionTaskId={conditionTaskId}
       conditionItemId={conditionItemId}
+      conditionConditionId={conditionConditionId}
       conditionCoinMode={conditionCoinMode}
       attributes={attributes}
       tasks={profileTasks}
       shopItems={availableShopItems}
-      onApply={(type, target, attrId, taskId, itemId, coinMode) => {
+      dailyConditions={dailyConditions}
+      onApply={(type, target, attrId, taskId, itemId, coinMode, condId) => {
         setConditionType(type)
         setTargetValue(target)
         setConditionAttributeId(attrId)
         setConditionTaskId(taskId)
         setConditionItemId(itemId)
+        setConditionConditionId(condId)
         setConditionCoinMode(coinMode)
       }}
     />

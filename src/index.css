@@ -1,6 +1,17 @@
 @import 'tailwindcss';
 @config "../tailwind.config.js";
 
+/* Electron window drag region */
+[data-electron-drag] {
+  -webkit-app-region: drag;
+}
+[data-electron-drag] button,
+[data-electron-drag] a,
+[data-electron-drag] input,
+[data-electron-drag] [data-electron-no-drag] {
+  -webkit-app-region: no-drag;
+}
+
 /* Modern RPG Life Design System - Light */
 :root {
   /* Background */

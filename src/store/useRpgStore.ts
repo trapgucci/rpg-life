@@ -39,6 +39,9 @@ import type {
   DailyReportId,
   MoodLevel,
   DailySnapshot,
+  DailyCondition,
+  DailyConditionId,
+  DailyConditionEntry,
 } from '../types/domain'
 import {
   TASK_XP_BY_DIFFICULTY,
@@ -330,6 +333,19 @@ interface RpgStoreState {
   emptyTrash: () => void
   reorderNotes: (orderedIds: NoteId[]) => void
 
+  // Daily conditions
+  dailyConditions: DailyCondition[]
+  dailyConditionEntries: DailyConditionEntry[]
+
+  // Daily condition actions
+  getDailyConditions: () => DailyCondition[]
+  getConditionsForDate: (dateKey: string) => DailyCondition[]
+  addDailyCondition: (name: string, icon?: string) => DailyCondition
+  deleteDailyCondition: (id: DailyConditionId) => void
+  toggleConditionEntry: (conditionId: DailyConditionId, dateKey: string) => void
+  getConditionEntries: (dateKey: string) => DailyConditionEntry[]
+  getConditionTotalChecked: (conditionId: DailyConditionId) => number
+
   // Daily report actions
   getDailyReports: () => DailyReport[]
   getDailyReport: (dateKey: string) => DailyReport | null
@@ -354,6 +370,7 @@ import type { PersistStorage, StorageValue } from 'zustand/middleware'
 let _writeTimer: ReturnType<typeof setTimeout> | null = null
 let _pendingWrite: (() => Promise<void>) | null = null
 const WRITE_DEBOUNCE_MS = 500
+let _hydrationComplete = false
 
 function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
   // Migrate from old zustand localStorage format (rpg-life-store-v2) to vault files
@@ -384,6 +401,8 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
         vaultStorage.write('note-folders.json', s.noteFolders ?? []),
         vaultStorage.write('notes.json', s.notes ?? []),
         vaultStorage.write('daily-reports.json', s.dailyReports ?? []),
+        vaultStorage.write('daily-conditions.json', s.dailyConditions ?? []),
+        vaultStorage.write('daily-condition-entries.json', s.dailyConditionEntries ?? []),
       ])
       localStorage.removeItem('rpg-life-store-v2')
       console.info('[vault] Migration complete, old key removed.')
@@ -406,6 +425,7 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
         achievements, craftRecipes, purchaseHistory,
         usageHistory, stats,
         noteFolders, notes, dailyReports,
+        dailyConditions, dailyConditionEntries,
       ] = results as [
         { profiles: unknown[]; activeProfileId: string | null } | null,
         { settings: unknown; activeShopDiscountPercent: number | null } | null,
@@ -420,6 +440,8 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
         unknown[] | null,
         unknown[] | null,
         unknown | null,
+        unknown[] | null,
+        unknown[] | null,
         unknown[] | null,
         unknown[] | null,
         unknown[] | null,
@@ -453,11 +475,16 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
           noteFolders: noteFolders as NoteFolder[] ?? [],
           notes: notes as Note[] ?? [],
           dailyReports: dailyReports as DailyReport[] ?? [],
+          dailyConditions: dailyConditions as DailyCondition[] ?? [],
+          dailyConditionEntries: dailyConditionEntries as DailyConditionEntry[] ?? [],
         } as Partial<RpgStoreState>,
       }
     },
 
     setItem: async (_name: string, value: StorageValue<Partial<RpgStoreState>>): Promise<void> => {
+      // Block writes until hydration is complete to prevent overwriting data with empty defaults
+      if (!_hydrationComplete) return
+
       const doWrite = async () => {
         try {
           const state = value.state
@@ -484,6 +511,8 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
             vaultStorage.write('note-folders.json', state.noteFolders),
             vaultStorage.write('notes.json', state.notes),
             vaultStorage.write('daily-reports.json', state.dailyReports),
+            vaultStorage.write('daily-conditions.json', state.dailyConditions ?? []),
+            vaultStorage.write('daily-condition-entries.json', state.dailyConditionEntries ?? []),
           ])
           _pendingWrite = null
         } catch (err) {
@@ -1804,6 +1833,12 @@ export const useRpgStore = create<RpgStoreState>()(
                 ).length
                 break
               }
+              case 'condition_checked': {
+                const cId = ach.condition.conditionId
+                if (!cId) return
+                progress = get().getConditionTotalChecked(cId)
+                break
+              }
               case 'custom':
                 // Manual unlock only
                 return
@@ -2620,6 +2655,88 @@ export const useRpgStore = create<RpgStoreState>()(
           return true
         },
 
+        // ─── Daily Conditions ────────────────────────────────────────────
+
+        dailyConditions: [],
+        dailyConditionEntries: [],
+
+        getDailyConditions: () => {
+          const { dailyConditions, activeProfileId } = get()
+          return (dailyConditions ?? []).filter((c) => c.profileId === activeProfileId)
+        },
+
+        getConditionsForDate: (dateKey) => {
+          const { dailyConditions, activeProfileId } = get()
+          return (dailyConditions ?? []).filter((c) =>
+            c.profileId === activeProfileId &&
+            c.activeFrom <= dateKey &&
+            (c.activeUntil === null || c.activeUntil >= dateKey)
+          )
+        },
+
+        addDailyCondition: (name, icon) => {
+          const today = new Date()
+          const dateKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+          const condition: DailyCondition = {
+            id: crypto.randomUUID(),
+            profileId: get().activeProfileId!,
+            name,
+            icon: icon ?? '✅',
+            activeFrom: dateKey,
+            activeUntil: null,
+            createdAt: now(),
+            updatedAt: now(),
+          }
+          set((s) => ({ dailyConditions: [...(s.dailyConditions ?? []), condition] }))
+          return condition
+        },
+
+        deleteDailyCondition: (id) => {
+          const today = new Date()
+          const dateKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+          set((s) => ({
+            dailyConditions: (s.dailyConditions ?? []).map((c) =>
+              c.id === id ? { ...c, activeUntil: dateKey, updatedAt: now() } : c
+            ),
+          }))
+        },
+
+        toggleConditionEntry: (conditionId, dateKey) => {
+          set((s) => {
+            const entries = s.dailyConditionEntries ?? []
+            const existing = entries.find(
+              (e) => e.conditionId === conditionId && e.dateKey === dateKey
+            )
+            if (existing) {
+              return {
+                dailyConditionEntries: entries.map((e) =>
+                  e.conditionId === conditionId && e.dateKey === dateKey
+                    ? { ...e, checked: !e.checked }
+                    : e
+                ),
+              }
+            }
+            return {
+              dailyConditionEntries: [...entries, {
+                conditionId,
+                dateKey,
+                checked: true,
+              }],
+            }
+          })
+          get().checkAchievements()
+        },
+
+        getConditionEntries: (dateKey) => {
+          return (get().dailyConditionEntries ?? []).filter((e) => e.dateKey === dateKey)
+        },
+
+        getConditionTotalChecked: (conditionId) => {
+          return (get().dailyConditionEntries ?? []).filter(
+            (e) => e.conditionId === conditionId && e.checked
+          ).length
+        },
+
         // ─── Reflection (Notes + Daily Reports) ──────────────────────────
 
         noteFolders: [],
@@ -3106,6 +3223,8 @@ export const useRpgStore = create<RpgStoreState>()(
             noteFolders: state.noteFolders,
             notes: state.notes,
             dailyReports: state.dailyReports,
+            dailyConditions: state.dailyConditions,
+            dailyConditionEntries: state.dailyConditionEntries,
           }
           return JSON.stringify(exportObj, null, 2)
         },
@@ -3133,6 +3252,8 @@ export const useRpgStore = create<RpgStoreState>()(
               noteFolders: data.noteFolders ?? [],
               notes: data.notes ?? [],
               dailyReports: data.dailyReports ?? [],
+              dailyConditions: data.dailyConditions ?? [],
+              dailyConditionEntries: data.dailyConditionEntries ?? [],
             })
             return true
           } catch {
@@ -3146,19 +3267,27 @@ export const useRpgStore = create<RpgStoreState>()(
             profiles: [defaultProfile],
             activeProfileId: defaultProfile.id,
             taskGroups: [],
+            itemGroups: [],
             achievementGroups: [],
             tasks: [],
             achievements: [],
             craftRecipes: [],
+            shopItems: [],
             inventory: [],
+            purchaseHistory: [],
+            usageHistory: [],
             activeShopDiscountPercent: null,
             noteFolders: [],
             notes: [],
             dailyReports: [],
+            dailyConditions: [],
+            dailyConditionEntries: [],
             stats: {
               totalTasksCompleted: 0,
               totalCoinsEarned: 0,
               totalCoinsSpent: 0,
+              totalGemsEarned: 0,
+              totalGemsSpent: 0,
               totalItemsCrafted: 0,
               currentStreak: 0,
               bestStreak: 0,
@@ -3190,9 +3319,15 @@ export const useRpgStore = create<RpgStoreState>()(
         noteFolders: s.noteFolders,
         notes: s.notes,
         dailyReports: s.dailyReports,
+        dailyConditions: s.dailyConditions,
+        dailyConditionEntries: s.dailyConditionEntries,
       }),
       onRehydrateStorage: () => (state) => {
-        if (!state) return
+        _hydrationComplete = true
+        if (!state) {
+          useRpgStore.getState().setHasHydrated(true)
+          return
+        }
         if (state.activeShopDiscountPercent === undefined) useRpgStore.setState({ activeShopDiscountPercent: null })
         if (!state.purchaseHistory) useRpgStore.setState({ purchaseHistory: [] })
         if (!state.usageHistory) useRpgStore.setState({ usageHistory: [] })
@@ -3215,6 +3350,8 @@ export const useRpgStore = create<RpgStoreState>()(
         if (!state.noteFolders) useRpgStore.setState({ noteFolders: [] })
         if (!state.notes) useRpgStore.setState({ notes: [] })
         if (!state.dailyReports) useRpgStore.setState({ dailyReports: [] })
+        if (!state.dailyConditions) useRpgStore.setState({ dailyConditions: [] })
+        if (!state.dailyConditionEntries) useRpgStore.setState({ dailyConditionEntries: [] })
 
         // Migrate notes: TiptapContent → plain text string, add tags
         if (state.notes && state.notes.length > 0) {
