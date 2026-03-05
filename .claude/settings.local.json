@@ -40,7 +40,13 @@
       "Bash(chmod +x /Users/mercedes/Desktop/rpg-life/node_modules/.bin/electron)",
       "Bash(chmod +x /Users/mercedes/Desktop/rpg-life/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)",
       "Bash(grep -c \"profileId\" /Users/mercedes/Desktop/rpg-life/src/pages/*.tsx)",
-      "Bash(grep -c \"profileId\" /Users/mercedes/Desktop/rpg-life/src/components/**/*.tsx)"
+      "Bash(grep -c \"profileId\" /Users/mercedes/Desktop/rpg-life/src/components/**/*.tsx)",
+      "Bash(git restore src/lib/vaultStorage.ts src/pages/ReflectionPage.tsx src/store/useRpgStore.ts src/types/domain.ts)",
+      "Bash(grep -n \"export default\" /Users/mercedes/Desktop/rpg-life/src/pages/*.tsx)",
+      "Bash(grep -n \"TODO\\\\|FIXME\\\\|BUG\\\\|XXX\" /Users/mercedes/Desktop/rpg-life/src/pages/ReflectionPage.tsx /Users/mercedes/Desktop/rpg-life/src/components/reflection/*.tsx)",
+      "Bash(ls /Users/mercedes/Desktop/rpg-life/*.json)",
+      "Bash(npx tailwindcss --help)",
+      "Bash(git fsck --unreachable --no-reflogs)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Jahseh\\Desktop\\rpg-life"
