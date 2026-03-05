@@ -6,17 +6,20 @@ import { getTodayKey } from '../lib/reflectionUtils'
 import ReflectionSidebar from '../components/reflection/ReflectionSidebar'
 import FolderFormModal from '../components/reflection/FolderFormModal'
 import NoteList from '../components/reflection/NoteList'
+import NoteViewer from '../components/reflection/NoteViewer'
 import NoteEditor from '../components/reflection/NoteEditor'
 import DailyReportCalendar from '../components/reflection/DailyReportCalendar'
 import DailyReportView from '../components/reflection/DailyReportView'
 import type { NoteFolder, NoteFolderId } from '../types/domain'
 
 type Tab = 'notes' | 'diary'
+type NoteMode = 'view' | 'edit'
 
 export default function ReflectionPage() {
   const [activeTab, setActiveTab] = useState<Tab>('notes')
   const [activeFolderId, setActiveFolderId] = useState<NoteFolderId | null>(null)
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
+  const [noteMode, setNoteMode] = useState<NoteMode>('view')
   const [selectedDate, setSelectedDate] = useState(getTodayKey())
 
   // Folder modal state
@@ -77,12 +80,18 @@ export default function ReflectionPage() {
   }, [notes, activeFolderId])
 
   // Handlers
+  const handleSelectNote = useCallback((id: string) => {
+    setSelectedNoteId(id)
+    setNoteMode('view')
+  }, [])
+
   const handleCreateNote = useCallback(() => {
     const note = addNote({
       title: '',
       folderId: activeFolderId,
     })
     setSelectedNoteId(note.id)
+    setNoteMode('edit') // new note → straight to editor
   }, [addNote, activeFolderId])
 
   const handleDeleteNote = useCallback(() => {
@@ -169,12 +178,21 @@ export default function ReflectionPage() {
             {/* Mobile: list OR editor (not both) */}
             {selectedNote && (
               <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-card)] backdrop-blur-lg">
-                <NoteEditor
-                  note={selectedNote}
-                  onBack={() => setSelectedNoteId(null)}
-                  onDelete={handleDeleteNote}
-                  onCreateNote={handleCreateNote}
-                />
+                {noteMode === 'view' ? (
+                  <NoteViewer
+                    note={selectedNote}
+                    onBack={() => setSelectedNoteId(null)}
+                    onEdit={() => setNoteMode('edit')}
+                    onDelete={handleDeleteNote}
+                  />
+                ) : (
+                  <NoteEditor
+                    note={selectedNote}
+                    onBack={() => setNoteMode('view')}
+                    onDelete={handleDeleteNote}
+                    onCreateNote={handleCreateNote}
+                  />
+                )}
               </div>
             )}
 
@@ -215,7 +233,7 @@ export default function ReflectionPage() {
                     notes={filteredNotes}
                     selectedNoteId={selectedNoteId}
                     activeFolderId={activeFolderId}
-                    onSelectNote={setSelectedNoteId}
+                    onSelectNote={handleSelectNote}
                     onCreateNote={handleCreateNote}
                   />
                 </div>

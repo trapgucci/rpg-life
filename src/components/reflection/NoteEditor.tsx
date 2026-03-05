@@ -5,7 +5,7 @@ import LinkExtension from '@tiptap/extension-link'
 import ImageExtension from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
 import UnderlineExtension from '@tiptap/extension-underline'
-import { ArrowLeft, Pin, PinOff, Trash2, Link as LinkIcon, Unlink, FilePlus } from 'lucide-react'
+import { ArrowLeft, Pin, PinOff, Trash2, Link as LinkIcon, Unlink, FilePlus, Check } from 'lucide-react'
 import NoteEditorToolbar from './NoteEditorToolbar'
 import ImageLightbox from './ImageLightbox'
 import { useRpgStore } from '../../store/useRpgStore'
@@ -56,8 +56,10 @@ export default function NoteEditor({ note, onBack, onDelete, onCreateNote }: Not
   const [lightboxImages, setLightboxImages] = useState<string[] | null>(null)
   const [lightboxIndex, setLightboxIndex] = useState(0)
   const [showLinkTasks, setShowLinkTasks] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const savedIndicatorRef = useRef<ReturnType<typeof setTimeout>>()
   // Map vault relative paths → data URLs for display
   const mediaCache = useRef<Map<string, string>>(new Map())
 
@@ -108,12 +110,16 @@ export default function NoteEditor({ note, onBack, onDelete, onCreateNote }: Not
     onUpdate: ({ editor: ed }) => {
       // Debounced save
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+      setSaveStatus('saving')
       saveTimerRef.current = setTimeout(() => {
         const content = ed.getJSON() as TiptapContent
         // Replace resolved data URLs back to vault paths before persisting
         const persistContent = restoreMediaPaths(content, mediaCache.current)
         const excerpt = extractExcerpt(persistContent)
         updateNote(note.id, (n) => ({ ...n, content: persistContent, excerpt }))
+        setSaveStatus('saved')
+        if (savedIndicatorRef.current) clearTimeout(savedIndicatorRef.current)
+        savedIndicatorRef.current = setTimeout(() => setSaveStatus('idle'), 2000)
       }, 500)
     },
   })
@@ -121,8 +127,12 @@ export default function NoteEditor({ note, onBack, onDelete, onCreateNote }: Not
   // Sync title on change
   useEffect(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    setSaveStatus('saving')
     saveTimerRef.current = setTimeout(() => {
       updateNote(note.id, (n) => ({ ...n, title }))
+      setSaveStatus('saved')
+      if (savedIndicatorRef.current) clearTimeout(savedIndicatorRef.current)
+      savedIndicatorRef.current = setTimeout(() => setSaveStatus('idle'), 2000)
     }, 500)
   }, [title, note.id, updateNote])
 
@@ -198,6 +208,7 @@ export default function NoteEditor({ note, onBack, onDelete, onCreateNote }: Not
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+      if (savedIndicatorRef.current) clearTimeout(savedIndicatorRef.current)
     }
   }, [])
 
@@ -308,10 +319,21 @@ export default function NoteEditor({ note, onBack, onDelete, onCreateNote }: Not
       </div>
 
       {/* Footer meta */}
-      <div className="border-t border-[var(--border)] px-4 py-2 text-[10px] text-[var(--fg-muted)]">
-        Обновлено {relativeDateRu(note.updatedAt)}
-        {note.linkedTaskIds.length > 0 && ` · ${note.linkedTaskIds.length} задач привязано`}
-        {note.mediaFiles.length > 0 && ` · ${note.mediaFiles.length} изображений`}
+      <div className="flex items-center justify-between border-t border-[var(--border)] px-4 py-2 text-[10px] text-[var(--fg-muted)]">
+        <span>
+          Обновлено {relativeDateRu(note.updatedAt)}
+          {note.linkedTaskIds.length > 0 && ` · ${note.linkedTaskIds.length} задач привязано`}
+          {note.mediaFiles.length > 0 && ` · ${note.mediaFiles.length} изображений`}
+        </span>
+        {saveStatus === 'saving' && (
+          <span className="text-[var(--fg-muted)] animate-pulse">Сохраняю…</span>
+        )}
+        {saveStatus === 'saved' && (
+          <span className="flex items-center gap-1 text-emerald-500">
+            <Check className="h-3 w-3" />
+            Сохранено
+          </span>
+        )}
       </div>
 
       {/* Hidden file input */}
