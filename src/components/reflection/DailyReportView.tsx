@@ -562,7 +562,7 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
                   boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
                 }}
               >
-                <Flame className="h-3 w-3" /> {s.streak} дн.
+                <Flame className="h-3 w-3" /> {s.streak}
               </span>
             </div>
           ))}

@@ -9,10 +9,9 @@ interface HabitCardProps {
   habit: Habit
   selected?: boolean
   onSelect: () => void
-  experimentalMode?: boolean
 }
 
-export default function HabitCard({ habit, selected, onSelect, experimentalMode }: HabitCardProps) {
+export default function HabitCard({ habit, selected, onSelect }: HabitCardProps) {
   const [successPulse, setSuccessPulse] = useState(false)
   const clickPositive = useRpgStore((s) => s.clickHabitPositive)
   const clickNegative = useRpgStore((s) => s.clickHabitNegative)
@@ -33,7 +32,7 @@ export default function HabitCard({ habit, selected, onSelect, experimentalMode 
     : 0
   const isFreezeActive = freezeDaysLeft > 0
 
-  const hasActedToday = !experimentalMode && habit.lastResetDate >= todayStartTs && (habit.todayPositive > 0 || habit.todayNegative > 0)
+  const hasActedToday = habit.lastResetDate >= todayStartTs && (habit.todayPositive > 0 || habit.todayNegative > 0)
   const doneToday = habit.lastResetDate >= todayStartTs && habit.todayPositive > 0
 
   const multiplierDisplay = getHabitMultiplierDisplay(habit)
@@ -41,16 +40,16 @@ export default function HabitCard({ habit, selected, onSelect, experimentalMode 
 
   const handlePositive = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!experimentalMode && hasActedToday) return
-    experimentalMode ? clickPositive(habit.id, true) : clickPositive(habit.id)
+    if (hasActedToday) return
+    clickPositive(habit.id)
     setSuccessPulse(true)
     setTimeout(() => setSuccessPulse(false), 600)
   }
 
   const handleNegative = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!experimentalMode && hasActedToday) return
-    experimentalMode ? clickNegative(habit.id, true) : clickNegative(habit.id)
+    if (hasActedToday) return
+    clickNegative(habit.id)
   }
 
   return (
@@ -71,10 +70,10 @@ export default function HabitCard({ habit, selected, onSelect, experimentalMode 
           <button
             type="button"
             onClick={handleNegative}
-            disabled={!experimentalMode && hasActedToday}
+            disabled={hasActedToday}
             className={cn(
               'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-200',
-              hasActedToday && !experimentalMode
+              hasActedToday
                 ? 'opacity-40 cursor-not-allowed bg-red-500/10 text-red-400'
                 : 'bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:scale-110 active:scale-95'
             )}
@@ -171,10 +170,10 @@ export default function HabitCard({ habit, selected, onSelect, experimentalMode 
           <button
             type="button"
             onClick={handlePositive}
-            disabled={!experimentalMode && hasActedToday}
+            disabled={hasActedToday}
             className={cn(
               'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-200',
-              hasActedToday && !experimentalMode
+              hasActedToday
                 ? 'opacity-40 cursor-not-allowed bg-emerald-500/30 text-white'
                 : 'bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-md shadow-emerald-500/30 hover:scale-110 active:scale-95 hover:shadow-lg hover:shadow-emerald-500/40'
             )}

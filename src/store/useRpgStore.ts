@@ -14,8 +14,6 @@ import type {
   ProfileId,
   Attribute,
   AttributeId,
-  Habit,
-  HabitId,
   Achievement,
   AchievementId,
   AchievementGroup,
@@ -55,12 +53,8 @@ import {
 // Removed DEFAULT_PENALTY_FACTOR - penalty system removed
 const EMPTY_ATTRIBUTES: Attribute[] = []
 
-/** Module-level debug offset kept in sync with the store via subscribe (see bottom of file) */
-let _debugDaysOffset = 0
-const DAY_MS_STORE = 24 * 60 * 60 * 1000
-
 function now() {
-  return Date.now() + _debugDaysOffset * DAY_MS_STORE
+  return Date.now()
 }
 
 function getTodayStart(): number {
@@ -72,30 +66,6 @@ function getTodayStart(): number {
 function getDateKey(ts: number): string {
   const d = new Date(ts)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-/** Начало следующего календарного дня после ts (полночь следующего дня) */
-function getNextDayStart(ts: number): number {
-  const d = new Date(ts)
-  d.setDate(d.getDate() + 1)
-  d.setHours(0, 0, 0, 0)
-  return d.getTime()
-}
-
-const MULTIPLIER_BY_LEVEL: Record<string, number> = { easy: 1.25, medium: 1.75, hard: 2.5 }
-
-/** Эффективный множитель награды: streak >= 3 и streak >= interval, иначе 1 */
-function getHabitEffectiveMultiplier(habit: Habit, streakAfterAction: number): number {
-  if (!habit.difficultyMultiplierEnabled || streakAfterAction < 3) return 1
-  const interval = habit.multiplierIntervalDays ?? 3
-  if (streakAfterAction < interval) return 1
-  const level = habit.difficultyMultiplierLevel ?? 'easy'
-  return level === 'custom' ? (habit.difficultyMultiplierCustom ?? 1.5) : (MULTIPLIER_BY_LEVEL[level] ?? 1)
-}
-
-function applyMultiplierCeil(value: number, mult: number, applies: boolean): number {
-  if (!applies || mult <= 1) return value
-  return Math.ceil(value * mult)
 }
 
 /** Проверка: достигла ли задача лимита выполнений */
@@ -209,7 +179,6 @@ interface RpgStoreState {
   itemGroups: ItemGroup[]
   achievementGroups: AchievementGroup[]
   tasks: TaskRpg[]
-  habits: Habit[]
   achievements: Achievement[]
   craftRecipes: CraftRecipe[]
   shopItems: ShopItem[]
@@ -222,14 +191,9 @@ interface RpgStoreState {
   activeShopDiscountPercent: number | null
   settings: AppSettings
 
-  // Debug mode (для тестирования циклов)
-  debugDaysOffset: number
-
   // Stats
   stats: {
     totalTasksCompleted: number
-    totalHabitsPositive: number
-    totalHabitsNegative: number
     totalCoinsEarned: number
     totalCoinsSpent: number
     totalItemsCrafted: number
@@ -289,23 +253,10 @@ interface RpgStoreState {
   resetRecurringTasks: () => void
   incrementCounter: (id: TaskId) => void
 
-  // Debug methods
-  incrementDebugDay: () => void
-  resetDebugTime: () => void
-  getDebugNow: () => number
   decrementCounter: (id: TaskId) => void
   toggleSubtask: (taskId: TaskId, subtaskId: string) => void
   getTaskRewardPreview: (task: TaskRpg) => { xp: number; coins: number; gems: number; multiplierActive?: boolean }
   getTaskPenaltyPreview: (task: TaskRpg) => { xp: number; coins: number }
-
-  // Habit actions
-  getHabits: () => Habit[]
-  addHabit: (habit: Omit<Habit, 'id' | 'createdAt' | 'updatedAt' | 'profileId' | 'todayPositive' | 'todayNegative' | 'lastResetDate' | 'streak' | 'totalPositive' | 'totalNegative'>) => Habit
-  updateHabit: (id: HabitId, updater: (h: Habit) => Habit) => void
-  deleteHabit: (id: HabitId) => void
-  clickHabitPositive: (id: HabitId, asNextDay?: boolean) => void
-  clickHabitNegative: (id: HabitId, asNextDay?: boolean) => void
-  resetDailyHabits: () => void
 
   // Achievement group actions
   getAchievementGroups: () => AchievementGroup[]
@@ -418,7 +369,6 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
         vaultStorage.write('settings.json', { settings: s.settings, activeShopDiscountPercent: s.activeShopDiscountPercent }),
         vaultStorage.write('tasks.json', s.tasks ?? []),
         vaultStorage.write('task-groups.json', s.taskGroups ?? []),
-        vaultStorage.write('habits.json', s.habits ?? []),
         vaultStorage.write('shop-items.json', s.shopItems ?? []),
         vaultStorage.write('item-groups.json', s.itemGroups ?? []),
         vaultStorage.write('achievement-groups.json', s.achievementGroups ?? []),
@@ -449,7 +399,7 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
 
       const [
         profileData, settingsData, tasks, taskGroups,
-        habits, shopItems, itemGroups, achievementGroups, inventory,
+        _habits, shopItems, itemGroups, achievementGroups, inventory,
         achievements, craftRecipes, purchaseHistory,
         usageHistory, stats,
         noteFolders, notes, dailyReports,
@@ -489,7 +439,6 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
           activeShopDiscountPercent: settingsData?.activeShopDiscountPercent ?? null,
           tasks: tasks as TaskRpg[] ?? [],
           taskGroups: taskGroups as TaskGroup[] ?? [],
-          habits: habits as Habit[] ?? [],
           shopItems: shopItems as ShopItem[] ?? [],
           itemGroups: itemGroups as ItemGroup[] ?? [],
           achievementGroups: achievementGroups as AchievementGroup[] ?? [],
@@ -521,7 +470,6 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
             }),
             vaultStorage.write('tasks.json', state.tasks),
             vaultStorage.write('task-groups.json', state.taskGroups),
-            vaultStorage.write('habits.json', state.habits),
             vaultStorage.write('shop-items.json', state.shopItems),
             vaultStorage.write('item-groups.json', state.itemGroups),
             vaultStorage.write('achievement-groups.json', state.achievementGroups),
@@ -627,7 +575,6 @@ export const useRpgStore = create<RpgStoreState>()(
         itemGroups: [],
         achievementGroups: [],
         tasks: [],
-        habits: [],
         achievements: [],
         craftRecipes: [],
         shopItems: [],
@@ -636,12 +583,9 @@ export const useRpgStore = create<RpgStoreState>()(
         usageHistory: [],
         activeShopDiscountPercent: null,
         settings: { ...DEFAULT_SETTINGS },
-        debugDaysOffset: 0,
         _hasHydrated: false,
         stats: {
           totalTasksCompleted: 0,
-          totalHabitsPositive: 0,
-          totalHabitsNegative: 0,
           totalCoinsEarned: 0,
           totalCoinsSpent: 0,
           totalItemsCrafted: 0,
@@ -1668,157 +1612,6 @@ export const useRpgStore = create<RpgStoreState>()(
           }
         },
 
-        // ─── Habits ───────────────────────────────────────────────────────
-        getHabits: () => {
-          const { habits, activeProfileId } = get()
-          return activeProfileId ? habits.filter((h) => h.profileId === activeProfileId) : []
-        },
-
-        addHabit: (habit) => {
-          const profile = get().getActiveProfile()
-          if (!profile) throw new Error('No active profile')
-          const newHabit: Habit = {
-            ...habit,
-            id: crypto.randomUUID(),
-            profileId: profile.id,
-            todayPositive: 0,
-            todayNegative: 0,
-            lastResetDate: getTodayStart(),
-            streak: 0,
-            totalPositive: 0,
-            totalNegative: 0,
-            createdAt: now(),
-            updatedAt: now(),
-          }
-          set((s) => ({ habits: [newHabit, ...s.habits] }))
-          return newHabit
-        },
-
-        updateHabit: (id, updater) => {
-          set((s) => ({
-            habits: s.habits.map((h) => (h.id === id ? { ...updater(h), updatedAt: now() } : h)),
-          }))
-        },
-
-        deleteHabit: (id) => set((s) => ({ habits: s.habits.filter((h) => h.id !== id) })),
-
-        clickHabitPositive: (id, asNextDay = false) => {
-          const { habits, getActiveProfile, updateProfile, checkAchievements, tryRandomFragmentDrop } = get()
-          const habit = habits.find((h) => h.id === id)
-          const profile = getActiveProfile()
-          if (!habit || !profile || !habit.positiveEnabled) return
-
-          const todayStart = asNextDay ? getNextDayStart(habit.lastResetDate) : getTodayStart()
-          const isNewDay = habit.lastResetDate < todayStart
-          // Один раз в день: если уже действовал сегодня — не обрабатывать (кроме экспериментального режима)
-          if (!asNextDay && !isNewDay && (habit.todayPositive > 0 || habit.todayNegative > 0)) return
-
-          const streakAfter = isNewDay ? habit.streak + 1 : habit.streak
-          const mult = getHabitEffectiveMultiplier(habit, streakAfter)
-          const appliesXp = habit.multiplierAppliesToXp !== false
-          const appliesCoins = habit.multiplierAppliesToCoins !== false
-          const appliesGems = habit.multiplierAppliesToGems !== false
-
-          const xpGain = applyMultiplierCeil(habit.positiveXp, mult, appliesXp)
-          const coinsGain = applyMultiplierCeil(habit.positiveCoins, mult, appliesCoins)
-          const gemsGain = applyMultiplierCeil(habit.positiveGems ?? 0, mult, appliesGems)
-
-          // Add XP to attribute
-          if (habit.attributeId && xpGain > 0) {
-            const nextAttributes = addXpToAttribute(profile, habit.attributeId, xpGain)
-            updateProfile(profile.id, (p) => ({ ...p, attributes: nextAttributes }))
-          }
-
-          // Add coins
-          if (coinsGain > 0) {
-            get().addCurrency(CURRENCY_IDS.COINS, coinsGain)
-          }
-
-          // Add gems
-          if ((habit.positiveGemsEnabled ?? false) && gemsGain > 0) {
-            get().addCurrency(CURRENCY_IDS.GEMS, gemsGain)
-          }
-
-          const dateKey = getDateKey(todayStart)
-          const dailyCompletion = { ...(habit.dailyCompletion ?? {}), [dateKey]: 'positive' as const }
-
-          // Update habit
-          get().updateHabit(id, (h) => ({
-            ...h,
-            dailyCompletion,
-            todayPositive: isNewDay ? 1 : h.todayPositive + 1,
-            todayNegative: isNewDay ? 0 : h.todayNegative,
-            lastResetDate: todayStart,
-            totalPositive: h.totalPositive + 1,
-            streak: isNewDay ? h.streak + 1 : h.streak,
-          }))
-
-          // Update stats
-          updateStats((s) => ({ totalHabitsPositive: s.totalHabitsPositive + 1 }))
-
-          tryRandomFragmentDrop()
-          checkAchievements()
-        },
-
-        clickHabitNegative: (id, asNextDay = false) => {
-          const { habits, getActiveProfile, updateProfile } = get()
-          const habit = habits.find((h) => h.id === id)
-          const profile = getActiveProfile()
-          if (!habit || !profile || !habit.negativeEnabled) return
-
-          const todayStart = asNextDay ? getNextDayStart(habit.lastResetDate) : getTodayStart()
-          const isNewDay = habit.lastResetDate < todayStart
-          // Один раз в день: если уже действовал сегодня — не обрабатывать (кроме экспериментального режима)
-          if (!asNextDay && !isNewDay && (habit.todayPositive > 0 || habit.todayNegative > 0)) return
-
-          // Заморозка стрика: в период действия эффекта минус не сбрасывает streak
-          const freezeFrom = profile.streakFreezeFrom ?? 0
-          const freezeUntil = profile.streakFreezeUntil ?? 0
-          const isInFreeze = freezeFrom > 0 && freezeUntil > 0 && todayStart >= freezeFrom && todayStart <= freezeUntil
-
-          // Deduct XP
-          if (habit.attributeId && habit.negativeXp > 0) {
-            const nextAttributes = deductXpFromAttribute(profile, habit.attributeId, habit.negativeXp)
-            updateProfile(profile.id, (p) => ({ ...p, attributes: nextAttributes }))
-          }
-
-          // Deduct coins
-          if (habit.negativeCoins > 0) {
-            get().deductCurrency(CURRENCY_IDS.COINS, habit.negativeCoins)
-          }
-
-          // Deduct gems
-          if ((habit.negativeGemsEnabled ?? false) && (habit.negativeGems ?? 0) > 0) {
-            get().deductCurrency(CURRENCY_IDS.GEMS, habit.negativeGems ?? 0)
-          }
-
-          const dateKey = getDateKey(todayStart)
-          const dailyCompletion = { ...(habit.dailyCompletion ?? {}), [dateKey]: 'negative' as const }
-
-          // Update habit
-          get().updateHabit(id, (h) => ({
-            ...h,
-            dailyCompletion,
-            todayPositive: isNewDay ? 0 : h.todayPositive,
-            todayNegative: isNewDay ? 1 : h.todayNegative + 1,
-            lastResetDate: todayStart,
-            totalNegative: h.totalNegative + 1,
-            streak: isInFreeze ? h.streak : 0, // При заморозке стрик не сбрасывается
-          }))
-
-          updateStats((s) => ({ totalHabitsNegative: s.totalHabitsNegative + 1 }))
-        },
-
-        resetDailyHabits: () => {
-          const todayStart = getTodayStart()
-          set((s) => ({
-            habits: s.habits.map((h) => {
-              if (h.lastResetDate >= todayStart) return h
-              return { ...h, todayPositive: 0, todayNegative: 0, lastResetDate: todayStart }
-            }),
-          }))
-        },
-
         // ─── Achievement Groups ──────────────────────────────────────────
         getAchievementGroups: () => {
           const { achievementGroups, activeProfileId } = get()
@@ -2743,22 +2536,6 @@ export const useRpgStore = create<RpgStoreState>()(
           return true
         },
 
-        // ─── Debug Mode ───────────────────────────────────────────────────
-        getDebugNow: () => {
-          const offset = get().debugDaysOffset
-          return Date.now() + offset * 24 * 60 * 60 * 1000
-        },
-
-        incrementDebugDay: () => {
-          set((s) => ({ debugDaysOffset: s.debugDaysOffset + 1 }))
-          // Сразу проверяем задачи на сброс
-          get().resetRecurringTasks()
-        },
-
-        resetDebugTime: () => {
-          set({ debugDaysOffset: 0 })
-        },
-
         // ─── Reflection (Notes + Daily Reports) ──────────────────────────
 
         noteFolders: [],
@@ -3089,16 +2866,6 @@ export const useRpgStore = create<RpgStoreState>()(
             for (const t of g.tasks) totalTasksCompleted += t.count
           }
 
-          // Habits
-          const profileHabits = state.habits.filter((h) => h.profileId === pid)
-          const habitsPositive: DailySnapshot['habitsPositive'] = []
-          const habitsNegative: DailySnapshot['habitsNegative'] = []
-          for (const h of profileHabits) {
-            const dc = h.dailyCompletion?.[dateKey]
-            if (dc === 'positive') habitsPositive.push({ habitId: h.id, title: h.title })
-            if (dc === 'negative') habitsNegative.push({ habitId: h.id, title: h.title })
-          }
-
           // Purchases — with cost and detail info
           type PurchaseEntry = { itemId: string; name: string; count: number; totalCost: number; details?: string }
           const purchaseMap = new Map<string, PurchaseEntry>()
@@ -3191,8 +2958,8 @@ export const useRpgStore = create<RpgStoreState>()(
           return {
             tasksCompleted,
             totalTasksCompleted,
-            habitsPositive,
-            habitsNegative,
+            habitsPositive: [],
+            habitsNegative: [],
             itemsPurchased: Array.from(purchaseMap.values()),
             itemsUsed: Array.from(usageMap.values()),
             achievementsUnlocked,
@@ -3243,7 +3010,6 @@ export const useRpgStore = create<RpgStoreState>()(
             itemGroups: state.itemGroups,
             achievementGroups: state.achievementGroups,
             tasks: state.tasks,
-            habits: state.habits,
             achievements: state.achievements,
             craftRecipes: state.craftRecipes,
             shopItems: state.shopItems,
@@ -3271,7 +3037,6 @@ export const useRpgStore = create<RpgStoreState>()(
               itemGroups: data.itemGroups ?? [],
               achievementGroups: data.achievementGroups ?? [],
               tasks: (data.tasks ?? []).map((t: TaskRpg) => ({ ...t, groupId: t.groupId ?? null, deadlineAt: t.deadlineAt ?? null })),
-              habits: data.habits ?? [],
               achievements: data.achievements ?? [],
               craftRecipes: data.craftRecipes ?? [],
               shopItems: data.shopItems ?? [],
@@ -3299,7 +3064,6 @@ export const useRpgStore = create<RpgStoreState>()(
             taskGroups: [],
             achievementGroups: [],
             tasks: [],
-            habits: [],
             achievements: [],
             craftRecipes: [],
             inventory: [],
@@ -3309,8 +3073,6 @@ export const useRpgStore = create<RpgStoreState>()(
             dailyReports: [],
             stats: {
               totalTasksCompleted: 0,
-              totalHabitsPositive: 0,
-              totalHabitsNegative: 0,
               totalCoinsEarned: 0,
               totalCoinsSpent: 0,
               totalItemsCrafted: 0,
@@ -3495,9 +3257,4 @@ export const useRpgStore = create<RpgStoreState>()(
       },
     }
   )
-)
-
-// Keep module-level _debugDaysOffset in sync with the store
-useRpgStore.subscribe(
-  (state) => { _debugDaysOffset = state.debugDaysOffset }
 )

@@ -17,10 +17,9 @@ import ConfirmModal from './ConfirmModal'
 interface HabitDetailPanelProps {
   habit: Habit
   onDeselect: () => void
-  experimentalMode?: boolean
 }
 
-export default function HabitDetailPanel({ habit, onDeselect, experimentalMode }: HabitDetailPanelProps) {
+export default function HabitDetailPanel({ habit, onDeselect }: HabitDetailPanelProps) {
   const clickPositive = useRpgStore((s) => s.clickHabitPositive)
   const clickNegative = useRpgStore((s) => s.clickHabitNegative)
   const updateHabit = useRpgStore((s) => s.updateHabit)
@@ -42,7 +41,7 @@ export default function HabitDetailPanel({ habit, onDeselect, experimentalMode }
     : 0
   const isFreezeActive = freezeDaysLeft > 0
 
-  const hasActedToday = !experimentalMode && habit.lastResetDate >= todayStartTs && (habit.todayPositive > 0 || habit.todayNegative > 0)
+  const hasActedToday = habit.lastResetDate >= todayStartTs && (habit.todayPositive > 0 || habit.todayNegative > 0)
   const doneToday = habit.lastResetDate >= todayStartTs && habit.todayPositive > 0
 
   const multiplierDisplay = getHabitMultiplierDisplay(habit)
@@ -131,13 +130,13 @@ export default function HabitDetailPanel({ habit, onDeselect, experimentalMode }
   }
 
   const handlePositive = () => {
-    if (!experimentalMode && hasActedToday) return
-    experimentalMode ? clickPositive(habit.id, true) : clickPositive(habit.id)
+    if (hasActedToday) return
+    clickPositive(habit.id)
   }
 
   const handleNegative = () => {
-    if (!experimentalMode && hasActedToday) return
-    experimentalMode ? clickNegative(habit.id, true) : clickNegative(habit.id)
+    if (hasActedToday) return
+    clickNegative(habit.id)
   }
 
   const streakColor = getStreakColor(habit.streak)
@@ -686,10 +685,10 @@ export default function HabitDetailPanel({ habit, onDeselect, experimentalMode }
         <button
           type="button"
           onClick={handlePositive}
-          disabled={!experimentalMode && hasActedToday}
+          disabled={hasActedToday}
           className={cn(
             'flex-1 flex items-center justify-center gap-2 rounded-2xl py-3.5 font-semibold transition-all duration-200',
-            hasActedToday && !experimentalMode
+            hasActedToday
               ? 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed opacity-50'
               : 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]'
           )}
@@ -701,10 +700,10 @@ export default function HabitDetailPanel({ habit, onDeselect, experimentalMode }
           <button
             type="button"
             onClick={handleNegative}
-            disabled={!experimentalMode && hasActedToday}
+            disabled={hasActedToday}
             className={cn(
               'flex h-12 items-center justify-center gap-2 rounded-2xl px-5 font-semibold transition-all duration-200',
-              hasActedToday && !experimentalMode
+              hasActedToday
                 ? 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed opacity-50'
                 : 'bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-500/20 active:scale-[0.98]'
             )}

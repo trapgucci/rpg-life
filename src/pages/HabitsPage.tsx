@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import {
-  Plus, X, Repeat, FlaskConical, Snowflake,
+  Plus, X, Repeat,
   ArrowUpDown, ArrowUp, ArrowDown, Search, List, Target, CheckSquare, XCircle, Sparkles
 } from 'lucide-react'
 import { cn } from '../lib/cn'
@@ -189,40 +189,6 @@ function HabitCreateForm({ onCreated }: HabitCreateFormProps) {
   )
 }
 
-// ─── Test Streak Freeze Button (experimental mode) ─────────────────────────
-
-function ActivateTestStreakFreezeButton() {
-  const getActiveProfile = useRpgStore((s) => s.getActiveProfile)
-  const updateProfile = useRpgStore((s) => s.updateProfile)
-
-  const handleActivate = () => {
-    const profile = getActiveProfile()
-    if (!profile) return
-    const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
-    const endDate = new Date(todayStart)
-    endDate.setDate(endDate.getDate() + 2)
-    endDate.setHours(23, 59, 59, 999)
-    updateProfile(profile.id, (p) => ({
-      ...p,
-      streakFreezeFrom: todayStart.getTime(),
-      streakFreezeUntil: endDate.getTime(),
-    }))
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={handleActivate}
-      className="flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-medium bg-blue-500/20 text-blue-600 border border-blue-500/40 hover:bg-blue-500/30 transition-colors"
-      title="Активировать заморозку стрика на 3 дня (тест)"
-    >
-      <Snowflake className="h-3.5 w-3.5 shrink-0" />
-      <span className="hidden lg:inline">Заморозка 3д</span>
-    </button>
-  )
-}
-
 // ─── Main Habits Page ──────────────────────────────────────────────────────
 
 export default function HabitsPage() {
@@ -240,10 +206,7 @@ export default function HabitsPage() {
   const [showSortMenu, setShowSortMenu] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
-  const [experimentalMode, setExperimentalMode] = useState(false)
   const sortMenuRef = useRef<HTMLDivElement>(null)
-
-  const experimentalSnapshotRef = useRef<Record<HabitId, Pick<Habit, 'streak' | 'lastResetDate' | 'todayPositive' | 'todayNegative' | 'dailyCompletion'>> | null>(null)
 
   // Form animation
   useEffect(() => {
@@ -266,32 +229,6 @@ export default function HabitsPage() {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [showSortMenu])
-
-  const toggleExperimentalMode = () => {
-    const updateHabit = useRpgStore.getState().updateHabit
-    if (experimentalMode) {
-      const snapshot = experimentalSnapshotRef.current
-      if (snapshot) {
-        Object.entries(snapshot).forEach(([id, data]) => {
-          updateHabit(id as HabitId, (h) => ({ ...h, ...data }))
-        })
-        experimentalSnapshotRef.current = null
-      }
-    } else {
-      const snapshot: Record<string, Pick<Habit, 'streak' | 'lastResetDate' | 'todayPositive' | 'todayNegative' | 'dailyCompletion'>> = {}
-      activeHabits.forEach((h) => {
-        snapshot[h.id] = {
-          streak: h.streak,
-          lastResetDate: h.lastResetDate,
-          todayPositive: h.todayPositive,
-          todayNegative: h.todayNegative,
-          dailyCompletion: h.dailyCompletion ? { ...h.dailyCompletion } : undefined,
-        }
-      })
-      experimentalSnapshotRef.current = snapshot
-    }
-    setExperimentalMode((v) => !v)
-  }
 
   // Filter & sort
   const todayStart = new Date()
@@ -466,21 +403,6 @@ export default function HabitsPage() {
                 <Search className="h-4 w-4" />
               </button>
 
-              {/* Experimental mode */}
-              <button
-                type="button"
-                onClick={toggleExperimentalMode}
-                className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
-                  experimentalMode
-                    ? 'bg-amber-500/20 text-amber-600 border border-amber-500/40'
-                    : 'border border-[var(--border)] text-[var(--fg-muted)] hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]'
-                )}
-                title={experimentalMode ? 'Выключить экспериментальный режим' : 'Включить экспериментальный режим'}
-              >
-                <FlaskConical className="h-4 w-4" />
-              </button>
-
               {/* New habit */}
               <button
                 type="button"
@@ -504,15 +426,6 @@ export default function HabitsPage() {
                 className="input w-full"
                 autoFocus
               />
-            </div>
-          )}
-
-          {/* Experimental mode extras */}
-          {experimentalMode && (
-            <div className="mt-4 flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/30 px-3 py-2">
-              <FlaskConical className="h-4 w-4 text-amber-600 shrink-0" />
-              <span className="text-xs text-amber-600 font-medium flex-1">Экспериментальный режим</span>
-              <ActivateTestStreakFreezeButton />
             </div>
           )}
 
@@ -579,7 +492,7 @@ export default function HabitsPage() {
                   habit={habit}
                   selected={habit.id === selectedId}
                   onSelect={() => setSelectedId(habit.id)}
-                  experimentalMode={experimentalMode}
+
                 />
               ))}
             </div>
@@ -593,7 +506,7 @@ export default function HabitsPage() {
           <HabitDetailPanel
             habit={selectedHabit}
             onDeselect={() => setSelectedId(null)}
-            experimentalMode={experimentalMode}
+
           />
         ) : (
           <div className="glass-card flex h-full flex-col items-center justify-center rounded-2xl">
@@ -612,7 +525,7 @@ export default function HabitsPage() {
           <HabitDetailPanel
             habit={selectedHabit}
             onDeselect={() => setSelectedId(null)}
-            experimentalMode={experimentalMode}
+
           />
         </div>
       )}

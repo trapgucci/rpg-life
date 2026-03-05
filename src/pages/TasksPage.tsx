@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import { cn } from '../lib/cn'
-import { CheckSquare, Plus, Sparkles, Target, Folder, Pencil, Trash2, X, Archive, ArrowUpDown, ArrowUp, ArrowDown, Search, ChevronDown, List, FlaskConical } from 'lucide-react'
+import { CheckSquare, Plus, Sparkles, Target, Folder, Pencil, Trash2, X, Archive, ArrowUpDown, ArrowUp, ArrowDown, Search, ChevronDown, List } from 'lucide-react'
 import TaskCreateForm from '../components/TaskCreateForm'
 import TaskCard, { type TaskCardFragment } from '../components/TaskCard'
 import TaskDetailPanel from '../components/TaskDetailPanel'
@@ -56,12 +56,6 @@ export default function TasksPage() {
   const getTaskRewardPreview = useRpgStore((s) => s.getTaskRewardPreview)
   const getCraftRecipes = useRpgStore((s) => s.getCraftRecipes)
   const shopItems = useRpgStore((s) => s.shopItems)
-
-  // Debug mode
-  const debugDaysOffset = useRpgStore((s) => s.debugDaysOffset)
-  const debugNow = useRpgStore((s) => s.getDebugNow)()
-  const incrementDebugDay = useRpgStore((s) => s.incrementDebugDay)
-  const resetDebugTime = useRpgStore((s) => s.resetDebugTime)
 
   const taskGroups = useMemo(
     () =>
@@ -162,11 +156,11 @@ export default function TasksPage() {
   const [deletingGroupId, setDeletingGroupId] = useState<TaskGroupId | null>(null)
   const [draggedGroupId, setDraggedGroupId] = useState<TaskGroupId | null>(null)
   const [dragOverGroupId, setDragOverGroupId] = useState<TaskGroupId | null>(null)
-  const [showDebugMode, setShowDebugMode] = useState(false)
+
 
   const filteredTasks = useMemo(() => {
     if (!activeProfileId) return []
-    const now = debugNow
+    const now = Date.now()
     let list = tasks.filter((t) => {
       if (t.profileId !== activeProfileId) return false
       if (t.archived) return false
@@ -206,7 +200,7 @@ export default function TasksPage() {
     }
 
     return list
-  }, [tasks, activeProfileId, selectedGroupId, taskFilter, searchQuery, debugNow])
+  }, [tasks, activeProfileId, selectedGroupId, taskFilter, searchQuery])
 
   // Вычисляем награды один раз, затем сортируем используя уже вычисленные значения
   const tasksWithRewards = useMemo(() => {
@@ -247,12 +241,15 @@ export default function TasksPage() {
     }
 
     const sorted = [...filteredTasks].sort((a, b) => {
-      if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1
+      // Only push non-recurring completed tasks to the bottom
+      const aEffectivelyDone = a.isCompleted && a.recurrence === 'once'
+      const bEffectivelyDone = b.isCompleted && b.recurrence === 'once'
+      if (aEffectivelyDone !== bEffectivelyDone) return aEffectivelyDone ? 1 : -1
 
       const dir = sortDirection === 'asc' ? 1 : -1
       switch (sortField) {
         case 'date':
-          return (b.updatedAt - a.updatedAt) * dir
+          return (b.createdAt - a.createdAt) * dir
         case 'priority': {
           const aP = PRIORITY_ORDER[a.priority ?? 'none'] ?? 0
           const bP = PRIORITY_ORDER[b.priority ?? 'none'] ?? 0
@@ -271,7 +268,7 @@ export default function TasksPage() {
           return (aD2 - bD2) * dir
         }
         default:
-          return b.updatedAt - a.updatedAt
+          return b.createdAt - a.createdAt
       }
     })
 
@@ -315,7 +312,7 @@ export default function TasksPage() {
   const taskCountByGroup = useMemo(() => {
     const map = new Map<TaskGroupId | null, number>()
     if (!activeProfileId) return map
-    const now = debugNow
+    const now = Date.now()
     tasks
       .filter((t) => {
         if (t.profileId !== activeProfileId || t.archived) return false
@@ -345,7 +342,7 @@ export default function TasksPage() {
         map.set(g, (map.get(g) ?? 0) + 1)
       })
     return map
-  }, [tasks, activeProfileId, taskFilter, debugNow])
+  }, [tasks, activeProfileId, taskFilter])
 
   const countNoGroup = taskCountByGroup.get(null) ?? 0
 
@@ -408,21 +405,6 @@ export default function TasksPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {/* Debug mode button */}
-              <button
-                type="button"
-                onClick={() => setShowDebugMode(!showDebugMode)}
-                className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
-                  'border border-[var(--border)] text-[var(--fg-muted)]',
-                  'hover:border-purple-500/50 hover:text-purple-500 hover:bg-purple-500/10',
-                  (showDebugMode || debugDaysOffset > 0) && 'border-purple-500 text-purple-500 bg-purple-500/10 animate-pulse'
-                )}
-                title="Экспериментальный режим"
-              >
-                <FlaskConical className="h-4 w-4" />
-              </button>
-
               {/* Sort button */}
               <div className="relative" ref={sortMenuRef}>
                 <button
@@ -759,59 +741,6 @@ export default function TasksPage() {
                 </div>
               </div>,
             document.body
-          )}
-
-          {/* Экспериментальный режим */}
-          {showDebugMode && (
-            <div className="mt-4 rounded-xl p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/20">
-                    <FlaskConical className="h-4 w-4 text-purple-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-purple-400">Экспериментальный режим</h3>
-                    <p className="text-xs text-[var(--fg-muted)]">Тестирование циклов задач</p>
-                  </div>
-                </div>
-                {debugDaysOffset > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      resetDebugTime()
-                      setShowDebugMode(false)
-                    }}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-500/20 transition-colors font-semibold"
-                  >
-                    Выйти
-                  </button>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={incrementDebugDay}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 font-semibold transition-all duration-200 bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
-                >
-                  <Plus className="h-5 w-5" />
-                  +1 День
-                </button>
-                <div className="flex flex-col items-center justify-center px-4 py-2 rounded-xl bg-[var(--surface)] border border-[var(--border)]">
-                  <span className="text-2xl font-bold text-purple-500">{debugDaysOffset > 0 ? `+${debugDaysOffset}` : '0'}</span>
-                  <span className="text-xs text-[var(--fg-muted)]">дней</span>
-                </div>
-              </div>
-              {debugDaysOffset > 0 && (
-                <div className="mt-3 text-xs text-center text-purple-400">
-                  Виртуальная дата: {new Date(debugNow).toLocaleDateString('ru-RU', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                    weekday: 'long'
-                  })}
-                </div>
-              )}
-            </div>
           )}
 
           {/* Фильтр по статусу задач */}

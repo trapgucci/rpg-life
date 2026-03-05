@@ -66,8 +66,6 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const completeTask = useRpgStore((s) => s.completeTask)
   const canCompleteTask = useRpgStore((s) => s.canCompleteTask)
   const skipTask = useRpgStore((s) => s.skipTask)
-  const debugNow = useRpgStore((s) => s.getDebugNow)()
-
   const archiveTask = useRpgStore((s) => s.archiveTask)
   const deleteTask = useRpgStore((s) => s.deleteTask)
   const updateTask = useRpgStore((s) => s.updateTask)
@@ -195,7 +193,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
       const resetFields: Record<string, unknown> = shouldResetCompletion ? {
         isCompleted: false,
         completedAt: undefined,
-        currentCycleStart: debugNow,
+        currentCycleStart: Date.now(),
         // Сбрасываем weeklyCompletedThisWeek при изменении расписания
         ...(editRecurrenceSettings?.weeklyMode === 'timesPerWeek' ? {
           recurrenceSettings: {
@@ -1366,9 +1364,9 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                         {!task.isCompleted ? (
                           <button
                             type="button"
-                            disabled={!isTodayScheduled(task, debugNow)}
+                            disabled={!isTodayScheduled(task, Date.now())}
                             onClick={() => {
-                              if (!isTodayScheduled(task, debugNow)) return
+                              if (!isTodayScheduled(task, Date.now())) return
                               if (!subtask.isCompleted) {
                                 const cr = subtask.coinReward ?? 0
                                 const xr = getSubtaskEffectiveXp(subtask)
@@ -1381,7 +1379,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                             }}
                             className={cn(
                               'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-all',
-                              !isTodayScheduled(task, debugNow)
+                              !isTodayScheduled(task, Date.now())
                                 ? 'border-2 border-[var(--border)] opacity-40 cursor-not-allowed'
                                 : subtask.isCompleted
                                 ? 'bg-emerald-500 text-white'
@@ -1493,11 +1491,11 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
         {!isEditing && (
           <div className="mt-2">
             {(task.recurrence !== 'once' || (task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate)) && (
-              <TaskCurrentCycleBlock task={task} nowMs={debugNow} />
+              <TaskCurrentCycleBlock task={task} nowMs={Date.now()} />
             )}
             <TaskMultiplierBlock task={task} />
             {task.recurrence !== 'once' && <TaskStatsBlock task={task} />}
-            <TaskHistoryBlock task={task} nowMs={debugNow} />
+            <TaskHistoryBlock task={task} nowMs={Date.now()} />
           </div>
         )}
       </div>
@@ -1543,7 +1541,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
             </div>
           )}
           {task.isCompleted && (() => {
-            const nextDate = getNextAvailableDate(task, debugNow)
+            const nextDate = getNextAvailableDate(task, Date.now())
             return (
               <div className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-b from-blue-500/18 to-blue-500/6 ring-1 ring-inset ring-blue-400/20 shadow-sm shadow-blue-500/10 py-4 text-blue-500">
                 <div className="flex items-center gap-2">
@@ -1552,13 +1550,13 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 </div>
                 {nextDate != null && (
                   <span className="text-xs text-blue-400">
-                    Следующий цикл: {getRelativeTimeRu(nextDate, debugNow).toLowerCase()}
+                    Следующий цикл: {getRelativeTimeRu(nextDate, Date.now()).toLowerCase()}
                   </span>
                 )}
               </div>
             )
           })()}
-          {!canComplete && !task.isCompleted && task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate && debugNow >= task.recurrenceSettings.endDate && (
+          {!canComplete && !task.isCompleted && task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate && Date.now() >= task.recurrenceSettings.endDate && (
             <div className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-red-500/18 to-red-500/6 ring-1 ring-inset ring-red-400/20 shadow-sm shadow-red-500/10 py-4 text-red-500">
               <Clock className="h-5 w-5" />
               <span className="font-semibold">Крайний срок истёк</span>
