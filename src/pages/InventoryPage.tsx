@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { cn } from '../lib/cn'
-import { Package, Search, X, Clock, Gift, Frown, Minus, Plus, Trash2 } from 'lucide-react'
+import { Package, Search, X, Clock, Gift, Frown, Minus, Plus, Trash2, Coins, Gem } from 'lucide-react'
 import { useRpgStore } from '../store/useRpgStore'
 import InventoryItemCard from '../components/InventoryItemCard'
 import InventoryItemModal from '../components/InventoryItemModal'
@@ -9,6 +9,7 @@ import StreakMultiplierModal from '../components/StreakMultiplierModal'
 import Modal from '../components/Modal'
 import type { ShopItem, InventoryEntry, ItemGroup } from '../types/domain'
 import { CURRENCY_IDS } from '../types/domain'
+import { rpgToast } from '../components/RpgToast'
 
 /* ─── Types ─────────────────────────────────────────────────────────────────── */
 
@@ -42,8 +43,8 @@ export default function InventoryPage() {
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
   const [deleteQuantity, setDeleteQuantity] = useState(1)
   const [showMobileHistory, setShowMobileHistory] = useState(false)
-  const [lootResult, setLootResult] = useState<{ itemId: string; itemName: string; compensated?: boolean; compensationLabel?: string } | 'empty' | null>(null)
-  const [batchLootResults, setBatchLootResults] = useState<Array<{ itemId: string; itemName: string; compensated?: boolean; compensationLabel?: string } | 'empty'> | null>(null)
+  const [lootResult, setLootResult] = useState<{ itemId: string; itemName: string; compensated?: boolean; compensationLabel?: string; compensationReason?: 'duplicate' | 'out_of_stock' } | 'empty' | null>(null)
+  const [batchLootResults, setBatchLootResults] = useState<Array<{ itemId: string; itemName: string; compensated?: boolean; compensationLabel?: string; compensationReason?: 'duplicate' | 'out_of_stock' } | 'empty'> | null>(null)
   const [multiplierItemId, setMultiplierItemId] = useState<string | null>(null)
 
   // ── Refs ──────────────────────────────────────────────────────────────────
@@ -201,7 +202,7 @@ export default function InventoryPage() {
     if (result && typeof result === 'object' && 'loot' in result) {
       setDetailModalItemId(null)
       if (result.loot) {
-        setLootResult({ itemId: result.loot.itemId, itemName: result.loot.name, compensated: result.loot.compensated, compensationLabel: result.loot.compensationLabel })
+        setLootResult({ itemId: result.loot.itemId, itemName: result.loot.name, compensated: result.loot.compensated, compensationLabel: result.loot.compensationLabel, compensationReason: result.loot.compensationReason })
       } else {
         setLootResult('empty')
       }
@@ -221,6 +222,11 @@ export default function InventoryPage() {
     if (result && typeof result === 'object' && 'videogame' in result) {
       return
     }
+    // Plain item used
+    const usedItem = shopItems.find((i) => i.id === itemId)
+    if (usedItem) {
+      rpgToast({ title: `Использовано: ${usedItem.name}`, type: 'success' })
+    }
     // Close modal if item is fully consumed
     const entry = inventory.find((e) => e.itemId === itemId)
     if (entry && entry.quantity <= (quantity ?? 1)) {
@@ -235,7 +241,7 @@ export default function InventoryPage() {
       const result = useItem(itemId)
       if (result && typeof result === 'object' && 'loot' in result) {
         if (result.loot) {
-          results.push({ itemId: result.loot.itemId, itemName: result.loot.name, compensated: result.loot.compensated, compensationLabel: result.loot.compensationLabel })
+          results.push({ itemId: result.loot.itemId, itemName: result.loot.name, compensated: result.loot.compensated, compensationLabel: result.loot.compensationLabel, compensationReason: result.loot.compensationReason })
         } else {
           results.push('empty')
         }
@@ -273,6 +279,7 @@ export default function InventoryPage() {
       }))
     }
     removeFromInventory(deletingItemId, deleteQuantity)
+    rpgToast({ title: `${item?.name ?? 'Предмет'} удалён из инвентаря`, type: 'info' })
     // Close modal if removing last units
     if (detailModalItemId === deletingItemId) {
       const entry = inventory.find((e) => e.itemId === deletingItemId)
@@ -582,18 +589,48 @@ export default function InventoryPage() {
               {lootResult === 'empty'
                 ? <Frown className="h-7 w-7 text-gray-500" />
                 : lootResult.compensated
-                  ? <span className="text-2xl">🪙</span>
+                  ? <Coins className="h-7 w-7 text-amber-500" />
                   : <Gift className="h-7 w-7 text-violet-500" />
               }
             </div>
             <h3 className="text-lg font-bold text-[var(--fg)] mb-1">
-              {lootResult === 'empty' ? 'Ничего не выпало' : lootResult.compensated ? 'Компенсация!' : 'Вы получили!'}
+              {lootResult === 'empty'
+                ? 'Ничего не выпало'
+                : lootResult.compensated
+                  ? 'Компенсация!'
+                  : 'Вы получили!'}
             </h3>
+            {lootResult !== 'empty' && lootResult.compensated && (
+              <p className="text-xs text-amber-500 font-medium mb-1">
+                {lootResult.compensationReason === 'out_of_stock'
+                  ? `«${lootResult.itemName}» — запас исчерпан`
+                  : `«${lootResult.itemName}» уже есть`}
+              </p>
+            )}
+            {lootResult !== 'empty' && lootResult.compensated && lootResult.compensationLabel && (
+              <div className="flex items-center justify-center gap-2 mb-4 mt-1 rounded-xl bg-amber-500/10 px-4 py-2.5">
+                {lootResult.compensationLabel.split(' + ').map((part, i) => {
+                  const coinMatch = part.match(/🪙\s*(\d+)/)
+                  const gemMatch = part.match(/💎\s*(\d+)/)
+                  if (coinMatch) return (
+                    <span key={i} className="flex items-center gap-1.5 text-sm font-bold text-amber-500">
+                      <Coins className="h-4 w-4" /> +{coinMatch[1]}
+                    </span>
+                  )
+                  if (gemMatch) return (
+                    <span key={i} className="flex items-center gap-1.5 text-sm font-bold text-purple-500">
+                      <Gem className="h-4 w-4" /> +{gemMatch[1]}
+                    </span>
+                  )
+                  return <span key={i} className="text-sm font-medium text-[var(--fg)]">{part}</span>
+                })}
+              </div>
+            )}
             <p className="text-sm text-[var(--fg-muted)] mb-6 max-w-[280px]">
               {lootResult === 'empty'
                 ? 'В этот раз не повезло, попробуйте ещё раз!'
                 : lootResult.compensated
-                  ? `${lootResult.itemName} уже есть в вашем инвентаре. Вы получили 80% стоимости: ${lootResult.compensationLabel}`
+                  ? 'Вы получили 80% от стоимости предмета'
                   : lootResult.itemId === CURRENCY_IDS.COINS || lootResult.itemId === CURRENCY_IDS.GEMS
                     ? `${lootResult.itemName} добавлены к балансу`
                     : `${lootResult.itemName} добавлен в инвентарь`
@@ -641,7 +678,7 @@ export default function InventoryPage() {
                     'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sm',
                     r === 'empty' ? 'bg-zinc-500/10 text-zinc-400' : r.compensated ? 'bg-amber-500/10 text-amber-400' : 'bg-violet-500/10 text-violet-400',
                   )}>
-                    {r === 'empty' ? <Frown className="h-4 w-4" /> : r.compensated ? '🪙' : <Gift className="h-4 w-4" />}
+                    {r === 'empty' ? <Frown className="h-4 w-4" /> : r.compensated ? <Coins className="h-4 w-4" /> : <Gift className="h-4 w-4" />}
                   </span>
                   <div className="min-w-0 flex-1">
                     <span className={cn(
@@ -651,7 +688,21 @@ export default function InventoryPage() {
                       {r === 'empty' ? 'Ничего не выпало' : r.itemName}
                     </span>
                     {r !== 'empty' && r.compensated && (
-                      <span className="text-xs text-amber-500">Компенсация: {r.compensationLabel}</span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] text-amber-500/70">
+                          {r.compensationReason === 'out_of_stock' ? 'Запас исчерпан' : 'Уже есть'}
+                        </span>
+                        <span className="text-[10px] text-[var(--fg-muted)]">·</span>
+                        <span className="flex items-center gap-1 text-xs font-semibold text-amber-500">
+                          {r.compensationLabel?.split(' + ').map((part, j) => {
+                            const coinMatch = part.match(/🪙\s*(\d+)/)
+                            const gemMatch = part.match(/💎\s*(\d+)/)
+                            if (coinMatch) return <span key={j} className="flex items-center gap-0.5"><Coins className="h-3 w-3" />+{coinMatch[1]}</span>
+                            if (gemMatch) return <span key={j} className="flex items-center gap-0.5 text-purple-400"><Gem className="h-3 w-3" />+{gemMatch[1]}</span>
+                            return <span key={j}>{part}</span>
+                          })}
+                        </span>
+                      </div>
                     )}
                   </div>
                 </div>

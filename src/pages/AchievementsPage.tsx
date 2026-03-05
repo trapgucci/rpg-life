@@ -19,6 +19,7 @@ import type {
   ShopItem, TaskRpg, TaskRecurrence
 } from '../types/domain'
 import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
+import { rpgToast } from '../components/RpgToast'
 
 // ─── Emoji categories for picker ─────────────────────────────────────────────
 
@@ -278,6 +279,20 @@ function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDet
             type="button"
             onClick={() => {
               markAchievementReady(achievement.id)
+              rpgToast({
+                title: achievement.title,
+                description: 'Можно забрать награду!',
+                type: 'achievement_complete',
+                coins: achievement.rewardCoins,
+                xp: achievement.rewardXp,
+                gems: achievement.rewardGems,
+                items: rewardItemsList.map((ri) => ({
+                  name: ri.item!.name,
+                  emoji: ri.item!.emoji,
+                  quantity: ri.quantity,
+                })),
+                duration: 6000,
+              })
               onClose()
             }}
             className="mt-4 btn-primary text-sm py-2 w-full flex items-center justify-center"
@@ -291,6 +306,18 @@ function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDet
             type="button"
             onClick={() => {
               unlockAchievement(achievement.id)
+              rpgToast({
+                title: `Достижение: ${achievement.title}!`,
+                type: 'achievement',
+                coins: achievement.rewardCoins,
+                xp: achievement.rewardXp,
+                gems: achievement.rewardGems,
+                items: rewardItemsList.map((ri) => ({
+                  name: ri.item!.name,
+                  emoji: ri.item!.emoji,
+                  quantity: ri.quantity,
+                })),
+              })
               onClose()
             }}
             className="mt-4 btn-primary text-sm py-2 w-full flex items-center justify-center"
@@ -305,6 +332,7 @@ function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDet
           onConfirm={() => {
             setShowDeleteConfirm(false)
             deleteAchievement(achievement.id)
+            rpgToast({ title: 'Достижение удалено', type: 'info' })
             onClose()
           }}
           onCancel={() => setShowDeleteConfirm(false)}

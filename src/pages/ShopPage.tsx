@@ -6,6 +6,7 @@ import {
   Folder, List, ChevronDown, Sparkles, History, Pencil, Trash2, CheckSquare,
   Package, Puzzle, Palette,
 } from 'lucide-react'
+import { rpgToast } from '../components/RpgToast'
 
 const GROUP_COLORS = [
   '#ef4444', '#f97316', '#f59e0b', '#eab308',
@@ -163,7 +164,10 @@ export default function ShopPage() {
     // Оставить в корзине только те предметы, которые не удалось купить
     if (failedItems.length > 0) {
       setCart((prev) => prev.filter((c) => failedItems.includes(c.itemId)))
+      rpgToast({ title: 'Не все предметы удалось купить', type: 'error' })
     } else {
+      const totalItems = cart.reduce((s, c) => s + c.quantity, 0)
+      rpgToast({ title: `Куплено ${totalItems} предметов!`, type: 'purchase' })
       setCart([])
       setShowCart(false)
     }

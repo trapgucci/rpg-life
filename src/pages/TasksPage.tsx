@@ -10,6 +10,7 @@ import { useRpgStore } from '../store/useRpgStore'
 import ConfirmModal from '../components/ConfirmModal'
 import type { TaskRpg, TaskGroupId } from '../types/domain'
 import { getItemTypeColor } from '../components/shop/shopUtils'
+import { rpgToast } from '../components/RpgToast'
 
 /** Специальный id для «Без группы» */
 const NO_GROUP_ID: TaskGroupId | null = null
@@ -286,6 +287,7 @@ export default function TasksPage() {
     setNewGroupName('')
     setAddingGroup(false)
     setSelectedGroupId(group.id)
+    rpgToast({ title: `Группа «${name}» создана`, type: 'success' })
   }
 
   const handleSaveGroupEdit = (id: TaskGroupId) => {
@@ -305,6 +307,7 @@ export default function TasksPage() {
       deleteTaskGroup(deletingGroupId)
       if (selectedGroupId === deletingGroupId) setSelectedGroupId(NO_GROUP_ID)
       setEditingGroupId(null)
+      rpgToast({ title: 'Группа удалена', type: 'info' })
     }
     setDeletingGroupId(null)
   }

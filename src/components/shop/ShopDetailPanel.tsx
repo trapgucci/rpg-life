@@ -25,6 +25,7 @@ import RewardBadge from '../RewardBadge'
 import EmojiPickerModal from './EmojiPickerModal'
 import LootboxEffectModal from './LootboxEffectModal'
 import DiscountVoucherModal from './DiscountVoucherModal'
+import { rpgToast } from '../RpgToast'
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
@@ -302,7 +303,17 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
 
   const handleConfirmPurchase = () => {
     setShowPurchaseConfirm(false)
-    purchaseItem(item.id)
+    const result = purchaseItem(item.id)
+    if (result === false) {
+      rpgToast({ title: 'Недостаточно средств!', type: 'error' })
+    } else {
+      rpgToast({
+        title: `Куплено: ${item.name}`,
+        type: 'purchase',
+        coins: effectiveCoinCost > 0 ? -effectiveCoinCost : undefined,
+        gems: effectiveGemCost > 0 ? -effectiveGemCost : undefined,
+      })
+    }
   }
 
   // ── Stats ────────────────────────────────────────────────────────────────
@@ -958,6 +969,17 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                       )}
                     </div>
                 </div>
+                {(editIsLootBox || editStreakMultiplierEnabled || editIsDiscountVoucher || editIsVideoGame || editIsTvSerial) && (
+                  <div className="px-6 pb-6">
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvancedSettings(false)}
+                      className="w-full rounded-xl bg-[var(--accent)] py-3 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                    >
+                      Готово
+                    </button>
+                  </div>
+                )}
               </Modal>
 
               {/* ─── Save / Cancel buttons ─── */}
@@ -1660,8 +1682,8 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
               </div>
             )}
 
-            {/* ── Stats section (hidden for single-stock items) ────────── */}
-            {!(item.stock !== undefined && item.stock <= 1) && totalPurchases > 0 && (
+            {/* ── Stats section ────────── */}
+            {totalPurchases > 0 && (
               <div className="glass rounded-2xl p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 ring-1 ring-inset ring-[var(--accent)]/20">

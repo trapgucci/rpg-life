@@ -5,6 +5,7 @@ import type { TaskRecurrence, SubtaskItem, TaskDifficulty, AttributeId, TaskPrio
 import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
 import { useRpgStore } from '../store/useRpgStore'
 import type { TaskGroupId } from '../types/domain'
+import { rpgToast } from './RpgToast'
 import RewardBadge from './RewardBadge'
 import TaskGroupSelectModal from './TaskGroupSelectModal'
 import TaskAttributeSelectModal from './TaskAttributeSelectModal'
@@ -197,6 +198,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
 
     try {
       addTask(newTask)
+      rpgToast({ title: 'Задача создана!', type: 'success' })
       setTitle('')
       setDescription('')
       setSelectedGroupId(defaultGroupId)

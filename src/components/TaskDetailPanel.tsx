@@ -253,6 +253,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const confirmDelete = () => {
     setShowDeleteConfirm(false)
     deleteTask(task.id)
+    rpgToast({ title: 'Задача удалена', type: 'info' })
     onDeselect?.()
   }
 
@@ -281,6 +282,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const confirmSkip = () => {
     setShowSkipConfirm(false)
     skipTask(task.id)
+    rpgToast({ title: 'Задача пропущена', type: 'info' })
     // Для instant задач НЕ десeлектим — задача сбрасывается и готова к повторному выполнению
     if (task.recurrence !== 'instant') {
       onDeselect?.()
@@ -295,6 +297,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const confirmArchive = () => {
     setShowArchiveConfirm(false)
     archiveTask(task.id)
+    rpgToast({ title: 'Задача архивирована', type: 'info' })
     onDeselect?.()
   }
 
@@ -1513,40 +1516,46 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
       {!isEditing && !task.canceledAt && (
         <div className="mt-4 shrink-0">
           {!task.isCompleted && (
-            <div className="flex gap-2">
+            <div
+              className={cn(
+                'flex rounded-2xl overflow-hidden shadow-lg transition-shadow duration-200',
+                canComplete
+                  ? 'shadow-emerald-500/20 hover:shadow-xl'
+                  : 'opacity-50'
+              )}
+            >
               {/* Main complete button */}
               <button
                 type="button"
                 onClick={handleComplete}
                 disabled={!canComplete}
                 className={cn(
-                  'flex-1 flex items-center justify-center gap-2 rounded-2xl py-4 font-semibold transition-all duration-200',
+                  'group/complete flex-[3] flex items-center justify-center gap-2 py-4 font-semibold transition-all duration-300 hover:flex-[5] active:scale-y-95',
                   canComplete
-                    ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98]'
-                    : 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed opacity-50'
+                    ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white'
+                    : 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed'
                 )}
               >
                 <Check className="h-5 w-5" />
                 Выполнить
               </button>
 
-              {/* Skip button (smaller) */}
+              {/* Skip button */}
               <button
                 type="button"
                 onClick={handleSkip}
                 disabled={!canComplete}
                 className={cn(
-                  'flex items-center justify-center gap-1.5 rounded-2xl px-3 md:px-4 py-4 font-medium text-sm transition-all duration-200 min-w-[48px]',
+                  'group/skip flex-[1] flex items-center justify-center gap-1.5 py-4 font-medium text-sm transition-all duration-300 hover:flex-[3] active:scale-y-95 min-w-0',
                   canComplete
-                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98]'
-                    : 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed opacity-50'
+                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white'
+                    : 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed'
                 )}
                 title="Пропустить (отметить как выполненное без наград)"
               >
                 <SkipForward className="h-4 w-4 shrink-0" />
                 <span className="hidden sm:inline">Пропустить</span>
               </button>
-
             </div>
           )}
           {task.isCompleted && (() => {

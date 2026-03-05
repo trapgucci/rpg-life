@@ -981,6 +981,18 @@ html.dark,
   100% { transform: translateX(200%) skewX(-12deg); }
 }
 
+/* Achievement complete toast - particle float */
+@keyframes rpg-achievement-particle {
+  0%, 100% { opacity: 0.3; transform: translateY(0) scale(1); }
+  50% { opacity: 0.8; transform: translateY(-6px) scale(1.3); }
+}
+
+/* Achievement complete toast - icon glow pulse */
+@keyframes rpg-achievement-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.15); }
+}
+
 /* Achievement trophy glow pulse */
 @keyframes achievement-glow-pulse {
   0%, 100% { box-shadow: 0 0 8px var(--ach-glow, rgba(245,158,11,0.3)); }
@@ -1195,4 +1207,136 @@ html.dark,
   color: var(--fg-muted);
   pointer-events: none;
   height: 0;
+}
+
+/* ─── Status Page — Glassmorphic Neumorphism ─────────────────────────── */
+
+.neu-card {
+  background: var(--surface);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 1.5rem;
+  box-shadow:
+    6px 6px 16px var(--neu-shadow-dark),
+    -4px -4px 12px var(--neu-shadow-light),
+    inset 0 1px 0 var(--neu-inset-light);
+  transition: all 0.3s ease;
+}
+
+.neu-card-hover:hover {
+  box-shadow:
+    8px 8px 20px var(--neu-shadow-dark),
+    -6px -6px 16px var(--neu-shadow-light),
+    inset 0 1px 0 var(--neu-inset-light);
+  transform: translateY(-2px);
+}
+
+.neu-inset {
+  border-radius: 1rem;
+  box-shadow:
+    inset 3px 3px 8px var(--neu-item-dark),
+    inset -2px -2px 6px var(--neu-item-light);
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+.neu-convex {
+  border-radius: 1rem;
+  box-shadow:
+    4px 4px 10px var(--neu-shadow-dark),
+    -3px -3px 8px var(--neu-shadow-light),
+    inset 0 1px 0 var(--neu-inset-item-light);
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.neu-pill {
+  border-radius: 1.25rem;
+  box-shadow:
+    4px 4px 12px var(--neu-shadow-dark),
+    -3px -3px 8px var(--neu-shadow-light),
+    inset 0 1px 0 var(--neu-inset-light);
+  background: var(--surface);
+  backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: all 0.25s ease;
+}
+
+.neu-pill:hover {
+  box-shadow:
+    6px 6px 16px var(--neu-shadow-dark),
+    -4px -4px 10px var(--neu-shadow-light),
+    inset 0 1px 0 var(--neu-inset-light);
+  transform: translateY(-1px);
+}
+
+.neu-avatar {
+  border-radius: 1.5rem;
+  box-shadow:
+    6px 6px 16px var(--neu-shadow-dark),
+    -4px -4px 12px var(--neu-shadow-light),
+    inset 0 2px 0 var(--neu-inset-light);
+  border: 2px solid rgba(255,255,255,0.1);
+}
+
+.neu-progress-track {
+  border-radius: 9999px;
+  box-shadow:
+    inset 2px 2px 6px var(--neu-item-dark),
+    inset -1px -1px 4px var(--neu-item-light);
+  background: var(--surface);
+}
+
+.status-glow {
+  position: relative;
+}
+
+.status-glow::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(99,102,241,0.3), rgba(139,92,246,0.2), rgba(168,85,247,0.3));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+@keyframes status-xp-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.status-xp-bar {
+  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 30%, #c084fc 50%, #8b5cf6 70%, #6366f1 100%);
+  background-size: 200% 100%;
+  animation: status-xp-shimmer 3s ease-in-out infinite;
+}
+
+@keyframes radar-pulse {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.4; }
+}
+
+.radar-fill-pulse {
+  animation: radar-pulse 3s ease-in-out infinite;
+}
+
+@keyframes attr-bar-fill {
+  from { width: 0%; }
+}
+
+.attr-bar-animate {
+  animation: attr-bar-fill 0.8s ease-out;
+}
+
+.neu-icon-well {
+  border-radius: 0.875rem;
+  box-shadow:
+    inset 2px 2px 6px var(--neu-item-dark),
+    inset -1px -1px 4px var(--neu-item-light),
+    0 1px 0 var(--neu-icon-inset-light);
+  border: 1px solid rgba(255,255,255,0.04);
 }

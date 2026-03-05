@@ -49,6 +49,7 @@ import {
   xpForLevelFast,
   xpForLevelCustom,
 } from '../types/domain'
+import { rpgToast } from '../components/RpgToast'
 
 // Removed DEFAULT_PENALTY_FACTOR - penalty system removed
 const EMPTY_ATTRIBUTES: Attribute[] = []
@@ -291,8 +292,8 @@ interface RpgStoreState {
   addShopItem: (item: Omit<ShopItem, 'id'>) => ShopItem
   updateShopItem: (id: ItemId, updater: (i: ShopItem) => ShopItem) => void
   deleteShopItem: (id: ItemId) => void
-  purchaseItem: (itemId: ItemId) => boolean | { loot: { itemId: string; name: string; compensated?: boolean; compensationLabel?: string } | null }
-  openLootbox: (itemId: ItemId) => { itemId: string; name: string; compensated?: boolean; compensationLabel?: string } | null
+  purchaseItem: (itemId: ItemId) => boolean | { loot: { itemId: string; name: string; compensated?: boolean; compensationLabel?: string; compensationReason?: 'duplicate' | 'out_of_stock' } | null }
+  openLootbox: (itemId: ItemId) => { itemId: string; name: string; compensated?: boolean; compensationLabel?: string; compensationReason?: 'duplicate' | 'out_of_stock' } | null
   purchaseGameTime: (itemId: ItemId, packageId: string) => boolean
   useGameTime: (itemId: ItemId, minutes: number) => boolean
   purchaseEpisode: (itemId: ItemId, seasonId: string, episodeId: string) => boolean
@@ -302,7 +303,7 @@ interface RpgStoreState {
   getInventory: () => InventoryEntry[]
   addToInventory: (itemId: ItemId, quantity?: number) => void
   removeFromInventory: (itemId: ItemId, quantity?: number) => boolean
-  useItem: (itemId: ItemId, quantity?: number) => boolean | { loot: { itemId: string; name: string; compensated?: boolean; compensationLabel?: string } | null } | { multiplier: true; itemId: ItemId } | { serial: true; itemId: ItemId } | { videogame: true; itemId: ItemId }
+  useItem: (itemId: ItemId, quantity?: number) => boolean | { loot: { itemId: string; name: string; compensated?: boolean; compensationLabel?: string; compensationReason?: 'duplicate' | 'out_of_stock' } | null } | { multiplier: true; itemId: ItemId } | { serial: true; itemId: ItemId } | { videogame: true; itemId: ItemId }
 
   // Streak multiplier
   applyStreakMultiplier: (taskId: TaskId, itemId: ItemId) => boolean
@@ -1811,7 +1812,35 @@ export const useRpgStore = create<RpgStoreState>()(
             // Update progress (ensure valid number)
             const safeProgress = Number.isFinite(progress) ? progress : 0
             const ready = target > 0 && safeProgress >= target
+            const wasReady = ach.readyToUnlock
             get().updateAchievement(ach.id, (a) => ({ ...a, currentProgress: safeProgress, readyToUnlock: ready }))
+
+            // Fire toast when achievement just became ready
+            if (ready && !wasReady) {
+              const { shopItems: items } = get()
+              const rewardItems = ach.rewardItems?.length
+                ? ach.rewardItems
+                : ach.rewardItemId
+                  ? [{ itemId: ach.rewardItemId, quantity: ach.rewardItemQuantity ?? 1 }]
+                  : []
+              const toastItems = rewardItems
+                .map((ri) => {
+                  const item = items.find((i) => i.id === ri.itemId)
+                  return item ? { name: item.name, emoji: item.emoji, quantity: ri.quantity } : null
+                })
+                .filter(Boolean) as { name: string; emoji?: string; quantity: number }[]
+
+              rpgToast({
+                title: ach.title,
+                description: 'Можно забрать награду!',
+                type: 'achievement_complete',
+                coins: ach.rewardCoins,
+                xp: ach.rewardXp,
+                gems: ach.rewardGems,
+                items: toastItems.length > 0 ? toastItems : undefined,
+                duration: 6000,
+              })
+            }
           })
         },
 
@@ -2218,10 +2247,42 @@ export const useRpgStore = create<RpgStoreState>()(
                   const compParts: string[] = []
                   if (compCoins > 0) compParts.push(`🪙 ${compCoins}`)
                   if (compGems > 0) compParts.push(`💎 ${compGems}`)
-                  return { itemId: entry.id, name, compensated: true, compensationLabel: compParts.join(' + ') || '—' }
+                  return { itemId: entry.id, name, compensated: true, compensationLabel: compParts.join(' + ') || '—', compensationReason: 'duplicate' as const }
+                }
+
+                // Stock check — if item has stock and it's insufficient, compensate 80%
+                if (resultItem && resultItem.stock !== undefined && resultItem.stock < qty) {
+                  const available = Math.max(0, resultItem.stock)
+                  if (available > 0) {
+                    addToInventory(entry.id, available)
+                    updateShopItem(entry.id, (prev) => ({ ...prev, stock: Math.max(0, (prev.stock ?? 0) - available) }))
+                  }
+                  const deficit = qty - available
+                  const coinCost = resultItem.cost[CURRENCY_IDS.COINS] ?? 0
+                  const gemCost = resultItem.cost[CURRENCY_IDS.GEMS] ?? 0
+                  const compCoins = Math.floor(coinCost * 0.8) * deficit
+                  const compGems = Math.floor(gemCost * 0.8) * deficit
+                  if (compCoins > 0) addCurrency(CURRENCY_IDS.COINS, compCoins)
+                  if (compGems > 0) addCurrency(CURRENCY_IDS.GEMS, compGems)
+                  const name = resultItem.name
+                  if (available === 0) {
+                    const compParts: string[] = []
+                    if (compCoins > 0) compParts.push(`🪙 ${compCoins}`)
+                    if (compGems > 0) compParts.push(`💎 ${compGems}`)
+                    return { itemId: entry.id, name, compensated: true, compensationLabel: compParts.join(' + ') || '—', compensationReason: 'out_of_stock' as const }
+                  }
+                  const partialCompParts: string[] = [`${name} x${available}`]
+                  if (compCoins > 0) partialCompParts.push(`🪙 ${compCoins}`)
+                  if (compGems > 0) partialCompParts.push(`💎 ${compGems}`)
+                  return { itemId: entry.id, name, compensated: true, compensationLabel: partialCompParts.join(' + '), compensationReason: 'out_of_stock' as const }
                 }
 
                 addToInventory(entry.id, qty)
+
+                // Decrease stock if item has stock tracking
+                if (resultItem && resultItem.stock !== undefined) {
+                  updateShopItem(entry.id, (prev) => ({ ...prev, stock: Math.max(0, (prev.stock ?? 0) - qty) }))
+                }
 
                 // If media item — mark basePurchased so user can buy episodes/time in shop
                 if (isMediaItem && resultItem) {

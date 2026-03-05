@@ -4,6 +4,7 @@ import { TrendingUp, Flame, Zap, Check, Search, X } from 'lucide-react'
 import Modal from './Modal'
 import { useRpgStore } from '../store/useRpgStore'
 import type { ShopItem, TaskRpg, TaskRecurrence } from '../types/domain'
+import { rpgToast } from './RpgToast'
 
 /* ─── Recurrence labels ──────────────────────────────────────────────────── */
 
@@ -66,6 +67,7 @@ export default function StreakMultiplierModal({
     if (!selectedTaskId || !itemId) return
     const success = applyStreakMultiplier(selectedTaskId, itemId)
     if (success) {
+      rpgToast({ title: `Множитель x${multiplierValue} применён!`, type: 'success' })
       setSelectedTaskId(null)
       setSearch('')
       onApplied()

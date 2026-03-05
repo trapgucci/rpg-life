@@ -330,7 +330,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
       </form>
 
       {/* Modals (portaled to body to escape glass-card containing block) */}
-      {showAdvancedSettings && createPortal(
+      {showAdvancedSettings && !showLootboxModal && !showDiscountModal && createPortal(
         <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setShowAdvancedSettings(false)}>
           <div className="modal-content max-w-lg">
             <div className="flex items-center justify-between mb-4">
@@ -721,6 +721,15 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                 )}
               </div>
             </div>
+            {(isLootBox || streakMultiplierEnabled || isDiscountVoucher || isVideoGame || isTvSerial) && (
+              <button
+                type="button"
+                onClick={() => setShowAdvancedSettings(false)}
+                className="mt-4 w-full rounded-xl bg-[var(--accent)] py-3 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+              >
+                Готово
+              </button>
+            )}
           </div>
         </div>,
         document.body

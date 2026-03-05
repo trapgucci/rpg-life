@@ -589,26 +589,20 @@ export default function LootboxEffectModal({ lootTable: initial, shopItems, onSa
     background: 'linear-gradient(135deg, var(--surface-card) 0%, var(--surface) 100%)',
     backdropFilter: 'blur(16px) saturate(180%)',
     WebkitBackdropFilter: 'blur(16px) saturate(180%)',
-    boxShadow: `
-      inset 0 1px 0 rgba(255,255,255,0.08),
-      inset 0 -1px 0 rgba(0,0,0,0.05),
-      0 4px 16px rgba(0,0,0,0.08),
-      0 1px 4px rgba(0,0,0,0.04)
-    `,
+    boxShadow: 'none',
   } as const
 
   const neuInputStyle = {
     background: 'var(--surface)',
-    boxShadow: `
-      inset 2px 2px 4px rgba(0,0,0,0.06),
-      inset -2px -2px 4px rgba(255,255,255,0.04)
-    `,
+    boxShadow: 'none',
   } as const
 
   return (
+    <>
+    {!showPicker && editingIndex === null && (
     <div
-      className="modal-backdrop"
-      onClick={(e) => e.target === e.currentTarget && !showPicker && editingIndex === null && onClose()}
+      className="modal-backdrop z-[60]"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="modal-content max-w-lg max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between mb-2">
@@ -661,11 +655,20 @@ export default function LootboxEffectModal({ lootTable: initial, shopItems, onSa
                         <p className="text-sm font-medium text-[var(--fg)] truncate">{getEntryName(entry.id)}</p>
                         <div className="flex items-center gap-3 mt-1">
                           {/* Quantity inline */}
+                          {(() => {
+                            const entryItem = shopItems.find((i) => i.id === entry.id)
+                            const maxQty = entryItem?.stock !== undefined ? entryItem.stock : undefined
+                            const clamp = (v: number) => {
+                              let n = Math.max(1, v)
+                              if (maxQty !== undefined) n = Math.min(maxQty, n)
+                              return n
+                            }
+                            return (
                           <div className="flex items-center gap-1">
                             <Hash className="h-2.5 w-2.5 text-[var(--fg-muted)]" />
                             <button
                               type="button"
-                              onClick={() => updateEntry(index, (e) => ({ ...e, quantity: Math.max(1, (e.quantity ?? 1) - 1) }))}
+                              onClick={() => updateEntry(index, (e) => ({ ...e, quantity: clamp((e.quantity ?? 1) - 1) }))}
                               className="flex h-5 w-5 items-center justify-center rounded-md border border-[var(--border)] text-[10px] text-[var(--fg)] hover:bg-[var(--surface-elevated)]"
                             >
                               <Minus className="h-2.5 w-2.5" />
@@ -673,22 +676,35 @@ export default function LootboxEffectModal({ lootTable: initial, shopItems, onSa
                             <input
                               type="number"
                               min={1}
-                              value={(entry.quantity ?? 1) === 1 ? '' : entry.quantity}
+                              max={maxQty}
+                              value={entry.quantity ?? 1}
                               onChange={(ev) => {
                                 const raw = ev.target.value.trim()
-                                updateEntry(index, (e) => ({ ...e, quantity: raw === '' ? 1 : Math.max(1, parseInt(raw, 10) || 1) }))
+                                if (raw === '') {
+                                  updateEntry(index, (e) => ({ ...e, quantity: 1 }))
+                                  return
+                                }
+                                const parsed = parseInt(raw, 10)
+                                if (!Number.isNaN(parsed)) {
+                                  updateEntry(index, (e) => ({ ...e, quantity: clamp(parsed) }))
+                                }
                               }}
                               placeholder="1"
                               className="w-14 text-center text-xs font-bold bg-transparent focus:outline-none text-[var(--fg)] no-spin"
                             />
                             <button
                               type="button"
-                              onClick={() => updateEntry(index, (e) => ({ ...e, quantity: (e.quantity ?? 1) + 1 }))}
+                              onClick={() => updateEntry(index, (e) => ({ ...e, quantity: clamp((e.quantity ?? 1) + 1) }))}
                               className="flex h-5 w-5 items-center justify-center rounded-md bg-[var(--accent-subtle)] text-[10px] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors"
                             >
                               <Plus className="h-2.5 w-2.5" />
                             </button>
+                            {maxQty !== undefined && (
+                              <span className="text-[9px] text-[var(--fg-muted)] ml-0.5">/{maxQty}</span>
+                            )}
                           </div>
+                            )
+                          })()}
                           {/* Weight inline */}
                           <div className="flex items-center gap-1">
                             <Percent className="h-2.5 w-2.5 text-[var(--fg-muted)]" />
@@ -818,22 +834,24 @@ export default function LootboxEffectModal({ lootTable: initial, shopItems, onSa
           </button>
         </div>
       </div>
-
-      {showPicker && editingIndex === null && (
-        <RewardPickerModal
-          shopItems={shopItems}
-          onSelect={addRewards}
-          onClose={() => setShowPicker(false)}
-        />
-      )}
-      {editingIndex !== null && entries[editingIndex] && (
-        <RewardPickerModalSingle
-          shopItems={shopItems}
-          currentId={entries[editingIndex].id}
-          onSelect={(id) => replaceReward(id)}
-          onClose={() => setEditingIndex(null)}
-        />
-      )}
     </div>
+    )}
+
+    {showPicker && editingIndex === null && (
+      <RewardPickerModal
+        shopItems={shopItems}
+        onSelect={addRewards}
+        onClose={() => setShowPicker(false)}
+      />
+    )}
+    {editingIndex !== null && entries[editingIndex] && (
+      <RewardPickerModalSingle
+        shopItems={shopItems}
+        currentId={entries[editingIndex].id}
+        onSelect={(id) => replaceReward(id)}
+        onClose={() => setEditingIndex(null)}
+      />
+    )}
+    </>
   )
 }
