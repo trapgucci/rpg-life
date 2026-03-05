@@ -363,7 +363,6 @@ interface RpgStoreState {
   addNoteFolder: (name: string, icon?: string, color?: string) => NoteFolder
   updateNoteFolder: (id: NoteFolderId, updater: (f: NoteFolder) => NoteFolder) => void
   deleteNoteFolder: (id: NoteFolderId) => void
-  setFolderTemplate: (id: NoteFolderId, template: TiptapContent | null, templateName?: string) => void
 
   // Note actions
   getNotes: () => Note[]
@@ -394,6 +393,7 @@ interface RpgStoreState {
 import type { PersistStorage, StorageValue } from 'zustand/middleware'
 
 let _writeTimer: ReturnType<typeof setTimeout> | null = null
+let _pendingWrite: (() => Promise<void>) | null = null
 const WRITE_DEBOUNCE_MS = 500
 
 function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
@@ -502,9 +502,7 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
     },
 
     setItem: async (_name: string, value: StorageValue<Partial<RpgStoreState>>): Promise<void> => {
-      // Debounce writes to avoid excessive disk I/O
-      if (_writeTimer) clearTimeout(_writeTimer)
-      _writeTimer = setTimeout(async () => {
+      const doWrite = async () => {
         try {
           const state = value.state
           await Promise.all([
@@ -532,16 +530,38 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
             vaultStorage.write('notes.json', state.notes),
             vaultStorage.write('daily-reports.json', state.dailyReports),
           ])
+          _pendingWrite = null
         } catch (err) {
           console.error('[vault] Failed to write state:', err)
         }
-      }, WRITE_DEBOUNCE_MS)
+      }
+
+      // Debounce writes to avoid excessive disk I/O
+      _pendingWrite = doWrite
+      if (_writeTimer) clearTimeout(_writeTimer)
+      _writeTimer = setTimeout(doWrite, WRITE_DEBOUNCE_MS)
     },
 
     removeItem: async (): Promise<void> => {
       // No-op: we don't delete vault files
     },
   }
+}
+
+/** Flush any pending debounced vault write immediately */
+export function flushVaultWrites() {
+  if (_writeTimer) {
+    clearTimeout(_writeTimer)
+    _writeTimer = null
+  }
+  if (_pendingWrite) {
+    _pendingWrite()
+  }
+}
+
+// Flush pending writes when the window is about to close
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', flushVaultWrites)
 }
 
 // Initialize store with default profile if needed (called once after rehydration)
@@ -2736,7 +2756,6 @@ export const useRpgStore = create<RpgStoreState>()(
             name,
             icon,
             color,
-            template: null,
             sortOrder: noteFolders.filter((f) => f.profileId === activeProfileId).length,
             createdAt: now(),
             updatedAt: now(),
@@ -2761,14 +2780,6 @@ export const useRpgStore = create<RpgStoreState>()(
           }))
         },
 
-        setFolderTemplate: (id, template, templateName) => {
-          set((s) => ({
-            noteFolders: s.noteFolders.map((f) =>
-              f.id === id ? { ...f, template, templateName, updatedAt: now() } : f
-            ),
-          }))
-        },
-
         getNotes: () => {
           const { notes, activeProfileId } = get()
           return notes
@@ -2781,11 +2792,9 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         addNote: (partial) => {
-          const { activeProfileId, notes, noteFolders } = get()
+          const { activeProfileId, notes } = get()
           const folderId = partial.folderId ?? null
-          // Если у папки есть шаблон и контент не передан, применить шаблон
-          const folder = folderId ? noteFolders.find((f) => f.id === folderId) : null
-          const content = partial.content ?? folder?.template ?? { type: 'doc' as const, content: [] }
+          const content = partial.content ?? { type: 'doc' as const, content: [] }
           // sortOrder: поставить в начало (минимальный sortOrder - 1)
           const sameFolderNotes = notes.filter((n) => n.profileId === activeProfileId && n.folderId === folderId && !n.deletedAt)
           const minOrder = sameFolderNotes.length > 0 ? Math.min(...sameFolderNotes.map((n) => n.sortOrder ?? 0)) : 0
@@ -2882,51 +2891,51 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         setDailyMood: (dateKey, mood) => {
-          const { dailyReports, activeProfileId } = get()
-          const existing = dailyReports.find((r) => r.profileId === activeProfileId && r.dateKey === dateKey)
-          if (existing) {
-            set({
-              dailyReports: dailyReports.map((r) =>
-                r.id === existing.id ? { ...r, mood, updatedAt: now() } : r
-              ),
-            })
-          } else {
-            set({
-              dailyReports: [...dailyReports, {
+          set((s) => {
+            const existing = s.dailyReports.find((r) => r.profileId === s.activeProfileId && r.dateKey === dateKey)
+            if (existing) {
+              return {
+                dailyReports: s.dailyReports.map((r) =>
+                  r.id === existing.id ? { ...r, mood, updatedAt: now() } : r
+                ),
+              }
+            }
+            return {
+              dailyReports: [...s.dailyReports, {
                 id: crypto.randomUUID(),
-                profileId: activeProfileId!,
+                profileId: s.activeProfileId!,
                 dateKey,
                 mood,
                 thoughts: '',
                 createdAt: now(),
                 updatedAt: now(),
               }],
-            })
-          }
+            }
+          })
         },
 
         setDailyThoughts: (dateKey, thoughts) => {
-          const { dailyReports, activeProfileId } = get()
-          const existing = dailyReports.find((r) => r.profileId === activeProfileId && r.dateKey === dateKey)
-          if (existing) {
-            set({
-              dailyReports: dailyReports.map((r) =>
-                r.id === existing.id ? { ...r, thoughts, updatedAt: now() } : r
-              ),
-            })
-          } else {
-            set({
-              dailyReports: [...dailyReports, {
+          set((s) => {
+            const existing = s.dailyReports.find((r) => r.profileId === s.activeProfileId && r.dateKey === dateKey)
+            if (existing) {
+              return {
+                dailyReports: s.dailyReports.map((r) =>
+                  r.id === existing.id ? { ...r, thoughts, updatedAt: now() } : r
+                ),
+              }
+            }
+            return {
+              dailyReports: [...s.dailyReports, {
                 id: crypto.randomUUID(),
-                profileId: activeProfileId!,
+                profileId: s.activeProfileId!,
                 dateKey,
                 mood: null,
                 thoughts,
                 createdAt: now(),
                 updatedAt: now(),
               }],
-            })
-          }
+            }
+          })
         },
 
         generateDailySnapshot: (dateKey) => {

@@ -5,7 +5,7 @@ import type { NoteFolder, NoteFolderId } from '../../types/domain'
 
 interface ReflectionSidebarProps {
   folders: NoteFolder[]
-  activeFolderId: NoteFolderId | null  // null = "Все заметки", '__trash__' = корзина
+  activeFolderId: NoteFolderId | null  // null = "Все заметки"
   noteCounts: Record<string, number>  // folderId -> count, 'all' -> total, 'unfiled' -> no-folder
   trashCount: number
   onSelectFolder: (id: NoteFolderId | null) => void

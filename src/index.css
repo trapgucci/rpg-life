@@ -1081,8 +1081,17 @@ html.dark,
 
 /* ─── Tiptap Editor Styles ─────────────────────────────────────────────────── */
 
-.tiptap {
+.tiptap,
+.tiptap.ProseMirror {
   outline: none;
+  font-weight: 400 !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.tiptap strong,
+.tiptap.ProseMirror strong {
+  font-weight: 700 !important;
 }
 
 .tiptap > * + * {
@@ -1115,6 +1124,8 @@ html.dark,
 
 .tiptap p {
   color: var(--fg);
+  font-weight: 400 !important;
+  font-size: 0.9375rem;
   line-height: 1.65;
 }
 
@@ -1130,6 +1141,7 @@ html.dark,
 
 .tiptap li {
   color: var(--fg);
+  font-weight: 400 !important;
 }
 
 .tiptap li > p {

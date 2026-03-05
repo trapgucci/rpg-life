@@ -803,10 +803,6 @@ export interface NoteFolder {
   icon: string
   /** Цвет папки (hex) */
   color: string
-  /** Шаблон заметки (Tiptap JSON); null = без шаблона */
-  template: TiptapContent | null
-  /** Название шаблона, напр. "После тренировки" */
-  templateName?: string
   sortOrder: number
   createdAt: number
   updatedAt: number

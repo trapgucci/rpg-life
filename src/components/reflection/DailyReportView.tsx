@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef, useEffect, useCallback } from 'react'
 import {
   CheckSquare, TrendingUp, ShoppingBag, Trophy,
   Flame, Coins, Gem, Zap, MessageCircle,
@@ -29,6 +29,33 @@ function Section({ icon: Icon, title, color, children }: {
       </div>
       {children}
     </div>
+  )
+}
+
+function AutoResizeTextarea({ value, onChange, placeholder }: {
+  value: string; onChange: (val: string) => void; placeholder: string
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+
+  const resize = useCallback(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = el.scrollHeight + 'px'
+  }, [])
+
+  useEffect(() => { resize() }, [value, resize])
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onInput={resize}
+      placeholder={placeholder}
+      className="input w-full resize-none text-sm overflow-hidden"
+      rows={3}
+    />
   )
 }
 
@@ -213,12 +240,10 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
           <MessageCircle className="h-4 w-4 text-[var(--accent)]" />
           <h3 className="text-sm font-semibold text-[var(--fg)]">Мысли дня</h3>
         </div>
-        <textarea
+        <AutoResizeTextarea
           value={report?.thoughts ?? ''}
-          onChange={(e) => setThoughts(dateKey, e.target.value)}
+          onChange={(val) => setThoughts(dateKey, val)}
           placeholder="Запишите свои мысли за день…"
-          className="input w-full resize-none text-sm"
-          rows={4}
         />
       </div>
 

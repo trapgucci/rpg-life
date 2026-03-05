@@ -46,7 +46,7 @@ export default function NoteViewer({ note, onBack, onEdit, onDelete }: NoteViewe
     editable: false,
     editorProps: {
       attributes: {
-        class: 'prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[200px] px-4 py-3',
+        class: 'max-w-none focus:outline-none min-h-[200px] px-4 py-3',
       },
       handleClick: (_view, _pos, event) => {
         const target = event.target as HTMLElement

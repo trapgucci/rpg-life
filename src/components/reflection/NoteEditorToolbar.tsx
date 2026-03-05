@@ -2,7 +2,7 @@ import {
   Bold, Italic, Underline, Strikethrough,
   Heading1, Heading2, Heading3,
   List, ListOrdered, Quote,
-  Link, ImagePlus, Undo2, Redo2,
+  Link, ImagePlus, Undo2, Redo2, RemoveFormatting,
 } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import type { Editor } from '@tiptap/react'
@@ -25,7 +25,11 @@ function ToolbarButton({
 }) {
   return (
     <button
-      onClick={onClick}
+      type="button"
+      onMouseDown={(e) => {
+        e.preventDefault()
+        onClick()
+      }}
       title={title}
       className={cn(
         'flex h-8 w-8 items-center justify-center rounded-lg transition-colors',
@@ -103,6 +107,12 @@ export default function NoteEditorToolbar({ editor, onInsertImage }: ToolbarProp
       </ToolbarButton>
       <ToolbarButton onClick={onInsertImage} title="Вставить изображение">
         <ImagePlus className="h-4 w-4" />
+      </ToolbarButton>
+
+      <Divider />
+
+      <ToolbarButton onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} title="Очистить форматирование">
+        <RemoveFormatting className="h-4 w-4" />
       </ToolbarButton>
 
       <Divider />

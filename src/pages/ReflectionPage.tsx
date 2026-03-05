@@ -11,7 +11,7 @@ import NoteEditor from '../components/reflection/NoteEditor'
 import DailyReportCalendar from '../components/reflection/DailyReportCalendar'
 import DailyReportView from '../components/reflection/DailyReportView'
 import NoteTrash from '../components/reflection/NoteTrash'
-import type { NoteFolder, NoteFolderId, TiptapContent } from '../types/domain'
+import type { NoteFolder, NoteFolderId } from '../types/domain'
 
 type Tab = 'notes' | 'diary'
 type NoteMode = 'view' | 'edit'
@@ -42,7 +42,6 @@ export default function ReflectionPage() {
   const permanentDeleteNote = useRpgStore((s) => s.permanentDeleteNote)
   const emptyTrash = useRpgStore((s) => s.emptyTrash)
   const reorderNotes = useRpgStore((s) => s.reorderNotes)
-  const setFolderTemplate = useRpgStore((s) => s.setFolderTemplate)
 
   const folders = useMemo(
     () => rawFolders.filter((f) => f.profileId === activeProfileId).sort((a, b) => a.sortOrder - b.sortOrder),
@@ -64,7 +63,7 @@ export default function ReflectionPage() {
     [rawNotes, activeProfileId],
   )
   const dailyReports = useMemo(
-    () => rawReports.filter((r) => r.profileId === activeProfileId).sort((a, b) => b.dateKey.localeCompare(a.dateKey)),
+    () => rawReports.filter((r) => r.profileId === activeProfileId && r.dateKey).sort((a, b) => b.dateKey.localeCompare(a.dateKey)),
     [rawReports, activeProfileId],
   )
 
@@ -114,17 +113,15 @@ export default function ReflectionPage() {
   }, [selectedNoteId, deleteNote])
 
   const handleSaveFolder = useCallback(
-    (name: string, icon: string, color: string, template: TiptapContent | null, templateName: string | undefined) => {
+    (name: string, icon: string, color: string) => {
       if (editingFolder) {
         updateFolder(editingFolder.id, (f) => ({ ...f, name, icon, color }))
-        setFolderTemplate(editingFolder.id, template, templateName)
       } else {
-        const folder = addFolder(name, icon, color)
-        if (template) setFolderTemplate(folder.id, template, templateName)
+        addFolder(name, icon, color)
       }
       setEditingFolder(null)
     },
-    [editingFolder, addFolder, updateFolder, setFolderTemplate],
+    [editingFolder, addFolder, updateFolder],
   )
 
   const handleEditFolder = useCallback((folder: NoteFolder) => {
@@ -223,7 +220,7 @@ export default function ReflectionPage() {
                     noteCounts={noteCounts}
                     trashCount={trashedNotes.length}
                     onSelectFolder={(id) => { setActiveFolderId(id); setShowTrash(false) }}
-                    onShowTrash={() => setShowTrash(true)}
+                    onShowTrash={() => { setShowTrash(true) }}
                     onCreateFolder={() => { setEditingFolder(null); setFolderModalOpen(true) }}
                     onEditFolder={handleEditFolder}
                     onDeleteFolder={handleDeleteFolder}
