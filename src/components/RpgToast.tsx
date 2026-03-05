@@ -220,24 +220,24 @@ function AchievementCompleteToastContent({ options, toastId }: { options: RpgToa
         {/* Reward strip */}
         {((options.coins && options.coins > 0) || (options.xp && options.xp > 0) || (options.gems && options.gems > 0) || (options.items && options.items.length > 0)) && (
           <div className="mt-2.5 pt-2 border-t border-yellow-500/20">
-            <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap">
               {options.xp! > 0 && (
-                <span className="flex items-center gap-1 text-[12px] font-semibold text-blue-400">
-                  <Zap className="h-3.5 w-3.5" /> +{options.xp} XP
+                <span className="inline-flex items-center gap-1 rounded-lg bg-blue-500/15 px-2 py-0.5 text-[12px] font-semibold text-blue-400 ring-1 ring-inset ring-blue-500/20">
+                  <Zap className="h-3 w-3" /> +{options.xp} XP
                 </span>
               )}
               {options.coins! > 0 && (
-                <span className="flex items-center gap-1 text-[12px] font-semibold text-amber-400">
-                  <Coins className="h-3.5 w-3.5" /> +{options.coins}
+                <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/15 px-2 py-0.5 text-[12px] font-semibold text-amber-400 ring-1 ring-inset ring-amber-400/20">
+                  <Coins className="h-3 w-3" /> +{options.coins}
                 </span>
               )}
               {options.gems! > 0 && (
-                <span className="flex items-center gap-1 text-[12px] font-semibold text-purple-400">
-                  <Gem className="h-3.5 w-3.5" /> +{options.gems}
+                <span className="inline-flex items-center gap-1 rounded-lg bg-purple-500/15 px-2 py-0.5 text-[12px] font-semibold text-purple-400 ring-1 ring-inset ring-purple-500/20">
+                  <Gem className="h-3 w-3" /> +{options.gems}
                 </span>
               )}
               {options.items?.map((item, i) => (
-                <span key={i} className="flex items-center gap-1 text-[12px] font-medium text-zinc-300 bg-zinc-800 rounded-md px-1.5 py-0.5 border border-zinc-700/50">
+                <span key={i} className="inline-flex items-center gap-1 text-[12px] font-medium text-zinc-300 bg-zinc-800 rounded-lg px-2 py-0.5 ring-1 ring-inset ring-zinc-700/50">
                   {item.emoji && <span className="text-[13px]">{item.emoji}</span>}
                   {item.name}{item.quantity > 1 && ` x${item.quantity}`}
                 </span>
