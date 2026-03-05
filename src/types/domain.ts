@@ -778,6 +778,7 @@ export interface CraftRecipe {
 
 export type NoteId = string
 export type NoteFolderId = string
+export type NoteTagId = string
 export type DailyReportId = string
 
 /** Tiptap editor JSON document */
@@ -808,6 +809,16 @@ export interface NoteFolder {
   updatedAt: number
 }
 
+/** Глобальный тег для заметок */
+export interface NoteTag {
+  id: NoteTagId
+  profileId: ProfileId
+  name: string
+  /** Цвет тега (hex) */
+  color: string
+  createdAt: number
+}
+
 /** Заметка */
 export interface Note {
   id: NoteId
@@ -815,10 +826,12 @@ export interface Note {
   /** Папка; null = без папки */
   folderId: NoteFolderId | null
   title: string
-  /** Контент в Tiptap JSON формате */
-  content: TiptapContent
+  /** Контент (plain text) */
+  content: string
   /** Текстовый отрывок для превью (~200 символов) */
   excerpt: string
+  /** Теги (имена тегов) */
+  tags: string[]
   /** Пути к медиафайлам (из vaultStorage.saveMedia) */
   mediaFiles: string[]
   /** Привязанные задачи */

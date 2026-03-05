@@ -37,9 +37,10 @@ import type {
   NoteFolderId,
   Note,
   NoteId,
+  NoteTag,
+  NoteTagId,
   DailyReport,
   DailyReportId,
-  TiptapContent,
   MoodLevel,
   DailySnapshot,
 } from '../types/domain'
@@ -356,6 +357,7 @@ interface RpgStoreState {
   // ─── Reflection (Notes + Daily Reports) ────────────────────────────────
   noteFolders: NoteFolder[]
   notes: Note[]
+  noteTags: NoteTag[]
   dailyReports: DailyReport[]
 
   // Note folder actions
@@ -364,9 +366,13 @@ interface RpgStoreState {
   updateNoteFolder: (id: NoteFolderId, updater: (f: NoteFolder) => NoteFolder) => void
   deleteNoteFolder: (id: NoteFolderId) => void
 
+  // Note tag actions
+  addNoteTag: (name: string, color?: string) => NoteTag
+  deleteNoteTag: (id: NoteTagId) => void
+
   // Note actions
   getNotes: () => Note[]
-  addNote: (partial: { title: string; folderId?: NoteFolderId | null; content?: TiptapContent; linkedTaskIds?: TaskId[]; linkedItemIds?: ItemId[] }) => Note
+  addNote: (partial: { title: string; folderId?: NoteFolderId | null; content?: string; linkedTaskIds?: TaskId[]; linkedItemIds?: ItemId[] }) => Note
   updateNote: (id: NoteId, updater: (n: Note) => Note) => void
   deleteNote: (id: NoteId) => void
   restoreNote: (id: NoteId) => void
@@ -425,6 +431,7 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
         vaultStorage.write('stats.json', s.stats ?? undefined),
         vaultStorage.write('note-folders.json', s.noteFolders ?? []),
         vaultStorage.write('notes.json', s.notes ?? []),
+        vaultStorage.write('note-tags.json', s.noteTags ?? []),
         vaultStorage.write('daily-reports.json', s.dailyReports ?? []),
       ])
       localStorage.removeItem('rpg-life-store-v2')
@@ -447,7 +454,7 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
         habits, shopItems, itemGroups, achievementGroups, inventory,
         achievements, craftRecipes, purchaseHistory,
         usageHistory, stats,
-        noteFolders, notes, dailyReports,
+        noteFolders, notes, noteTags, dailyReports,
       ] = results as [
         { profiles: unknown[]; activeProfileId: string | null } | null,
         { settings: unknown; activeShopDiscountPercent: number | null } | null,
@@ -463,6 +470,7 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
         unknown[] | null,
         unknown[] | null,
         unknown | null,
+        unknown[] | null,
         unknown[] | null,
         unknown[] | null,
         unknown[] | null,
@@ -496,6 +504,7 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
           stats: stats as RpgStoreState['stats'] ?? undefined,
           noteFolders: noteFolders as NoteFolder[] ?? [],
           notes: notes as Note[] ?? [],
+          noteTags: noteTags as NoteTag[] ?? [],
           dailyReports: dailyReports as DailyReport[] ?? [],
         } as Partial<RpgStoreState>,
       }
@@ -528,6 +537,7 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
             vaultStorage.write('stats.json', state.stats),
             vaultStorage.write('note-folders.json', state.noteFolders),
             vaultStorage.write('notes.json', state.notes),
+            vaultStorage.write('note-tags.json', state.noteTags),
             vaultStorage.write('daily-reports.json', state.dailyReports),
           ])
           _pendingWrite = null
@@ -2739,6 +2749,7 @@ export const useRpgStore = create<RpgStoreState>()(
 
         noteFolders: [],
         notes: [],
+        noteTags: [],
         dailyReports: [],
 
         getNoteFolders: () => {
@@ -2780,6 +2791,23 @@ export const useRpgStore = create<RpgStoreState>()(
           }))
         },
 
+        addNoteTag: (name, color = '#6b7280') => {
+          const { activeProfileId, noteTags } = get()
+          const tag: NoteTag = {
+            id: crypto.randomUUID(),
+            profileId: activeProfileId!,
+            name,
+            color,
+            createdAt: now(),
+          }
+          set({ noteTags: [...noteTags, tag] })
+          return tag
+        },
+
+        deleteNoteTag: (id) => {
+          set((s) => ({ noteTags: s.noteTags.filter((t) => t.id !== id) }))
+        },
+
         getNotes: () => {
           const { notes, activeProfileId } = get()
           return notes
@@ -2794,7 +2822,7 @@ export const useRpgStore = create<RpgStoreState>()(
         addNote: (partial) => {
           const { activeProfileId, notes } = get()
           const folderId = partial.folderId ?? null
-          const content = partial.content ?? { type: 'doc' as const, content: [] }
+          const content = partial.content ?? ''
           // sortOrder: поставить в начало (минимальный sortOrder - 1)
           const sameFolderNotes = notes.filter((n) => n.profileId === activeProfileId && n.folderId === folderId && !n.deletedAt)
           const minOrder = sameFolderNotes.length > 0 ? Math.min(...sameFolderNotes.map((n) => n.sortOrder ?? 0)) : 0
@@ -2805,6 +2833,7 @@ export const useRpgStore = create<RpgStoreState>()(
             title: partial.title,
             content,
             excerpt: '',
+            tags: [],
             mediaFiles: [],
             linkedTaskIds: partial.linkedTaskIds ?? [],
             linkedItemIds: partial.linkedItemIds ?? [],
@@ -3091,6 +3120,7 @@ export const useRpgStore = create<RpgStoreState>()(
             stats: state.stats,
             noteFolders: state.noteFolders,
             notes: state.notes,
+            noteTags: state.noteTags,
             dailyReports: state.dailyReports,
           }
           return JSON.stringify(exportObj, null, 2)
@@ -3119,6 +3149,7 @@ export const useRpgStore = create<RpgStoreState>()(
               stats: data.stats ?? get().stats,
               noteFolders: data.noteFolders ?? [],
               notes: data.notes ?? [],
+              noteTags: data.noteTags ?? [],
               dailyReports: data.dailyReports ?? [],
             })
             return true
@@ -3142,6 +3173,7 @@ export const useRpgStore = create<RpgStoreState>()(
             activeShopDiscountPercent: null,
             noteFolders: [],
             notes: [],
+            noteTags: [],
             dailyReports: [],
             stats: {
               totalTasksCompleted: 0,
@@ -3180,6 +3212,7 @@ export const useRpgStore = create<RpgStoreState>()(
         stats: s.stats,
         noteFolders: s.noteFolders,
         notes: s.notes,
+        noteTags: s.noteTags,
         dailyReports: s.dailyReports,
       }),
       onRehydrateStorage: () => (state) => {
@@ -3204,8 +3237,40 @@ export const useRpgStore = create<RpgStoreState>()(
         if (!state.achievementGroups) useRpgStore.setState({ achievementGroups: [] })
         if (!state.tasks) useRpgStore.setState({ tasks: [] })
         if (!state.noteFolders) useRpgStore.setState({ noteFolders: [] })
+        if (!state.noteTags) useRpgStore.setState({ noteTags: [] })
         if (!state.notes) useRpgStore.setState({ notes: [] })
         if (!state.dailyReports) useRpgStore.setState({ dailyReports: [] })
+
+        // Migrate notes: TiptapContent → plain text string, add tags
+        if (state.notes && state.notes.length > 0) {
+          let migrated = false
+          const migratedNotes = state.notes.map((n: any) => {
+            const updates: Record<string, unknown> = {}
+            // Migrate content from Tiptap JSON to plain text
+            if (n.content && typeof n.content === 'object' && n.content.type === 'doc') {
+              const extractText = (nodes: unknown[]): string => {
+                const parts: string[] = []
+                for (const node of nodes) {
+                  if (typeof node !== 'object' || node === null) continue
+                  const nd = node as Record<string, unknown>
+                  if (nd.type === 'text' && typeof nd.text === 'string') parts.push(nd.text)
+                  if (Array.isArray(nd.content)) parts.push(extractText(nd.content))
+                }
+                return parts.join(' ')
+              }
+              updates.content = extractText(n.content.content as unknown[] ?? []).replace(/\s+/g, ' ').trim()
+              updates.excerpt = (updates.content as string).slice(0, 200)
+              migrated = true
+            }
+            // Add tags if missing
+            if (!n.tags) {
+              updates.tags = []
+              migrated = true
+            }
+            return Object.keys(updates).length > 0 ? { ...n, ...updates } : n
+          })
+          if (migrated) useRpgStore.setState({ notes: migratedNotes })
+        }
 
         // Migrate settings to add taskDifficultyXp if missing
         if (state.settings && !state.settings.taskDifficultyXp) {

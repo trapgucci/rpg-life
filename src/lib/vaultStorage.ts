@@ -91,6 +91,7 @@ export const VAULT_FILES = {
   stats: 'stats.json',
   noteFolders: 'note-folders.json',
   notes: 'notes.json',
+  noteTags: 'note-tags.json',
   dailyReports: 'daily-reports.json',
 } as const
 
@@ -113,5 +114,6 @@ export const VAULT_READ_FILES = [
   'stats.json',
   'note-folders.json',
   'notes.json',
+  'note-tags.json',
   'daily-reports.json',
 ] as const

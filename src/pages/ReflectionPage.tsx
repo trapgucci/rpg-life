@@ -6,7 +6,6 @@ import { getTodayKey } from '../lib/reflectionUtils'
 import ReflectionSidebar from '../components/reflection/ReflectionSidebar'
 import FolderFormModal from '../components/reflection/FolderFormModal'
 import NoteList from '../components/reflection/NoteList'
-import NoteViewer from '../components/reflection/NoteViewer'
 import NoteEditor from '../components/reflection/NoteEditor'
 import DailyReportCalendar from '../components/reflection/DailyReportCalendar'
 import DailyReportView from '../components/reflection/DailyReportView'
@@ -14,13 +13,11 @@ import NoteTrash from '../components/reflection/NoteTrash'
 import type { NoteFolder, NoteFolderId } from '../types/domain'
 
 type Tab = 'notes' | 'diary'
-type NoteMode = 'view' | 'edit'
 
 export default function ReflectionPage() {
   const [activeTab, setActiveTab] = useState<Tab>('notes')
   const [activeFolderId, setActiveFolderId] = useState<NoteFolderId | null>(null)
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
-  const [noteMode, setNoteMode] = useState<NoteMode>('view')
   const [showTrash, setShowTrash] = useState(false)
   const [selectedDate, setSelectedDate] = useState(getTodayKey())
 
@@ -94,7 +91,6 @@ export default function ReflectionPage() {
   // Handlers
   const handleSelectNote = useCallback((id: string) => {
     setSelectedNoteId(id)
-    setNoteMode('view')
   }, [])
 
   const handleCreateNote = useCallback(() => {
@@ -103,7 +99,6 @@ export default function ReflectionPage() {
       folderId: activeFolderId,
     })
     setSelectedNoteId(note.id)
-    setNoteMode('edit') // new note → straight to editor
   }, [addNote, activeFolderId])
 
   const handleDeleteNote = useCallback(() => {
@@ -192,21 +187,12 @@ export default function ReflectionPage() {
             {/* Mobile: list OR editor (not both) */}
             {selectedNote && (
               <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-card)] backdrop-blur-lg">
-                {noteMode === 'view' ? (
-                  <NoteViewer
-                    note={selectedNote}
-                    onBack={() => setSelectedNoteId(null)}
-                    onEdit={() => setNoteMode('edit')}
-                    onDelete={handleDeleteNote}
-                  />
-                ) : (
-                  <NoteEditor
-                    note={selectedNote}
-                    onBack={() => { setSelectedNoteId(null); setNoteMode('view') }}
-                    onDelete={handleDeleteNote}
-                    onCreateNote={handleCreateNote}
-                  />
-                )}
+                <NoteEditor
+                  note={selectedNote}
+                  onBack={() => setSelectedNoteId(null)}
+                  onDelete={handleDeleteNote}
+                  onCreateNote={handleCreateNote}
+                />
               </div>
             )}
 

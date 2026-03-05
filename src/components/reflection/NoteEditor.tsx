@@ -1,41 +1,14 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { useEditor, EditorContent } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import LinkExtension from '@tiptap/extension-link'
-import ImageExtension from '@tiptap/extension-image'
-import Placeholder from '@tiptap/extension-placeholder'
-import UnderlineExtension from '@tiptap/extension-underline'
-import { ArrowLeft, Pin, PinOff, Trash2, Link as LinkIcon, Unlink, FilePlus, Check } from 'lucide-react'
-import NoteEditorToolbar from './NoteEditorToolbar'
+import {
+  ArrowLeft, Pin, PinOff, Trash2, Link as LinkIcon, Unlink,
+  FilePlus, Check, Plus, X, ImagePlus, Tag,
+} from 'lucide-react'
 import ImageLightbox from './ImageLightbox'
 import { useRpgStore } from '../../store/useRpgStore'
 import { vaultStorage } from '../../lib/vaultStorage'
 import { resizeImageFile } from '../../lib/resizeImage'
-import { extractExcerpt, relativeDateRu } from '../../lib/reflectionUtils'
-import type { Note, TiptapContent } from '../../types/domain'
-
-/** Replace resolved data URLs back to vault-relative paths before saving */
-function restoreMediaPaths(content: TiptapContent, cache: Map<string, string>): TiptapContent {
-  if (cache.size === 0) return content
-  // Build reverse map: dataUrl → vaultPath
-  const reverse = new Map<string, string>()
-  for (const [vaultPath, dataUrl] of cache) reverse.set(dataUrl, vaultPath)
-
-  const walk = (node: Record<string, unknown>): Record<string, unknown> => {
-    if (node.type === 'image' && typeof (node.attrs as Record<string, unknown>)?.src === 'string') {
-      const src = (node.attrs as Record<string, string>).src
-      const original = reverse.get(src)
-      if (original) {
-        return { ...node, attrs: { ...(node.attrs as object), src: original } }
-      }
-    }
-    if (Array.isArray(node.content)) {
-      return { ...node, content: node.content.map((c: Record<string, unknown>) => walk(c)) }
-    }
-    return node
-  }
-  return walk(content as unknown as Record<string, unknown>) as unknown as TiptapContent
-}
+import { relativeDateRu } from '../../lib/reflectionUtils'
+import type { Note } from '../../types/domain'
 
 interface NoteEditorProps {
   note: Note
@@ -44,166 +17,95 @@ interface NoteEditorProps {
   onCreateNote?: () => void
 }
 
+/** Auto-resize textarea to fit content */
+function useAutoResize(ref: React.RefObject<HTMLTextAreaElement | null>, value: string) {
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = el.scrollHeight + 'px'
+  }, [ref, value])
+}
+
 export default function NoteEditor({ note, onBack, onDelete, onCreateNote }: NoteEditorProps) {
   const updateNote = useRpgStore((s) => s.updateNote)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const rawTasks = useRpgStore((s) => s.tasks)
+  const noteTags = useRpgStore((s) => s.noteTags)
+  const addNoteTag = useRpgStore((s) => s.addNoteTag)
+
   const tasks = useMemo(
     () => rawTasks.filter((t) => t.profileId === activeProfileId),
     [rawTasks, activeProfileId],
   )
+  const profileTags = useMemo(
+    () => noteTags.filter((t) => t.profileId === activeProfileId),
+    [noteTags, activeProfileId],
+  )
+
   const [title, setTitle] = useState(note.title)
-  const [lightboxImages, setLightboxImages] = useState<string[] | null>(null)
-  const [lightboxIndex, setLightboxIndex] = useState(0)
+  const [content, setContent] = useState(typeof note.content === 'string' ? note.content : '')
   const [showLinkTasks, setShowLinkTasks] = useState(false)
   const [taskSearch, setTaskSearch] = useState('')
+  const [showTagInput, setShowTagInput] = useState(false)
+  const [tagSearch, setTagSearch] = useState('')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [lightboxImages, setLightboxImages] = useState<string[] | null>(null)
+  const [lightboxIndex, setLightboxIndex] = useState(0)
+  const [mediaThumbs, setMediaThumbs] = useState<Map<string, string>>(new Map())
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>()
   const savedIndicatorRef = useRef<ReturnType<typeof setTimeout>>()
-  // Map vault relative paths → data URLs for display
-  const mediaCache = useRef<Map<string, string>>(new Map())
+  const tagInputRef = useRef<HTMLInputElement>(null)
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
-      }),
-      LinkExtension.configure({
-        openOnClick: true,
-        HTMLAttributes: { class: 'text-[var(--accent)] underline cursor-pointer' },
-      }),
-      ImageExtension.configure({
-        HTMLAttributes: { class: 'rounded-lg max-w-full my-2 cursor-pointer' },
-      }),
-      Placeholder.configure({ placeholder: 'Начните писать…' }),
-      UnderlineExtension,
-    ],
-    content: note.content,
-    editorProps: {
-      attributes: {
-        class: 'max-w-none focus:outline-none min-h-[200px] px-4 py-3',
-      },
-      handleClick: (_view, _pos, event) => {
-        const target = event.target as HTMLElement
-        if (target.tagName === 'IMG') {
-          const src = target.getAttribute('src')
-          if (src && note.mediaFiles.length > 0) {
-            // src might be a data URL — find matching media path via cache
-            let idx = note.mediaFiles.indexOf(src)
-            if (idx < 0) {
-              // Reverse-lookup: find vault path whose resolved data URL matches src
-              for (const [vaultPath, dataUrl] of mediaCache.current) {
-                if (dataUrl === src) {
-                  idx = note.mediaFiles.indexOf(vaultPath)
-                  break
-                }
-              }
-            }
-            setLightboxImages(note.mediaFiles)
-            setLightboxIndex(idx >= 0 ? idx : 0)
-          }
-          return true
-        }
-        return false
-      },
-    },
-    onUpdate: ({ editor: ed }) => {
-      // Debounced save
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-      setSaveStatus('saving')
-      saveTimerRef.current = setTimeout(() => {
-        const content = ed.getJSON() as TiptapContent
-        // Replace resolved data URLs back to vault paths before persisting
-        const persistContent = restoreMediaPaths(content, mediaCache.current)
-        const excerpt = extractExcerpt(persistContent)
-        updateNote(note.id, (n) => ({ ...n, content: persistContent, excerpt }))
-        setSaveStatus('saved')
-        if (savedIndicatorRef.current) clearTimeout(savedIndicatorRef.current)
-        savedIndicatorRef.current = setTimeout(() => setSaveStatus('idle'), 2000)
-      }, 500)
-    },
-  })
+  useAutoResize(textareaRef, content)
 
-  // Sync title on change
+  // Resolve media thumbnails
   useEffect(() => {
+    let cancelled = false
+    const resolve = async () => {
+      const thumbs = new Map<string, string>()
+      for (const path of note.mediaFiles) {
+        const dataUrl = await vaultStorage.readMedia(path)
+        if (cancelled) return
+        if (dataUrl) thumbs.set(path, dataUrl)
+      }
+      if (!cancelled) setMediaThumbs(thumbs)
+    }
+    resolve()
+    return () => { cancelled = true }
+  }, [note.mediaFiles])
+
+  // Sync from note prop when switching notes
+  useEffect(() => {
+    setTitle(note.title)
+    setContent(typeof note.content === 'string' ? note.content : '')
+  }, [note.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debounced save helper
+  const scheduleSave = useCallback((updater: (n: Note) => Note) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     setSaveStatus('saving')
     saveTimerRef.current = setTimeout(() => {
-      updateNote(note.id, (n) => ({ ...n, title }))
+      updateNote(note.id, updater)
       setSaveStatus('saved')
       if (savedIndicatorRef.current) clearTimeout(savedIndicatorRef.current)
       savedIndicatorRef.current = setTimeout(() => setSaveStatus('idle'), 2000)
     }, 500)
-  }, [title, note.id, updateNote])
+  }, [note.id, updateNote])
 
-  // Resolve vault media paths (media/xxx.webp) → data URLs in Tiptap JSON
-  const resolveMediaInContent = useCallback(async (content: TiptapContent): Promise<TiptapContent> => {
-    if (!vaultStorage.isElectron()) return content
-
-    // Collect all media paths that need resolving
-    const paths = new Set<string>()
-    const walk = (node: Record<string, unknown>) => {
-      if (node.type === 'image' && typeof (node.attrs as Record<string, unknown>)?.src === 'string') {
-        const src = (node.attrs as Record<string, string>).src
-        if (src.startsWith('media/') && !mediaCache.current.has(src)) {
-          paths.add(src)
-        }
-      }
-      if (Array.isArray(node.content)) {
-        for (const child of node.content) walk(child as Record<string, unknown>)
-      }
-    }
-    walk(content as unknown as Record<string, unknown>)
-
-    if (paths.size === 0 && !hasMediaPaths(content)) return content
-
-    // Resolve all paths in parallel
-    await Promise.all(
-      [...paths].map(async (p) => {
-        const dataUrl = await vaultStorage.readMedia(p)
-        if (dataUrl) mediaCache.current.set(p, dataUrl)
-      }),
-    )
-
-    // Replace src in a deep clone
-    const replace = (node: Record<string, unknown>): Record<string, unknown> => {
-      if (node.type === 'image' && typeof (node.attrs as Record<string, unknown>)?.src === 'string') {
-        const src = (node.attrs as Record<string, string>).src
-        const resolved = mediaCache.current.get(src)
-        if (resolved) {
-          return { ...node, attrs: { ...(node.attrs as object), src: resolved } }
-        }
-      }
-      if (Array.isArray(node.content)) {
-        return { ...node, content: node.content.map((c: Record<string, unknown>) => replace(c)) }
-      }
-      return node
-    }
-    return replace(content as unknown as Record<string, unknown>) as unknown as TiptapContent
-  }, [])
-
-  // Check if content has any media/ paths
-  const hasMediaPaths = (content: TiptapContent): boolean => {
-    const json = JSON.stringify(content)
-    return json.includes('"media/')
-  }
-
-  // Resolve media on mount and when switching notes
+  // Save title
   useEffect(() => {
-    if (!editor || !note.content) return
-    let cancelled = false
-    resolveMediaInContent(note.content).then((resolved) => {
-      if (cancelled) return
-      const currentJson = JSON.stringify(editor.getJSON())
-      const resolvedJson = JSON.stringify(resolved)
-      if (currentJson !== resolvedJson) {
-        editor.commands.setContent(resolved)
-      }
-    })
-    setTitle(note.title)
-    return () => { cancelled = true }
-  }, [note.id]) // eslint-disable-line react-hooks/exhaustive-deps
+    scheduleSave((n) => ({ ...n, title }))
+  }, [title]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save content
+  useEffect(() => {
+    const excerpt = content.slice(0, 200)
+    scheduleSave((n) => ({ ...n, content, excerpt }))
+  }, [content]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cleanup
   useEffect(() => {
@@ -213,36 +115,7 @@ export default function NoteEditor({ note, onBack, onDelete, onCreateNote }: Not
     }
   }, [])
 
-  const handleInsertImage = useCallback(() => {
-    fileInputRef.current?.click()
-  }, [])
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !editor) return
-    e.target.value = ''
-
-    try {
-      const resized = await resizeImageFile(file)
-      const mediaPath = await vaultStorage.saveMedia(resized, 'webp')
-      // Add to note mediaFiles
-      updateNote(note.id, (n) => ({
-        ...n,
-        mediaFiles: [...n.mediaFiles, mediaPath],
-      }))
-      // Resolve to data URL for display, fall back to raw path
-      const displaySrc = await vaultStorage.readMedia(mediaPath) ?? mediaPath
-      // Cache the mapping so restoreMediaPaths can reverse it on save
-      if (displaySrc !== mediaPath) mediaCache.current.set(mediaPath, displaySrc)
-      // Insert into editor
-      editor.chain().focus().setImage({ src: displaySrc }).run()
-    } catch (err) {
-      console.error('Failed to insert image:', err)
-    }
-  }
-
   const handleBack = useCallback(() => {
-    // Flush any pending debounced save immediately
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current)
       saveTimerRef.current = undefined
@@ -251,17 +124,10 @@ export default function NoteEditor({ note, onBack, onDelete, onCreateNote }: Not
       clearTimeout(savedIndicatorRef.current)
       savedIndicatorRef.current = undefined
     }
-    // Save current state before leaving
-    if (editor) {
-      const content = editor.getJSON() as TiptapContent
-      const persistContent = restoreMediaPaths(content, mediaCache.current)
-      const excerpt = extractExcerpt(persistContent)
-      updateNote(note.id, (n) => ({ ...n, title, content: persistContent, excerpt }))
-    } else {
-      updateNote(note.id, (n) => ({ ...n, title }))
-    }
+    const excerpt = content.slice(0, 200)
+    updateNote(note.id, (n) => ({ ...n, title, content, excerpt }))
     onBack()
-  }, [editor, title, note.id, updateNote, onBack])
+  }, [title, content, note.id, updateNote, onBack])
 
   const togglePin = () => {
     updateNote(note.id, (n) => ({ ...n, pinned: !n.pinned }))
@@ -278,6 +144,70 @@ export default function NoteEditor({ note, onBack, onDelete, onCreateNote }: Not
       }
     })
   }
+
+  // Tags
+  const addTagToNote = (tagName: string) => {
+    const name = tagName.trim()
+    if (!name) return
+    // Add to global tags if not exists
+    if (!profileTags.find((t) => t.name.toLowerCase() === name.toLowerCase())) {
+      addNoteTag(name)
+    }
+    // Add to note
+    if (!note.tags.includes(name)) {
+      updateNote(note.id, (n) => ({ ...n, tags: [...n.tags, name] }))
+    }
+    setTagSearch('')
+    setShowTagInput(false)
+  }
+
+  const removeTagFromNote = (tagName: string) => {
+    updateNote(note.id, (n) => ({ ...n, tags: n.tags.filter((t) => t !== tagName) }))
+  }
+
+  const filteredTags = useMemo(() => {
+    const q = tagSearch.toLowerCase().trim()
+    if (!q) return profileTags.filter((t) => !note.tags.includes(t.name)).slice(0, 10)
+    return profileTags.filter(
+      (t) => t.name.toLowerCase().includes(q) && !note.tags.includes(t.name)
+    )
+  }, [profileTags, tagSearch, note.tags])
+
+  // Images
+  const handleInsertImage = () => fileInputRef.current?.click()
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    e.target.value = ''
+
+    for (const file of Array.from(files)) {
+      try {
+        const resized = await resizeImageFile(file)
+        const mediaPath = await vaultStorage.saveMedia(resized, 'webp')
+        updateNote(note.id, (n) => ({
+          ...n,
+          mediaFiles: [...n.mediaFiles, mediaPath],
+        }))
+      } catch (err) {
+        console.error('Failed to add image:', err)
+      }
+    }
+  }
+
+  const removeImage = (mediaPath: string) => {
+    vaultStorage.deleteMedia(mediaPath).catch(() => {})
+    updateNote(note.id, (n) => ({
+      ...n,
+      mediaFiles: n.mediaFiles.filter((p) => p !== mediaPath),
+    }))
+  }
+
+  // Linked tasks for display
+  const linkedTasks = useMemo(
+    () => tasks.filter((t) => note.linkedTaskIds.includes(t.id)),
+    [tasks, note.linkedTaskIds],
+  )
 
   return (
     <div className="flex h-full flex-col">
@@ -327,7 +257,6 @@ export default function NoteEditor({ note, onBack, onDelete, onCreateNote }: Not
             {(() => {
               const q = taskSearch.toLowerCase().trim()
               const active = tasks.filter((t) => !t.archived)
-              // Show linked first, then filtered by search
               const linked = active.filter((t) => note.linkedTaskIds.includes(t.id))
               const unlinked = active.filter((t) => !note.linkedTaskIds.includes(t.id))
               const filtered = q
@@ -352,17 +281,179 @@ export default function NoteEditor({ note, onBack, onDelete, onCreateNote }: Not
         </div>
       )}
 
-      {/* Toolbar */}
-      <div className="border-b border-[var(--border)] px-4 py-2">
-        <NoteEditorToolbar editor={editor} onInsertImage={handleInsertImage} />
-      </div>
-
-      {/* Editor content */}
+      {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
-        <EditorContent editor={editor} />
+        {/* Linked tasks chips */}
+        {linkedTasks.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3">
+            <LinkIcon className="h-3.5 w-3.5 text-[var(--fg-muted)]" />
+            {linkedTasks.map((t) => (
+              <span
+                key={t.id}
+                className="inline-flex items-center rounded-md bg-[var(--accent)]/10 px-2 py-0.5 text-xs font-medium text-[var(--accent)]"
+              >
+                {t.title}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Text content */}
+        <div className="px-4 py-3">
+          <textarea
+            ref={textareaRef}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Начните писать…"
+            className="w-full resize-none bg-transparent text-sm text-[var(--fg)] leading-relaxed outline-none placeholder:text-[var(--fg-muted)]"
+            style={{ minHeight: '120px' }}
+          />
+        </div>
+
+        {/* Tags */}
+        <div className="px-4 pb-3">
+          <p className="mb-2 text-xs font-medium text-[var(--fg-muted)]">Теги</p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {note.tags.map((tag) => {
+              const tagObj = profileTags.find((t) => t.name === tag)
+              const color = tagObj?.color ?? '#6b7280'
+              return (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium"
+                  style={{ backgroundColor: color + '20', color }}
+                >
+                  {tag}
+                  <button
+                    onClick={() => removeTagFromNote(tag)}
+                    className="ml-0.5 rounded-full p-0.5 hover:bg-black/10"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )
+            })}
+
+            {showTagInput ? (
+              <div className="relative">
+                <input
+                  ref={tagInputRef}
+                  type="text"
+                  value={tagSearch}
+                  onChange={(e) => setTagSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      addTagToNote(tagSearch)
+                    }
+                    if (e.key === 'Escape') {
+                      setShowTagInput(false)
+                      setTagSearch('')
+                    }
+                  }}
+                  onBlur={() => {
+                    // Delay to allow click on suggestion
+                    setTimeout(() => {
+                      setShowTagInput(false)
+                      setTagSearch('')
+                    }, 200)
+                  }}
+                  placeholder="Название тега…"
+                  className="input h-7 w-36 text-xs"
+                  autoFocus
+                />
+                {/* Suggestions dropdown */}
+                {filteredTags.length > 0 && (
+                  <div className="absolute left-0 top-full z-10 mt-1 max-h-32 w-48 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface-card)] p-1 shadow-lg">
+                    {filteredTags.map((t) => (
+                      <button
+                        key={t.id}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => addTagToNote(t.name)}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-[var(--surface-elevated)]"
+                      >
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: t.color }}
+                        />
+                        <span className="text-[var(--fg)]">{t.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setShowTagInput(true)
+                  setTimeout(() => tagInputRef.current?.focus(), 50)
+                }}
+                className="inline-flex items-center gap-1 rounded-full border border-dashed border-[var(--border)] px-2.5 py-1 text-xs text-[var(--fg-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
+              >
+                <Tag className="h-3 w-3" />
+                Добавить тег
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Images */}
+        <div className="px-4 pb-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-medium text-[var(--fg-muted)]">Изображения</p>
+            <button
+              onClick={handleInsertImage}
+              className="icon-btn h-7 w-7"
+              title="Добавить изображение"
+            >
+              <ImagePlus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {note.mediaFiles.length > 0 ? (
+            <div className="grid grid-cols-3 gap-2">
+              {note.mediaFiles.map((path, idx) => {
+                const thumb = mediaThumbs.get(path)
+                return (
+                  <div key={path} className="group relative aspect-square overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+                    {thumb ? (
+                      <img
+                        src={thumb}
+                        alt=""
+                        className="h-full w-full object-cover cursor-pointer"
+                        onClick={() => {
+                          setLightboxImages(note.mediaFiles)
+                          setLightboxIndex(idx)
+                        }}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-xs text-[var(--fg-muted)]">
+                        Загрузка…
+                      </div>
+                    )}
+                    <button
+                      onClick={() => removeImage(path)}
+                      className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <button
+              onClick={handleInsertImage}
+              className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--border)] py-8 text-[var(--fg-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
+            >
+              <ImagePlus className="h-8 w-8 opacity-40" />
+              <span className="text-xs">Добавить изображение</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Footer meta */}
+      {/* Footer */}
       <div className="flex items-center justify-between border-t border-[var(--border)] px-4 py-2 text-[10px] text-[var(--fg-muted)]">
         <span>
           Обновлено {relativeDateRu(note.updatedAt)}
@@ -385,6 +476,7 @@ export default function NoteEditor({ note, onBack, onDelete, onCreateNote }: Not
         ref={fileInputRef}
         type="file"
         accept="image/*"
+        multiple
         className="hidden"
         onChange={handleFileSelect}
       />
