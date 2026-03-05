@@ -1,18 +1,19 @@
 import { Plus, FileText, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { cn } from '../../lib/cn'
-import type { NoteFolder, NoteFolderId } from '../../types/domain'
+import type { NoteFolder, NoteFolderId, NoteId } from '../../types/domain'
 
 interface ReflectionSidebarProps {
   folders: NoteFolder[]
-  activeFolderId: NoteFolderId | null  // null = "Все заметки"
-  noteCounts: Record<string, number>  // folderId -> count, 'all' -> total, 'unfiled' -> no-folder
+  activeFolderId: NoteFolderId | null
+  noteCounts: Record<string, number>
   trashCount: number
   onSelectFolder: (id: NoteFolderId | null) => void
   onShowTrash: () => void
   onCreateFolder: () => void
   onEditFolder: (folder: NoteFolder) => void
   onDeleteFolder: (id: NoteFolderId) => void
+  onDropNote?: (noteId: NoteId, folderId: NoteFolderId | null) => void
 }
 
 export default function ReflectionSidebar({
@@ -25,8 +26,10 @@ export default function ReflectionSidebar({
   onCreateFolder,
   onEditFolder,
   onDeleteFolder,
+  onDropNote,
 }: ReflectionSidebarProps) {
   const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null)
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -38,16 +41,40 @@ export default function ReflectionSidebar({
     return () => document.removeEventListener('mousedown', handle)
   }, [contextMenu])
 
+  const handleFolderDragOver = (e: React.DragEvent, folderId: string | null) => {
+    if (!e.dataTransfer.types.includes('application/note-id')) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverFolderId(folderId ?? '__all__')
+  }
+
+  const handleFolderDrop = (e: React.DragEvent, folderId: string | null) => {
+    e.preventDefault()
+    setDragOverFolderId(null)
+    const noteId = e.dataTransfer.getData('application/note-id')
+    if (noteId && onDropNote) {
+      onDropNote(noteId, folderId)
+    }
+  }
+
+  const handleFolderDragLeave = () => {
+    setDragOverFolderId(null)
+  }
+
   return (
     <div className="flex flex-col gap-1">
       {/* All notes */}
       <button
         onClick={() => onSelectFolder(null)}
+        onDragOver={(e) => handleFolderDragOver(e, null)}
+        onDrop={(e) => handleFolderDrop(e, null)}
+        onDragLeave={handleFolderDragLeave}
         className={cn(
           'flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-all',
           activeFolderId === null
             ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium'
             : 'text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)]',
+          dragOverFolderId === '__all__' && 'ring-2 ring-[var(--accent)] bg-[var(--accent-subtle)]',
         )}
       >
         <FileText className="h-4 w-4 shrink-0" />
@@ -67,11 +94,15 @@ export default function ReflectionSidebar({
               e.preventDefault()
               setContextMenu({ id: folder.id, x: e.clientX, y: e.clientY })
             }}
+            onDragOver={(e) => handleFolderDragOver(e, folder.id)}
+            onDrop={(e) => handleFolderDrop(e, folder.id)}
+            onDragLeave={handleFolderDragLeave}
             className={cn(
               'flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-all',
               activeFolderId === folder.id
                 ? 'bg-[var(--accent-subtle)] font-medium'
                 : 'text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)]',
+              dragOverFolderId === folder.id && 'ring-2 ring-[var(--accent)] bg-[var(--accent-subtle)]',
             )}
             style={activeFolderId === folder.id ? { color: folder.color } : undefined}
           >

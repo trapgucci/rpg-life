@@ -42,8 +42,28 @@ export default function NoteList({
 
   const canDrag = !search.trim() && !!onReorder
 
-  const handleDragStart = useCallback((noteId: string) => {
+  const handleDragStart = useCallback((e: React.DragEvent, noteId: string) => {
     draggedId.current = noteId
+    e.dataTransfer.setData('application/note-id', noteId)
+    e.dataTransfer.effectAllowed = 'move'
+
+    // Create a small drag preview
+    const el = e.currentTarget as HTMLElement
+    const clone = el.cloneNode(true) as HTMLElement
+    clone.style.width = '180px'
+    clone.style.height = 'auto'
+    clone.style.maxHeight = '60px'
+    clone.style.overflow = 'hidden'
+    clone.style.opacity = '0.85'
+    clone.style.borderRadius = '12px'
+    clone.style.position = 'fixed'
+    clone.style.top = '-9999px'
+    clone.style.left = '-9999px'
+    clone.style.transform = 'scale(1)'
+    clone.style.pointerEvents = 'none'
+    document.body.appendChild(clone)
+    e.dataTransfer.setDragImage(clone, 90, 30)
+    requestAnimationFrame(() => document.body.removeChild(clone))
   }, [])
 
   const handleDragOver = useCallback((e: React.DragEvent, noteId: string) => {
@@ -119,7 +139,7 @@ export default function NoteList({
             <div
               key={note.id}
               draggable={canDrag}
-              onDragStart={() => handleDragStart(note.id)}
+              onDragStart={(e) => handleDragStart(e, note.id)}
               onDragOver={(e) => handleDragOver(e, note.id)}
               onDrop={(e) => handleDrop(e, note.id)}
               onDragEnd={handleDragEnd}

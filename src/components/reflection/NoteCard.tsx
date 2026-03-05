@@ -1,10 +1,26 @@
-import { useEffect, useState } from 'react'
-import { Pin } from 'lucide-react'
+import { useEffect, useState, useMemo } from 'react'
+import { Pin, CheckSquare, Hash, ClipboardList } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { relativeDateRu } from '../../lib/reflectionUtils'
 import { vaultStorage } from '../../lib/vaultStorage'
 import { useRpgStore } from '../../store/useRpgStore'
-import type { Note } from '../../types/domain'
+import type { Note, TaskRecurrence } from '../../types/domain'
+
+const RECURRENCE_LABELS: Record<TaskRecurrence, { label: string; color: string }> = {
+  once: { label: 'Один раз', color: '#6b7280' },
+  daily: { label: 'Ежедневно', color: '#3b82f6' },
+  weekly: { label: 'Еженедельно', color: '#8b5cf6' },
+  monthly: { label: 'Ежемесячно', color: '#ec4899' },
+  yearly: { label: 'Ежегодно', color: '#f59e0b' },
+  instant: { label: 'Инстант', color: '#22c55e' },
+  custom: { label: 'Кастомный', color: '#6366f1' },
+}
+
+const TASK_KIND_ICONS: Record<string, typeof CheckSquare> = {
+  checkbox: CheckSquare,
+  counter: Hash,
+  nested: ClipboardList,
+}
 
 interface NoteCardProps {
   note: Note
@@ -13,24 +29,35 @@ interface NoteCardProps {
 }
 
 export default function NoteCard({ note, isSelected, onClick }: NoteCardProps) {
-  const [thumbSrc, setThumbSrc] = useState<string | null>(null)
-  const activeProfileId = useRpgStore((s) => s.activeProfileId)
-  const noteTags = useRpgStore((s) => s.noteTags)
+  const [thumbs, setThumbs] = useState<Map<string, string>>(new Map())
+  const rawTasks = useRpgStore((s) => s.tasks)
 
-  // Resolve first image thumbnail
+  // Resolve all image thumbnails
   useEffect(() => {
     if (note.mediaFiles.length === 0) {
-      setThumbSrc(null)
+      setThumbs(new Map())
       return
     }
     let cancelled = false
-    vaultStorage.readMedia(note.mediaFiles[0]).then((data) => {
-      if (!cancelled && data) setThumbSrc(data)
-    })
+    const resolve = async () => {
+      const map = new Map<string, string>()
+      for (const path of note.mediaFiles) {
+        const data = await vaultStorage.readMedia(path)
+        if (cancelled) return
+        if (data) map.set(path, data)
+      }
+      if (!cancelled) setThumbs(map)
+    }
+    resolve()
     return () => { cancelled = true }
   }, [note.mediaFiles])
 
   const content = typeof note.content === 'string' ? note.content : note.excerpt
+
+  const linkedTask = useMemo(() => {
+    if (note.linkedTaskIds.length === 0) return null
+    return rawTasks.find((t) => t.id === note.linkedTaskIds[0]) ?? null
+  }, [rawTasks, note.linkedTaskIds])
 
   return (
     <button
@@ -59,27 +86,6 @@ export default function NoteCard({ note, isSelected, onClick }: NoteCardProps) {
           </span>
         </div>
 
-        {/* Tags */}
-        {note.tags && note.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-2">
-            {note.tags.map((tag) => {
-              const tagObj = noteTags.find(
-                (t) => t.profileId === activeProfileId && t.name === tag
-              )
-              const color = tagObj?.color ?? '#6b7280'
-              return (
-                <span
-                  key={tag}
-                  className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium"
-                  style={{ backgroundColor: color + '20', color }}
-                >
-                  {tag}
-                </span>
-              )
-            })}
-          </div>
-        )}
-
         {/* Content preview */}
         {content && (
           <p className="line-clamp-3 text-xs text-[var(--fg-muted)] leading-relaxed">
@@ -87,32 +93,32 @@ export default function NoteCard({ note, isSelected, onClick }: NoteCardProps) {
           </p>
         )}
 
-        {/* Image thumbnail */}
-        {thumbSrc && (
-          <div className="mt-2 overflow-hidden rounded-xl">
-            <img
-              src={thumbSrc}
-              alt=""
-              className="h-32 w-full object-cover"
-            />
+        {/* Image thumbnails */}
+        {note.mediaFiles.length > 0 && thumbs.size > 0 && (
+          <div className="mt-2 flex gap-1.5 overflow-x-auto scrollbar-hide">
+            {note.mediaFiles.map((path) => {
+              const src = thumbs.get(path)
+              if (!src) return null
+              return (
+                <div key={path} className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)]">
+                  <img src={src} alt="" className="h-full w-full object-cover" />
+                </div>
+              )
+            })}
           </div>
         )}
 
-        {/* Meta badges */}
-        {(note.linkedTaskIds.length > 0 || note.mediaFiles.length > 1) && (
-          <div className="mt-2 flex items-center gap-2">
-            {note.linkedTaskIds.length > 0 && (
-              <span className="rounded-full bg-[var(--accent-subtle)] px-1.5 py-0.5 text-[10px] text-[var(--accent)]">
-                {note.linkedTaskIds.length} задач
-              </span>
-            )}
-            {note.mediaFiles.length > 1 && (
-              <span className="rounded-full bg-[var(--surface-elevated)] px-1.5 py-0.5 text-[10px] text-[var(--fg-muted)]">
-                {note.mediaFiles.length} фото
-              </span>
-            )}
-          </div>
-        )}
+        {/* Linked task */}
+        {linkedTask && (() => {
+          const recInfo = RECURRENCE_LABELS[linkedTask.recurrence]
+          const KindIcon = TASK_KIND_ICONS[linkedTask.kind] ?? CheckSquare
+          return (
+            <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-[var(--accent)]/8 px-2 py-1">
+              <KindIcon className="h-3 w-3 shrink-0" style={{ color: recInfo.color }} />
+              <p className="text-[10px] font-medium text-[var(--accent)] truncate">{linkedTask.title}</p>
+            </div>
+          )
+        })()}
       </div>
     </button>
   )

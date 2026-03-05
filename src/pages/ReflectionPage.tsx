@@ -34,6 +34,7 @@ export default function ReflectionPage() {
   const updateFolder = useRpgStore((s) => s.updateNoteFolder)
   const deleteFolder = useRpgStore((s) => s.deleteNoteFolder)
   const addNote = useRpgStore((s) => s.addNote)
+  const updateNote = useRpgStore((s) => s.updateNote)
   const deleteNote = useRpgStore((s) => s.deleteNote)
   const restoreNote = useRpgStore((s) => s.restoreNote)
   const permanentDeleteNote = useRpgStore((s) => s.permanentDeleteNote)
@@ -134,8 +135,15 @@ export default function ReflectionPage() {
     [deleteFolder, activeFolderId],
   )
 
+  const handleDropNoteToFolder = useCallback(
+    (noteId: string, folderId: NoteFolderId | null) => {
+      updateNote(noteId, (n) => ({ ...n, folderId }))
+    },
+    [updateNote],
+  )
+
   return (
-    <div className="flex h-full flex-col gap-4 overflow-hidden pb-2">
+    <div className={`flex flex-col gap-4 pb-2 ${selectedNote ? 'min-h-full' : 'h-full overflow-hidden'}`}>
       {/* Header — hidden when note is open */}
       {!selectedNote && (
         <div className="flex items-center gap-2 md:gap-3 shrink-0">
@@ -180,18 +188,17 @@ export default function ReflectionPage() {
       )}
 
       {/* Content */}
-      <div className="flex min-h-0 flex-1 gap-4">
+      <div className={`flex gap-4 ${selectedNote ? 'flex-1' : 'min-h-0 flex-1'}`}>
         {activeTab === 'notes' ? (
           <>
             {/* Desktop: sidebar + list + editor */}
             {/* Mobile: list OR editor (not both) */}
             {selectedNote && (
-              <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-card)] backdrop-blur-lg">
+              <div className="flex flex-1 flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface-card)] backdrop-blur-lg">
                 <NoteEditor
                   note={selectedNote}
                   onBack={() => setSelectedNoteId(null)}
                   onDelete={handleDeleteNote}
-                  onCreateNote={handleCreateNote}
                 />
               </div>
             )}
@@ -210,6 +217,7 @@ export default function ReflectionPage() {
                     onCreateFolder={() => { setEditingFolder(null); setFolderModalOpen(true) }}
                     onEditFolder={handleEditFolder}
                     onDeleteFolder={handleDeleteFolder}
+                    onDropNote={handleDropNoteToFolder}
                   />
                 </div>
 
