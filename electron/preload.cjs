@@ -20,5 +20,6 @@ contextBridge.exposeInMainWorld('electronVault', {
   write: (filename, data) => ipcRenderer.invoke('vault:write', filename, data),
   writeMedia: (filename, base64data) => ipcRenderer.invoke('vault:writeMedia', filename, base64data),
   readMedia: (relativePath) => ipcRenderer.invoke('vault:readMedia', relativePath),
+  deleteMedia: (relativePath) => ipcRenderer.invoke('vault:deleteMedia', relativePath),
   init: (customPath) => ipcRenderer.invoke('vault:init', customPath),
 })

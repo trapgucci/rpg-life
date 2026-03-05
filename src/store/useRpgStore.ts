@@ -370,6 +370,10 @@ interface RpgStoreState {
   addNote: (partial: { title: string; folderId?: NoteFolderId | null; content?: TiptapContent; linkedTaskIds?: TaskId[]; linkedItemIds?: ItemId[] }) => Note
   updateNote: (id: NoteId, updater: (n: Note) => Note) => void
   deleteNote: (id: NoteId) => void
+  restoreNote: (id: NoteId) => void
+  permanentDeleteNote: (id: NoteId) => void
+  emptyTrash: () => void
+  reorderNotes: (orderedIds: NoteId[]) => void
 
   // Daily report actions
   getDailyReports: () => DailyReport[]
@@ -2782,6 +2786,9 @@ export const useRpgStore = create<RpgStoreState>()(
           // Если у папки есть шаблон и контент не передан, применить шаблон
           const folder = folderId ? noteFolders.find((f) => f.id === folderId) : null
           const content = partial.content ?? folder?.template ?? { type: 'doc' as const, content: [] }
+          // sortOrder: поставить в начало (минимальный sortOrder - 1)
+          const sameFolderNotes = notes.filter((n) => n.profileId === activeProfileId && n.folderId === folderId && !n.deletedAt)
+          const minOrder = sameFolderNotes.length > 0 ? Math.min(...sameFolderNotes.map((n) => n.sortOrder ?? 0)) : 0
           const note: Note = {
             id: crypto.randomUUID(),
             profileId: activeProfileId!,
@@ -2793,6 +2800,8 @@ export const useRpgStore = create<RpgStoreState>()(
             linkedTaskIds: partial.linkedTaskIds ?? [],
             linkedItemIds: partial.linkedItemIds ?? [],
             pinned: false,
+            sortOrder: minOrder - 1,
+            deletedAt: null,
             createdAt: now(),
             updatedAt: now(),
           }
@@ -2809,7 +2818,55 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         deleteNote: (id) => {
+          // Soft delete — переместить в корзину
+          set((s) => ({
+            notes: s.notes.map((n) =>
+              n.id === id ? { ...n, deletedAt: now(), updatedAt: now() } : n
+            ),
+          }))
+        },
+
+        restoreNote: (id) => {
+          set((s) => ({
+            notes: s.notes.map((n) =>
+              n.id === id ? { ...n, deletedAt: null, updatedAt: now() } : n
+            ),
+          }))
+        },
+
+        permanentDeleteNote: (id) => {
+          const note = get().notes.find((n) => n.id === id)
+          if (note) {
+            // Clean up media files from disk
+            for (const mediaPath of note.mediaFiles) {
+              vaultStorage.deleteMedia(mediaPath).catch(() => {})
+            }
+          }
           set((s) => ({ notes: s.notes.filter((n) => n.id !== id) }))
+        },
+
+        emptyTrash: () => {
+          const { activeProfileId, notes } = get()
+          // Clean up media files for all trashed notes
+          for (const note of notes) {
+            if (note.profileId === activeProfileId && note.deletedAt) {
+              for (const mediaPath of note.mediaFiles) {
+                vaultStorage.deleteMedia(mediaPath).catch(() => {})
+              }
+            }
+          }
+          set((s) => ({
+            notes: s.notes.filter((n) => !(n.profileId === activeProfileId && n.deletedAt)),
+          }))
+        },
+
+        reorderNotes: (orderedIds) => {
+          set((s) => ({
+            notes: s.notes.map((n) => {
+              const idx = orderedIds.indexOf(n.id)
+              return idx >= 0 ? { ...n, sortOrder: idx } : n
+            }),
+          }))
         },
 
         getDailyReports: () => {

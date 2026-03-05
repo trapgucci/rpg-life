@@ -1,6 +1,6 @@
 import { Plus, Search } from 'lucide-react'
-import { useState, useMemo } from 'react'
-import type { Note, NoteFolderId } from '../../types/domain'
+import { useState, useMemo, useRef, useCallback } from 'react'
+import type { Note, NoteFolderId, NoteId } from '../../types/domain'
 import NoteCard from './NoteCard'
 
 interface NoteListProps {
@@ -9,6 +9,7 @@ interface NoteListProps {
   activeFolderId: NoteFolderId | null
   onSelectNote: (id: string) => void
   onCreateNote: () => void
+  onReorder?: (orderedIds: NoteId[]) => void
 }
 
 export default function NoteList({
@@ -17,8 +18,11 @@ export default function NoteList({
   activeFolderId,
   onSelectNote,
   onCreateNote,
+  onReorder,
 }: NoteListProps) {
   const [search, setSearch] = useState('')
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
+  const draggedId = useRef<string | null>(null)
 
   const filtered = useMemo(() => {
     let list = notes
@@ -35,6 +39,41 @@ export default function NoteList({
     }
     return list
   }, [notes, activeFolderId, search])
+
+  const canDrag = !search.trim() && !!onReorder
+
+  const handleDragStart = useCallback((noteId: string) => {
+    draggedId.current = noteId
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent, noteId: string) => {
+    e.preventDefault()
+    if (draggedId.current && draggedId.current !== noteId) {
+      setDragOverId(noteId)
+    }
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent, targetId: string) => {
+    e.preventDefault()
+    setDragOverId(null)
+    const sourceId = draggedId.current
+    draggedId.current = null
+    if (!sourceId || sourceId === targetId || !onReorder) return
+
+    const ids = filtered.map((n) => n.id)
+    const fromIdx = ids.indexOf(sourceId)
+    const toIdx = ids.indexOf(targetId)
+    if (fromIdx < 0 || toIdx < 0) return
+
+    ids.splice(fromIdx, 1)
+    ids.splice(toIdx, 0, sourceId)
+    onReorder(ids)
+  }, [filtered, onReorder])
+
+  const handleDragEnd = useCallback(() => {
+    draggedId.current = null
+    setDragOverId(null)
+  }, [])
 
   return (
     <div className="flex flex-col gap-3">
@@ -77,12 +116,21 @@ export default function NoteList({
       ) : (
         <div className="flex flex-col gap-2">
           {filtered.map((note) => (
-            <NoteCard
+            <div
               key={note.id}
-              note={note}
-              isSelected={selectedNoteId === note.id}
-              onClick={() => onSelectNote(note.id)}
-            />
+              draggable={canDrag}
+              onDragStart={() => handleDragStart(note.id)}
+              onDragOver={(e) => handleDragOver(e, note.id)}
+              onDrop={(e) => handleDrop(e, note.id)}
+              onDragEnd={handleDragEnd}
+              className={dragOverId === note.id ? 'border-t-2 border-[var(--accent)] rounded-t-sm' : ''}
+            >
+              <NoteCard
+                note={note}
+                isSelected={selectedNoteId === note.id}
+                onClick={() => onSelectNote(note.id)}
+              />
+            </div>
           ))}
         </div>
       )}

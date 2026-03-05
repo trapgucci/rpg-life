@@ -1,14 +1,62 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Modal from '../Modal'
-import type { NoteFolder } from '../../types/domain'
+import type { NoteFolder, TiptapContent } from '../../types/domain'
 
 const FOLDER_ICONS = ['📁', '📂', '📝', '💡', '🎯', '💪', '🧠', '🎨', '🎬', '📚', '🎮', '🍳', '🏃', '❤️', '⭐', '🔥']
 const FOLDER_COLORS = ['#14b8a6', '#6366f1', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#22c55e', '#f97316', '#3b82f6']
 
+const TEMPLATE_PRESETS: { label: string; name: string; content: TiptapContent }[] = [
+  {
+    label: '📋 Обзор дня',
+    name: 'Обзор дня',
+    content: {
+      type: 'doc',
+      content: [
+        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Что сделано' }] },
+        { type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: ' ' }] }] }] },
+        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Что не получилось' }] },
+        { type: 'paragraph' },
+        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'План на завтра' }] },
+        { type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: ' ' }] }] }] },
+      ],
+    },
+  },
+  {
+    label: '💪 Тренировка',
+    name: 'Тренировка',
+    content: {
+      type: 'doc',
+      content: [
+        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Упражнения' }] },
+        { type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: ' ' }] }] }] },
+        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Самочувствие' }] },
+        { type: 'paragraph' },
+        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Заметки' }] },
+        { type: 'paragraph' },
+      ],
+    },
+  },
+  {
+    label: '💡 Идея',
+    name: 'Идея',
+    content: {
+      type: 'doc',
+      content: [
+        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Суть идеи' }] },
+        { type: 'paragraph' },
+        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Почему это важно' }] },
+        { type: 'paragraph' },
+        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Следующие шаги' }] },
+        { type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: ' ' }] }] }] },
+      ],
+    },
+  },
+]
+
 interface FolderFormModalProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (name: string, icon: string, color: string) => void
+  onSave: (name: string, icon: string, color: string, template: TiptapContent | null, templateName: string | undefined) => void
   folder?: NoteFolder | null
 }
 
@@ -16,13 +64,34 @@ export default function FolderFormModal({ isOpen, onClose, onSave, folder }: Fol
   const [name, setName] = useState(folder?.name ?? '')
   const [icon, setIcon] = useState(folder?.icon ?? '📁')
   const [color, setColor] = useState(folder?.color ?? '#14b8a6')
+  const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null) // index in TEMPLATE_PRESETS, null = no template
+
+  // Reset state when modal opens with new folder
+  useEffect(() => {
+    if (isOpen) {
+      setName(folder?.name ?? '')
+      setIcon(folder?.icon ?? '📁')
+      setColor(folder?.color ?? '#14b8a6')
+      // Find matching template preset
+      if (folder?.templateName) {
+        const idx = TEMPLATE_PRESETS.findIndex((t) => t.name === folder.templateName)
+        setSelectedTemplate(idx >= 0 ? idx : null)
+      } else {
+        setSelectedTemplate(null)
+      }
+    }
+  }, [isOpen, folder])
 
   const handleSave = () => {
     if (!name.trim()) return
-    onSave(name.trim(), icon, color)
-    setName('')
-    setIcon('📁')
-    setColor('#14b8a6')
+    const preset = selectedTemplate !== null ? TEMPLATE_PRESETS[selectedTemplate] : null
+    onSave(
+      name.trim(),
+      icon,
+      color,
+      preset?.content ?? null,
+      preset?.name ?? undefined,
+    )
     onClose()
   }
 
@@ -76,6 +145,37 @@ export default function FolderFormModal({ isOpen, onClose, onSave, folder }: Fol
                 }`}
                 style={{ backgroundColor: c }}
               />
+            ))}
+          </div>
+        </div>
+
+        {/* Template */}
+        <div>
+          <label className="mb-1 block text-sm font-medium text-[var(--fg)]">Шаблон заметки</label>
+          <p className="mb-2 text-xs text-[var(--fg-muted)]">Новые заметки в папке будут созданы с этим шаблоном</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedTemplate(null)}
+              className={`rounded-lg px-3 py-1.5 text-sm transition-all ${
+                selectedTemplate === null
+                  ? 'bg-[var(--accent-subtle)] text-[var(--accent)] ring-2 ring-[var(--accent)]'
+                  : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)]'
+              }`}
+            >
+              Без шаблона
+            </button>
+            {TEMPLATE_PRESETS.map((preset, idx) => (
+              <button
+                key={idx}
+                onClick={() => setSelectedTemplate(idx)}
+                className={`rounded-lg px-3 py-1.5 text-sm transition-all ${
+                  selectedTemplate === idx
+                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)] ring-2 ring-[var(--accent)]'
+                    : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)]'
+                }`}
+              >
+                {preset.label}
+              </button>
             ))}
           </div>
         </div>

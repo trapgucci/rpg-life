@@ -58,6 +58,14 @@ export const vaultStorage = {
     return relativePath
   },
 
+  async deleteMedia(relativePath: string): Promise<boolean> {
+    if (isElectron()) {
+      return window.electronVault!.deleteMedia(relativePath)
+    }
+    // In browser — nothing to delete
+    return true
+  },
+
   isElectron,
 }
 

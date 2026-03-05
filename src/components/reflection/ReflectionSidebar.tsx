@@ -1,13 +1,15 @@
-import { FolderOpen, Plus, FileText, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { Plus, FileText, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { cn } from '../../lib/cn'
 import type { NoteFolder, NoteFolderId } from '../../types/domain'
 
 interface ReflectionSidebarProps {
   folders: NoteFolder[]
-  activeFolderId: NoteFolderId | null  // null = "Все заметки"
+  activeFolderId: NoteFolderId | null  // null = "Все заметки", '__trash__' = корзина
   noteCounts: Record<string, number>  // folderId -> count, 'all' -> total, 'unfiled' -> no-folder
+  trashCount: number
   onSelectFolder: (id: NoteFolderId | null) => void
+  onShowTrash: () => void
   onCreateFolder: () => void
   onEditFolder: (folder: NoteFolder) => void
   onDeleteFolder: (id: NoteFolderId) => void
@@ -17,7 +19,9 @@ export default function ReflectionSidebar({
   folders,
   activeFolderId,
   noteCounts,
+  trashCount,
   onSelectFolder,
+  onShowTrash,
   onCreateFolder,
   onEditFolder,
   onDeleteFolder,
@@ -117,6 +121,21 @@ export default function ReflectionSidebar({
         <Plus className="h-4 w-4 shrink-0" />
         <span>Новая папка</span>
       </button>
+
+      {/* Trash */}
+      {trashCount > 0 && (
+        <>
+          <div className="mx-3 my-1 border-t border-[var(--border)]" />
+          <button
+            onClick={onShowTrash}
+            className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] transition-all"
+          >
+            <Trash2 className="h-4 w-4 shrink-0" />
+            <span className="flex-1 truncate">Корзина</span>
+            <span className="text-xs opacity-60">{trashCount}</span>
+          </button>
+        </>
+      )}
     </div>
   )
 }

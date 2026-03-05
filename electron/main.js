@@ -169,6 +169,20 @@ ipcMain.handle('vault:readMedia', async (_, relativePath) => {
   }
 })
 
+ipcMain.handle('vault:deleteMedia', async (_, relativePath) => {
+  const vaultPath = getSavedVaultPath()
+  if (!vaultPath) return false
+  const filePath = path.join(vaultPath, relativePath)
+  try {
+    // Safety: only delete files inside media/ directory
+    if (!relativePath.startsWith('media/')) return false
+    fs.unlinkSync(filePath)
+    return true
+  } catch {
+    return false
+  }
+})
+
 // ─── App Lifecycle ──────────────────────────────────────────────────────────
 
 app.whenReady().then(() => {

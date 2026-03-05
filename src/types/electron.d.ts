@@ -7,6 +7,7 @@ export interface ElectronVaultAPI {
   write: (filename: string, data: unknown) => Promise<void>
   writeMedia: (filename: string, base64data: string) => Promise<string>
   readMedia: (relativePath: string) => Promise<string | null>
+  deleteMedia: (relativePath: string) => Promise<boolean>
   init: (customPath?: string) => Promise<string>
 }
 

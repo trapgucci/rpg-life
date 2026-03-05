@@ -831,6 +831,10 @@ export interface Note {
   linkedItemIds: ItemId[]
   /** Закреплена вверху */
   pinned: boolean
+  /** Порядок сортировки внутри папки (меньше = выше) */
+  sortOrder: number
+  /** Дата мягкого удаления (timestamp); null = не удалена */
+  deletedAt: number | null
   createdAt: number
   updatedAt: number
 }

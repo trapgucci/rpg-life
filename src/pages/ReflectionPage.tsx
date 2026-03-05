@@ -10,7 +10,8 @@ import NoteViewer from '../components/reflection/NoteViewer'
 import NoteEditor from '../components/reflection/NoteEditor'
 import DailyReportCalendar from '../components/reflection/DailyReportCalendar'
 import DailyReportView from '../components/reflection/DailyReportView'
-import type { NoteFolder, NoteFolderId } from '../types/domain'
+import NoteTrash from '../components/reflection/NoteTrash'
+import type { NoteFolder, NoteFolderId, TiptapContent } from '../types/domain'
 
 type Tab = 'notes' | 'diary'
 type NoteMode = 'view' | 'edit'
@@ -20,6 +21,7 @@ export default function ReflectionPage() {
   const [activeFolderId, setActiveFolderId] = useState<NoteFolderId | null>(null)
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
   const [noteMode, setNoteMode] = useState<NoteMode>('view')
+  const [showTrash, setShowTrash] = useState(false)
   const [selectedDate, setSelectedDate] = useState(getTodayKey())
 
   // Folder modal state
@@ -36,6 +38,11 @@ export default function ReflectionPage() {
   const deleteFolder = useRpgStore((s) => s.deleteNoteFolder)
   const addNote = useRpgStore((s) => s.addNote)
   const deleteNote = useRpgStore((s) => s.deleteNote)
+  const restoreNote = useRpgStore((s) => s.restoreNote)
+  const permanentDeleteNote = useRpgStore((s) => s.permanentDeleteNote)
+  const emptyTrash = useRpgStore((s) => s.emptyTrash)
+  const reorderNotes = useRpgStore((s) => s.reorderNotes)
+  const setFolderTemplate = useRpgStore((s) => s.setFolderTemplate)
 
   const folders = useMemo(
     () => rawFolders.filter((f) => f.profileId === activeProfileId).sort((a, b) => a.sortOrder - b.sortOrder),
@@ -43,11 +50,17 @@ export default function ReflectionPage() {
   )
   const notes = useMemo(
     () => rawNotes
-      .filter((n) => n.profileId === activeProfileId)
+      .filter((n) => n.profileId === activeProfileId && !n.deletedAt)
       .sort((a, b) => {
         if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
-        return b.updatedAt - a.updatedAt
+        return (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
       }),
+    [rawNotes, activeProfileId],
+  )
+  const trashedNotes = useMemo(
+    () => rawNotes
+      .filter((n) => n.profileId === activeProfileId && n.deletedAt)
+      .sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0)),
     [rawNotes, activeProfileId],
   )
   const dailyReports = useMemo(
@@ -96,22 +109,22 @@ export default function ReflectionPage() {
 
   const handleDeleteNote = useCallback(() => {
     if (!selectedNoteId) return
-    if (confirm('Удалить заметку?')) {
-      deleteNote(selectedNoteId)
-      setSelectedNoteId(null)
-    }
+    deleteNote(selectedNoteId)
+    setSelectedNoteId(null)
   }, [selectedNoteId, deleteNote])
 
   const handleSaveFolder = useCallback(
-    (name: string, icon: string, color: string) => {
+    (name: string, icon: string, color: string, template: TiptapContent | null, templateName: string | undefined) => {
       if (editingFolder) {
         updateFolder(editingFolder.id, (f) => ({ ...f, name, icon, color }))
+        setFolderTemplate(editingFolder.id, template, templateName)
       } else {
-        addFolder(name, icon, color)
+        const folder = addFolder(name, icon, color)
+        if (template) setFolderTemplate(folder.id, template, templateName)
       }
       setEditingFolder(null)
     },
-    [editingFolder, addFolder, updateFolder],
+    [editingFolder, addFolder, updateFolder, setFolderTemplate],
   )
 
   const handleEditFolder = useCallback((folder: NoteFolder) => {
@@ -208,7 +221,9 @@ export default function ReflectionPage() {
                     folders={folders}
                     activeFolderId={activeFolderId}
                     noteCounts={noteCounts}
-                    onSelectFolder={setActiveFolderId}
+                    trashCount={trashedNotes.length}
+                    onSelectFolder={(id) => { setActiveFolderId(id); setShowTrash(false) }}
+                    onShowTrash={() => setShowTrash(true)}
                     onCreateFolder={() => { setEditingFolder(null); setFolderModalOpen(true) }}
                     onEditFolder={handleEditFolder}
                     onDeleteFolder={handleDeleteFolder}
@@ -231,15 +246,26 @@ export default function ReflectionPage() {
                   </select>
                 </div>
 
-                {/* Note list */}
+                {/* Note list or Trash */}
                 <div className="flex-1 overflow-y-auto">
-                  <NoteList
-                    notes={filteredNotes}
-                    selectedNoteId={selectedNoteId}
-                    activeFolderId={activeFolderId}
-                    onSelectNote={handleSelectNote}
-                    onCreateNote={handleCreateNote}
-                  />
+                  {showTrash ? (
+                    <NoteTrash
+                      notes={trashedNotes}
+                      onRestore={(id) => { restoreNote(id); if (trashedNotes.length <= 1) setShowTrash(false) }}
+                      onPermanentDelete={permanentDeleteNote}
+                      onEmptyTrash={() => { emptyTrash(); setShowTrash(false) }}
+                      onBack={() => setShowTrash(false)}
+                    />
+                  ) : (
+                    <NoteList
+                      notes={filteredNotes}
+                      selectedNoteId={selectedNoteId}
+                      activeFolderId={activeFolderId}
+                      onSelectNote={handleSelectNote}
+                      onReorder={reorderNotes}
+                      onCreateNote={handleCreateNote}
+                    />
+                  )}
                 </div>
               </div>
             )}

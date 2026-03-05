@@ -56,6 +56,7 @@ export default function NoteEditor({ note, onBack, onDelete, onCreateNote }: Not
   const [lightboxImages, setLightboxImages] = useState<string[] | null>(null)
   const [lightboxIndex, setLightboxIndex] = useState(0)
   const [showLinkTasks, setShowLinkTasks] = useState(false)
+  const [taskSearch, setTaskSearch] = useState('')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>()
@@ -314,18 +315,39 @@ export default function NoteEditor({ note, onBack, onDelete, onCreateNote }: Not
       {showLinkTasks && (
         <div className="border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3">
           <p className="mb-2 text-xs font-medium text-[var(--fg-muted)]">Привязать к задачам:</p>
-          <div className="flex max-h-32 flex-col gap-1 overflow-y-auto">
-            {tasks.filter((t) => !t.archived).slice(0, 30).map((task) => (
-              <label key={task.id} className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm hover:bg-[var(--surface-elevated)] cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={note.linkedTaskIds.includes(task.id)}
-                  onChange={() => toggleTaskLink(task.id)}
-                  className="accent-[var(--accent)]"
-                />
-                <span className="truncate text-[var(--fg)]">{task.title}</span>
-              </label>
-            ))}
+          <input
+            type="text"
+            value={taskSearch}
+            onChange={(e) => setTaskSearch(e.target.value)}
+            placeholder="Поиск задач…"
+            className="input mb-2 w-full text-sm"
+            autoFocus
+          />
+          <div className="flex max-h-40 flex-col gap-1 overflow-y-auto">
+            {(() => {
+              const q = taskSearch.toLowerCase().trim()
+              const active = tasks.filter((t) => !t.archived)
+              // Show linked first, then filtered by search
+              const linked = active.filter((t) => note.linkedTaskIds.includes(t.id))
+              const unlinked = active.filter((t) => !note.linkedTaskIds.includes(t.id))
+              const filtered = q
+                ? [...linked, ...unlinked].filter((t) => t.title.toLowerCase().includes(q))
+                : [...linked, ...unlinked.slice(0, Math.max(0, 20 - linked.length))]
+              if (filtered.length === 0) {
+                return <p className="py-2 text-center text-xs text-[var(--fg-muted)]">Ничего не найдено</p>
+              }
+              return filtered.map((task) => (
+                <label key={task.id} className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm hover:bg-[var(--surface-elevated)] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={note.linkedTaskIds.includes(task.id)}
+                    onChange={() => toggleTaskLink(task.id)}
+                    className="accent-[var(--accent)]"
+                  />
+                  <span className="truncate text-[var(--fg)]">{task.title}</span>
+                </label>
+              ))
+            })()}
           </div>
         </div>
       )}
