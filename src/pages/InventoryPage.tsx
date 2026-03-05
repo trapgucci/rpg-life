@@ -292,6 +292,7 @@ export default function InventoryPage() {
 
   const handleCancelDelete = useCallback(() => setDeletingItemId(null), [])
   const handleCloseModal = useCallback(() => setDetailModalItemId(null), [])
+  const handleSelectItem = useCallback((itemId: string) => setDetailModalItemId(itemId), [])
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ─── RENDER ────────────────────────────────────────────────────────────────
@@ -469,7 +470,7 @@ export default function InventoryPage() {
                           item={item}
                           quantity={entry.quantity}
                           group={itemGroup}
-                          onClick={() => setDetailModalItemId(entry.itemId)}
+                          onClick={() => handleSelectItem(entry.itemId)}
                         />
                       ))}
                     </div>

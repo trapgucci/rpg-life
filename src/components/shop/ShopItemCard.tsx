@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import { cn } from '../../lib/cn'
 import { Coins, Gem, Gift, Percent, ShoppingCart, TrendingUp, Gamepad2, Clapperboard, Check, Hammer, Trophy } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
@@ -14,7 +14,7 @@ interface ShopItemCardProps {
   onAddToCart?: (itemId: string) => void
 }
 
-export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: ShopItemCardProps) {
+export default memo(function ShopItemCard({ item, selected, onSelect, onAddToCart }: ShopItemCardProps) {
   const activeShopDiscountPercent = useRpgStore((s) => s.activeShopDiscountPercent)
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
@@ -260,4 +260,4 @@ export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: 
       </div>
     </button>
   )
-}
+})

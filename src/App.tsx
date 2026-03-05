@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSmoothScroll } from './hooks/useSmoothScroll'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import TasksPage from './pages/TasksPage'
@@ -16,6 +17,7 @@ import { vaultStorage } from './lib/vaultStorage'
 import { Toaster } from 'sonner'
 
 function App() {
+  useSmoothScroll()
   const settings = useRpgStore((s) => s.settings)
   const hasHydrated = useRpgStore((s) => s._hasHydrated)
   const [vaultReady, setVaultReady] = useState(!vaultStorage.isElectron())

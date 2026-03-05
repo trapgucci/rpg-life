@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import { cn } from '../lib/cn'
@@ -133,10 +133,20 @@ export default function TasksPage() {
     }
   }, [showGroupSelector])
 
+  const [newGroupName, setNewGroupName] = useState('')
+  const [addingGroup, setAddingGroup] = useState(false)
+  const [editingGroupId, setEditingGroupId] = useState<TaskGroupId | null>(null)
+  const [editingGroupName, setEditingGroupName] = useState('')
+  const [deletingGroupId, setDeletingGroupId] = useState<TaskGroupId | null>(null)
+  const [draggedGroupId, setDraggedGroupId] = useState<TaskGroupId | null>(null)
+  const [dragOverGroupId, setDragOverGroupId] = useState<TaskGroupId | null>(null)
+
   // Close group selector on outside click
   useEffect(() => {
     if (!showGroupSelector) return
     const handler = (e: MouseEvent) => {
+      // Don't close during drag operations
+      if (draggedGroupId) return
       if (
         groupSelectorRef.current &&
         !groupSelectorRef.current.contains(e.target as Node) &&
@@ -148,15 +158,7 @@ export default function TasksPage() {
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [showGroupSelector])
-
-  const [newGroupName, setNewGroupName] = useState('')
-  const [addingGroup, setAddingGroup] = useState(false)
-  const [editingGroupId, setEditingGroupId] = useState<TaskGroupId | null>(null)
-  const [editingGroupName, setEditingGroupName] = useState('')
-  const [deletingGroupId, setDeletingGroupId] = useState<TaskGroupId | null>(null)
-  const [draggedGroupId, setDraggedGroupId] = useState<TaskGroupId | null>(null)
-  const [dragOverGroupId, setDragOverGroupId] = useState<TaskGroupId | null>(null)
+  }, [showGroupSelector, draggedGroupId])
 
 
   const filteredTasks = useMemo(() => {
@@ -349,12 +351,23 @@ export default function TasksPage() {
 
   const countNoGroup = taskCountByGroup.get(null) ?? 0
 
-  const handleDragStart = (groupId: TaskGroupId) => {
+  const handleSelectTask = useCallback((taskId: string) => {
+    setSelectedId(taskId)
+    if (showSearch && searchQuery) {
+      setShowSearch(false)
+      setSearchQuery('')
+    }
+  }, [showSearch, searchQuery])
+
+  const handleDragStart = (e: React.DragEvent, groupId: TaskGroupId) => {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', groupId)
     setDraggedGroupId(groupId)
   }
 
   const handleDragOver = (e: React.DragEvent, groupId: TaskGroupId) => {
     e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
     if (draggedGroupId && draggedGroupId !== groupId) {
       setDragOverGroupId(groupId)
     }
@@ -366,12 +379,21 @@ export default function TasksPage() {
 
   const handleDrop = (e: React.DragEvent, targetGroupId: TaskGroupId) => {
     e.preventDefault()
-    if (!draggedGroupId || draggedGroupId === targetGroupId) return
+    e.stopPropagation()
+    if (!draggedGroupId || draggedGroupId === targetGroupId) {
+      setDraggedGroupId(null)
+      setDragOverGroupId(null)
+      return
+    }
 
     const draggedIndex = taskGroups.findIndex(g => g.id === draggedGroupId)
     const targetIndex = taskGroups.findIndex(g => g.id === targetGroupId)
 
-    if (draggedIndex === -1 || targetIndex === -1) return
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedGroupId(null)
+      setDragOverGroupId(null)
+      return
+    }
 
     const newGroups = [...taskGroups]
     const [removed] = newGroups.splice(draggedIndex, 1)
@@ -606,7 +628,7 @@ export default function TasksPage() {
                         <div
                           key={group.id}
                           draggable={editingGroupId !== group.id}
-                          onDragStart={() => handleDragStart(group.id)}
+                          onDragStart={(e) => handleDragStart(e, group.id)}
                           onDragOver={(e) => handleDragOver(e, group.id)}
                           onDragLeave={handleDragLeave}
                           onDrop={(e) => handleDrop(e, group.id)}
@@ -838,13 +860,7 @@ export default function TasksPage() {
                   key={task.id}
                   task={task}
                   selected={task.id === selectedId}
-                  onSelect={() => {
-                    setSelectedId(task.id)
-                    if (showSearch && searchQuery) {
-                      setShowSearch(false)
-                      setSearchQuery('')
-                    }
-                  }}
+                  onSelect={() => handleSelectTask(task.id)}
                   rewards={rewards}
                   fragments={fragments}
                 />

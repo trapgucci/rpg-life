@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { CheckSquare, Hash, ListChecks, Clock, Repeat, Flag, Archive, CalendarClock, Timer, Award, XCircle, AlertTriangle, TrendingUp } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRpg } from '../types/domain'
@@ -55,7 +56,7 @@ interface TaskCardProps {
   fragments?: TaskCardFragment[]
 }
 
-export default function TaskCard({ task, selected, onSelect, rewards, fragments }: TaskCardProps) {
+export default memo(function TaskCard({ task, selected, onSelect, rewards, fragments }: TaskCardProps) {
   const Icon = KIND_ICON[task.kind]
   const priority = task.priority ?? 'none'
 
@@ -276,4 +277,4 @@ export default function TaskCard({ task, selected, onSelect, rewards, fragments 
       </div>
     </button>
   )
-}
+})

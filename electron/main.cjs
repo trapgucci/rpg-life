@@ -22,6 +22,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
+      scrollBounce: true,
     },
   })
 

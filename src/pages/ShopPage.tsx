@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '../lib/cn'
 import {
@@ -116,7 +116,7 @@ export default function ShopPage() {
   const [cart, setCart] = useState<CartEntry[]>([])
   const purchaseItem = useRpgStore((s) => s.purchaseItem)
 
-  const addToCart = (itemId: string) => {
+  const addToCart = useCallback((itemId: string) => {
     const item = shopItems.find((i) => i.id === itemId)
     if (!item) return
     // Медиа-предметы (видеоигры, сериалы) с basePurchased нельзя добавить повторно
@@ -129,7 +129,7 @@ export default function ShopPage() {
       if (existing) return prev.map((c) => c.itemId === itemId ? { ...c, quantity: c.quantity + 1 } : c)
       return [...prev, { itemId, quantity: 1 }]
     })
-  }
+  }, [shopItems])
   const removeFromCart = (itemId: string) => setCart((prev) => prev.filter((c) => c.itemId !== itemId))
   const clearCart = () => setCart([])
   const updateCartQuantity = (itemId: string, quantity: number) => {
@@ -336,6 +336,16 @@ export default function ShopPage() {
     setDraggedGroupId(null)
   }
   const handleDragEnd = () => { setDraggedGroupId(null); setDragOverGroupId(null) }
+
+  const handleSelectItem = useCallback((itemId: string) => {
+    setSelectedItemId(itemId)
+    setShowItemForm(false)
+  }, [])
+
+  const handleSelectRecipe = useCallback((recipeId: string) => {
+    setSelectedRecipeId(recipeId)
+    setShowRecipeForm(false)
+  }, [])
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ─── RENDER ────────────────────────────────────────────────────────────────
@@ -881,10 +891,7 @@ export default function ShopPage() {
                     key={item.id}
                     item={item}
                     selected={item.id === selectedItemId}
-                    onSelect={() => {
-                      setSelectedItemId(item.id)
-                      setShowItemForm(false)
-                    }}
+                    onSelect={() => handleSelectItem(item.id)}
                     onAddToCart={addToCart}
                   />
                 ))}
@@ -910,10 +917,7 @@ export default function ShopPage() {
                     key={recipe.id}
                     recipe={recipe}
                     selected={recipe.id === selectedRecipeId}
-                    onSelect={() => {
-                      setSelectedRecipeId(recipe.id)
-                      setShowRecipeForm(false)
-                    }}
+                    onSelect={() => handleSelectRecipe(recipe.id)}
                   />
                 ))}
               </div>

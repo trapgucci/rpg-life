@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import { cn } from '../../lib/cn'
 import { CheckCircle2, Sparkles, Dice5, Crosshair } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
@@ -12,7 +12,7 @@ interface RecipeCardProps {
   onSelect: () => void
 }
 
-export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardProps) {
+export default memo(function RecipeCard({ recipe, selected, onSelect }: RecipeCardProps) {
   const allShopItems = useRpgStore((s) => s.shopItems)
 
   const resultItem = useMemo(() => recipe?.resultItemId ? allShopItems.find((i) => i.id === recipe.resultItemId) : null, [recipe?.resultItemId, allShopItems])
@@ -144,4 +144,4 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
 
     </button>
   )
-}
+})
