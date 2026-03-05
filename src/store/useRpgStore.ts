@@ -404,7 +404,7 @@ const VAULT_SLICES: SliceWriter[] = [
   { file: 'usage-history.json', getData: (s) => s.usageHistory, getKeys: (s) => [s.usageHistory] },
   { file: 'stats.json', getData: (s) => s.stats, getKeys: (s) => [s.stats] },
   { file: 'note-folders.json', getData: (s) => s.noteFolders, getKeys: (s) => [s.noteFolders] },
-  { file: 'notes.json', getData: (s) => s.notes, getKeys: (s) => [s.notes] },
+  { file: 'notes.json', getData: (s) => (s.notes ?? []).map((n: Record<string, unknown>) => ({ ...n, content: '' })), getKeys: (s) => [s.notes] },
   { file: 'daily-reports.json', getData: (s) => s.dailyReports, getKeys: (s) => [s.dailyReports] },
   { file: 'daily-conditions.json', getData: (s) => s.dailyConditions ?? [], getKeys: (s) => [s.dailyConditions] },
   { file: 'daily-condition-entries.json', getData: (s) => s.dailyConditionEntries ?? [], getKeys: (s) => [s.dailyConditionEntries] },
@@ -493,30 +493,45 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
         return null
       }
 
-      return {
-        state: {
-          profiles: profileData?.profiles as Profile[] ?? [],
-          activeProfileId: (profileData?.activeProfileId as ProfileId) ?? null,
-          settings: settingsData?.settings as AppSettings ?? undefined,
-          activeShopDiscountPercent: settingsData?.activeShopDiscountPercent ?? null,
-          tasks: tasks as TaskRpg[] ?? [],
-          taskGroups: taskGroups as TaskGroup[] ?? [],
-          shopItems: shopItems as ShopItem[] ?? [],
-          itemGroups: itemGroups as ItemGroup[] ?? [],
-          achievementGroups: achievementGroups as AchievementGroup[] ?? [],
-          inventory: inventory as InventoryEntry[] ?? [],
-          achievements: achievements as Achievement[] ?? [],
-          craftRecipes: craftRecipes as CraftRecipe[] ?? [],
-          purchaseHistory: purchaseHistory as PurchaseHistoryEntry[] ?? [],
-          usageHistory: usageHistory as UsageHistoryEntry[] ?? [],
-          stats: stats as RpgStoreState['stats'] ?? undefined,
-          noteFolders: noteFolders as NoteFolder[] ?? [],
-          notes: notes as Note[] ?? [],
-          dailyReports: dailyReports as DailyReport[] ?? [],
-          dailyConditions: dailyConditions as DailyCondition[] ?? [],
-          dailyConditionEntries: dailyConditionEntries as DailyConditionEntry[] ?? [],
-        } as Partial<RpgStoreState>,
+      const state: Partial<RpgStoreState> = {
+        profiles: profileData?.profiles as Profile[] ?? [],
+        activeProfileId: (profileData?.activeProfileId as ProfileId) ?? null,
+        settings: settingsData?.settings as AppSettings ?? undefined,
+        activeShopDiscountPercent: settingsData?.activeShopDiscountPercent ?? null,
+        tasks: tasks as TaskRpg[] ?? [],
+        taskGroups: taskGroups as TaskGroup[] ?? [],
+        shopItems: shopItems as ShopItem[] ?? [],
+        itemGroups: itemGroups as ItemGroup[] ?? [],
+        achievementGroups: achievementGroups as AchievementGroup[] ?? [],
+        inventory: inventory as InventoryEntry[] ?? [],
+        achievements: achievements as Achievement[] ?? [],
+        craftRecipes: craftRecipes as CraftRecipe[] ?? [],
+        purchaseHistory: purchaseHistory as PurchaseHistoryEntry[] ?? [],
+        usageHistory: usageHistory as UsageHistoryEntry[] ?? [],
+        stats: stats as RpgStoreState['stats'] ?? undefined,
+        noteFolders: noteFolders as NoteFolder[] ?? [],
+        notes: notes as Note[] ?? [],
+        dailyReports: dailyReports as DailyReport[] ?? [],
+        dailyConditions: dailyConditions as DailyCondition[] ?? [],
+        dailyConditionEntries: dailyConditionEntries as DailyConditionEntry[] ?? [],
       }
+
+      // Migrate: move note content from notes.json to separate files
+      if (state.notes && Array.isArray(state.notes)) {
+        const notesWithContent = (state.notes as Note[]).filter(
+          (n) => n.content && n.content.length > 0
+        )
+        if (notesWithContent.length > 0) {
+          await Promise.all(
+            notesWithContent.map((n) => vaultStorage.writeNoteContent(n.id, n.content))
+          )
+          state.notes = (state.notes as Note[]).map((n) => ({ ...n, content: '' }))
+          await vaultStorage.write('notes.json', (state.notes as Note[]).map((n) => ({ ...n, content: '' })))
+          console.info(`[vault] Migrated ${notesWithContent.length} note(s) content to separate files`)
+        }
+      }
+
+      return { state }
     },
 
     setItem: async (_name: string, value: StorageValue<Partial<RpgStoreState>>): Promise<void> => {
@@ -2941,9 +2956,22 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         updateNote: (id, updater) => {
+          const oldNote = get().notes.find((n) => n.id === id)
+          if (!oldNote) return
+
+          const updated = { ...updater(oldNote), updatedAt: now() }
+
+          // Write content to separate file (fire-and-forget)
+          if (updated.content !== undefined && updated.content.length > 0) {
+            vaultStorage.writeNoteContent(id, updated.content).catch((err) =>
+              console.error('[vault] Failed to write note content:', err)
+            )
+          }
+
+          // Store only metadata — content stays in separate file
           set((s) => ({
             notes: s.notes.map((n) =>
-              n.id === id ? { ...updater(n), updatedAt: now() } : n
+              n.id === id ? { ...updated, content: '' } : n
             ),
           }))
         },
@@ -2972,18 +3000,21 @@ export const useRpgStore = create<RpgStoreState>()(
             for (const mediaPath of note.mediaFiles) {
               vaultStorage.deleteMedia(mediaPath).catch(() => {})
             }
+            // Clean up content file
+            vaultStorage.deleteNoteContent(id).catch(() => {})
           }
           set((s) => ({ notes: s.notes.filter((n) => n.id !== id) }))
         },
 
         emptyTrash: () => {
           const { activeProfileId, notes } = get()
-          // Clean up media files for all trashed notes
+          // Clean up media and content files for all trashed notes
           for (const note of notes) {
             if (note.profileId === activeProfileId && note.deletedAt) {
               for (const mediaPath of note.mediaFiles) {
                 vaultStorage.deleteMedia(mediaPath).catch(() => {})
               }
+              vaultStorage.deleteNoteContent(note.id).catch(() => {})
             }
           }
           set((s) => ({

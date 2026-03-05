@@ -66,6 +66,32 @@ export const vaultStorage = {
     return true
   },
 
+  /** Read note content from a separate file */
+  async readNoteContent(noteId: string): Promise<string> {
+    const filename = `notes/note-${noteId}.json`
+    const data = await this.read(filename)
+    if (typeof data === 'string') return data
+    return ''
+  },
+
+  /** Write note content to a separate file */
+  async writeNoteContent(noteId: string, content: string): Promise<void> {
+    const filename = `notes/note-${noteId}.json`
+    await this.write(filename, content)
+  },
+
+  /** Delete note content file */
+  async deleteNoteContent(noteId: string): Promise<void> {
+    const filename = `notes/note-${noteId}.json`
+    if (isElectron()) {
+      try {
+        await window.electronVault!.deleteFile(filename)
+      } catch { /* ignore */ }
+    } else {
+      localStorage.removeItem(`vault:${filename}`)
+    }
+  },
+
   isElectron,
 }
 

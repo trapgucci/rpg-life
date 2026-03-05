@@ -126,6 +126,7 @@ ipcMain.handle('vault:init', async (_, customPath) => {
   const vaultPath = customPath || getSavedVaultPath() || getDefaultVaultPath()
   fs.mkdirSync(vaultPath, { recursive: true })
   fs.mkdirSync(path.join(vaultPath, 'media'), { recursive: true })
+  fs.mkdirSync(path.join(vaultPath, 'notes'), { recursive: true })
   saveVaultPath(vaultPath)
   return vaultPath
 })
@@ -148,7 +149,27 @@ ipcMain.handle('vault:write', async (_, filename, data) => {
   const vaultPath = getSavedVaultPath()
   if (!vaultPath) return null
   const filePath = path.join(vaultPath, filename)
+  // Ensure parent directory exists (for subdirectory writes like notes/note-xxx.json)
+  const dir = path.dirname(filePath)
+  if (dir !== vaultPath) {
+    fs.mkdirSync(dir, { recursive: true })
+  }
   atomicWriteFileSync(filePath, JSON.stringify(data, null, 2))
+})
+
+// Delete a file from vault
+ipcMain.handle('vault:deleteFile', async (_, filename) => {
+  const vaultPath = getSavedVaultPath()
+  if (!vaultPath) return false
+  // Safety: only allow notes/ subdirectory
+  if (!filename.startsWith('notes/')) return false
+  const filePath = path.join(vaultPath, filename)
+  try {
+    fs.unlinkSync(filePath)
+    return true
+  } catch {
+    return false
+  }
 })
 
 // Save a media file (base64 → binary)

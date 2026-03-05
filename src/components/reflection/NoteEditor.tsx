@@ -40,7 +40,8 @@ export default function NoteEditor({ note, onBack, onDelete }: NoteEditorProps) 
   )
 
   const [title, setTitle] = useState(note.title)
-  const [content, setContent] = useState(typeof note.content === 'string' ? note.content : '')
+  const [content, setContent] = useState('')
+  const [contentLoaded, setContentLoaded] = useState(false)
   const [taskSearch, setTaskSearch] = useState('')
   const [showTaskPicker, setShowTaskPicker] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -82,11 +83,20 @@ export default function NoteEditor({ note, onBack, onDelete }: NoteEditorProps) 
     return () => { cancelled = true }
   }, [note.mediaFiles])
 
-  // Sync from note prop when switching notes
+  // Sync from note prop when switching notes — load content from file
   useEffect(() => {
     setTitle(note.title)
-    setContent(typeof note.content === 'string' ? note.content : '')
+    setContent('')
+    setContentLoaded(false)
     setShowTaskPicker(false)
+
+    vaultStorage.readNoteContent(note.id).then((loaded) => {
+      setContent(loaded)
+      setContentLoaded(true)
+    }).catch(() => {
+      setContent('')
+      setContentLoaded(true)
+    })
   }, [note.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debounced save helper
@@ -234,14 +244,20 @@ export default function NoteEditor({ note, onBack, onDelete }: NoteEditorProps) 
       <div className="flex-1">
         {/* Text content */}
         <div className="px-4 py-3">
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Начните писать…"
-            className="w-full resize-none overflow-hidden bg-transparent text-sm text-[var(--fg)] leading-relaxed outline-none placeholder:text-[var(--fg-muted)]"
-            style={{ minHeight: '120px' }}
-          />
+          {!contentLoaded ? (
+            <div className="flex items-center justify-center text-[var(--fg-muted)] text-sm" style={{ minHeight: '120px' }}>
+              Загрузка…
+            </div>
+          ) : (
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Начните писать…"
+              className="w-full resize-none overflow-hidden bg-transparent text-sm text-[var(--fg)] leading-relaxed outline-none placeholder:text-[var(--fg-muted)]"
+              style={{ minHeight: '120px' }}
+            />
+          )}
         </div>
 
         {/* Toolbar buttons for attachments */}

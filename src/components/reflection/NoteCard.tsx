@@ -45,7 +45,7 @@ export default function NoteCard({ note, isSelected, onClick }: NoteCardProps) {
     return () => { cancelled = true }
   }, [note.mediaFiles])
 
-  const content = typeof note.content === 'string' ? note.content : note.excerpt
+  const content = note.excerpt || ''
 
   return (
     <button
