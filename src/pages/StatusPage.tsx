@@ -2,34 +2,112 @@ import { useMemo, useState } from 'react'
 import { useRpgStore } from '../store/useRpgStore'
 import { xpForLevelStandard } from '../types/domain'
 import {
-  CheckCircle2, Coins, Hammer, Flame,
-  Gem, Calendar, Sparkles, TrendingUp, ShieldCheck
+  CheckCircle2, Coins, Hammer,
+  Gem, Sparkles, TrendingUp, ShieldCheck
 } from 'lucide-react'
 
 // ─── Title by level ────────────────────────────────────────────────────────
 
+const RANKS = [
+  { title: 'Новичок',       minLevel: 1,  color: '#9ca3af', icon: '🌱' },
+  { title: 'Подмастерье',   minLevel: 5,  color: '#8b5cf6', icon: '🔨' },
+  { title: 'Следопыт',      minLevel: 10, color: '#06b6d4', icon: '🧭' },
+  { title: 'Воин',          minLevel: 15, color: '#ef4444', icon: '⚔️' },
+  { title: 'Ветеран',       minLevel: 20, color: '#10b981', icon: '🛡️' },
+  { title: 'Эксперт',       minLevel: 25, color: '#3b82f6', icon: '🎯' },
+  { title: 'Мастер',        minLevel: 30, color: '#6366f1', icon: '👑' },
+  { title: 'Грандмастер',   minLevel: 40, color: '#a855f7', icon: '🏆' },
+  { title: 'Легенда',       minLevel: 50, color: '#f59e0b', icon: '⭐' },
+] as const
+
 function getTitleByLevel(level: number): string {
-  if (level >= 50) return 'Легенда'
-  if (level >= 40) return 'Грандмастер'
-  if (level >= 30) return 'Мастер'
-  if (level >= 25) return 'Эксперт'
-  if (level >= 20) return 'Ветеран'
-  if (level >= 15) return 'Воин'
-  if (level >= 10) return 'Следопыт'
-  if (level >= 5) return 'Подмастерье'
-  return 'Новичок'
+  for (let i = RANKS.length - 1; i >= 0; i--) {
+    if (level >= RANKS[i].minLevel) return RANKS[i].title
+  }
+  return RANKS[0].title
 }
 
 function getTitleColor(level: number): string {
-  if (level >= 50) return '#f59e0b'
-  if (level >= 40) return '#a855f7'
-  if (level >= 30) return '#6366f1'
-  if (level >= 25) return '#3b82f6'
-  if (level >= 20) return '#10b981'
-  if (level >= 15) return '#ef4444'
-  if (level >= 10) return '#06b6d4'
-  if (level >= 5) return '#8b5cf6'
-  return '#9ca3af'
+  for (let i = RANKS.length - 1; i >= 0; i--) {
+    if (level >= RANKS[i].minLevel) return RANKS[i].color
+  }
+  return RANKS[0].color
+}
+
+// ─── Ranks Modal ───────────────────────────────────────────────────────────
+
+function RanksModal({ currentLevel, onClose }: { currentLevel: number; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div
+        className="neu-card relative z-10 w-full max-w-sm p-5 animate-[scale-in_0.2s_ease-out]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-semibold text-[var(--fg)]">Ранги</h3>
+          <button
+            onClick={onClose}
+            className="text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors text-lg leading-none px-1"
+          >
+            &times;
+          </button>
+        </div>
+        <div className="flex flex-col gap-2">
+          {RANKS.map((rank, i) => {
+            const isActive = currentLevel >= rank.minLevel
+            const isCurrent = getTitleByLevel(currentLevel) === rank.title
+            return (
+              <div
+                key={rank.title}
+                className="neu-convex flex items-center gap-3 p-3 transition-all duration-200"
+                style={{
+                  opacity: isActive ? 1 : 0.4,
+                  ...(isCurrent ? {
+                    boxShadow: `4px 4px 10px var(--neu-shadow-dark), -3px -3px 8px var(--neu-shadow-light), inset 0 1px 0 var(--neu-inset-item-light), 0 0 16px ${rank.color}25`,
+                    border: `1px solid ${rank.color}30`,
+                  } : {}),
+                }}
+              >
+                <span className="text-xl w-8 text-center">{rank.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="text-sm font-semibold"
+                      style={{ color: isActive ? rank.color : 'var(--fg-muted)' }}
+                    >
+                      {rank.title}
+                    </span>
+                    {isCurrent && (
+                      <span
+                        className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                        style={{ background: `${rank.color}20`, color: rank.color }}
+                      >
+                        СЕЙЧАС
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-[var(--fg-muted)]">
+                    {rank.minLevel === 1 ? 'Начальный ранг' : `Уровень ${rank.minLevel}+`}
+                  </span>
+                </div>
+                {isActive ? (
+                  <span className="text-sm" style={{ color: rank.color }}>✓</span>
+                ) : (
+                  <span className="text-[10px] text-[var(--fg-muted)]">
+                    ещё {rank.minLevel - currentLevel} ур.
+                  </span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ─── Radar Chart ───────────────────────────────────────────────────────────
@@ -40,8 +118,12 @@ interface RadarChartProps {
 
 function RadarChart({ data }: RadarChartProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
-  const padding = 60
-  const radius = 110
+  const count = data.length
+  // Scale down for many attributes so labels don't overlap
+  const radius = count <= 6 ? 140 : count <= 8 ? 120 : count <= 10 ? 105 : 90
+  const padding = count <= 6 ? 65 : count <= 8 ? 58 : 52
+  const labelFontSize = count <= 6 ? 20 : count <= 8 ? 17 : 14
+  const levelFontSize = count <= 6 ? 10 : count <= 8 ? 9 : 8
   const levels = 5
   const center = radius + padding
   const size = center * 2
@@ -187,7 +269,7 @@ function RadarChart({ data }: RadarChartProps) {
         {/* Labels */}
         {data.map((d, i) => {
           const angle = angleSlice * i - Math.PI / 2
-          const labelRadius = radius + 44
+          const labelRadius = radius + (count <= 6 ? 44 : count <= 8 ? 38 : 34)
           const x = center + labelRadius * Math.cos(angle)
           const y = center + labelRadius * Math.sin(angle)
           const isHovered = hoveredIndex === i
@@ -203,18 +285,18 @@ function RadarChart({ data }: RadarChartProps) {
                 y={y - 2}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                fontSize={isHovered ? '24' : '20'}
+                fontSize={isHovered ? labelFontSize + 4 : labelFontSize}
                 style={{ transition: 'font-size 0.3s ease' }}
               >
                 {d.icon}
               </text>
               <text
                 x={x}
-                y={y + 17}
+                y={y + (count <= 6 ? 17 : 14)}
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill={isHovered ? d.color : 'var(--fg-muted)'}
-                fontSize="10"
+                fontSize={levelFontSize}
                 fontWeight="600"
                 style={{ transition: 'fill 0.3s ease' }}
               >
@@ -354,14 +436,10 @@ export default function StatusPage() {
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const stats = useRpgStore((s) => s.stats)
+  const [showRanks, setShowRanks] = useState(false)
 
   const profile = profiles.find((p) => p.id === activeProfileId) ?? profiles[0] ?? null
   const attributes = profile?.attributes ?? []
-
-  const daysInGame = useMemo(() => {
-    if (!profile?.createdAt) return 0
-    return Math.max(1, Math.floor((Date.now() - profile.createdAt) / (1000 * 60 * 60 * 24)))
-  }, [profile?.createdAt])
 
   const dominantClass = useMemo(() => {
     if (!attributes.length) return null
@@ -395,7 +473,7 @@ export default function StatusPage() {
     return xpForLevelStandard(profile.level) + profile.xp
   }, [profile.level, profile.xp])
 
-  const radarData = attributes.slice(0, 6).map((attr) => ({
+  const radarData = attributes.map((attr) => ({
     label: attr.name,
     value: attr.level,
     max: Math.max(attr.level + 5, 10),
@@ -437,8 +515,9 @@ export default function StatusPage() {
 
             <div className="mt-1.5 flex items-center justify-center sm:justify-start gap-2 flex-wrap">
               {/* Title badge */}
-              <span
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold"
+              <button
+                onClick={() => setShowRanks(true)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all duration-200 hover:scale-105"
                 style={{
                   background: `${titleColor}18`,
                   color: titleColor,
@@ -447,26 +526,8 @@ export default function StatusPage() {
               >
                 <ShieldCheck className="h-3.5 w-3.5" />
                 {title}
-              </span>
+              </button>
 
-              {/* Dominant class */}
-              {dominantClass && (
-                <span
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium"
-                  style={{
-                    background: `${dominantClass.color}15`,
-                    color: dominantClass.color,
-                  }}
-                >
-                  {dominantClass.icon} {dominantClass.name}
-                </span>
-              )}
-
-              {/* Days in game */}
-              <span className="inline-flex items-center gap-1 text-xs text-[var(--fg-muted)]">
-                <Calendar className="h-3 w-3" />
-                {daysInGame} {daysInGame === 1 ? 'день' : daysInGame < 5 ? 'дня' : 'дней'} в игре
-              </span>
             </div>
 
             {/* XP Progress */}
@@ -508,13 +569,15 @@ export default function StatusPage() {
           value={stats.totalTasksCompleted}
           color="#10b981"
         />
-        <StatPill
-          icon={<Flame className="h-5 w-5" />}
-          label="Текущий стрик"
-          value={stats.currentStreak}
-          subValue={`Рекорд: ${stats.bestStreak}`}
-          color="#f59e0b"
-        />
+        {dominantClass && (
+          <StatPill
+            icon={<span className="text-lg leading-none">{dominantClass.icon}</span>}
+            label="Топ атрибут"
+            value={`${dominantClass.name}`}
+            subValue={`Ур. ${dominantClass.level}`}
+            color={dominantClass.color}
+          />
+        )}
         <StatPill
           icon={<Coins className="h-5 w-5" />}
           label="Монет заработано"
@@ -582,6 +645,10 @@ export default function StatusPage() {
           </div>
         </div>
       </div>
+
+      {showRanks && (
+        <RanksModal currentLevel={profile.level} onClose={() => setShowRanks(false)} />
+      )}
     </div>
   )
 }

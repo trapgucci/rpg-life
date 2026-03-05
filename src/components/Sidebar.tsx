@@ -20,7 +20,7 @@ const navItems = [
   { to: '/inventory', label: 'Инвентарь', icon: Package, color: '#8b5cf6' },
   { to: '/achievements', label: 'Достижения', icon: Trophy, color: '#eab308' },
   { to: '/reflection', label: 'Рефлексия', icon: Brain, color: '#14b8a6' },
-  { to: '/status', label: 'Статус', icon: Activity, color: '#3b82f6' },
+  { to: '/status', label: 'Профиль', icon: Activity, color: '#3b82f6' },
 ] as const
 
 const bottomItems = [

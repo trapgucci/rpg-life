@@ -328,11 +328,24 @@ export interface LevelCurveSegment {
 /** Leveling system mode */
 export type LevelingMode = 'standard' | 'fast' | 'custom'
 
-/** Standard (Linear): Lv1 0, Lv2 400, Lv3 900 (+500), Lv4 1.6K, Lv5 2.5K */
+/** Standard (Soft power curve): each level costs more XP.
+ *  Formula: round(400 × level^1.5 / 50) × 50
+ *  Lv1→2: 400, Lv2→3: 550, Lv5→6: 1100, Lv10→11: 2500, Lv20→21: 7150, Lv50→51: 28300
+ */
 export function xpForLevelStandard(level: number): number {
   if (level <= 1) return 0
-  return 400 + (level - 2) * 500 // Lv2=400, Lv3=900, Lv4=1400, Lv5=1900... spec says 2.5K for Lv5 so we use 400,900,1400,1900,2400
+  // Cumulative XP: sum of costs for levels 2..level
+  let total = 0
+  for (let i = 2; i <= level; i++) {
+    total += Math.round((400 * Math.pow(i - 1, 1.5)) / 50) * 50
+  }
+  return total
 }
+/** Cost of a single level (XP needed to go from `level` to `level+1`) */
+export function xpCostForLevel(level: number): number {
+  return Math.round((400 * Math.pow(level, 1.5)) / 50) * 50
+}
+
 /** Fast (Early gratification): Lv1 0, Lv2 600, Lv3 900, Lv4 1.2K, Lv5 1.5K */
 export function xpForLevelFast(level: number): number {
   if (level <= 1) return 0
