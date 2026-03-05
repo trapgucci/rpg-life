@@ -402,6 +402,7 @@ function NotificationsSection() {
       <div className="flex flex-col gap-3">
         {[
           { key: 'notifyDailyReminder', label: 'Ежедневные напоминания', desc: 'Напоминание о задачах' },
+          { key: 'notifyDeadlines', label: 'Дедлайны задач', desc: 'За 2 часа до пропуска цикла' },
           { key: 'notifyAchievements', label: 'Достижения', desc: 'При разблокировке достижений' },
           { key: 'notifyLevelUp', label: 'Повышение уровня', desc: 'При получении нового уровня' },
         ].map((item) => (

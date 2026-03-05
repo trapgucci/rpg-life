@@ -1,14 +1,15 @@
 import { useEffect, useRef } from 'react'
 import { useRpgStore } from '../store/useRpgStore'
 import { useNotifications } from '../hooks/useNotifications'
+import { getCycleEndDate } from '../lib/taskCycleUtils'
 
 /**
  * Невидимый компонент-подписчик.
  * Следит за изменениями уровней атрибутов и отправляет системные уведомления.
- * Также управляет таймером ежедневных напоминаний.
+ * Также управляет таймером ежедневных напоминаний и предупреждениями о дедлайнах.
  */
 export default function NotificationWatcher() {
-  const { notifyLevelUp, notifyDailyReminder } = useNotifications()
+  const { notifyLevelUp, notifyDailyReminder, notifyDeadlineWarning } = useNotifications()
   const attributes = useRpgStore((s) => s.getAttributes())
   const settings = useRpgStore((s) => s.settings)
   const tasks = useRpgStore((s) => s.tasks)
@@ -38,6 +39,44 @@ export default function NotificationWatcher() {
 
     prevLevelsRef.current = currentLevels
   }, [attributes, notifyLevelUp])
+
+  // Дедупликация уведомлений о дедлайнах: taskId → cycleEnd timestamp, по которому уже уведомили
+  const notifiedDeadlinesRef = useRef<Record<string, number>>({})
+
+  useEffect(() => {
+    if (!settings.notificationsEnabled || !settings.notifyDeadlines) return
+
+    const WARNING_MINUTES = 120 // уведомлять за 2 часа до конца цикла
+
+    const checkDeadlines = () => {
+      const now = Date.now()
+      const warningThresholdMs = WARNING_MINUTES * 60 * 1000
+
+      for (const task of tasks) {
+        // Только активные незавершённые повторяющиеся задачи
+        if (task.archived || task.isCompleted) continue
+        if (task.recurrence === 'once' || task.recurrence === 'instant') continue
+
+        const cycleEnd = getCycleEndDate(task, now)
+        if (cycleEnd == null) continue
+
+        const msLeft = cycleEnd - now
+        if (msLeft <= 0 || msLeft > warningThresholdMs) continue
+
+        // Уже уведомляли об этом конкретном цикле?
+        if (notifiedDeadlinesRef.current[task.id] === cycleEnd) continue
+
+        const minutesLeft = Math.round(msLeft / 60_000)
+        notifyDeadlineWarning(task.title, minutesLeft)
+        notifiedDeadlinesRef.current[task.id] = cycleEnd
+      }
+    }
+
+    const interval = setInterval(checkDeadlines, 5 * 60_000) // каждые 5 минут
+    checkDeadlines()
+
+    return () => clearInterval(interval)
+  }, [settings.notificationsEnabled, settings.notifyDeadlines, tasks, notifyDeadlineWarning])
 
   // Таймер ежедневных напоминаний
   const lastReminderDateRef = useRef<string | null>(null)

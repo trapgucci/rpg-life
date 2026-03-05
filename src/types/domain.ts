@@ -906,6 +906,7 @@ export interface AppSettings {
   notifyAchievements: boolean
   notifyLevelUp: boolean
   notifyDailyReminder: boolean
+  notifyDeadlines: boolean
   /** Время ежедневного напоминания (HH:MM) */
   dailyReminderTime: string
   language: 'ru' | 'en'
@@ -928,6 +929,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   notifyAchievements: true,
   notifyLevelUp: true,
   notifyDailyReminder: true,
+  notifyDeadlines: true,
   dailyReminderTime: '09:00',
   language: 'ru',
   taskDifficultyXp: {

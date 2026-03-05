@@ -87,11 +87,23 @@ export function useNotifications() {
     return showNotification(title, body, 'levelup')
   }, [showNotification])
 
+  const notifyDeadlineWarning = useCallback((taskTitle: string, minutesLeft: number) => {
+    const timeStr = minutesLeft < 60
+      ? `${minutesLeft} мин`
+      : `${Math.round(minutesLeft / 60)} ч`
+    return showNotification(
+      '⏰ Дедлайн задачи',
+      `«${taskTitle}» будет пропущена через ${timeStr}`,
+      'reminder'
+    )
+  }, [showNotification])
+
   return {
     showNotification,
     notifyAchievement,
     notifyDailyReminder,
     notifyTaskComplete,
     notifyLevelUp,
+    notifyDeadlineWarning,
   }
 }
