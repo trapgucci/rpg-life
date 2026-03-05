@@ -860,6 +860,8 @@ export interface DailyReport {
   mood: MoodLevel | null
   /** Мысли за день (свободный текст) */
   thoughts: string
+  /** Фото дня (пути к медиафайлам) */
+  photos: string[]
   createdAt: number
   updatedAt: number
 }
@@ -869,17 +871,42 @@ export interface DailySnapshot {
   tasksCompleted: {
     groupId: string | null
     groupName: string
-    tasks: { taskId: TaskId; title: string; count: number }[]
+    tasks: {
+      taskId: TaskId
+      title: string
+      count: number
+      xpEarned: number
+      coinsEarned: number
+      gemsEarned: number
+      subtasks?: { title: string; xpEarned?: number; coinReward?: number; gemReward?: number }[]
+    }[]
   }[]
   totalTasksCompleted: number
   habitsPositive: { habitId: HabitId; title: string }[]
   habitsNegative: { habitId: HabitId; title: string }[]
-  itemsPurchased: { itemId: ItemId; name: string; count: number }[]
+  itemsPurchased: {
+    itemId: ItemId
+    name: string
+    count: number
+    totalCost: number
+    /** Пояснение: "покупка часов", "покупка серий" и тд */
+    details?: string
+  }[]
   itemsUsed: { itemId: ItemId; name: string; count: number }[]
-  achievementsUnlocked: { achievementId: AchievementId; title: string; icon: string; repeatable?: boolean; completionCount?: number }[]
+  achievementsUnlocked: {
+    achievementId: AchievementId
+    title: string
+    icon: string
+    repeatable?: boolean
+    completionCount?: number
+    rewardXp: number
+    rewardCoins: number
+    rewardGems: number
+  }[]
   xpEarned: number
   coinsEarned: number
   coinsSpent: number
+  gemsSpent: number
   activeStreaks: { taskId: TaskId; title: string; streak: number }[]
 }
 

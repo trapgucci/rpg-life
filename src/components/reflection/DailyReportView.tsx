@@ -1,12 +1,16 @@
-import { useMemo, useRef, useEffect, useCallback } from 'react'
+import { useMemo, useRef, useEffect, useCallback, useState } from 'react'
 import {
   CheckSquare, TrendingUp, ShoppingBag, Trophy,
-  Flame, Coins, Zap, MessageCircle,
+  Flame, Coins, Zap, MessageCircle, ImagePlus, X,
+  Gem, ChevronDown, ChevronRight,
 } from 'lucide-react'
 import MoodTracker from './MoodTracker'
 import MoodChart from './MoodChart'
+import ImageLightbox from './ImageLightbox'
 import { useRpgStore } from '../../store/useRpgStore'
 import { formatDateRu } from '../../lib/reflectionUtils'
+import { vaultStorage } from '../../lib/vaultStorage'
+import { resizeImageFile } from '../../lib/resizeImage'
 import type { DailySnapshot, MoodLevel } from '../../types/domain'
 
 interface DailyReportViewProps {
@@ -71,12 +75,96 @@ function AutoResizeTextarea({ value, onChange, placeholder }: {
   )
 }
 
+type SnapshotTask = DailySnapshot['tasksCompleted'][number]['tasks'][number]
+
+function RewardBadges({ xp, coins, gems, size = 'sm' }: {
+  xp?: number; coins?: number; gems?: number; size?: 'sm' | 'xs'
+}) {
+  if (!(xp && xp > 0) && !(coins && coins > 0) && !(gems && gems > 0)) return null
+  const cls = size === 'sm'
+    ? 'inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold'
+    : 'inline-flex items-center gap-0.5 rounded px-1 py-px text-[9px] font-semibold'
+  const icon = size === 'sm' ? 'h-3 w-3' : 'h-2.5 w-2.5'
+  return (
+    <div className="flex flex-wrap gap-1">
+      {xp != null && xp > 0 && (
+        <span className={`${cls} bg-purple-500/15 text-purple-400`}>
+          <Zap className={icon} /> +{xp}
+        </span>
+      )}
+      {coins != null && coins > 0 && (
+        <span className={`${cls} bg-amber-500/15 text-amber-400`}>
+          <Coins className={icon} /> +{coins}
+        </span>
+      )}
+      {gems != null && gems > 0 && (
+        <span className={`${cls} bg-cyan-500/15 text-cyan-400`}>
+          <Gem className={icon} strokeWidth={2.5} /> +{gems}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function TaskRow({ task }: { task: SnapshotTask }) {
+  const [expanded, setExpanded] = useState(false)
+  const hasSubtasks = task.subtasks && task.subtasks.length > 0
+
+  return (
+    <div className="rounded-lg transition-colors hover:bg-[var(--surface-elevated)]/50">
+      <div
+        className={`flex items-center gap-1.5 px-2 py-1.5 ${hasSubtasks ? 'cursor-pointer' : ''}`}
+        onClick={hasSubtasks ? () => setExpanded((v) => !v) : undefined}
+      >
+        {hasSubtasks && (
+          expanded
+            ? <ChevronDown className="h-3 w-3 shrink-0 text-[var(--fg-muted)]" />
+            : <ChevronRight className="h-3 w-3 shrink-0 text-[var(--fg-muted)]" />
+        )}
+        <span className="flex-1 text-sm text-[var(--fg)]">{task.title}</span>
+        {task.count > 1 && (
+          <span
+            className="rounded-full px-2 py-0.5 text-xs font-semibold"
+            style={{
+              background: 'linear-gradient(145deg, rgba(99,102,241,0.15), rgba(99,102,241,0.08))',
+              color: '#818cf8',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
+            }}
+          >
+            {'\u00d7'}{task.count}
+          </span>
+        )}
+      </div>
+      {/* Rewards */}
+      <div className={`px-2 pb-1 ${hasSubtasks ? 'pl-7' : ''}`}>
+        <RewardBadges xp={task.xpEarned} coins={task.coinsEarned} gems={task.gemsEarned} />
+      </div>
+      {/* Subtasks */}
+      {hasSubtasks && expanded && (
+        <div className="pl-7 pr-2 pb-1.5">
+          {task.subtasks!.map((s, i) => (
+            <div key={i} className="flex items-center justify-between gap-2 py-0.5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <div className="h-1 w-1 shrink-0 rounded-full bg-indigo-400" />
+                <span className="text-xs text-[var(--fg-muted)] truncate">{s.title}</span>
+              </div>
+              <RewardBadges xp={s.xpEarned} coins={s.coinReward} gems={s.gemReward} size="xs" />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function DailyReportView({ dateKey }: DailyReportViewProps) {
   const generateDailySnapshot = useRpgStore((s) => s.generateDailySnapshot)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const rawReports = useRpgStore((s) => s.dailyReports)
   const setMood = useRpgStore((s) => s.setDailyMood)
   const setThoughts = useRpgStore((s) => s.setDailyThoughts)
+  const addPhoto = useRpgStore((s) => s.addDailyPhoto)
+  const removePhoto = useRpgStore((s) => s.removeDailyPhoto)
 
   const report = useMemo(
     () => rawReports.find((r) => r.profileId === activeProfileId && r.dateKey === dateKey) ?? null,
@@ -112,6 +200,77 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
     snapshot.itemsPurchased.length > 0 ||
     snapshot.achievementsUnlocked.length > 0
 
+  // Weekly summary (last 7 days)
+  const weekSummary = useMemo(() => {
+    let totalTasks = 0, totalXp = 0, totalCoins = 0, totalGems = 0, totalSpent = 0, totalGemsSpent = 0, totalPurchases = 0
+    for (let i = 0; i < 7; i++) {
+      const dd = new Date(y, m - 1, d)
+      dd.setDate(dd.getDate() - i)
+      const key = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}-${String(dd.getDate()).padStart(2, '0')}`
+      const snap = generateDailySnapshot(key)
+      totalTasks += snap.totalTasksCompleted
+      totalXp += snap.xpEarned
+      totalCoins += snap.coinsEarned
+      totalSpent += snap.coinsSpent
+      totalGemsSpent += snap.gemsSpent
+      for (const t of snap.tasksCompleted) {
+        for (const tk of t.tasks) totalGems += tk.gemsEarned
+      }
+      for (const p of snap.itemsPurchased) totalPurchases += p.count
+    }
+    return { totalTasks, totalXp, totalCoins, totalGems, totalSpent, totalGemsSpent, totalPurchases }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateKey, tasks, taskGroups, habits, achievements, purchaseHistory, usageHistory, shopItems])
+
+  // Photos
+  const photos = report?.photos ?? []
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [thumbs, setThumbs] = useState<Map<string, string>>(new Map())
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (photos.length === 0) {
+      setThumbs(new Map())
+      return
+    }
+    let cancelled = false
+    const resolve = async () => {
+      const map = new Map<string, string>()
+      for (const path of photos) {
+        const data = await vaultStorage.readMedia(path)
+        if (cancelled) return
+        if (data) map.set(path, data)
+      }
+      if (!cancelled) setThumbs(map)
+    }
+    resolve()
+    return () => { cancelled = true }
+  }, [photos])
+
+  const handleAddPhoto = () => fileInputRef.current?.click()
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    const fileList = Array.from(files)
+    e.target.value = ''
+    for (const file of fileList) {
+      try {
+        const resized = await resizeImageFile(file)
+        const mediaPath = await vaultStorage.saveMedia(resized, 'webp')
+        if (!mediaPath) continue
+        addPhoto(dateKey, mediaPath)
+      } catch (err) {
+        console.error('Failed to add photo:', err)
+      }
+    }
+  }
+
+  const handleRemovePhoto = (mediaPath: string) => {
+    vaultStorage.deleteMedia(mediaPath).catch(() => {})
+    removePhoto(dateKey, mediaPath)
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {/* Date header */}
@@ -133,22 +292,10 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
       {snapshot.tasksCompleted.length > 0 && (
         <Section icon={CheckSquare} title="Задачи" color="#6366f1">
           {snapshot.tasksCompleted.map((group) => (
-            <div key={group.groupId ?? 'none'} className="mb-2 last:mb-0">
-              <p className="mb-1 text-xs font-medium text-[var(--fg-muted)]">{group.groupName}</p>
+            <div key={group.groupId ?? 'none'} className="mb-3 last:mb-0">
+              <p className="mb-1.5 text-xs font-medium text-[var(--fg-muted)]">{group.groupName}</p>
               {group.tasks.map((t) => (
-                <div key={t.taskId} className="flex items-center justify-between rounded-lg px-2 py-1.5 transition-colors hover:bg-[var(--surface-elevated)]/50">
-                  <span className="text-sm text-[var(--fg)]">{t.title}</span>
-                  <span
-                    className="rounded-full px-2 py-0.5 text-xs font-semibold"
-                    style={{
-                      background: 'linear-gradient(145deg, rgba(99,102,241,0.15), rgba(99,102,241,0.08))',
-                      color: '#818cf8',
-                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
-                    }}
-                  >
-                    ×{t.count}
-                  </span>
-                </div>
+                <TaskRow key={t.taskId} task={t} />
               ))}
             </div>
           ))}
@@ -189,10 +336,26 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
       {/* Purchases */}
       {snapshot.itemsPurchased.length > 0 && (
         <Section icon={ShoppingBag} title="Покупки" color="#f59e0b">
-          {snapshot.itemsPurchased.map((item) => (
-            <div key={item.itemId} className="flex items-center justify-between rounded-lg px-2 py-1.5 transition-colors hover:bg-[var(--surface-elevated)]/50">
-              <span className="text-sm text-[var(--fg)]">{item.name}</span>
-              <span className="text-xs font-medium text-[var(--fg-muted)]">×{item.count}</span>
+          {snapshot.itemsPurchased.map((item, i) => (
+            <div key={`${item.itemId}-${i}`} className="flex items-center justify-between rounded-lg px-2 py-1.5 transition-colors hover:bg-[var(--surface-elevated)]/50">
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <span className="text-sm text-[var(--fg)] truncate">{item.name}</span>
+                {item.details && (
+                  <span className="text-[10px] text-[var(--fg-muted)]">{item.details}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {item.count > 1 && (
+                  <span className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold bg-indigo-500/15 text-indigo-400">
+                    {'\u00d7'}{item.count}
+                  </span>
+                )}
+                {item.totalCost > 0 && (
+                  <span className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold bg-amber-500/15 text-amber-400">
+                    <Coins className="h-3 w-3" /> -{item.totalCost}
+                  </span>
+                )}
+              </div>
             </div>
           ))}
         </Section>
@@ -202,37 +365,39 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
       {snapshot.achievementsUnlocked.length > 0 && (
         <Section icon={Trophy} title="Достижения" color="#eab308">
           {snapshot.achievementsUnlocked.map((a) => (
-            <div key={a.achievementId} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-[var(--surface-elevated)]/50">
-              <div
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-base"
-                style={{
-                  background: 'linear-gradient(145deg, #fbbf2430, #f59e0b20)',
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)',
-                }}
-              >
-                {a.icon}
-              </div>
-              <span className="flex-1 text-sm text-[var(--fg)]">{a.title}</span>
-              {a.repeatable && (a.completionCount ?? 0) > 0 && (
-                <span
-                  className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
+            <div key={a.achievementId} className="rounded-lg px-2 py-1.5 transition-colors hover:bg-[var(--surface-elevated)]/50">
+              <div className="flex items-center gap-2.5">
+                <div
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-base"
                   style={{
-                    background: 'rgba(6,182,212,0.12)',
-                    color: '#22d3ee',
+                    background: 'linear-gradient(145deg, #fbbf2430, #f59e0b20)',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)',
                   }}
                 >
-                  ×{a.completionCount}
-                </span>
-              )}
+                  {a.icon}
+                </div>
+                <span className="flex-1 text-sm text-[var(--fg)]">{a.title}</span>
+                {a.repeatable && (a.completionCount ?? 0) > 0 && (
+                  <span
+                    className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
+                    style={{ background: 'rgba(6,182,212,0.12)', color: '#22d3ee' }}
+                  >
+                    {'\u00d7'}{a.completionCount}
+                  </span>
+                )}
+              </div>
+              <div className="ml-9.5 mt-1">
+                <RewardBadges xp={a.rewardXp} coins={a.rewardCoins} gems={a.rewardGems} />
+              </div>
             </div>
           ))}
         </Section>
       )}
 
-      {/* Streaks */}
+      {/* Streaks (3+ days) */}
       {snapshot.activeStreaks.length > 0 && (
         <Section icon={Flame} title="Стрики" color="#ef4444">
-          {snapshot.activeStreaks.slice(0, 5).map((s) => (
+          {snapshot.activeStreaks.map((s) => (
             <div key={s.taskId} className="flex items-center justify-between rounded-lg px-2 py-1.5 transition-colors hover:bg-[var(--surface-elevated)]/50">
               <span className="text-sm text-[var(--fg)]">{s.title}</span>
               <span
@@ -349,13 +514,113 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
           onChange={(val) => setThoughts(dateKey, val)}
           placeholder="Запишите свои мысли за день..."
         />
+
+        {/* Photos */}
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {photos.map((path, i) => {
+            const src = thumbs.get(path)
+            return (
+              <div
+                key={path}
+                className="group relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] cursor-pointer"
+                onClick={() => setLightboxIndex(i)}
+              >
+                {src ? (
+                  <img src={src} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="h-full w-full animate-pulse bg-[var(--border)]" />
+                )}
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleRemovePhoto(path) }}
+                  className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow group-hover:flex"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )
+          })}
+          <button
+            onClick={handleAddPhoto}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-dashed border-[var(--border)] text-[var(--fg-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
+          >
+            <ImagePlus className="h-4 w-4" />
+          </button>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={handleFileSelect}
+        />
       </div>
 
-      {/* Mood chart */}
-      <div className="rounded-2xl p-4" style={sectionNeuStyle}>
-        <h3 className="mb-3 text-sm font-semibold text-[var(--fg)]">Настроение за 14 дней</h3>
-        <MoodChart reports={allReports} days={14} />
+      {/* Mood chart + Weekly summary — side by side */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-2xl p-4" style={sectionNeuStyle}>
+          <h3 className="mb-3 text-sm font-semibold text-[var(--fg)]">Настроение</h3>
+          <MoodChart reports={allReports} days={14} />
+        </div>
+        <div className="rounded-2xl p-4 flex flex-col" style={sectionNeuStyle}>
+          <h3 className="mb-3 text-sm font-semibold text-[var(--fg)]">За неделю</h3>
+          <div className="flex flex-1 flex-col justify-center gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[var(--fg-muted)]">Задач</span>
+              <span className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold bg-indigo-500/15 text-indigo-400">
+                <CheckSquare className="h-3 w-3" /> {weekSummary.totalTasks}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[var(--fg-muted)]">Опыт</span>
+              <span className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold bg-purple-500/15 text-purple-400">
+                <Zap className="h-3 w-3" /> +{weekSummary.totalXp}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[var(--fg-muted)]">Заработано</span>
+              <div className="flex items-center gap-1">
+                <span className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold bg-amber-500/15 text-amber-400">
+                  <Coins className="h-3 w-3" /> +{weekSummary.totalCoins}
+                </span>
+                {weekSummary.totalGems > 0 && (
+                  <span className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold bg-cyan-500/15 text-cyan-400">
+                    <Gem className="h-3 w-3" strokeWidth={2.5} /> +{weekSummary.totalGems}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[var(--fg-muted)]">Потрачено</span>
+              <div className="flex items-center gap-1">
+                <span className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold bg-amber-500/15 text-amber-400">
+                  <Coins className="h-3 w-3" /> -{weekSummary.totalSpent}
+                </span>
+                {weekSummary.totalGemsSpent > 0 && (
+                  <span className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold bg-cyan-500/15 text-cyan-400">
+                    <Gem className="h-3 w-3" strokeWidth={2.5} /> -{weekSummary.totalGemsSpent}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[var(--fg-muted)]">Покупок</span>
+              <span className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold bg-orange-500/15 text-orange-400">
+                <ShoppingBag className="h-3 w-3" /> {weekSummary.totalPurchases}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Lightbox */}
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={photos}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
     </div>
   )
 }

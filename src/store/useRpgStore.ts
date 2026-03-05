@@ -388,6 +388,8 @@ interface RpgStoreState {
   getDailyReport: (dateKey: string) => DailyReport | null
   setDailyMood: (dateKey: string, mood: MoodLevel) => void
   setDailyThoughts: (dateKey: string, thoughts: string) => void
+  addDailyPhoto: (dateKey: string, mediaPath: string) => void
+  removeDailyPhoto: (dateKey: string, mediaPath: string) => void
   generateDailySnapshot: (dateKey: string) => DailySnapshot
 
   // Export/Import
@@ -2967,6 +2969,7 @@ export const useRpgStore = create<RpgStoreState>()(
                 dateKey,
                 mood,
                 thoughts: '',
+                photos: [],
                 createdAt: now(),
                 updatedAt: now(),
               }],
@@ -2991,9 +2994,47 @@ export const useRpgStore = create<RpgStoreState>()(
                 dateKey,
                 mood: null,
                 thoughts,
+                photos: [],
                 createdAt: now(),
                 updatedAt: now(),
               }],
+            }
+          })
+        },
+
+        addDailyPhoto: (dateKey, mediaPath) => {
+          set((s) => {
+            const existing = s.dailyReports.find((r) => r.profileId === s.activeProfileId && r.dateKey === dateKey)
+            if (existing) {
+              return {
+                dailyReports: s.dailyReports.map((r) =>
+                  r.id === existing.id ? { ...r, photos: [...(r.photos ?? []), mediaPath], updatedAt: now() } : r
+                ),
+              }
+            }
+            return {
+              dailyReports: [...s.dailyReports, {
+                id: crypto.randomUUID(),
+                profileId: s.activeProfileId!,
+                dateKey,
+                mood: null,
+                thoughts: '',
+                photos: [mediaPath],
+                createdAt: now(),
+                updatedAt: now(),
+              }],
+            }
+          })
+        },
+
+        removeDailyPhoto: (dateKey, mediaPath) => {
+          set((s) => {
+            const existing = s.dailyReports.find((r) => r.profileId === s.activeProfileId && r.dateKey === dateKey)
+            if (!existing) return s
+            return {
+              dailyReports: s.dailyReports.map((r) =>
+                r.id === existing.id ? { ...r, photos: (r.photos ?? []).filter((p) => p !== mediaPath), updatedAt: now() } : r
+              ),
             }
           })
         },
@@ -3008,23 +3049,46 @@ export const useRpgStore = create<RpgStoreState>()(
 
           // Tasks completed that day
           const profileTasks = state.tasks.filter((t) => t.profileId === pid)
-          const taskMap = new Map<string, { taskId: string; title: string; count: number; groupId: string | null }>()
+          type TaskEntry = {
+            taskId: string; title: string; count: number; groupId: string | null
+            xpEarned: number; coinsEarned: number; gemsEarned: number
+            subtasks?: { title: string; xpEarned?: number; coinReward?: number; gemReward?: number }[]
+          }
+          const taskMap = new Map<string, TaskEntry>()
           for (const task of profileTasks) {
             const records = (task.completionHistory ?? []).filter(
               (r) => r.status === 'completed' && r.completedAt && r.completedAt >= dayStart && r.completedAt <= dayEnd
             )
             if (records.length > 0) {
+              let taskXp = 0, taskCoins = 0, taskGems = 0
+              const allSubtasks: TaskEntry['subtasks'] = []
+              for (const r of records) {
+                taskXp += r.xpEarned ?? 0
+                taskCoins += r.coinsEarned ?? 0
+                taskGems += r.gemsEarned ?? 0
+                if (r.completedSubtasks) {
+                  for (const s of r.completedSubtasks) {
+                    if (s.isCompleted) {
+                      allSubtasks.push({ title: s.title, xpEarned: s.xpEarned, coinReward: s.coinReward, gemReward: s.gemReward })
+                    }
+                  }
+                }
+              }
               taskMap.set(task.id, {
                 taskId: task.id,
                 title: task.title,
                 count: records.length,
                 groupId: task.groupId ?? null,
+                xpEarned: taskXp,
+                coinsEarned: taskCoins,
+                gemsEarned: taskGems,
+                subtasks: allSubtasks.length > 0 ? allSubtasks : undefined,
               })
             }
           }
 
           // Group tasks by groupId
-          const groupMap = new Map<string | null, typeof taskMap extends Map<string, infer V> ? V[] : never>()
+          const groupMap = new Map<string | null, TaskEntry[]>()
           for (const t of taskMap.values()) {
             const arr = groupMap.get(t.groupId) ?? []
             arr.push(t)
@@ -3036,7 +3100,9 @@ export const useRpgStore = create<RpgStoreState>()(
             return {
               groupId,
               groupName: group?.name ?? 'Без группы',
-              tasks: tasks.map(({ taskId, title, count }) => ({ taskId, title, count })),
+              tasks: tasks.map(({ taskId, title, count, xpEarned: txp, coinsEarned: tc, gemsEarned: tg, subtasks: sub }) => ({
+                taskId, title, count, xpEarned: txp, coinsEarned: tc, gemsEarned: tg, subtasks: sub,
+              })),
             }
           })
 
@@ -3055,13 +3121,38 @@ export const useRpgStore = create<RpgStoreState>()(
             if (dc === 'negative') habitsNegative.push({ habitId: h.id, title: h.title })
           }
 
-          // Purchases
-          const purchaseMap = new Map<string, { itemId: string; name: string; count: number }>()
+          // Purchases — with cost and detail info
+          type PurchaseEntry = { itemId: string; name: string; count: number; totalCost: number; details?: string }
+          const purchaseMap = new Map<string, PurchaseEntry>()
           for (const p of state.purchaseHistory) {
             if (p.profileId === pid && p.timestamp >= dayStart && p.timestamp <= dayEnd) {
-              const existing = purchaseMap.get(p.itemId)
-              if (existing) existing.count++
-              else purchaseMap.set(p.itemId, { itemId: p.itemId, name: p.itemName, count: 1 })
+              const item = state.shopItems.find((si) => si.id === p.itemId)
+              let cost = 0
+              let detail: string | undefined
+
+              if (p.packageName) {
+                // Game time package purchase
+                const pkg = item?.gameTimePackages?.find((pk) => `${pk.hours} ч` === p.packageName || pk.id === p.packageName)
+                cost = pkg?.cost ?? item?.cost?.coins ?? 0
+                detail = 'покупка часов'
+              } else if (p.seasonNumber != null && p.episodeNumber != null) {
+                // Serial episode purchase
+                const season = item?.serialSeasons?.find((s) => s.number === p.seasonNumber)
+                const episode = season?.episodes.find((e) => e.number === p.episodeNumber)
+                cost = episode?.cost ?? item?.cost?.coins ?? 0
+                detail = 'покупка серии'
+              } else {
+                cost = item?.cost?.coins ?? 0
+              }
+
+              const key = `${p.itemId}:${detail ?? 'base'}`
+              const existing = purchaseMap.get(key)
+              if (existing) {
+                existing.count++
+                existing.totalCost += cost
+              } else {
+                purchaseMap.set(key, { itemId: p.itemId, name: p.itemName, count: 1, totalCost: cost, details: detail })
+              }
             }
           }
 
@@ -3075,15 +3166,20 @@ export const useRpgStore = create<RpgStoreState>()(
             }
           }
 
-          // Achievements unlocked
+          // Achievements unlocked — with rewards
           const achievementsUnlocked = state.achievements
             .filter((a) => a.profileId === pid && a.unlockedAt && a.unlockedAt >= dayStart && a.unlockedAt <= dayEnd)
-            .map((a) => ({ achievementId: a.id, title: a.title, icon: a.icon, repeatable: a.repeatable, completionCount: a.completionCount }))
+            .map((a) => ({
+              achievementId: a.id, title: a.title, icon: a.icon,
+              repeatable: a.repeatable, completionCount: a.completionCount,
+              rewardXp: a.rewardXp ?? 0, rewardCoins: a.rewardCoins ?? 0, rewardGems: a.rewardGems ?? 0,
+            }))
 
           // XP & coins from task completions
           let xpEarned = 0
           let coinsEarned = 0
           let coinsSpent = 0
+          let gemsSpent = 0
           for (const task of profileTasks) {
             for (const r of task.completionHistory ?? []) {
               if (r.status === 'completed' && r.completedAt && r.completedAt >= dayStart && r.completedAt <= dayEnd) {
@@ -3092,20 +3188,22 @@ export const useRpgStore = create<RpgStoreState>()(
               }
             }
           }
+          for (const entry of purchaseMap.values()) {
+            coinsSpent += entry.totalCost
+          }
           for (const p of state.purchaseHistory) {
             if (p.profileId === pid && p.timestamp >= dayStart && p.timestamp <= dayEnd) {
-              // Cost lookup from shopItems
               const item = state.shopItems.find((si) => si.id === p.itemId)
-              if (item?.cost?.coins) coinsSpent += item.cost.coins
+              gemsSpent += item?.cost?.gems ?? 0
             }
           }
 
-          // Active streaks (only meaningful for today)
+          // Active streaks (only meaningful for today, 3+ days only)
           const activeStreaks: DailySnapshot['activeStreaks'] = []
           const todayKey = getDateKey(now())
           if (dateKey === todayKey) {
             for (const task of profileTasks) {
-              if ((task.currentStreak ?? 0) > 0) {
+              if ((task.currentStreak ?? 0) >= 3) {
                 activeStreaks.push({ taskId: task.id, title: task.title, streak: task.currentStreak! })
               }
             }
@@ -3123,6 +3221,7 @@ export const useRpgStore = create<RpgStoreState>()(
             xpEarned,
             coinsEarned,
             coinsSpent,
+            gemsSpent,
             activeStreaks,
           }
         },
