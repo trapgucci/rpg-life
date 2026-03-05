@@ -240,6 +240,28 @@ export default function NoteEditor({ note, onBack, onDelete, onCreateNote }: Not
     }
   }
 
+  const handleBack = useCallback(() => {
+    // Flush any pending debounced save immediately
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = undefined
+    }
+    if (savedIndicatorRef.current) {
+      clearTimeout(savedIndicatorRef.current)
+      savedIndicatorRef.current = undefined
+    }
+    // Save current state before leaving
+    if (editor) {
+      const content = editor.getJSON() as TiptapContent
+      const persistContent = restoreMediaPaths(content, mediaCache.current)
+      const excerpt = extractExcerpt(persistContent)
+      updateNote(note.id, (n) => ({ ...n, title, content: persistContent, excerpt }))
+    } else {
+      updateNote(note.id, (n) => ({ ...n, title }))
+    }
+    onBack()
+  }, [editor, title, note.id, updateNote, onBack])
+
   const togglePin = () => {
     updateNote(note.id, (n) => ({ ...n, pinned: !n.pinned }))
   }
@@ -260,7 +282,7 @@ export default function NoteEditor({ note, onBack, onDelete, onCreateNote }: Not
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3">
-        <button onClick={onBack} className="icon-btn h-8 w-8 shrink-0 md:hidden">
+        <button onClick={handleBack} className="icon-btn h-8 w-8 shrink-0">
           <ArrowLeft className="h-4 w-4" />
         </button>
         <input

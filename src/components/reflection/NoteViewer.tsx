@@ -134,7 +134,7 @@ export default function NoteViewer({ note, onBack, onEdit, onDelete }: NoteViewe
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3">
-        <button onClick={onBack} className="icon-btn h-8 w-8 shrink-0 md:hidden">
+        <button onClick={onBack} className="icon-btn h-8 w-8 shrink-0">
           <ArrowLeft className="h-4 w-4" />
         </button>
         <h2 className="flex-1 truncate text-lg font-bold text-[var(--fg)]">

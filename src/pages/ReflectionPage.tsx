@@ -131,44 +131,48 @@ export default function ReflectionPage() {
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-hidden pb-2">
-      {/* Header */}
-      <div className="flex items-center gap-2 md:gap-3 shrink-0">
-        <div className="flex h-10 w-10 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 shadow-lg shadow-teal-500/30">
-          <Brain className="h-5 w-5 md:h-6 md:w-6 text-white" />
+      {/* Header — hidden when note is open */}
+      {!selectedNote && (
+        <div className="flex items-center gap-2 md:gap-3 shrink-0">
+          <div className="flex h-10 w-10 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 shadow-lg shadow-teal-500/30">
+            <Brain className="h-5 w-5 md:h-6 md:w-6 text-white" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg md:text-xl font-bold text-[var(--fg)]">Рефлексия</h1>
+            <p className="text-xs md:text-sm text-[var(--fg-muted)]">Заметки и дневник</p>
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-lg md:text-xl font-bold text-[var(--fg)]">Рефлексия</h1>
-          <p className="text-xs md:text-sm text-[var(--fg-muted)]">Заметки и дневник</p>
-        </div>
-      </div>
+      )}
 
-      {/* Tabs */}
-      <div className="flex shrink-0 gap-1 rounded-xl bg-[var(--surface)] p-1 border border-[var(--border)]">
-        <button
-          onClick={() => setActiveTab('notes')}
-          className={cn(
-            'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
-            activeTab === 'notes'
-              ? 'bg-[var(--accent)] text-white shadow-md'
-              : 'text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]',
-          )}
-        >
-          <BookOpen className="h-4 w-4" />
-          Заметки
-        </button>
-        <button
-          onClick={() => setActiveTab('diary')}
-          className={cn(
-            'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
-            activeTab === 'diary'
-              ? 'bg-[var(--accent)] text-white shadow-md'
-              : 'text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]',
-          )}
-        >
-          <Calendar className="h-4 w-4" />
-          Дневник
-        </button>
-      </div>
+      {/* Tabs — hidden when note is open */}
+      {!selectedNote && (
+        <div className="flex shrink-0 gap-1 rounded-xl bg-[var(--surface)] p-1 border border-[var(--border)]">
+          <button
+            onClick={() => setActiveTab('notes')}
+            className={cn(
+              'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
+              activeTab === 'notes'
+                ? 'bg-[var(--accent)] text-white shadow-md'
+                : 'text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]',
+            )}
+          >
+            <BookOpen className="h-4 w-4" />
+            Заметки
+          </button>
+          <button
+            onClick={() => setActiveTab('diary')}
+            className={cn(
+              'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
+              activeTab === 'diary'
+                ? 'bg-[var(--accent)] text-white shadow-md'
+                : 'text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]',
+            )}
+          >
+            <Calendar className="h-4 w-4" />
+            Дневник
+          </button>
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex min-h-0 flex-1 gap-4">
@@ -188,7 +192,7 @@ export default function ReflectionPage() {
                 ) : (
                   <NoteEditor
                     note={selectedNote}
-                    onBack={() => setNoteMode('view')}
+                    onBack={() => { setSelectedNoteId(null); setNoteMode('view') }}
                     onDelete={handleDeleteNote}
                     onCreateNote={handleCreateNote}
                   />
