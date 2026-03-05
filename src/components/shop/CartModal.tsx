@@ -43,8 +43,8 @@ export default function CartModal({ cart, onRemove, onClear, onCheckout, onClose
     let totalCoins = 0
     let totalGems = 0
     for (const e of enriched) {
-      const coinCost = e.item.cost[CURRENCY_IDS.COINS] ?? 0
-      const gemCost = e.item.cost[CURRENCY_IDS.GEMS] ?? 0
+      const coinCost = e.item.cost?.[CURRENCY_IDS.COINS] ?? 0
+      const gemCost = e.item.cost?.[CURRENCY_IDS.GEMS] ?? 0
       const effectiveCoinCost =
         activeShopDiscountPercent != null && coinCost > 0
           ? Math.round(coinCost * (1 - activeShopDiscountPercent / 100))
@@ -91,16 +91,13 @@ export default function CartModal({ cart, onRemove, onClear, onCheckout, onClose
           ) : (
             <ul className="space-y-2">
               {enriched.map((e) => {
-                const coinCost = e.item.cost[CURRENCY_IDS.COINS] ?? 0
-                const gemCost = e.item.cost[CURRENCY_IDS.GEMS] ?? 0
+                const coinCost = e.item.cost?.[CURRENCY_IDS.COINS] ?? 0
+                const gemCost = e.item.cost?.[CURRENCY_IDS.GEMS] ?? 0
                 const effectiveCoinCost =
                   activeShopDiscountPercent != null && coinCost > 0
                     ? Math.round(coinCost * (1 - activeShopDiscountPercent / 100))
                     : coinCost
-                const effectiveGemCost =
-                  activeShopDiscountPercent != null && gemCost > 0
-                    ? Math.round(gemCost * (1 - activeShopDiscountPercent / 100))
-                    : gemCost
+                const effectiveGemCost = gemCost
                 const typeBadge = getItemTypeBadge(e.item)
 
                 const totalItemCoins = effectiveCoinCost * e.quantity

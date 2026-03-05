@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
 import {
   X, Pencil, Trash2, Coins, Gem, Gift, Percent, ShoppingCart,
   ChevronRight, Settings, Folder, TrendingUp, Gamepad2, Plus, Clock,
   Clapperboard, ChevronDown, Check, Package, Hammer, Puzzle, Crosshair, Dice5,
-  BarChart3, Sparkles,
+  BarChart3, Sparkles, Trophy, ExternalLink,
 } from 'lucide-react'
 import ItemGroupSelectModal from './ItemGroupSelectModal'
 import IconSourcePicker from './IconSourcePicker'
@@ -18,6 +19,7 @@ import {
   getItemIcon, getItemTypeBadge, getItemTypeColor, migrateIcon, RARITY_COLORS,
 } from './shopUtils'
 import type { LootTableEntry } from './shopUtils'
+import Modal from '../Modal'
 import ConfirmModal from '../ConfirmModal'
 import RewardBadge from '../RewardBadge'
 import EmojiPickerModal from './EmojiPickerModal'
@@ -35,6 +37,7 @@ interface ShopDetailPanelProps {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }: ShopDetailPanelProps) {
+  const navigate = useNavigate()
   // ── Store selectors ──────────────────────────────────────────────────────
   const updateItem = useRpgStore((s) => s.updateShopItem)
   const deleteShopItem = useRpgStore((s) => s.deleteShopItem)
@@ -49,10 +52,20 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
   const activeShopItems = useMemo(() => shopItems.filter((i) => !i.deletedFromShop), [shopItems])
   const purchaseHistory = useRpgStore((s) => s.purchaseHistory)
   const craftRecipes = useRpgStore((s) => s.craftRecipes)
+  const achievements = useRpgStore((s) => s.achievements)
   const allTasks = useRpgStore((s) => s.tasks)
 
   // Find active recipe for this item
   const itemRecipe = craftRecipes.find((r) => r.resultItemId === item.id && !r.crafted)
+
+  // Find achievements that reward this item
+  const rewardingAchievements = useMemo(
+    () => achievements.filter((a) =>
+      (a.rewardItems?.some((ri) => ri.itemId === item.id)) ||
+      (a.rewardItemId === item.id)
+    ),
+    [achievements, item.id],
+  )
   const recipeLinkedTasks = itemRecipe
     ? (() => {
         const src = itemRecipe.fragmentSource
@@ -80,8 +93,8 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
   const iconBgColor = group?.color ?? '#9ca3af'
 
   // ── Cost calculations ────────────────────────────────────────────────────
-  const coinCostRaw = item.cost[CURRENCY_IDS.COINS] ?? 0
-  const gemCostRaw = item.cost[CURRENCY_IDS.GEMS] ?? 0
+  const coinCostRaw = item.cost?.[CURRENCY_IDS.COINS] ?? 0
+  const gemCostRaw = item.cost?.[CURRENCY_IDS.GEMS] ?? 0
   const effectiveCoinCost =
     activeShopDiscountPercent != null && coinCostRaw > 0
       ? Math.round(coinCostRaw * (1 - activeShopDiscountPercent / 100))
@@ -147,8 +160,8 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
     setEditGroupId(i.groupId ?? null)
     setEditAvailableForPurchase(i.availableForPurchase !== false)
     setEditCanGetForFree(i.canGetForFree === true)
-    setEditCoinCost(i.cost[CURRENCY_IDS.COINS] ?? 0)
-    setEditGemCost(i.cost[CURRENCY_IDS.GEMS] ?? 0)
+    setEditCoinCost(i.cost?.[CURRENCY_IDS.COINS] ?? 0)
+    setEditGemCost(i.cost?.[CURRENCY_IDS.GEMS] ?? 0)
     setEditStock(i.stock)
     setEditIsLootBox(i.isLootBox)
     setEditLootTable(i.lootTable ?? [])
@@ -176,8 +189,8 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
       editGroupId !== (prev.groupId ?? null) ||
       editAvailableForPurchase !== (prev.availableForPurchase !== false) ||
       editCanGetForFree !== (prev.canGetForFree === true) ||
-      editCoinCost !== (prev.cost[CURRENCY_IDS.COINS] ?? 0) ||
-      editGemCost !== (prev.cost[CURRENCY_IDS.GEMS] ?? 0) ||
+      editCoinCost !== (prev.cost?.[CURRENCY_IDS.COINS] ?? 0) ||
+      editGemCost !== (prev.cost?.[CURRENCY_IDS.GEMS] ?? 0) ||
       editStock !== prev.stock ||
       editIsLootBox !== prev.isLootBox ||
       JSON.stringify(editLootTable) !== JSON.stringify(prev.lootTable ?? []) ||
@@ -296,8 +309,8 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
   const itemPurchases = purchaseHistory.filter((e) => e.itemId === item.id)
   const totalPurchases = itemPurchases.length
   const lastPurchaseTs = itemPurchases.length > 0 ? Math.max(...itemPurchases.map((e) => e.timestamp)) : null
-  const totalSpentCoins = totalPurchases * (item.cost[CURRENCY_IDS.COINS] ?? 0)
-  const totalSpentGems = totalPurchases * (item.cost[CURRENCY_IDS.GEMS] ?? 0)
+  const totalSpentCoins = totalPurchases * (item.cost?.[CURRENCY_IDS.COINS] ?? 0)
+  const totalSpentGems = totalPurchases * (item.cost?.[CURRENCY_IDS.GEMS] ?? 0)
   const typeBadge = getItemTypeBadge(item)
 
   // ── Divider helper ───────────────────────────────────────────────────────
@@ -430,9 +443,28 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                   {!editAvailableForPurchase && (
                     <>
                       {divider}
-                      <p className="px-4 py-3 text-xs text-[var(--fg-muted)]">
-                        Этот предмет не будет продаваться в магазине, но его по-прежнему можно получить за выполнение заданий, достижений или через другие игровые активности.
-                      </p>
+                      <div className="px-4 py-3 space-y-1.5">
+                        <p className="text-xs text-[var(--fg-muted)]">
+                          Этот предмет не продаётся в магазине.
+                        </p>
+                        {itemRecipe && (
+                          <p className="text-xs font-medium text-orange-600 dark:text-orange-400 flex items-center gap-1">
+                            <Hammer className="h-3 w-3" />
+                            Можно получить через крафт
+                          </p>
+                        )}
+                        {rewardingAchievements.length > 0 && (
+                          <p className="text-xs font-medium text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
+                            <Trophy className="h-3 w-3" />
+                            Награда за: {rewardingAchievements.map((a) => a.title).join(', ')}
+                          </p>
+                        )}
+                        {!itemRecipe && rewardingAchievements.length === 0 && (
+                          <p className="text-xs text-[var(--fg-muted)]">
+                            Привяжите к рецепту крафта или достижению, чтобы предмет можно было получить.
+                          </p>
+                        )}
+                      </div>
                     </>
                   )}
                   {editAvailableForPurchase && editCanGetForFree && (
@@ -518,11 +550,11 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                 </div>
               )}
 
-              {/* ─── Advanced settings ─── */}
+              {/* ─── Advanced settings trigger ─── */}
               <div className="glass rounded-2xl p-4">
                 <button
                   type="button"
-                  onClick={() => setShowAdvancedSettings((v) => !v)}
+                  onClick={() => setShowAdvancedSettings(true)}
                   className="flex w-full items-center gap-3 text-left"
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-b from-[var(--fg-muted)]/15 to-[var(--fg-muted)]/5 ring-1 ring-inset ring-[var(--fg-muted)]/15">
@@ -530,19 +562,17 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-[var(--fg)]">Свойства предмета</p>
-                    <p className="text-xs text-[var(--fg-muted)]">Лутбокс, множитель, скидочник, видеоигра, сериал</p>
+                    <p className="text-xs text-[var(--fg-muted)]">
+                      {editIsLootBox ? 'Лутбокс' : editStreakMultiplierEnabled ? 'Множитель за стрик' : editIsDiscountVoucher ? 'Скидочный талон' : editIsVideoGame ? 'Видеоигра' : editIsTvSerial ? 'Сериал' : 'Обычный предмет'}
+                    </p>
                   </div>
-                  <ChevronRight className={cn(
-                    'h-4 w-4 text-[var(--fg-muted)] transition-transform duration-200',
-                    showAdvancedSettings && 'rotate-90'
-                  )} />
+                  <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
                 </button>
+              </div>
 
-                <div className={cn(
-                  'overflow-hidden transition-all duration-300 ease-out',
-                  showAdvancedSettings ? 'max-h-[2000px] opacity-100 mt-4' : 'max-h-0 opacity-0'
-                )}>
-                  <div className="space-y-3">
+              {/* ─── Advanced settings modal ─── */}
+              <Modal isOpen={showAdvancedSettings} onClose={() => setShowAdvancedSettings(false)} title="Свойства предмета" size="md">
+                <div className="p-6 space-y-3">
                     <p className="text-xs text-[var(--fg-muted)]">
                       Включить можно только одну опцию.
                     </p>
@@ -927,9 +957,8 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                         </div>
                       )}
                     </div>
-                  </div>
                 </div>
-              </div>
+              </Modal>
 
               {/* ─── Save / Cancel buttons ─── */}
               <div className="flex gap-3 pt-2">
@@ -1034,7 +1063,23 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                   </div>
                 )}
 
-                {!availableForPurchase && (
+                {!availableForPurchase && itemRecipe && (
+                  <div className="flex flex-1 min-w-0 items-center gap-2 rounded-2xl bg-gradient-to-b from-orange-400/15 to-orange-400/5 px-4 py-2.5 ring-1 ring-inset ring-orange-400/20 shadow-sm shadow-orange-400/10">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-orange-500/25 to-orange-500/10 ring-1 ring-inset ring-orange-400/30">
+                      <Hammer className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                    </div>
+                    <p className="text-sm font-medium text-orange-600 dark:text-orange-400">Только крафт</p>
+                  </div>
+                )}
+                {!availableForPurchase && !itemRecipe && rewardingAchievements.length > 0 && (
+                  <div className="flex flex-1 min-w-0 items-center gap-2 rounded-2xl bg-gradient-to-b from-yellow-400/15 to-yellow-400/5 px-4 py-2.5 ring-1 ring-inset ring-yellow-400/20 shadow-sm shadow-yellow-400/10">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-yellow-500/25 to-yellow-500/10 ring-1 ring-inset ring-yellow-400/30">
+                      <Trophy className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                    </div>
+                    <p className="text-sm font-medium text-yellow-600 dark:text-yellow-400">Награда за достижение</p>
+                  </div>
+                )}
+                {!availableForPurchase && !itemRecipe && rewardingAchievements.length === 0 && (
                   <div className="flex flex-1 min-w-0 items-center gap-2 rounded-2xl bg-gradient-to-b from-gray-400/15 to-gray-400/5 px-4 py-2.5 ring-1 ring-inset ring-gray-400/20 shadow-sm shadow-gray-400/10">
                     <p className="text-sm font-medium text-[var(--fg-muted)]">Не для продажи</p>
                   </div>
@@ -1095,13 +1140,38 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
               )}
 
               {!showBuyButton && !availableForPurchase && (
-                <button
-                  type="button"
-                  disabled
-                  className="w-full rounded-2xl py-4 font-semibold bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed opacity-50"
-                >
-                  Не для продажи
-                </button>
+                <div className="space-y-3">
+                  {/* Link to recipe */}
+                  {itemRecipe && onNavigateToRecipe && (
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToRecipe(itemRecipe.id)}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all hover:scale-[1.01] active:scale-[0.98] bg-gradient-to-b from-orange-500/15 to-orange-500/5 text-orange-600 dark:text-orange-400 ring-1 ring-inset ring-orange-400/20"
+                    >
+                      <Hammer className="h-4 w-4" />
+                      Перейти к рецепту
+                      <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+                    </button>
+                  )}
+
+                  {/* Links to achievements */}
+                  {rewardingAchievements.length > 0 && (
+                    <div className="space-y-2">
+                      {rewardingAchievements.map((ach) => (
+                        <button
+                          key={ach.id}
+                          type="button"
+                          onClick={() => navigate('/achievements')}
+                          className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all hover:scale-[1.01] active:scale-[0.98] bg-gradient-to-b from-yellow-500/15 to-yellow-500/5 text-yellow-600 dark:text-yellow-400 ring-1 ring-inset ring-yellow-400/20"
+                        >
+                          <span>{ach.icon}</span>
+                          <span className="truncate">{ach.title}</span>
+                          <ExternalLink className="h-3.5 w-3.5 opacity-60 shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Stock remaining (hide for serials and video games — stock=1 is obvious) */}
@@ -1365,8 +1435,8 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                   {(recipeCoinCost > 0 || recipeGemCost > 0) && (
                     <div className="mb-3">
                       <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--surface-elevated)]/50 px-2 py-1 text-[11px] text-[var(--fg-muted)] backdrop-blur-sm">
-                        {recipeCoinCost > 0 && <span className="font-semibold">🪙 {recipeCoinCost}</span>}
-                        {recipeGemCost > 0 && <span className="font-semibold">💎 {recipeGemCost}</span>}
+                        {recipeCoinCost > 0 && <span className="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400"><span className="flex h-4 w-4 items-center justify-center rounded bg-gradient-to-br from-amber-400 to-orange-500"><Coins className="h-2.5 w-2.5 text-white" /></span>{recipeCoinCost}</span>}
+                        {recipeGemCost > 0 && <span className="inline-flex items-center gap-1 font-semibold text-purple-600 dark:text-purple-400"><span className="flex h-4 w-4 items-center justify-center rounded bg-gradient-to-br from-purple-400 to-violet-600"><Gem className="h-2.5 w-2.5 text-white" /></span>{recipeGemCost}</span>}
                       </span>
                     </div>
                   )}

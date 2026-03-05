@@ -14,7 +14,6 @@ import type {
   ShopItem,
   Achievement,
   CraftRecipe,
-  Habit,
   InventoryEntry,
   Attribute,
 } from '../types/domain'
@@ -378,79 +377,6 @@ export function generateSeedData(): string {
     { id: uid(), profileId, groupId: agCollector, title: 'Копилка', description: 'Заработай 100 монет', icon: '🐷', condition: { type: 'coins_earned_spent', targetValue: 100, coinMode: 'earned' }, rewardCoins: 10, rewardGems: 0, rewardXp: 10, unlocked: false, currentProgress: 0, repeatable: true, createdAt: ts, updatedAt: ts },
   ]
 
-  // ─── Habits ────────────────────────────────────────────────────────────────
-
-  const habits: Habit[] = [
-    {
-      id: uid(), profileId, title: 'Вода', notes: 'Пей воду каждый день', icon: '💧', color: '#3b82f6',
-      positiveEnabled: true, negativeEnabled: false,
-      positiveXp: 5, negativeXp: 0, positiveCoins: 3, negativeCoins: 0,
-      attributeId: END, todayPositive: 0, todayNegative: 0,
-      lastResetDate: ts, streak: 5, totalPositive: 35, totalNegative: 0,
-      createdAt: ts - 7 * DAY, updatedAt: ts,
-    },
-    {
-      id: uid(), profileId, title: 'Сладкое', notes: 'Контролируй сладкое', icon: '🍬', color: '#ef4444',
-      positiveEnabled: true, negativeEnabled: true,
-      positiveXp: 10, negativeXp: 5, positiveCoins: 5, negativeCoins: 3,
-      attributeId: END, todayPositive: 0, todayNegative: 0,
-      lastResetDate: ts, streak: 3, totalPositive: 12, totalNegative: 8,
-      createdAt: ts - 14 * DAY, updatedAt: ts,
-    },
-    {
-      id: uid(), profileId, title: 'Чтение', notes: 'Читай перед сном', icon: '📖', color: '#8b5cf6',
-      positiveEnabled: true, negativeEnabled: false,
-      positiveXp: 15, negativeXp: 0, positiveCoins: 5, negativeCoins: 0,
-      attributeId: INT, todayPositive: 0, todayNegative: 0,
-      lastResetDate: ts, streak: 10, totalPositive: 50, totalNegative: 0,
-      difficultyMultiplierEnabled: true, difficultyMultiplierLevel: 'medium', multiplierIntervalDays: 5,
-      multiplierAppliesToXp: true, multiplierAppliesToCoins: true,
-      createdAt: ts - 20 * DAY, updatedAt: ts,
-    },
-    {
-      id: uid(), profileId, title: 'Курение', notes: 'Не кури!', icon: '🚭', color: '#f97316',
-      positiveEnabled: false, negativeEnabled: true,
-      positiveXp: 0, negativeXp: 15, positiveCoins: 0, negativeCoins: 10,
-      attributeId: END, todayPositive: 0, todayNegative: 0,
-      lastResetDate: ts, streak: 0, totalPositive: 0, totalNegative: 4,
-      createdAt: ts - 10 * DAY, updatedAt: ts,
-    },
-    {
-      id: uid(), profileId, title: 'Соцсети < 1 часа', notes: 'Ограничь время в соцсетях', icon: '📵', color: '#06b6d4',
-      positiveEnabled: true, negativeEnabled: true,
-      positiveXp: 10, negativeXp: 5, positiveCoins: 5, negativeCoins: 3,
-      attributeId: CRE, todayPositive: 0, todayNegative: 0,
-      lastResetDate: ts, streak: 2, totalPositive: 15, totalNegative: 6,
-      createdAt: ts - 12 * DAY, updatedAt: ts,
-    },
-    {
-      id: uid(), profileId, title: 'Осанка', notes: 'Следи за осанкой в течение дня', icon: '🧍', color: '#22c55e',
-      positiveEnabled: true, negativeEnabled: true,
-      positiveXp: 5, negativeXp: 3, positiveCoins: 3, negativeCoins: 2,
-      attributeId: END, todayPositive: 0, todayNegative: 0,
-      lastResetDate: ts, streak: 7, totalPositive: 28, totalNegative: 3,
-      createdAt: ts - 15 * DAY, updatedAt: ts,
-    },
-    {
-      id: uid(), profileId, title: 'Благодарность', notes: 'Запиши 3 вещи, за которые благодарен', icon: '🙏', color: '#eab308',
-      positiveEnabled: true, negativeEnabled: false,
-      positiveXp: 10, negativeXp: 0, positiveCoins: 5, negativeCoins: 0,
-      positiveGemsEnabled: true, positiveGems: 1,
-      attributeId: CHA, todayPositive: 0, todayNegative: 0,
-      lastResetDate: ts, streak: 4, totalPositive: 20, totalNegative: 0,
-      createdAt: ts - 18 * DAY, updatedAt: ts,
-    },
-    {
-      id: uid(), profileId, title: 'Фастфуд', notes: 'Избегай фастфуда', icon: '🍟', color: '#dc2626',
-      positiveEnabled: false, negativeEnabled: true,
-      positiveXp: 0, negativeXp: 10, positiveCoins: 0, negativeCoins: 5,
-      negativeGemsEnabled: true, negativeGems: 1,
-      attributeId: END, todayPositive: 0, todayNegative: 0,
-      lastResetDate: ts, streak: 0, totalPositive: 0, totalNegative: 3,
-      createdAt: ts - 8 * DAY, updatedAt: ts,
-    },
-  ]
-
   // ─── Craft Recipes ─────────────────────────────────────────────────────────
 
   const findTask = (title: string) => tasks.find(t => t.title === title)?.id ?? ''
@@ -550,7 +476,6 @@ export function generateSeedData(): string {
     itemGroups,
     achievementGroups,
     tasks,
-    habits,
     achievements,
     craftRecipes,
     shopItems,
@@ -561,8 +486,6 @@ export function generateSeedData(): string {
     settings: { ...DEFAULT_SETTINGS },
     stats: {
       totalTasksCompleted: 0,
-      totalHabitsPositive: 0,
-      totalHabitsNegative: 0,
       totalCoinsEarned: 0,
       totalCoinsSpent: 0,
       totalItemsCrafted: 0,

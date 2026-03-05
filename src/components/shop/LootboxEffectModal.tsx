@@ -241,12 +241,12 @@ function RewardPickerModal({ shopItems, excludeIds = [], onSelect, onClose }: Re
                       )}
                       <span className="text-[10px] text-amber-500 flex items-center gap-0.5">
                         <Coins className="h-2.5 w-2.5" />
-                        {shopItem.cost?.coins ?? 0}
+                        {shopItem.cost?.[CURRENCY_IDS.COINS] ?? 0}
                       </span>
-                      {(shopItem.cost?.gems ?? 0) > 0 && (
+                      {(shopItem.cost?.[CURRENCY_IDS.GEMS] ?? 0) > 0 && (
                         <span className="text-[10px] text-cyan-500 flex items-center gap-0.5">
                           <Gem className="h-2.5 w-2.5" />
-                          {shopItem.cost.gems}
+                          {shopItem.cost?.[CURRENCY_IDS.GEMS]}
                         </span>
                       )}
                       {shopItem.stock !== undefined && (
@@ -459,12 +459,12 @@ function RewardPickerModalSingle({
                       )}
                       <span className="text-[10px] text-amber-500 flex items-center gap-0.5">
                         <Coins className="h-2.5 w-2.5" />
-                        {shopItem.cost?.coins ?? 0}
+                        {shopItem.cost?.[CURRENCY_IDS.COINS] ?? 0}
                       </span>
-                      {(shopItem.cost?.gems ?? 0) > 0 && (
+                      {(shopItem.cost?.[CURRENCY_IDS.GEMS] ?? 0) > 0 && (
                         <span className="text-[10px] text-cyan-500 flex items-center gap-0.5">
                           <Gem className="h-2.5 w-2.5" />
-                          {shopItem.cost.gems}
+                          {shopItem.cost?.[CURRENCY_IDS.GEMS]}
                         </span>
                       )}
                       {shopItem.stock !== undefined && (

@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { X, Search } from 'lucide-react'
 import { cn } from '../lib/cn'
-import { TASK_ICONS } from '../lib/habitUtils'
-import { HabitIcon } from './HabitIcon'
+import { HabitIcon, TASK_ICONS } from './HabitIcon'
 
 interface TaskIconPickerModalProps {
   isOpen: boolean

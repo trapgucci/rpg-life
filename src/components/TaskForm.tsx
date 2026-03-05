@@ -31,7 +31,6 @@ function TaskForm({ onSubmit }: Props) {
       <select value={kind} onChange={(e) => setKind(e.target.value as TaskKind)}>
         <option value="todo">Обычная</option>
         <option value="daily">Ежедневная</option>
-        <option value="habit">Привычка</option>
       </select>
       <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as TaskDifficulty)}>
         <option value="easy">Лёгкая</option>

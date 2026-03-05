@@ -8,7 +8,6 @@ export type ItemId = string
 export type CurrencyId = string
 export type AchievementId = string
 export type AchievementGroupId = string
-export type HabitId = string
 export type CraftRecipeId = string
 
 // ─── Task System (Core) ────────────────────────────────────────────────────
@@ -228,73 +227,8 @@ export interface NestedTask extends TaskBase {
 /** New RPG task (checkbox / counter / nested) */
 export type TaskRpg = CheckboxTask | CounterTask | NestedTask
 
-// ─── Habits System ──────────────────────────────────────────────────────────
-
-/** Привычка с +/- действиями */
-export interface Habit {
-  id: HabitId
-  profileId: ProfileId
-  title: string
-  notes?: string
-  icon: string
-  color: string
-  /** Можно ли нажимать + */
-  positiveEnabled: boolean
-  /** Можно ли нажимать - */
-  negativeEnabled: boolean
-  /** XP за + действие */
-  positiveXp: number
-  /** XP за - действие (отнимается) */
-  negativeXp: number
-  /** Монеты за + действие */
-  positiveCoins: number
-  /** Монеты за - действие (отнимаются) */
-  negativeCoins: number
-  /** Включены ли гемы за + действие */
-  positiveGemsEnabled?: boolean
-  /** Гемы за + действие */
-  positiveGems?: number
-  /** Включены ли гемы за − действие (отнимаются) */
-  negativeGemsEnabled?: boolean
-  /** Гемы за − действие (отнимаются) */
-  negativeGems?: number
-  /** Привязка к атрибуту */
-  attributeId: AttributeId | null
-  /** Включён множитель сложности (награда увеличивается через N дней) */
-  difficultyMultiplierEnabled?: boolean
-  /** Уровень сложности: easy 1.25, medium 1.75, hard 2.5, custom — своё значение */
-  difficultyMultiplierLevel?: 'easy' | 'medium' | 'hard' | 'custom'
-  /** Кастомный множитель (когда level === 'custom') */
-  difficultyMultiplierCustom?: number
-  /** Множитель срабатывает раз в N дней */
-  multiplierIntervalDays?: number
-  /** Множитель применяется к XP */
-  multiplierAppliesToXp?: boolean
-  /** Множитель применяется к монетам */
-  multiplierAppliesToCoins?: boolean
-  /** Множитель применяется к гемам */
-  multiplierAppliesToGems?: boolean
-  /** История по дням: ключ YYYY-MM-DD, значение positive | negative | frozen (защищён заморозкой) */
-  dailyCompletion?: Record<string, 'positive' | 'negative' | 'frozen'>
-  /** Счётчик + за сегодня */
-  todayPositive: number
-  /** Счётчик - за сегодня */
-  todayNegative: number
-  /** Дата последнего сброса счётчиков (начало дня) */
-  lastResetDate: number
-  /** Streak: сколько дней подряд был хотя бы 1 + */
-  streak: number
-  /** Всего + за всё время */
-  totalPositive: number
-  /** Всего - за всё время */
-  totalNegative: number
-  createdAt: number
-  updatedAt: number
-  archived?: boolean
-}
-
 // ─── Legacy (existing store / TasksPage — migrate to TaskRpg later) ───────
-export type TaskKindLegacy = 'habit' | 'daily' | 'todo'
+export type TaskKindLegacy = 'daily' | 'todo'
 /** Legacy task kind for store/TasksPage. New code: use TaskKindRpg. */
 export type TaskKind = TaskKindLegacy
 export interface TaskBaseLegacy {
@@ -306,11 +240,6 @@ export interface TaskBaseLegacy {
   kind: TaskKindLegacy
   difficulty: 'easy' | 'normal' | 'hard'
   archived?: boolean
-}
-export interface HabitTask extends TaskBaseLegacy {
-  kind: 'habit'
-  positive: boolean
-  negative: boolean
 }
 export interface DailyTask extends TaskBaseLegacy {
   kind: 'daily'
@@ -324,7 +253,7 @@ export interface TodoTask extends TaskBaseLegacy {
   completedAt?: number
   isCompleted: boolean
 }
-export type Task = HabitTask | DailyTask | TodoTask
+export type Task = DailyTask | TodoTask
 
 export interface CharacterStats {
   level: number
@@ -632,6 +561,7 @@ export type AchievementConditionType =
   | 'item_used'              // Предмет N использован X раз
   | 'attribute_level'        // Атрибут достиг уровня N
   | 'coins_earned_spent'     // Монет заработано / потрачено
+  | 'gems_earned_spent'      // Кристаллов заработано / потрачено
   | 'custom'                 // Разблокировать вручную
 
 export interface AchievementCondition {
@@ -870,8 +800,8 @@ export interface DailySnapshot {
     }[]
   }[]
   totalTasksCompleted: number
-  habitsPositive: { habitId: HabitId; title: string }[]
-  habitsNegative: { habitId: HabitId; title: string }[]
+  habitsPositive: { habitId: string; title: string }[]
+  habitsNegative: { habitId: string; title: string }[]
   itemsPurchased: {
     itemId: ItemId
     name: string

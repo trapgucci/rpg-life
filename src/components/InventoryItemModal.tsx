@@ -3,11 +3,12 @@ import { cn } from '../lib/cn'
 import {
   X, Trash2, Zap, Clock, Check, Minus, Plus,
   Gift, TrendingUp, Percent, Gamepad2, Clapperboard,
-  ShoppingCart, Hammer,
+  ShoppingCart, Hammer, Coins, Gem,
 } from 'lucide-react'
 import Modal from './Modal'
 import { useRpgStore } from '../store/useRpgStore'
 import type { ShopItem, ItemGroup, SerialSeason } from '../types/domain'
+import { CURRENCY_IDS } from '../types/domain'
 import {
   getItemTypeBadge,
   RARITY_COLORS,
@@ -207,6 +208,11 @@ const ModalContent = memo(function ModalContent({
 
         {/* ── Properties ────────────────────────────────────────────────── */}
         {typeBadge && <PropertiesBlock item={item} />}
+
+        {/* ── Loot table (lootboxes) ──────────────────────────────────── */}
+        {item.isLootBox && item.lootTable && item.lootTable.length > 0 && (
+          <LootTableBlock lootTable={item.lootTable} />
+        )}
 
         {/* ── Game time (video games) ───────────────────────────────────── */}
         {item.isVideoGame && <GameTimeBlock item={item} />}
@@ -556,6 +562,89 @@ function GameTimeBlock({ item }: { item: ShopItem }) {
     </div>
   )
 }
+
+const LootTableBlock = memo(function LootTableBlock({ lootTable }: { lootTable: { id: string; weight: number; quantity?: number }[] }) {
+  const shopItems = useRpgStore((s) => s.shopItems)
+  const color = PROPERTY_COLORS.lootbox
+  const totalWeight = lootTable.reduce((sum, e) => sum + e.weight, 0)
+
+  const entries = lootTable.map((entry) => {
+    const isCoins = entry.id === CURRENCY_IDS.COINS
+    const isGems = entry.id === CURRENCY_IDS.GEMS
+    const item = !isCoins && !isGems ? shopItems.find((i) => i.id === entry.id) : null
+    const name = isCoins ? 'Монеты' : isGems ? 'Кристаллы' : item?.name ?? '???'
+    const chance = totalWeight > 0 ? Math.round((entry.weight / totalWeight) * 100) : 0
+    return { ...entry, name, chance, isCoins, isGems, item }
+  })
+
+  return (
+    <div
+      className="glass rounded-2xl p-4 mb-5 relative overflow-hidden"
+      style={{
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)',
+      }}
+    >
+      <div
+        className="absolute -top-6 -right-6 w-20 h-20 rounded-full blur-3xl opacity-10 pointer-events-none"
+        style={{ background: color }}
+      />
+
+      <h3 className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Содержимое</h3>
+      <div className="space-y-1.5">
+        {entries.map((entry) => (
+          <div
+            key={entry.id}
+            className="flex items-center gap-2.5 rounded-xl px-3 py-2"
+            style={{
+              background: `linear-gradient(135deg, ${color}08, ${color}03)`,
+              boxShadow: `inset 0 1px 0 rgba(255,255,255,0.03), 0 0 0 1px ${color}10`,
+            }}
+          >
+            {/* Icon */}
+            {entry.isCoins ? (
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 shadow-sm">
+                <Coins className="h-3.5 w-3.5 text-white" />
+              </div>
+            ) : entry.isGems ? (
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-purple-400 to-violet-600 shadow-sm">
+                <Gem className="h-3.5 w-3.5 text-white" />
+              </div>
+            ) : entry.item ? (
+              <ItemIconBadge item={entry.item} size="sm" className="h-7 w-7" />
+            ) : (
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-elevated)]">
+                <Gift className="h-3.5 w-3.5 text-[var(--fg-muted)]" />
+              </div>
+            )}
+
+            {/* Name + quantity */}
+            <div className="flex-1 min-w-0">
+              <span className="text-sm text-[var(--fg)] truncate block">
+                {entry.name}
+                {(entry.quantity ?? 1) > 1 && (
+                  <span className="text-[var(--fg-muted)]"> x{entry.quantity}</span>
+                )}
+              </span>
+            </div>
+
+            {/* Chance */}
+            <span
+              className="shrink-0 text-xs font-semibold tabular-nums"
+              style={{ color }}
+            >
+              {entry.chance}%
+            </span>
+          </div>
+        ))}
+      </div>
+      {totalWeight < 100 && (
+        <p className="text-[10px] text-[var(--fg-muted)] mt-2 opacity-60 text-center">
+          Шанс пустого открытия: {100 - totalWeight}%
+        </p>
+      )}
+    </div>
+  )
+})
 
 const SerialEpisodesBlock = memo(function SerialEpisodesBlock({ itemId, seasons }: { itemId: string; seasons: SerialSeason[] }) {
   const useEpisode = useRpgStore((s) => s.useEpisode)

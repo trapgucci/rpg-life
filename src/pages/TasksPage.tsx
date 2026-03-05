@@ -890,7 +890,7 @@ export default function TasksPage() {
 
       {/* Mobile detail overlay */}
       {showForm && (
-        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-habit-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
+        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
           <div className="glass-card relative flex flex-col rounded-2xl overflow-hidden">
             {/* Accent strip */}
             <div className="absolute top-0 left-0 right-0 h-[3px] z-10" style={{ background: 'linear-gradient(90deg, var(--accent), var(--accent-hover))' }} />
@@ -915,7 +915,7 @@ export default function TasksPage() {
         </div>
       )}
       {selectedTask && !showForm && (
-        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-habit-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
+        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
           <TaskDetailPanel task={selectedTask} onDeselect={() => setSelectedId(null)} />
         </div>
       )}

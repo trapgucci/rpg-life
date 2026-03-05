@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { cn } from '../../lib/cn'
-import { Coins, Gem, Gift, Percent, ShoppingCart, TrendingUp, Gamepad2, Clapperboard, Check, Hammer } from 'lucide-react'
+import { Coins, Gem, Gift, Percent, ShoppingCart, TrendingUp, Gamepad2, Clapperboard, Check, Hammer, Trophy } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
@@ -20,11 +20,21 @@ export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: 
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const allItemGroups = useRpgStore((s) => s.itemGroups)
   const craftRecipes = useRpgStore((s) => s.craftRecipes)
+  const achievements = useRpgStore((s) => s.achievements)
 
   // Check if this item has an active (non-crafted) recipe
   const hasCraftRecipe = useMemo(
     () => craftRecipes.some((r) => r.resultItemId === item.id && !r.crafted),
     [craftRecipes, item.id],
+  )
+
+  // Check if this item is a reward from any achievement
+  const isAchievementReward = useMemo(
+    () => achievements.some((a) =>
+      (a.rewardItems?.some((ri) => ri.itemId === item.id)) ||
+      (a.rewardItemId === item.id)
+    ),
+    [achievements, item.id],
   )
   const craftColor = useMemo(() => hasCraftRecipe ? getItemTypeColor(item) : '#9ca3af', [hasCraftRecipe, item])
 
@@ -38,8 +48,8 @@ export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: 
     : '#9ca3af'
   const iconBgColor = group?.color ?? typeColor
 
-  const coinCost = item.cost[CURRENCY_IDS.COINS] ?? 0
-  const gemCost = item.cost[CURRENCY_IDS.GEMS] ?? 0
+  const coinCost = item.cost?.[CURRENCY_IDS.COINS] ?? 0
+  const gemCost = item.cost?.[CURRENCY_IDS.GEMS] ?? 0
   const effectiveCoinCost =
     activeShopDiscountPercent != null && coinCost > 0
       ? Math.round(coinCost * (1 - activeShopDiscountPercent / 100))
@@ -67,8 +77,7 @@ export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: 
         'bg-[var(--surface-card)] backdrop-blur-lg',
         'border border-[var(--border)]',
         'hover:border-[var(--border-accent)] hover:shadow-lg hover:-translate-y-0.5',
-        selected && 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-lg shadow-[var(--accent)]/10',
-        !availableForPurchase && 'opacity-50 saturate-50'
+        selected && 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-lg shadow-[var(--accent)]/10'
       )}
     >
 
@@ -163,8 +172,20 @@ export default function ShopItemCard({ item, selected, onSelect, onAddToCart }: 
               </span>
             )}
 
-            {/* Not for sale */}
-            {!availableForPurchase && (
+            {/* Not for sale — show specific source */}
+            {!availableForPurchase && hasCraftRecipe && (
+              <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold bg-gradient-to-b from-orange-400/20 to-orange-400/10 text-orange-600 dark:text-orange-400 ring-1 ring-inset ring-orange-400/25">
+                <Hammer className="h-3 w-3" />
+                Только крафт
+              </span>
+            )}
+            {!availableForPurchase && isAchievementReward && !hasCraftRecipe && (
+              <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold bg-gradient-to-b from-yellow-400/20 to-yellow-400/10 text-yellow-600 dark:text-yellow-400 ring-1 ring-inset ring-yellow-400/25">
+                <Trophy className="h-3 w-3" />
+                Награда
+              </span>
+            )}
+            {!availableForPurchase && !hasCraftRecipe && !isAchievementReward && (
               <span className="inline-flex items-center rounded-xl px-2.5 py-1 text-xs font-semibold bg-gradient-to-b from-gray-400/20 to-gray-400/10 text-[var(--fg-muted)] ring-1 ring-inset ring-gray-400/25">
                 Не для продажи
               </span>

@@ -46,7 +46,8 @@
       "Bash(grep -n \"TODO\\\\|FIXME\\\\|BUG\\\\|XXX\" /Users/mercedes/Desktop/rpg-life/src/pages/ReflectionPage.tsx /Users/mercedes/Desktop/rpg-life/src/components/reflection/*.tsx)",
       "Bash(ls /Users/mercedes/Desktop/rpg-life/*.json)",
       "Bash(npx tailwindcss --help)",
-      "Bash(git fsck --unreachable --no-reflogs)"
+      "Bash(git fsck --unreachable --no-reflogs)",
+      "Bash(grep -n \"addNote\\\\|deleteNote\\\\|addNoteFolder\\\\|deleteNoteFolder\\\\|saveDailyReport\\\\|setMoodLevel\" /Users/mercedes/Desktop/rpg-life/src/components/reflection/*.tsx)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Jahseh\\Desktop\\rpg-life"

@@ -61,7 +61,9 @@ export const ItemIconBadge = memo(function ItemIconBadge({
   item, size = 'lg', groupColor, className, onClick,
 }: ItemIconBadgeProps) {
   const cfg = SIZES[size]
-  const baseColor = groupColor ?? getItemTypeColor(item)
+  const typeColor = getItemTypeColor(item)
+  // Hierarchy: item type color first (if not default gray), then group color, then fallback
+  const baseColor = (typeColor !== '#9ca3af' ? typeColor : null) ?? groupColor ?? typeColor
 
   const style = useMemo(() => ({
     background: `linear-gradient(145deg, ${baseColor}ee, ${baseColor}99)`,

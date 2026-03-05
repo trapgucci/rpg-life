@@ -7,6 +7,7 @@ import { cn } from '../lib/cn'
 import type { TaskRpg, TaskDifficulty, TaskRecurrence, AttributeId, SubtaskItem, TaskGroupId, TaskPriority, RecurrenceSettings } from '../types/domain'
 import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
 import { useRpgStore } from '../store/useRpgStore'
+import { rpgToast } from './RpgToast'
 import TaskGroupSelectModal from './TaskGroupSelectModal'
 import TaskAttributeSelectModal from './TaskAttributeSelectModal'
 import TaskRewardsModal from './TaskRewardsModal'
@@ -257,7 +258,15 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
 
   const handleComplete = () => {
     if (!canComplete) return
+    const reward = getTaskRewardPreview(task)
     completeTask(task.id)
+    rpgToast({
+      title: 'Задача выполнена!',
+      type: 'reward',
+      coins: reward.coins,
+      xp: reward.xp,
+      gems: reward.gems,
+    })
     // Для instant задач НЕ десeлектим — задача сбрасывается и готова к повторному выполнению
     if (task.recurrence !== 'instant') {
       onDeselect?.()

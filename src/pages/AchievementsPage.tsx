@@ -130,6 +130,8 @@ function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDet
         return `Достигните уровня ${targetValue} в ${attr?.name ?? 'атрибуте'}`
       case 'coins_earned_spent':
         return `${targetValue.toLocaleString('ru-RU')} монет ${achievement.condition.coinMode === 'spent' ? 'потрачено' : 'заработано'}`
+      case 'gems_earned_spent':
+        return `${targetValue.toLocaleString('ru-RU')} кристаллов ${achievement.condition.coinMode === 'spent' ? 'потрачено' : 'заработано'}`
       case 'custom':
         return 'Разблокируйте вручную'
       default:
@@ -339,6 +341,7 @@ const CONDITION_TYPES: {
   { value: 'item_used', label: 'Предмет использован', description: 'Конкретный предмет использован указанное количество раз', icon: Package, color: '#14b8a6' },
   { value: 'attribute_level', label: 'Уровень атрибута', description: 'Один из ваших атрибутов должен достичь указанного уровня', icon: BarChart3, color: '#8b5cf6' },
   { value: 'coins_earned_spent', label: 'Монет заработано / потрачено', description: 'Суммарное количество монет, заработанных или потраченных за всё время', icon: Wallet, color: '#eab308' },
+  { value: 'gems_earned_spent', label: 'Кристаллов заработано / потрачено', description: 'Суммарное количество кристаллов, заработанных или потраченных за всё время', icon: Gem, color: '#a855f7' },
   { value: 'custom', label: 'Ручная разблокировка', description: 'Без автоматического отслеживания — вы разблокируете достижение вручную', icon: Hand, color: '#6b7280' },
 ]
 
@@ -765,8 +768,8 @@ function ConditionPickerModal({
           </div>
         )}
 
-        {/* Coin mode selector — only for coins_earned_spent */}
-        {localType === 'coins_earned_spent' && (
+        {/* Coin mode selector — for coins_earned_spent and gems_earned_spent */}
+        {(localType === 'coins_earned_spent' || localType === 'gems_earned_spent') && (
           <div
             className="rounded-2xl border border-[var(--border)] p-4 space-y-3"
             style={{
@@ -1237,7 +1240,7 @@ function AchievementForm({ achievement, onClose, defaultGroupId }: AchievementFo
         attributeId: conditionType === 'attribute_level' ? conditionAttributeId : undefined,
         taskId: TASK_CONDITION_TYPES.includes(conditionType) ? conditionTaskId : undefined,
         itemId: conditionType === 'item_used' ? conditionItemId : undefined,
-        coinMode: conditionType === 'coins_earned_spent' ? conditionCoinMode : undefined,
+        coinMode: (conditionType === 'coins_earned_spent' || conditionType === 'gems_earned_spent') ? conditionCoinMode : undefined,
       },
       rewardXp: rewardAttributeId ? effectiveXp : 0,
       rewardCoins,
@@ -1723,7 +1726,7 @@ function AchievementForm({ achievement, onClose, defaultGroupId }: AchievementFo
                           ({condItem.icon || '📦'} {condItem.name})
                         </span>
                       )}
-                      {conditionType === 'coins_earned_spent' && (
+                      {(conditionType === 'coins_earned_spent' || conditionType === 'gems_earned_spent') && (
                         <span className="ml-1.5 text-[var(--fg-muted)] font-medium">
                           ({conditionCoinMode === 'spent' ? 'потрачено' : 'заработано'})
                         </span>

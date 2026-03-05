@@ -117,11 +117,14 @@ export default function ShopPage() {
 
   const addToCart = (itemId: string) => {
     const item = shopItems.find((i) => i.id === itemId)
+    if (!item) return
+    // Медиа-предметы (видеоигры, сериалы) с basePurchased нельзя добавить повторно
+    if ((item.isVideoGame || item.isTvSerial) && item.basePurchased) return
     setCart((prev) => {
       const existing = prev.find((c) => c.itemId === itemId)
       const currentQty = existing?.quantity ?? 0
       // If item has limited stock, don't exceed it
-      if (item?.stock !== undefined && currentQty >= item.stock) return prev
+      if (item.stock !== undefined && currentQty >= item.stock) return prev
       if (existing) return prev.map((c) => c.itemId === itemId ? { ...c, quantity: c.quantity + 1 } : c)
       return [...prev, { itemId, quantity: 1 }]
     })
@@ -141,19 +144,29 @@ export default function ShopPage() {
     // Скидка действует на ОДНУ покупку — весь чекаут корзины считается одной покупкой.
     // purchaseItem сбрасывает скидку после каждого вызова, поэтому сохраняем/восстанавливаем вручную.
     const savedDiscount = useRpgStore.getState().activeShopDiscountPercent
+    const failedItems: string[] = []
     for (const entry of cart) {
       for (let i = 0; i < entry.quantity; i++) {
         // Восстанавливаем скидку перед каждым предметом в рамках одной покупки
         if (savedDiscount != null) {
           useRpgStore.setState({ activeShopDiscountPercent: savedDiscount })
         }
-        purchaseItem(entry.itemId)
+        const ok = purchaseItem(entry.itemId)
+        if (!ok) {
+          failedItems.push(entry.itemId)
+          break // не пытаемся купить оставшиеся единицы этого предмета
+        }
       }
     }
     // Гарантируем сброс скидки после чекаута
     useRpgStore.setState({ activeShopDiscountPercent: null })
-    setCart([])
-    setShowCart(false)
+    // Оставить в корзине только те предметы, которые не удалось купить
+    if (failedItems.length > 0) {
+      setCart((prev) => prev.filter((c) => failedItems.includes(c.itemId)))
+    } else {
+      setCart([])
+      setShowCart(false)
+    }
   }
 
   // ── Close sort menu on outside click ─────────────────────────────────────
@@ -951,7 +964,7 @@ export default function ShopPage() {
 
       {/* Item form */}
       {tab === 'shop' && showItemForm && (
-        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-habit-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
+        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
           <ShopItemForm
             defaultGroupId={groupFilter === '__no_group__' ? null : groupFilter}
             onCreated={handleItemCreated}
@@ -962,7 +975,7 @@ export default function ShopPage() {
 
       {/* Recipe form */}
       {tab === 'fragments' && showRecipeForm && (
-        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-habit-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
+        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
           <RecipeForm
             onCreated={handleRecipeCreated}
             onClose={() => setShowRecipeForm(false)}
@@ -972,7 +985,7 @@ export default function ShopPage() {
 
       {/* Item detail panel */}
       {tab === 'shop' && selectedItem && !showItemForm && (
-        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-habit-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
+        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
           <ShopDetailPanel
             item={selectedItem}
             onDeselect={() => setSelectedItemId(null)}
@@ -983,7 +996,7 @@ export default function ShopPage() {
 
       {/* Recipe detail panel */}
       {tab === 'fragments' && selectedRecipe && !showRecipeForm && (
-        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-habit-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
+        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
           <RecipeDetailPanel
             recipe={selectedRecipe}
             onDeselect={() => setSelectedRecipeId(null)}

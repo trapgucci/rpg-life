@@ -1,6 +1,6 @@
 import { useMemo, useRef, useEffect, useCallback, useState } from 'react'
 import {
-  CheckSquare, TrendingUp, ShoppingBag, Trophy,
+  CheckSquare, ShoppingBag, Trophy,
   Flame, Coins, Zap, MessageCircle, ImagePlus, X,
   Gem, ChevronDown, ChevronRight,
 } from 'lucide-react'
@@ -180,7 +180,6 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
   // Generate snapshot — depends on store data which changes rarely
   const tasks = useRpgStore((s) => s.tasks)
   const taskGroups = useRpgStore((s) => s.taskGroups)
-  const habits = useRpgStore((s) => s.habits)
   const achievements = useRpgStore((s) => s.achievements)
   const purchaseHistory = useRpgStore((s) => s.purchaseHistory)
   const usageHistory = useRpgStore((s) => s.usageHistory)
@@ -198,7 +197,7 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
   const liveSnapshot: DailySnapshot = useMemo(
     () => generateDailySnapshot(dateKey),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [dateKey, tasks, taskGroups, habits, achievements, purchaseHistory, usageHistory, shopItems],
+    [dateKey, tasks, taskGroups, achievements, purchaseHistory, usageHistory, shopItems],
   )
 
   // Use saved snapshot for past days, live for today
@@ -369,7 +368,7 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
 
     return { totalTasks, totalXp, totalCoins, totalGems, totalSpent, totalGemsSpent, totalPurchases }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateKey, todayKey, liveSnapshot, allReports, tasks, taskGroups, habits, achievements, purchaseHistory, usageHistory, shopItems])
+  }, [dateKey, todayKey, liveSnapshot, allReports, tasks, taskGroups, achievements, purchaseHistory, usageHistory, shopItems])
 
   // Photos
   const photos = report?.photos ?? []
@@ -456,34 +455,6 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
           <div className="mt-2 border-t border-[var(--border)] pt-2 text-xs text-[var(--fg-muted)]">
             Всего выполнено: {snapshot.totalTasksCompleted}
           </div>
-        </Section>
-      )}
-
-      {/* Habits */}
-      {(snapshot.habitsPositive.length > 0 || snapshot.habitsNegative.length > 0) && (
-        <Section icon={TrendingUp} title="Привычки" color="#22c55e">
-          {snapshot.habitsPositive.length > 0 && (
-            <div className="mb-2">
-              <p className="mb-1 text-[10px] font-medium text-green-500 uppercase tracking-wider">Позитивные</p>
-              {snapshot.habitsPositive.map((h) => (
-                <div key={h.habitId} className="rounded-lg px-2 py-1.5 text-sm text-[var(--fg)] flex items-center gap-2 transition-colors hover:bg-[var(--surface-elevated)]/50">
-                  <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                  {h.title}
-                </div>
-              ))}
-            </div>
-          )}
-          {snapshot.habitsNegative.length > 0 && (
-            <div>
-              <p className="mb-1 text-[10px] font-medium text-red-500 uppercase tracking-wider">Негативные</p>
-              {snapshot.habitsNegative.map((h) => (
-                <div key={h.habitId} className="rounded-lg px-2 py-1.5 text-sm text-[var(--fg)] flex items-center gap-2 transition-colors hover:bg-[var(--surface-elevated)]/50">
-                  <div className="h-1.5 w-1.5 rounded-full bg-red-500" />
-                  {h.title}
-                </div>
-              ))}
-            </div>
-          )}
         </Section>
       )}
 

@@ -389,10 +389,13 @@ interface HabitIconProps {
 }
 
 /**
- * Renders a Lucide icon for habits.
+ * Renders a Lucide icon by name.
  * Falls back to Target icon if the icon name is not found.
  */
 export function HabitIcon({ iconName, className, size }: HabitIconProps) {
   const IconComponent = ICON_MAP[iconName] || Target
   return <IconComponent className={className} size={size} />
 }
+
+/** All available icon names for pickers */
+export const TASK_ICONS = Object.keys(ICON_MAP)

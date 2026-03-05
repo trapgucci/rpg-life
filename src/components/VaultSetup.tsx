@@ -32,7 +32,6 @@ export default function VaultSetup({ onComplete }: VaultSetupProps) {
         }),
         vaultStorage.write('tasks.json', state.tasks ?? []),
         vaultStorage.write('task-groups.json', state.taskGroups ?? []),
-        vaultStorage.write('habits.json', state.habits ?? []),
         vaultStorage.write('shop-items.json', state.shopItems ?? []),
         vaultStorage.write('item-groups.json', state.itemGroups ?? []),
         vaultStorage.write('inventory.json', state.inventory ?? []),

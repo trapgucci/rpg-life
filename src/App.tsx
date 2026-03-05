@@ -13,6 +13,7 @@ import VaultSetup from './components/VaultSetup'
 import { useRpgStore } from './store/useRpgStore'
 import { ACCENT_COLORS } from './types/domain'
 import { vaultStorage } from './lib/vaultStorage'
+import { Toaster } from 'sonner'
 
 function App() {
   const settings = useRpgStore((s) => s.settings)
@@ -54,11 +55,6 @@ function App() {
     root.style.setProperty('--accent-glow', `rgba(${r},${g},${b},${isDark ? 0.3 : 0.4})`)
   }, [settings.theme, settings.accentColor])
 
-  useEffect(() => {
-    // Reset daily habit counters if it's a new day
-    useRpgStore.getState().resetDailyHabits()
-  }, [])
-
   // Show nothing while checking vault configuration
   if (checkingVault) return null
 
@@ -78,6 +74,14 @@ function App() {
 
   return (
     <>
+      <Toaster
+        position="top-center"
+        richColors
+        toastOptions={{
+          style: { fontSize: '15px', padding: '14px 20px' },
+          className: 'dark:bg-zinc-800 dark:text-zinc-100 dark:border-zinc-700',
+        }}
+      />
       <RewardNotifications />
       <Routes>
         <Route path="/" element={<Layout />}>

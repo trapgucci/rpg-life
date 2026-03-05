@@ -405,10 +405,10 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                         <p className="text-xs text-[var(--fg-muted)] mt-0.5">
                           При крафте вместо предмета вы получите 70% его стоимости
                           {(resultItem?.cost[CURRENCY_IDS.COINS] ?? 0) > 0 && (
-                            <span className="inline-flex items-center gap-0.5 font-bold text-red-600 dark:text-red-400 ml-1"><Coins className="h-3 w-3" /> {Math.floor((resultItem.cost[CURRENCY_IDS.COINS] ?? 0) * 0.7)}</span>
+                            <span className="inline-flex items-center gap-0.5 font-bold text-red-600 dark:text-red-400 ml-1"><Coins className="h-3 w-3" /> {Math.floor((resultItem.cost?.[CURRENCY_IDS.COINS] ?? 0) * 0.7)}</span>
                           )}
                           {(resultItem?.cost[CURRENCY_IDS.GEMS] ?? 0) > 0 && (
-                            <span className="inline-flex items-center gap-0.5 font-bold text-blue-500 ml-1"><Gem className="h-3 w-3" /> {Math.floor((resultItem.cost[CURRENCY_IDS.GEMS] ?? 0) * 0.7)}</span>
+                            <span className="inline-flex items-center gap-0.5 font-bold text-blue-500 ml-1"><Gem className="h-3 w-3" /> {Math.floor((resultItem.cost?.[CURRENCY_IDS.GEMS] ?? 0) * 0.7)}</span>
                           )}
                         </p>
                       </div>
@@ -426,10 +426,10 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                         <p className="text-xs text-[var(--fg-muted)] mt-0.5">
                           При крафте вместо предмета вы получите 80% его стоимости
                           {(resultItem?.cost[CURRENCY_IDS.COINS] ?? 0) > 0 && (
-                            <span className="inline-flex items-center gap-0.5 font-bold text-amber-600 dark:text-amber-400 ml-1"><Coins className="h-3 w-3" /> {Math.floor((resultItem.cost[CURRENCY_IDS.COINS] ?? 0) * 0.8)}</span>
+                            <span className="inline-flex items-center gap-0.5 font-bold text-amber-600 dark:text-amber-400 ml-1"><Coins className="h-3 w-3" /> {Math.floor((resultItem.cost?.[CURRENCY_IDS.COINS] ?? 0) * 0.8)}</span>
                           )}
                           {(resultItem?.cost[CURRENCY_IDS.GEMS] ?? 0) > 0 && (
-                            <span className="inline-flex items-center gap-0.5 font-bold text-blue-500 ml-1"><Gem className="h-3 w-3" /> {Math.floor((resultItem.cost[CURRENCY_IDS.GEMS] ?? 0) * 0.8)}</span>
+                            <span className="inline-flex items-center gap-0.5 font-bold text-blue-500 ml-1"><Gem className="h-3 w-3" /> {Math.floor((resultItem.cost?.[CURRENCY_IDS.GEMS] ?? 0) * 0.8)}</span>
                           )}
                         </p>
                       </div>

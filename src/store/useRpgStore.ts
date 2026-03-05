@@ -196,6 +196,8 @@ interface RpgStoreState {
     totalTasksCompleted: number
     totalCoinsEarned: number
     totalCoinsSpent: number
+    totalGemsEarned: number
+    totalGemsSpent: number
     totalItemsCrafted: number
     currentStreak: number
     bestStreak: number
@@ -399,14 +401,13 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
 
       const [
         profileData, settingsData, tasks, taskGroups,
-        _habits, shopItems, itemGroups, achievementGroups, inventory,
+        shopItems, itemGroups, achievementGroups, inventory,
         achievements, craftRecipes, purchaseHistory,
         usageHistory, stats,
         noteFolders, notes, dailyReports,
       ] = results as [
         { profiles: unknown[]; activeProfileId: string | null } | null,
         { settings: unknown; activeShopDiscountPercent: number | null } | null,
-        unknown[] | null,
         unknown[] | null,
         unknown[] | null,
         unknown[] | null,
@@ -588,6 +589,8 @@ export const useRpgStore = create<RpgStoreState>()(
           totalTasksCompleted: 0,
           totalCoinsEarned: 0,
           totalCoinsSpent: 0,
+          totalGemsEarned: 0,
+          totalGemsSpent: 0,
           totalItemsCrafted: 0,
           currentStreak: 0,
           bestStreak: 0,
@@ -669,6 +672,9 @@ export const useRpgStore = create<RpgStoreState>()(
           if (currencyId === CURRENCY_IDS.COINS) {
             updateStats((s) => ({ totalCoinsEarned: s.totalCoinsEarned + amount }))
           }
+          if (currencyId === CURRENCY_IDS.GEMS) {
+            updateStats((s) => ({ totalGemsEarned: (s.totalGemsEarned ?? 0) + amount }))
+          }
         },
 
         deductCurrency: (currencyId, amount) => {
@@ -682,6 +688,10 @@ export const useRpgStore = create<RpgStoreState>()(
           }))
           if (currencyId === CURRENCY_IDS.COINS) {
             updateStats((s) => ({ totalCoinsSpent: (s.totalCoinsSpent ?? 0) + amount }))
+            get().checkAchievements()
+          }
+          if (currencyId === CURRENCY_IDS.GEMS) {
+            updateStats((s) => ({ totalGemsSpent: (s.totalGemsSpent ?? 0) + amount }))
             get().checkAchievements()
           }
           return true
@@ -1757,6 +1767,11 @@ export const useRpgStore = create<RpgStoreState>()(
                   ? (stats.totalCoinsSpent ?? 0)
                   : stats.totalCoinsEarned
                 break
+              case 'gems_earned_spent':
+                progress = ach.condition.coinMode === 'spent'
+                  ? (stats.totalGemsSpent ?? 0)
+                  : (stats.totalGemsEarned ?? 0)
+                break
               case 'task_completed_today': {
                 const task = tasks.find((t) => t.id === ach.condition.taskId)
                 if (!task) return
@@ -1836,6 +1851,20 @@ export const useRpgStore = create<RpgStoreState>()(
             const item = shopItems.find((i) => i.id === ri.itemId)
             if (!item) continue
             const qty = ri.quantity
+
+            // Медиа-предмет уже в инвентаре — компенсация 80%
+            const isMediaItem = item.isVideoGame || item.isTvSerial
+            const alreadyOwned = isMediaItem && get().inventory.some((e) => e.itemId === ri.itemId)
+            if (isMediaItem && alreadyOwned) {
+              const coinCost = item.cost?.[CURRENCY_IDS.COINS] ?? 0
+              const gemCost = item.cost?.[CURRENCY_IDS.GEMS] ?? 0
+              const compCoins = Math.floor(coinCost * 0.8)
+              const compGems = Math.floor(gemCost * 0.8)
+              if (compCoins > 0) addCurrency(CURRENCY_IDS.COINS, compCoins)
+              if (compGems > 0) addCurrency(CURRENCY_IDS.GEMS, compGems)
+              continue
+            }
+
             if (item.stock !== undefined && item.stock < qty) {
               const available = Math.max(0, item.stock)
               if (available > 0) addToInventory(ri.itemId, available)
@@ -2070,12 +2099,14 @@ export const useRpgStore = create<RpgStoreState>()(
           _purchasingLock.add(itemId)
 
           try {
-          const { shopItems, deductCurrency, addToInventory, openLootbox, activeShopDiscountPercent, activeProfileId } = get()
+          const { shopItems, deductCurrency, addToInventory, openLootbox, activeShopDiscountPercent, activeProfileId, updateShopItem, getCurrency } = get()
           const item = shopItems.find((i) => i.id === itemId)
           if (!item) return false
+          if (item.availableForPurchase === false) return false
+          if (item.stock !== undefined && item.stock <= 0) return false
 
-          const coinCost = item.cost[CURRENCY_IDS.COINS] ?? 0
-          const gemCost = item.cost[CURRENCY_IDS.GEMS] ?? 0
+          const coinCost = item.cost?.[CURRENCY_IDS.COINS] ?? 0
+          const gemCost = item.cost?.[CURRENCY_IDS.GEMS] ?? 0
           const effectiveCoinCost =
             activeShopDiscountPercent != null && coinCost > 0
               ? Math.round(coinCost * (1 - activeShopDiscountPercent / 100))
@@ -2084,7 +2115,7 @@ export const useRpgStore = create<RpgStoreState>()(
           const effectiveCosts = { ...item.cost, [CURRENCY_IDS.COINS]: effectiveCoinCost, [CURRENCY_IDS.GEMS]: effectiveGemCost }
 
           for (const [currencyId, cost] of Object.entries(effectiveCosts)) {
-            if (get().getCurrency(currencyId as CurrencyId) < cost) return false
+            if (getCurrency(currencyId as CurrencyId) < cost) return false
           }
 
           for (const [currencyId, cost] of Object.entries(effectiveCosts)) {
@@ -2103,9 +2134,7 @@ export const useRpgStore = create<RpgStoreState>()(
           }
 
           if (item.isLootBox) {
-            // Decrement stock for limited lootboxes
             if (item.stock !== undefined && item.stock > 0) {
-              const { updateShopItem } = get()
               updateShopItem(itemId, (prev) => ({
                 ...prev,
                 stock: (prev.stock ?? 1) - 1,
@@ -2115,31 +2144,25 @@ export const useRpgStore = create<RpgStoreState>()(
             return true
           }
 
-          // Videogame: mark as base-purchased, keep in shop, add to inventory
-          if (item.isVideoGame) {
-            const { updateShopItem, addToInventory: addInv } = get()
-            updateShopItem(itemId, (prev) => ({
-              ...prev,
-              basePurchased: true,
-            }))
-            addInv(itemId)
-            return true
-          }
-
-          // Serial: mark as base-purchased, add to inventory, keep in shop for episode purchases
-          if (item.isTvSerial) {
-            const { updateShopItem, addToInventory: addInv } = get()
-            updateShopItem(itemId, (prev) => ({
-              ...prev,
-              basePurchased: true,
-            }))
-            addInv(itemId)
+          if (item.isVideoGame || item.isTvSerial) {
+            const alreadyOwned = get().inventory.some((e) => e.itemId === itemId)
+            if (alreadyOwned) {
+              // Уже есть в инвентаре — компенсация 80%
+              const coinCost = item.cost?.[CURRENCY_IDS.COINS] ?? 0
+              const gemCost = item.cost?.[CURRENCY_IDS.GEMS] ?? 0
+              const compCoins = Math.floor(coinCost * 0.8)
+              const compGems = Math.floor(gemCost * 0.8)
+              if (compCoins > 0) addCurrency(CURRENCY_IDS.COINS, compCoins)
+              if (compGems > 0) addCurrency(CURRENCY_IDS.GEMS, compGems)
+              return true
+            }
+            updateShopItem(itemId, (prev) => ({ ...prev, basePurchased: true }))
+            addToInventory(itemId)
             return true
           }
 
           // Decrement stock for limited items
           if (item.stock !== undefined && item.stock > 0) {
-            const { updateShopItem } = get()
             updateShopItem(itemId, (prev) => ({
               ...prev,
               stock: (prev.stock ?? 1) - 1,
@@ -3094,7 +3117,6 @@ export const useRpgStore = create<RpgStoreState>()(
         itemGroups: s.itemGroups,
         achievementGroups: s.achievementGroups,
         tasks: s.tasks,
-        habits: s.habits,
         achievements: s.achievements,
         craftRecipes: s.craftRecipes,
         shopItems: s.shopItems,
