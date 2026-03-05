@@ -254,7 +254,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
       cost,
       isLootBox: editIsLootBox,
       lootTable: editIsLootBox ? editLootTable : undefined,
-      stock: (editIsVideoGame || editIsTvSerial) ? (prev.basePurchased ? 0 : 1) : editStock,
+      stock: (editIsVideoGame || editIsTvSerial) ? prev.stock : editStock,
       availableForPurchase: editAvailableForPurchase,
       canGetForFree: editCanGetForFree,
       groupId: editGroupId,

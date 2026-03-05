@@ -1,27 +1,3 @@
-import type { TiptapContent } from '../types/domain'
-
-/** Извлечь текст из Tiptap JSON для превью (~200 символов) */
-export function extractExcerpt(content: TiptapContent, maxLen = 200): string {
-  const parts: string[] = []
-
-  function walk(nodes: unknown[]) {
-    for (const node of nodes) {
-      if (typeof node !== 'object' || node === null) continue
-      const n = node as Record<string, unknown>
-      if (n.type === 'text' && typeof n.text === 'string') {
-        parts.push(n.text)
-      }
-      if (Array.isArray(n.content)) {
-        walk(n.content)
-      }
-    }
-  }
-
-  if (content?.content) walk(content.content)
-  const full = parts.join(' ').replace(/\s+/g, ' ').trim()
-  return full.length > maxLen ? full.slice(0, maxLen) + '…' : full
-}
-
 /** Форматировать дату для отображения: "2 марта 2026" */
 export function formatDateRu(ts: number): string {
   const d = new Date(ts)

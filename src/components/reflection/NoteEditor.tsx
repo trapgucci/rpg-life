@@ -2,31 +2,16 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import {
   ArrowLeft, Trash2, Search,
   Check, X, ImagePlus,
-  CheckSquare, Hash, ClipboardList,
+  CheckSquare,
   Link,
 } from 'lucide-react'
 import ImageLightbox from './ImageLightbox'
 import { useRpgStore } from '../../store/useRpgStore'
+import { RECURRENCE_LABELS, TASK_KIND_ICONS } from '../../lib/taskConstants'
 import { vaultStorage } from '../../lib/vaultStorage'
 import { resizeImageFile } from '../../lib/resizeImage'
 import { relativeDateRu } from '../../lib/reflectionUtils'
-import type { Note, TaskRecurrence } from '../../types/domain'
-
-const RECURRENCE_LABELS: Record<TaskRecurrence, { label: string; color: string }> = {
-  once: { label: 'Один раз', color: '#6b7280' },
-  daily: { label: 'Ежедневно', color: '#3b82f6' },
-  weekly: { label: 'Еженедельно', color: '#8b5cf6' },
-  monthly: { label: 'Ежемесячно', color: '#ec4899' },
-  yearly: { label: 'Ежегодно', color: '#f59e0b' },
-  instant: { label: 'Инстант', color: '#22c55e' },
-  custom: { label: 'Кастомный', color: '#6366f1' },
-}
-
-const TASK_KIND_ICONS: Record<string, typeof CheckSquare> = {
-  checkbox: CheckSquare,
-  counter: Hash,
-  nested: ClipboardList,
-}
+import type { Note } from '../../types/domain'
 
 interface NoteEditorProps {
   note: Note
@@ -67,20 +52,31 @@ export default function NoteEditor({ note, onBack, onDelete }: NoteEditorProps) 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>()
   const savedIndicatorRef = useRef<ReturnType<typeof setTimeout>>()
+  const titleRef = useRef(title)
+  const contentRef = useRef(content)
 
   useAutoResize(textareaRef, content)
+
+  // Keep refs in sync with latest values
+  useEffect(() => { titleRef.current = title }, [title])
+  useEffect(() => { contentRef.current = content }, [content])
 
   // Resolve media thumbnails
   useEffect(() => {
     let cancelled = false
     const resolve = async () => {
       const thumbs = new Map<string, string>()
-      for (const path of note.mediaFiles) {
-        const dataUrl = await vaultStorage.readMedia(path)
-        if (cancelled) return
-        if (dataUrl) thumbs.set(path, dataUrl)
+      const results = await Promise.all(
+        note.mediaFiles.map(async (path) => {
+          const data = await vaultStorage.readMedia(path)
+          return { path, data }
+        })
+      )
+      if (cancelled) return
+      for (const { path, data } of results) {
+        if (data) thumbs.set(path, data)
       }
-      if (!cancelled) setMediaThumbs(thumbs)
+      setMediaThumbs(thumbs)
     }
     resolve()
     return () => { cancelled = true }
@@ -116,13 +112,19 @@ export default function NoteEditor({ note, onBack, onDelete }: NoteEditorProps) 
     scheduleSave((n) => ({ ...n, content, excerpt }))
   }, [content]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Cleanup
+  // Cleanup — flush unsaved changes on unmount
   useEffect(() => {
     return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       if (savedIndicatorRef.current) clearTimeout(savedIndicatorRef.current)
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+        const t = titleRef.current
+        const c = contentRef.current
+        const excerpt = c.slice(0, 200)
+        updateNote(note.id, (n) => ({ ...n, title: t, content: c, excerpt }))
+      }
     }
-  }, [])
+  }, [note.id, updateNote])
 
   const handleDone = useCallback(() => {
     if (saveTimerRef.current) {

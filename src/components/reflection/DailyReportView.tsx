@@ -175,6 +175,8 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
     [rawReports, activeProfileId],
   )
 
+  const saveDailySnapshot = useRpgStore((s) => s.saveDailySnapshot)
+
   // Generate snapshot — depends on store data which changes rarely
   const tasks = useRpgStore((s) => s.tasks)
   const taskGroups = useRpgStore((s) => s.taskGroups)
@@ -184,11 +186,76 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
   const usageHistory = useRpgStore((s) => s.usageHistory)
   const shopItems = useRpgStore((s) => s.shopItems)
 
-  const snapshot: DailySnapshot = useMemo(
+  // Today's dateKey for comparison
+  const todayKey = useMemo(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }, [])
+
+  const isToday = dateKey === todayKey
+
+  // Live snapshot (generated on the fly) — only for today or fallback
+  const liveSnapshot: DailySnapshot = useMemo(
     () => generateDailySnapshot(dateKey),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [dateKey, tasks, taskGroups, habits, achievements, purchaseHistory, usageHistory, shopItems],
   )
+
+  // Use saved snapshot for past days, live for today
+  const snapshot: DailySnapshot = isToday
+    ? liveSnapshot
+    : (report?.snapshot ?? liveSnapshot)
+
+  const [moodDays, setMoodDays] = useState<7 | 14 | 30>(14)
+
+  // Debounced thoughts
+  const [localThoughts, setLocalThoughts] = useState(report?.thoughts ?? '')
+  const thoughtsRef = useRef(localThoughts)
+  const thoughtsTimerRef = useRef<ReturnType<typeof setTimeout>>()
+
+  useEffect(() => { thoughtsRef.current = localThoughts }, [localThoughts])
+
+  // Sync local thoughts when dateKey changes
+  useEffect(() => {
+    setLocalThoughts(report?.thoughts ?? '')
+  }, [dateKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debounced save to store
+  useEffect(() => {
+    if (localThoughts === (report?.thoughts ?? '')) return
+    if (thoughtsTimerRef.current) clearTimeout(thoughtsTimerRef.current)
+    thoughtsTimerRef.current = setTimeout(() => {
+      setThoughts(dateKey, localThoughts)
+      thoughtsTimerRef.current = undefined
+    }, 500)
+    return () => {
+      if (thoughtsTimerRef.current) clearTimeout(thoughtsTimerRef.current)
+    }
+  }, [localThoughts]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Flush thoughts on unmount
+  useEffect(() => {
+    return () => {
+      if (thoughtsTimerRef.current) {
+        clearTimeout(thoughtsTimerRef.current)
+        setThoughts(dateKey, thoughtsRef.current)
+      }
+    }
+  }, [dateKey, setThoughts])
+
+  // Auto-save snapshot for today with debounce
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!isToday) return
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => {
+      saveDailySnapshot(dateKey)
+    }, 3000)
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isToday, dateKey, liveSnapshot])
 
   // Parse date for display
   const [y, m, d] = dateKey.split('-').map(Number)
@@ -200,27 +267,109 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
     snapshot.itemsPurchased.length > 0 ||
     snapshot.achievementsUnlocked.length > 0
 
-  // Weekly summary (last 7 days)
+  // Weekly summary (last 7 days) — single pass over data
   const weekSummary = useMemo(() => {
     let totalTasks = 0, totalXp = 0, totalCoins = 0, totalGems = 0, totalSpent = 0, totalGemsSpent = 0, totalPurchases = 0
+
+    // Collect 7 day boundaries
+    const weekDays: { key: string; start: number; end: number }[] = []
     for (let i = 0; i < 7; i++) {
       const dd = new Date(y, m - 1, d)
       dd.setDate(dd.getDate() - i)
       const key = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}-${String(dd.getDate()).padStart(2, '0')}`
-      const snap = generateDailySnapshot(key)
-      totalTasks += snap.totalTasksCompleted
-      totalXp += snap.xpEarned
-      totalCoins += snap.coinsEarned
-      totalSpent += snap.coinsSpent
-      totalGemsSpent += snap.gemsSpent
-      for (const t of snap.tasksCompleted) {
-        for (const tk of t.tasks) totalGems += tk.gemsEarned
-      }
-      for (const p of snap.itemsPurchased) totalPurchases += p.count
+      weekDays.push({
+        key,
+        start: new Date(dd.getFullYear(), dd.getMonth(), dd.getDate(), 0, 0, 0, 0).getTime(),
+        end: new Date(dd.getFullYear(), dd.getMonth(), dd.getDate(), 23, 59, 59, 999).getTime(),
+      })
     }
+
+    // For days with saved snapshots (or today's live snapshot), use them directly
+    // Collect keys that need raw computation
+    const unsavedDayKeys = new Set<string>()
+    const unsavedDays: { key: string; start: number; end: number }[] = []
+
+    for (const day of weekDays) {
+      if (day.key === todayKey) {
+        // Today — use live snapshot
+        const snap = liveSnapshot
+        totalTasks += snap.totalTasksCompleted
+        totalXp += snap.xpEarned
+        totalCoins += snap.coinsEarned
+        totalSpent += snap.coinsSpent
+        totalGemsSpent += snap.gemsSpent
+        for (const g of snap.tasksCompleted) for (const tk of g.tasks) totalGems += tk.gemsEarned
+        for (const p of snap.itemsPurchased) totalPurchases += p.count
+      } else {
+        const savedReport = allReports.find((r) => r.dateKey === day.key)
+        if (savedReport?.snapshot) {
+          const snap = savedReport.snapshot
+          totalTasks += snap.totalTasksCompleted
+          totalXp += snap.xpEarned
+          totalCoins += snap.coinsEarned
+          totalSpent += snap.coinsSpent
+          totalGemsSpent += snap.gemsSpent
+          for (const g of snap.tasksCompleted) for (const tk of g.tasks) totalGems += tk.gemsEarned
+          for (const p of snap.itemsPurchased) totalPurchases += p.count
+        } else {
+          unsavedDayKeys.add(day.key)
+          unsavedDays.push(day)
+        }
+      }
+    }
+
+    // Single pass for unsaved days — compute totals from raw data
+    if (unsavedDays.length > 0) {
+      const weekStart = unsavedDays[unsavedDays.length - 1].start
+      const weekEnd = unsavedDays[0].end
+
+      // Tasks — single pass over completionHistory
+      const profileTasks = tasks.filter((t) => t.profileId === activeProfileId)
+      for (const task of profileTasks) {
+        for (const r of task.completionHistory ?? []) {
+          if (r.status !== 'completed' || !r.completedAt) continue
+          if (r.completedAt < weekStart || r.completedAt > weekEnd) continue
+          // Find which unsaved day this belongs to
+          for (const day of unsavedDays) {
+            if (r.completedAt >= day.start && r.completedAt <= day.end) {
+              totalTasks += 1
+              totalXp += r.xpEarned ?? 0
+              totalCoins += r.coinsEarned ?? 0
+              totalGems += r.gemsEarned ?? 0
+              break
+            }
+          }
+        }
+      }
+
+      // Purchases — single pass
+      for (const p of purchaseHistory) {
+        if (p.profileId !== activeProfileId) continue
+        if (p.timestamp < weekStart || p.timestamp > weekEnd) continue
+        for (const day of unsavedDays) {
+          if (p.timestamp >= day.start && p.timestamp <= day.end) {
+            totalPurchases += 1
+            const item = shopItems.find((si) => si.id === p.itemId)
+            if (p.packageName) {
+              const pkg = item?.gameTimePackages?.find((pk) => `${pk.hours} ч` === p.packageName || pk.id === p.packageName)
+              totalSpent += pkg?.cost ?? item?.cost?.coins ?? 0
+            } else if (p.seasonNumber != null && p.episodeNumber != null) {
+              const season = item?.serialSeasons?.find((s) => s.number === p.seasonNumber)
+              const episode = season?.episodes.find((e) => e.number === p.episodeNumber)
+              totalSpent += episode?.cost ?? item?.cost?.coins ?? 0
+            } else {
+              totalSpent += item?.cost?.coins ?? 0
+            }
+            totalGemsSpent += item?.cost?.gems ?? 0
+            break
+          }
+        }
+      }
+    }
+
     return { totalTasks, totalXp, totalCoins, totalGems, totalSpent, totalGemsSpent, totalPurchases }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateKey, tasks, taskGroups, habits, achievements, purchaseHistory, usageHistory, shopItems])
+  }, [dateKey, todayKey, liveSnapshot, allReports, tasks, taskGroups, habits, achievements, purchaseHistory, usageHistory, shopItems])
 
   // Photos
   const photos = report?.photos ?? []
@@ -236,12 +385,17 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
     let cancelled = false
     const resolve = async () => {
       const map = new Map<string, string>()
-      for (const path of photos) {
-        const data = await vaultStorage.readMedia(path)
-        if (cancelled) return
+      const results = await Promise.all(
+        photos.map(async (path) => {
+          const data = await vaultStorage.readMedia(path)
+          return { path, data }
+        })
+      )
+      if (cancelled) return
+      for (const { path, data } of results) {
         if (data) map.set(path, data)
       }
-      if (!cancelled) setThumbs(map)
+      setThumbs(map)
     }
     resolve()
     return () => { cancelled = true }
@@ -510,8 +664,8 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
           <h3 className="text-sm font-semibold text-[var(--fg)]">Мысли дня</h3>
         </div>
         <AutoResizeTextarea
-          value={report?.thoughts ?? ''}
-          onChange={(val) => setThoughts(dateKey, val)}
+          value={localThoughts}
+          onChange={setLocalThoughts}
           placeholder="Запишите свои мысли за день..."
         />
 
@@ -559,8 +713,25 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
       {/* Mood chart + Weekly summary — side by side */}
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-2xl p-4" style={sectionNeuStyle}>
-          <h3 className="mb-3 text-sm font-semibold text-[var(--fg)]">Настроение</h3>
-          <MoodChart reports={allReports} days={14} />
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-[var(--fg)]">Настроение</h3>
+            <div className="flex gap-1">
+              {([7, 14, 30] as const).map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setMoodDays(d)}
+                  className={`rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                    moodDays === d
+                      ? 'bg-[var(--accent)] text-white'
+                      : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)]'
+                  }`}
+                >
+                  {d}д
+                </button>
+              ))}
+            </div>
+          </div>
+          <MoodChart reports={allReports} days={moodDays} />
         </div>
         <div className="rounded-2xl p-4 flex flex-col" style={sectionNeuStyle}>
           <h3 className="mb-3 text-sm font-semibold text-[var(--fg)]">За неделю</h3>

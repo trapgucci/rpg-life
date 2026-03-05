@@ -26,9 +26,6 @@ export default function NoteList({
 
   const filtered = useMemo(() => {
     let list = notes
-    if (activeFolderId !== undefined && activeFolderId !== null) {
-      list = list.filter((n) => n.folderId === activeFolderId)
-    }
     if (search.trim()) {
       const q = search.toLowerCase()
       list = list.filter(

@@ -1,26 +1,11 @@
-import { useEffect, useState, useMemo } from 'react'
-import { Pin, CheckSquare, Hash, ClipboardList } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Pin, CheckSquare } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { relativeDateRu } from '../../lib/reflectionUtils'
+import { RECURRENCE_LABELS, TASK_KIND_ICONS } from '../../lib/taskConstants'
 import { vaultStorage } from '../../lib/vaultStorage'
 import { useRpgStore } from '../../store/useRpgStore'
-import type { Note, TaskRecurrence } from '../../types/domain'
-
-const RECURRENCE_LABELS: Record<TaskRecurrence, { label: string; color: string }> = {
-  once: { label: 'Один раз', color: '#6b7280' },
-  daily: { label: 'Ежедневно', color: '#3b82f6' },
-  weekly: { label: 'Еженедельно', color: '#8b5cf6' },
-  monthly: { label: 'Ежемесячно', color: '#ec4899' },
-  yearly: { label: 'Ежегодно', color: '#f59e0b' },
-  instant: { label: 'Инстант', color: '#22c55e' },
-  custom: { label: 'Кастомный', color: '#6366f1' },
-}
-
-const TASK_KIND_ICONS: Record<string, typeof CheckSquare> = {
-  checkbox: CheckSquare,
-  counter: Hash,
-  nested: ClipboardList,
-}
+import type { Note } from '../../types/domain'
 
 interface NoteCardProps {
   note: Note
@@ -30,7 +15,10 @@ interface NoteCardProps {
 
 export default function NoteCard({ note, isSelected, onClick }: NoteCardProps) {
   const [thumbs, setThumbs] = useState<Map<string, string>>(new Map())
-  const rawTasks = useRpgStore((s) => s.tasks)
+  const linkedTask = useRpgStore((s) => {
+    if (note.linkedTaskIds.length === 0) return null
+    return s.tasks.find((t) => t.id === note.linkedTaskIds[0]) ?? null
+  })
 
   // Resolve all image thumbnails
   useEffect(() => {
@@ -41,23 +29,23 @@ export default function NoteCard({ note, isSelected, onClick }: NoteCardProps) {
     let cancelled = false
     const resolve = async () => {
       const map = new Map<string, string>()
-      for (const path of note.mediaFiles) {
-        const data = await vaultStorage.readMedia(path)
-        if (cancelled) return
+      const results = await Promise.all(
+        note.mediaFiles.map(async (path) => {
+          const data = await vaultStorage.readMedia(path)
+          return { path, data }
+        })
+      )
+      if (cancelled) return
+      for (const { path, data } of results) {
         if (data) map.set(path, data)
       }
-      if (!cancelled) setThumbs(map)
+      setThumbs(map)
     }
     resolve()
     return () => { cancelled = true }
   }, [note.mediaFiles])
 
   const content = typeof note.content === 'string' ? note.content : note.excerpt
-
-  const linkedTask = useMemo(() => {
-    if (note.linkedTaskIds.length === 0) return null
-    return rawTasks.find((t) => t.id === note.linkedTaskIds[0]) ?? null
-  }, [rawTasks, note.linkedTaskIds])
 
   return (
     <button

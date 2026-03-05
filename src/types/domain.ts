@@ -780,11 +780,7 @@ export interface CraftRecipe {
 
 export type NoteId = string
 export type NoteFolderId = string
-export type NoteTagId = string
 export type DailyReportId = string
-
-/** Tiptap editor JSON document */
-export type TiptapContent = { type: 'doc'; content: unknown[] }
 
 /** Mood level 1-5 */
 export type MoodLevel = 1 | 2 | 3 | 4 | 5
@@ -809,16 +805,6 @@ export interface NoteFolder {
   sortOrder: number
   createdAt: number
   updatedAt: number
-}
-
-/** Глобальный тег для заметок */
-export interface NoteTag {
-  id: NoteTagId
-  profileId: ProfileId
-  name: string
-  /** Цвет тега (hex) */
-  color: string
-  createdAt: number
 }
 
 /** Заметка */
@@ -862,6 +848,8 @@ export interface DailyReport {
   thoughts: string
   /** Фото дня (пути к медиафайлам) */
   photos: string[]
+  /** Сохранённый снапшот дня (для исторических отчётов). Отсутствует у старых записей — fallback на generateDailySnapshot */
+  snapshot?: DailySnapshot
   createdAt: number
   updatedAt: number
 }
