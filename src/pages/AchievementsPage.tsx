@@ -305,18 +305,31 @@ function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDet
           <button
             type="button"
             onClick={() => {
-              unlockAchievement(achievement.id)
+              const result = unlockAchievement(achievement.id)
+
+              // Компенсация из достижения — сложить доп. монеты/кристаллы
+              let extraCoins = 0, extraGems = 0
+              const compDescriptions: string[] = []
+              if (result?.compensations.length) {
+                for (const c of result.compensations) {
+                  extraCoins += c.coins
+                  extraGems += c.gems
+                  if (c.reason === 'out_of_stock') {
+                    compDescriptions.push(c.coins > 0 || c.gems > 0
+                      ? `${c.name} — нет в наличии, компенсация 80%`
+                      : `${c.name} — нет в наличии`)
+                  }
+                }
+              }
+
               rpgToast({
                 title: `Достижение: ${achievement.title}!`,
                 type: 'achievement',
-                coins: achievement.rewardCoins,
+                coins: achievement.rewardCoins + extraCoins,
                 xp: achievement.rewardXp,
-                gems: achievement.rewardGems,
-                items: rewardItemsList.map((ri) => ({
-                  name: ri.item!.name,
-                  emoji: ri.item!.emoji,
-                  quantity: ri.quantity,
-                })),
+                gems: achievement.rewardGems + extraGems,
+                items: result?.givenItems.length ? result.givenItems : undefined,
+                description: compDescriptions.length ? compDescriptions.join('; ') : undefined,
               })
               onClose()
             }}

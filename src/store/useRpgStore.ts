@@ -278,7 +278,7 @@ interface RpgStoreState {
   deleteAchievement: (id: AchievementId) => void
   reorderAchievements: (orderedIds: AchievementId[]) => void
   checkAchievements: () => void
-  unlockAchievement: (id: AchievementId) => void
+  unlockAchievement: (id: AchievementId) => { givenItems: { name: string; emoji?: string; quantity: number }[]; compensations: { name: string; coins: number; gems: number; reason: 'out_of_stock' | 'duplicate' }[] } | void
   markAchievementReady: (id: AchievementId) => void
 
   // Craft actions
@@ -373,6 +373,42 @@ const WRITE_DEBOUNCE_MS = 500
 const WRITE_MAX_WAIT_MS = 3000
 let _firstChangeAt: number | null = null
 let _hydrationComplete = false
+let _lastWrittenState: Partial<RpgStoreState> | null = null
+
+type SliceWriter = {
+  file: string
+  getData: (state: Partial<RpgStoreState>) => unknown
+  getKeys: (state: Partial<RpgStoreState>) => unknown[]
+}
+
+const VAULT_SLICES: SliceWriter[] = [
+  {
+    file: 'profile.json',
+    getData: (s) => ({ profiles: s.profiles, activeProfileId: s.activeProfileId }),
+    getKeys: (s) => [s.profiles, s.activeProfileId],
+  },
+  {
+    file: 'settings.json',
+    getData: (s) => ({ settings: s.settings, activeShopDiscountPercent: s.activeShopDiscountPercent }),
+    getKeys: (s) => [s.settings, s.activeShopDiscountPercent],
+  },
+  { file: 'tasks.json', getData: (s) => s.tasks, getKeys: (s) => [s.tasks] },
+  { file: 'task-groups.json', getData: (s) => s.taskGroups, getKeys: (s) => [s.taskGroups] },
+  { file: 'shop-items.json', getData: (s) => s.shopItems, getKeys: (s) => [s.shopItems] },
+  { file: 'item-groups.json', getData: (s) => s.itemGroups, getKeys: (s) => [s.itemGroups] },
+  { file: 'achievement-groups.json', getData: (s) => s.achievementGroups, getKeys: (s) => [s.achievementGroups] },
+  { file: 'inventory.json', getData: (s) => s.inventory, getKeys: (s) => [s.inventory] },
+  { file: 'achievements.json', getData: (s) => s.achievements, getKeys: (s) => [s.achievements] },
+  { file: 'craft-recipes.json', getData: (s) => s.craftRecipes, getKeys: (s) => [s.craftRecipes] },
+  { file: 'purchase-history.json', getData: (s) => s.purchaseHistory, getKeys: (s) => [s.purchaseHistory] },
+  { file: 'usage-history.json', getData: (s) => s.usageHistory, getKeys: (s) => [s.usageHistory] },
+  { file: 'stats.json', getData: (s) => s.stats, getKeys: (s) => [s.stats] },
+  { file: 'note-folders.json', getData: (s) => s.noteFolders, getKeys: (s) => [s.noteFolders] },
+  { file: 'notes.json', getData: (s) => s.notes, getKeys: (s) => [s.notes] },
+  { file: 'daily-reports.json', getData: (s) => s.dailyReports, getKeys: (s) => [s.dailyReports] },
+  { file: 'daily-conditions.json', getData: (s) => s.dailyConditions ?? [], getKeys: (s) => [s.dailyConditions] },
+  { file: 'daily-condition-entries.json', getData: (s) => s.dailyConditionEntries ?? [], getKeys: (s) => [s.dailyConditionEntries] },
+]
 
 function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
   // Migrate from old zustand localStorage format (rpg-life-store-v2) to vault files
@@ -490,32 +526,36 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
       const doWrite = async () => {
         try {
           const state = value.state
-          await Promise.all([
-            vaultStorage.write('profile.json', {
-              profiles: state.profiles,
-              activeProfileId: state.activeProfileId,
-            }),
-            vaultStorage.write('settings.json', {
-              settings: state.settings,
-              activeShopDiscountPercent: state.activeShopDiscountPercent,
-            }),
-            vaultStorage.write('tasks.json', state.tasks),
-            vaultStorage.write('task-groups.json', state.taskGroups),
-            vaultStorage.write('shop-items.json', state.shopItems),
-            vaultStorage.write('item-groups.json', state.itemGroups),
-            vaultStorage.write('achievement-groups.json', state.achievementGroups),
-            vaultStorage.write('inventory.json', state.inventory),
-            vaultStorage.write('achievements.json', state.achievements),
-            vaultStorage.write('craft-recipes.json', state.craftRecipes),
-            vaultStorage.write('purchase-history.json', state.purchaseHistory),
-            vaultStorage.write('usage-history.json', state.usageHistory),
-            vaultStorage.write('stats.json', state.stats),
-            vaultStorage.write('note-folders.json', state.noteFolders),
-            vaultStorage.write('notes.json', state.notes),
-            vaultStorage.write('daily-reports.json', state.dailyReports),
-            vaultStorage.write('daily-conditions.json', state.dailyConditions ?? []),
-            vaultStorage.write('daily-condition-entries.json', state.dailyConditionEntries ?? []),
-          ])
+          const prev = _lastWrittenState
+
+          // Определяем какие слайсы изменились (сравнение по ссылке)
+          const writes: Promise<void>[] = []
+          for (const slice of VAULT_SLICES) {
+            // Если нет предыдущего состояния — пишем всё (первая запись)
+            if (!prev) {
+              writes.push(vaultStorage.write(slice.file, slice.getData(state)))
+              continue
+            }
+            // Сравниваем ключи по ссылке
+            const newKeys = slice.getKeys(state)
+            const oldKeys = slice.getKeys(prev)
+            let changed = false
+            for (let i = 0; i < newKeys.length; i++) {
+              if (newKeys[i] !== oldKeys[i]) {
+                changed = true
+                break
+              }
+            }
+            if (changed) {
+              writes.push(vaultStorage.write(slice.file, slice.getData(state)))
+            }
+          }
+
+          if (writes.length > 0) {
+            await Promise.all(writes)
+          }
+
+          _lastWrittenState = state
           _pendingWrite = null
           _firstChangeAt = null
         } catch (err) {
@@ -1915,7 +1955,7 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         unlockAchievement: (id) => {
-          const { achievements, addCurrency, addToInventory, shopItems } = get()
+          const { achievements, addCurrency, addToInventory, shopItems, updateShopItem } = get()
           const ach = achievements.find((a) => a.id === id)
           if (!ach) return
           // Для неповторяемых — не разблокировать повторно
@@ -1946,34 +1986,57 @@ export const useRpgStore = create<RpgStoreState>()(
               ? [{ itemId: ach.rewardItemId, quantity: ach.rewardItemQuantity ?? 1 }]
               : []
 
+          const givenItems: { name: string; emoji?: string; quantity: number }[] = []
+          const compensations: { name: string; coins: number; gems: number; reason: 'out_of_stock' | 'duplicate' }[] = []
+
           for (const ri of itemsToGive) {
             const item = shopItems.find((i) => i.id === ri.itemId)
             if (!item) continue
             const qty = ri.quantity
 
-            // Медиа-предмет уже в инвентаре — компенсация 80%
+            // Медиа-предмет уже в инвентаре — компенсация 80% (только если для продажи)
             const isMediaItem = item.isVideoGame || item.isTvSerial
             const alreadyOwned = isMediaItem && get().inventory.some((e) => e.itemId === ri.itemId)
             if (isMediaItem && alreadyOwned) {
-              const coinCost = item.cost?.[CURRENCY_IDS.COINS] ?? 0
-              const gemCost = item.cost?.[CURRENCY_IDS.GEMS] ?? 0
-              const compCoins = Math.floor(coinCost * 0.8)
-              const compGems = Math.floor(gemCost * 0.8)
-              if (compCoins > 0) addCurrency(CURRENCY_IDS.COINS, compCoins)
-              if (compGems > 0) addCurrency(CURRENCY_IDS.GEMS, compGems)
+              let compCoins = 0, compGems = 0
+              if (item.availableForPurchase !== false) {
+                const coinCost = item.cost?.[CURRENCY_IDS.COINS] ?? 0
+                const gemCost = item.cost?.[CURRENCY_IDS.GEMS] ?? 0
+                compCoins = Math.floor(coinCost * 0.8)
+                compGems = Math.floor(gemCost * 0.8)
+                if (compCoins > 0) addCurrency(CURRENCY_IDS.COINS, compCoins)
+                if (compGems > 0) addCurrency(CURRENCY_IDS.GEMS, compGems)
+              }
+              compensations.push({ name: item.name, coins: compCoins, gems: compGems, reason: 'duplicate' })
               continue
             }
 
+            // Проверка запаса: недостаточно — выдать доступное + компенсация 80% за дефицит (только если для продажи)
             if (item.stock !== undefined && item.stock < qty) {
               const available = Math.max(0, item.stock)
-              if (available > 0) addToInventory(ri.itemId, available)
-              const deficit = qty - available
-              const itemCoinCost = item.cost?.coins ?? 0
-              if (deficit > 0 && itemCoinCost > 0) {
-                addCurrency(CURRENCY_IDS.COINS, itemCoinCost * deficit)
+              if (available > 0) {
+                addToInventory(ri.itemId, available)
+                updateShopItem(ri.itemId, (prev) => ({ ...prev, stock: Math.max(0, (prev.stock ?? 0) - available) }))
+                givenItems.push({ name: item.name, emoji: item.emoji, quantity: available })
               }
+              const deficit = qty - available
+              let compCoins = 0, compGems = 0
+              if (item.availableForPurchase !== false) {
+                const coinCost = item.cost?.[CURRENCY_IDS.COINS] ?? 0
+                const gemCost = item.cost?.[CURRENCY_IDS.GEMS] ?? 0
+                compCoins = Math.floor(coinCost * 0.8) * deficit
+                compGems = Math.floor(gemCost * 0.8) * deficit
+                if (compCoins > 0) addCurrency(CURRENCY_IDS.COINS, compCoins)
+                if (compGems > 0) addCurrency(CURRENCY_IDS.GEMS, compGems)
+              }
+              compensations.push({ name: item.name, coins: compCoins, gems: compGems, reason: 'out_of_stock' })
             } else {
               addToInventory(ri.itemId, qty)
+              givenItems.push({ name: item.name, emoji: item.emoji, quantity: qty })
+              // Вычесть из запаса магазина
+              if (item.stock !== undefined) {
+                updateShopItem(ri.itemId, (prev) => ({ ...prev, stock: Math.max(0, (prev.stock ?? 0) - qty) }))
+              }
             }
           }
 
@@ -1990,6 +2053,8 @@ export const useRpgStore = create<RpgStoreState>()(
           } else {
             get().updateAchievement(id, (a) => ({ ...a, unlocked: true, readyToUnlock: false, unlockedAt: now() }))
           }
+
+          return { givenItems, compensations }
         },
 
         // ─── Crafting ─────────────────────────────────────────────────────
@@ -2306,26 +2371,37 @@ export const useRpgStore = create<RpgStoreState>()(
                 const alreadyOwned = isMediaItem && inventory.some((e) => e.itemId === entry.id)
 
                 if (isMediaItem && alreadyOwned) {
-                  // Already owned media item — give 80% compensation
+                  // Already owned media item — give 80% compensation (only if purchasable)
+                  const name = resultItem?.name ?? 'Награда'
+                  if (resultItem?.availableForPurchase === false) {
+                    return { itemId: entry.id, name, compensated: true, compensationLabel: '—', compensationReason: 'duplicate' as const }
+                  }
                   const coinCost = resultItem?.cost[CURRENCY_IDS.COINS] ?? 0
                   const gemCost = resultItem?.cost[CURRENCY_IDS.GEMS] ?? 0
                   const compCoins = Math.floor(coinCost * 0.8)
                   const compGems = Math.floor(gemCost * 0.8)
                   if (compCoins > 0) addCurrency(CURRENCY_IDS.COINS, compCoins)
                   if (compGems > 0) addCurrency(CURRENCY_IDS.GEMS, compGems)
-                  const name = resultItem?.name ?? 'Награда'
                   const compParts: string[] = []
                   if (compCoins > 0) compParts.push(`🪙 ${compCoins}`)
                   if (compGems > 0) compParts.push(`💎 ${compGems}`)
                   return { itemId: entry.id, name, compensated: true, compensationLabel: compParts.join(' + ') || '—', compensationReason: 'duplicate' as const }
                 }
 
-                // Stock check — if item has stock and it's insufficient, compensate 80%
+                // Stock check — if item has stock and it's insufficient, compensate 80% (only if purchasable)
                 if (resultItem && resultItem.stock !== undefined && resultItem.stock < qty) {
                   const available = Math.max(0, resultItem.stock)
                   if (available > 0) {
                     addToInventory(entry.id, available)
                     updateShopItem(entry.id, (prev) => ({ ...prev, stock: Math.max(0, (prev.stock ?? 0) - available) }))
+                  }
+                  const name = resultItem.name
+                  // Предмет не для продажи — никакой компенсации
+                  if (resultItem.availableForPurchase === false) {
+                    if (available === 0) {
+                      return { itemId: entry.id, name, compensated: true, compensationLabel: '—', compensationReason: 'out_of_stock' as const }
+                    }
+                    return { itemId: entry.id, name: `${name} x${available}`, compensated: true, compensationLabel: `${name} x${available}`, compensationReason: 'out_of_stock' as const }
                   }
                   const deficit = qty - available
                   const coinCost = resultItem.cost[CURRENCY_IDS.COINS] ?? 0
@@ -2334,7 +2410,6 @@ export const useRpgStore = create<RpgStoreState>()(
                   const compGems = Math.floor(gemCost * 0.8) * deficit
                   if (compCoins > 0) addCurrency(CURRENCY_IDS.COINS, compCoins)
                   if (compGems > 0) addCurrency(CURRENCY_IDS.GEMS, compGems)
-                  const name = resultItem.name
                   if (available === 0) {
                     const compParts: string[] = []
                     if (compCoins > 0) compParts.push(`🪙 ${compCoins}`)
@@ -3359,6 +3434,31 @@ export const useRpgStore = create<RpgStoreState>()(
       }),
       onRehydrateStorage: () => (state) => {
         _hydrationComplete = true
+        // Инициализируем снапшот чтобы первая запись не писала всё
+        if (state) {
+          _lastWrittenState = {
+            profiles: state.profiles,
+            activeProfileId: state.activeProfileId,
+            settings: state.settings,
+            activeShopDiscountPercent: state.activeShopDiscountPercent,
+            tasks: state.tasks,
+            taskGroups: state.taskGroups,
+            shopItems: state.shopItems,
+            itemGroups: state.itemGroups,
+            achievementGroups: state.achievementGroups,
+            inventory: state.inventory,
+            achievements: state.achievements,
+            craftRecipes: state.craftRecipes,
+            purchaseHistory: state.purchaseHistory,
+            usageHistory: state.usageHistory,
+            stats: state.stats,
+            noteFolders: state.noteFolders,
+            notes: state.notes,
+            dailyReports: state.dailyReports,
+            dailyConditions: state.dailyConditions,
+            dailyConditionEntries: state.dailyConditionEntries,
+          }
+        }
         if (!state) {
           useRpgStore.getState().setHasHydrated(true)
           return
