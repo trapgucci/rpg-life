@@ -35,18 +35,31 @@ export default function MoodChart({ reports, days = 14 }: MoodChartProps) {
   }
 
   const barWidth = Math.max(16, Math.min(32, Math.floor(400 / days)))
+  const gap = 5
   const height = 100
   const maxMood = 5
 
   return (
     <div className="overflow-x-auto">
       <svg
-        width={data.length * (barWidth + 4) + 8}
-        height={height + 28}
+        width={data.length * (barWidth + gap) + 8}
+        height={height + 30}
         className="block"
       >
+        <defs>
+          {data.map((d) => {
+            if (!d.mood) return null
+            const color = MOOD_CONFIG[d.mood].color
+            return (
+              <linearGradient key={`grad-${d.dateKey}`} id={`bar-${d.dateKey}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={color} stopOpacity={0.9} />
+                <stop offset="100%" stopColor={color} stopOpacity={0.5} />
+              </linearGradient>
+            )
+          })}
+        </defs>
         {data.map((d, i) => {
-          const x = i * (barWidth + 4) + 4
+          const x = i * (barWidth + gap) + 4
           const barH = d.mood ? (d.mood / maxMood) * height : 0
           const y = height - barH
           const color = d.mood ? MOOD_CONFIG[d.mood].color : '#374151'
@@ -59,29 +72,53 @@ export default function MoodChart({ reports, days = 14 }: MoodChartProps) {
                 y={0}
                 width={barWidth}
                 height={height}
-                rx={4}
+                rx={barWidth / 4}
                 fill="var(--border)"
-                opacity={0.3}
+                opacity={0.2}
               />
-              {/* Mood bar */}
+              {/* Mood bar with gradient */}
               {d.mood && (
-                <rect
-                  x={x}
-                  y={y}
-                  width={barWidth}
-                  height={barH}
-                  rx={4}
-                  fill={color}
-                  opacity={0.8}
-                >
-                  <title>{MOOD_CONFIG[d.mood].label}</title>
-                </rect>
+                <>
+                  <rect
+                    x={x}
+                    y={y}
+                    width={barWidth}
+                    height={barH}
+                    rx={barWidth / 4}
+                    fill={`url(#bar-${d.dateKey})`}
+                  >
+                    <title>{MOOD_CONFIG[d.mood].label}</title>
+                  </rect>
+                  {/* Inset highlight */}
+                  <rect
+                    x={x + 1}
+                    y={y + 1}
+                    width={barWidth - 2}
+                    height={Math.max(0, barH - 2)}
+                    rx={barWidth / 4 - 1}
+                    fill="none"
+                    stroke="rgba(255,255,255,0.15)"
+                    strokeWidth={0.5}
+                  />
+                  {/* Glow effect */}
+                  <rect
+                    x={x - 1}
+                    y={y - 1}
+                    width={barWidth + 2}
+                    height={barH + 2}
+                    rx={barWidth / 4 + 1}
+                    fill="none"
+                    stroke={color}
+                    strokeWidth={0.5}
+                    opacity={0.3}
+                  />
+                </>
               )}
               {/* Emoji on top */}
               {d.mood && (
                 <text
                   x={x + barWidth / 2}
-                  y={y - 4}
+                  y={y - 5}
                   textAnchor="middle"
                   fontSize={10}
                 >

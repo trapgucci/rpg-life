@@ -1,5 +1,5 @@
-import { Plus, FileText, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
-import { useState, useRef, useEffect } from 'react'
+import { Plus, FileText, MoreHorizontal, Pencil, Trash2, GripVertical } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { cn } from '../../lib/cn'
 import type { NoteFolder, NoteFolderId, NoteId } from '../../types/domain'
 
@@ -14,6 +14,7 @@ interface ReflectionSidebarProps {
   onEditFolder: (folder: NoteFolder) => void
   onDeleteFolder: (id: NoteFolderId) => void
   onDropNote?: (noteId: NoteId, folderId: NoteFolderId | null) => void
+  onReorderFolders?: (orderedIds: NoteFolderId[]) => void
 }
 
 export default function ReflectionSidebar({
@@ -27,9 +28,13 @@ export default function ReflectionSidebar({
   onEditFolder,
   onDeleteFolder,
   onDropNote,
+  onReorderFolders,
 }: ReflectionSidebarProps) {
   const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null)
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null)
+  // Folder reorder drag state
+  const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null)
+  const [folderDragOverId, setFolderDragOverId] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -41,14 +46,15 @@ export default function ReflectionSidebar({
     return () => document.removeEventListener('mousedown', handle)
   }, [contextMenu])
 
-  const handleFolderDragOver = (e: React.DragEvent, folderId: string | null) => {
+  // Note drop onto folder
+  const handleNoteDragOver = (e: React.DragEvent, folderId: string | null) => {
     if (!e.dataTransfer.types.includes('application/note-id')) return
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
     setDragOverFolderId(folderId ?? '__all__')
   }
 
-  const handleFolderDrop = (e: React.DragEvent, folderId: string | null) => {
+  const handleNoteDrop = (e: React.DragEvent, folderId: string | null) => {
     e.preventDefault()
     setDragOverFolderId(null)
     const noteId = e.dataTransfer.getData('application/note-id')
@@ -57,18 +63,69 @@ export default function ReflectionSidebar({
     }
   }
 
-  const handleFolderDragLeave = () => {
+  const handleNoteDragLeave = () => {
     setDragOverFolderId(null)
   }
+
+  // Folder reorder drag
+  const handleFolderDragStart = useCallback((e: React.DragEvent, folderId: string) => {
+    setDraggedFolderId(folderId)
+    e.dataTransfer.setData('application/folder-id', folderId)
+    e.dataTransfer.effectAllowed = 'move'
+
+    const el = e.currentTarget as HTMLElement
+    const clone = el.cloneNode(true) as HTMLElement
+    clone.style.width = '160px'
+    clone.style.maxHeight = '36px'
+    clone.style.overflow = 'hidden'
+    clone.style.opacity = '0.85'
+    clone.style.borderRadius = '10px'
+    clone.style.position = 'fixed'
+    clone.style.top = '-9999px'
+    clone.style.left = '-9999px'
+    document.body.appendChild(clone)
+    e.dataTransfer.setDragImage(clone, 80, 18)
+    requestAnimationFrame(() => document.body.removeChild(clone))
+  }, [])
+
+  const handleFolderDragOver = useCallback((e: React.DragEvent, folderId: string) => {
+    if (!e.dataTransfer.types.includes('application/folder-id')) return
+    e.preventDefault()
+    if (draggedFolderId && draggedFolderId !== folderId) {
+      setFolderDragOverId(folderId)
+    }
+  }, [draggedFolderId])
+
+  const handleFolderDrop = useCallback((e: React.DragEvent, targetId: string) => {
+    e.preventDefault()
+    setFolderDragOverId(null)
+    const sourceId = draggedFolderId
+    setDraggedFolderId(null)
+    if (!sourceId || sourceId === targetId || !onReorderFolders) return
+
+    const ids = folders.map((f) => f.id)
+    const fromIdx = ids.indexOf(sourceId)
+    const toIdx = ids.indexOf(targetId)
+    if (fromIdx < 0 || toIdx < 0) return
+
+    ids.splice(fromIdx, 1)
+    ids.splice(toIdx, 0, sourceId)
+    onReorderFolders(ids)
+  }, [draggedFolderId, folders, onReorderFolders])
+
+  const handleFolderDragEnd = useCallback(() => {
+    setDraggedFolderId(null)
+    setFolderDragOverId(null)
+  }, [])
 
   return (
     <div className="flex flex-col gap-1">
       {/* All notes */}
       <button
         onClick={() => onSelectFolder(null)}
-        onDragOver={(e) => handleFolderDragOver(e, null)}
-        onDrop={(e) => handleFolderDrop(e, null)}
-        onDragLeave={handleFolderDragLeave}
+        onDragOver={(e) => handleNoteDragOver(e, null)}
+        onDrop={(e) => handleNoteDrop(e, null)}
+        onDragLeave={handleNoteDragLeave}
         className={cn(
           'flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-all',
           activeFolderId === null
@@ -87,16 +144,38 @@ export default function ReflectionSidebar({
 
       {/* Folders */}
       {folders.map((folder) => (
-        <div key={folder.id} className="relative">
+        <div
+          key={folder.id}
+          className={cn(
+            'group relative',
+            folderDragOverId === folder.id && 'border-t-2 border-[var(--accent)] rounded-t-sm',
+            draggedFolderId === folder.id && 'opacity-40',
+          )}
+          draggable={!!onReorderFolders}
+          onDragStart={(e) => handleFolderDragStart(e, folder.id)}
+          onDragOver={(e) => {
+            handleNoteDragOver(e, folder.id)
+            handleFolderDragOver(e, folder.id)
+          }}
+          onDrop={(e) => {
+            if (e.dataTransfer.types.includes('application/folder-id')) {
+              handleFolderDrop(e, folder.id)
+            } else {
+              handleNoteDrop(e, folder.id)
+            }
+          }}
+          onDragLeave={() => {
+            handleNoteDragLeave()
+            setFolderDragOverId(null)
+          }}
+          onDragEnd={handleFolderDragEnd}
+        >
           <button
             onClick={() => onSelectFolder(folder.id)}
             onContextMenu={(e) => {
               e.preventDefault()
               setContextMenu({ id: folder.id, x: e.clientX, y: e.clientY })
             }}
-            onDragOver={(e) => handleFolderDragOver(e, folder.id)}
-            onDrop={(e) => handleFolderDrop(e, folder.id)}
-            onDragLeave={handleFolderDragLeave}
             className={cn(
               'flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-all',
               activeFolderId === folder.id
@@ -106,7 +185,10 @@ export default function ReflectionSidebar({
             )}
             style={activeFolderId === folder.id ? { color: folder.color } : undefined}
           >
-            <span className="shrink-0 text-base">{folder.icon}</span>
+            {onReorderFolders && (
+              <GripVertical className="h-3 w-3 shrink-0 text-[var(--fg-muted)] opacity-0 group-hover:opacity-50 cursor-grab" />
+            )}
+            <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: folder.color }} />
             <span className="flex-1 truncate">{folder.name}</span>
             <span className="text-xs opacity-60">{noteCounts[folder.id] ?? 0}</span>
             <button
@@ -114,7 +196,7 @@ export default function ReflectionSidebar({
                 e.stopPropagation()
                 setContextMenu(contextMenu?.id === folder.id ? null : { id: folder.id, x: 0, y: 0 })
               }}
-              className="icon-btn-compact h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 hover:opacity-100"
+              className="icon-btn-compact h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 hover:!opacity-100 transition-opacity"
               style={{ opacity: contextMenu?.id === folder.id ? 1 : undefined }}
             >
               <MoreHorizontal className="h-3.5 w-3.5" />

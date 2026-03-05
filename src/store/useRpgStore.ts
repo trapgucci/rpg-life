@@ -318,11 +318,13 @@ interface RpgStoreState {
 
   // Achievement actions
   getAchievements: () => Achievement[]
-  addAchievement: (achievement: Omit<Achievement, 'id' | 'createdAt' | 'updatedAt' | 'profileId' | 'unlocked' | 'unlockedAt' | 'currentProgress'>) => Achievement
+  addAchievement: (achievement: Omit<Achievement, 'id' | 'createdAt' | 'updatedAt' | 'profileId' | 'unlocked' | 'unlockedAt' | 'currentProgress' | 'sortOrder'>) => Achievement
   updateAchievement: (id: AchievementId, updater: (a: Achievement) => Achievement) => void
   deleteAchievement: (id: AchievementId) => void
+  reorderAchievements: (orderedIds: AchievementId[]) => void
   checkAchievements: () => void
   unlockAchievement: (id: AchievementId) => void
+  markAchievementReady: (id: AchievementId) => void
 
   // Craft actions
   getCraftRecipes: () => CraftRecipe[]
@@ -365,6 +367,7 @@ interface RpgStoreState {
   addNoteFolder: (name: string, icon?: string, color?: string) => NoteFolder
   updateNoteFolder: (id: NoteFolderId, updater: (f: NoteFolder) => NoteFolder) => void
   deleteNoteFolder: (id: NoteFolderId) => void
+  reorderNoteFolders: (orderedIds: NoteFolderId[]) => void
 
   // Note tag actions
   addNoteTag: (name: string, color?: string) => NoteTag
@@ -1903,16 +1906,21 @@ export const useRpgStore = create<RpgStoreState>()(
         addAchievement: (achievement) => {
           const profile = get().getActiveProfile()
           if (!profile) throw new Error('No active profile')
+          const groupId = achievement.groupId ?? null
+          const maxSortOrder = get().achievements
+            .filter((a) => a.profileId === profile.id && (a.groupId ?? null) === groupId)
+            .reduce((max, a) => Math.max(max, a.sortOrder ?? 0), -1)
           const newAchievement: Achievement = {
             ...achievement,
             id: crypto.randomUUID(),
             profileId: profile.id,
             unlocked: false,
             currentProgress: 0,
+            sortOrder: maxSortOrder + 1,
             createdAt: now(),
             updatedAt: now(),
           }
-          set((s) => ({ achievements: [newAchievement, ...s.achievements] }))
+          set((s) => ({ achievements: [...s.achievements, newAchievement] }))
           get().checkAchievements()
           return newAchievement
         },
@@ -1924,6 +1932,20 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         deleteAchievement: (id) => set((s) => ({ achievements: s.achievements.filter((a) => a.id !== id) })),
+
+        reorderAchievements: (orderedIds) => {
+          set((s) => ({
+            achievements: s.achievements.map((a) => {
+              const idx = orderedIds.indexOf(a.id)
+              if (idx === -1) return a
+              return { ...a, sortOrder: idx, updatedAt: now() }
+            }),
+          }))
+        },
+
+        markAchievementReady: (id) => {
+          get().updateAchievement(id, (a) => ({ ...a, readyToUnlock: true }))
+        },
 
         checkAchievements: () => {
           const { achievements, stats, getAttributes, unlockAchievement, tasks, usageHistory } = get()
@@ -2791,6 +2813,15 @@ export const useRpgStore = create<RpgStoreState>()(
           }))
         },
 
+        reorderNoteFolders: (orderedIds) => {
+          set((s) => ({
+            noteFolders: s.noteFolders.map((f) => {
+              const idx = orderedIds.indexOf(f.id)
+              return idx >= 0 ? { ...f, sortOrder: idx } : f
+            }),
+          }))
+        },
+
         addNoteTag: (name, color = '#6b7280') => {
           const { activeProfileId, noteTags } = get()
           const tag: NoteTag = {
@@ -3047,7 +3078,7 @@ export const useRpgStore = create<RpgStoreState>()(
           // Achievements unlocked
           const achievementsUnlocked = state.achievements
             .filter((a) => a.profileId === pid && a.unlockedAt && a.unlockedAt >= dayStart && a.unlockedAt <= dayEnd)
-            .map((a) => ({ achievementId: a.id, title: a.title, icon: a.icon }))
+            .map((a) => ({ achievementId: a.id, title: a.title, icon: a.icon, repeatable: a.repeatable, completionCount: a.completionCount }))
 
           // XP & coins from task completions
           let xpEarned = 0

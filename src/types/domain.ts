@@ -690,6 +690,8 @@ export interface Achievement {
   unlockedAt?: number
   /** Текущий прогресс (для отображения) */
   currentProgress: number
+  /** Порядок сортировки внутри папки (меньше = выше) */
+  sortOrder: number
   createdAt: number
   updatedAt: number
 }
@@ -874,7 +876,7 @@ export interface DailySnapshot {
   habitsNegative: { habitId: HabitId; title: string }[]
   itemsPurchased: { itemId: ItemId; name: string; count: number }[]
   itemsUsed: { itemId: ItemId; name: string; count: number }[]
-  achievementsUnlocked: { achievementId: AchievementId; title: string; icon: string }[]
+  achievementsUnlocked: { achievementId: AchievementId; title: string; icon: string; repeatable?: boolean; completionCount?: number }[]
   xpEarned: number
   coinsEarned: number
   coinsSpent: number

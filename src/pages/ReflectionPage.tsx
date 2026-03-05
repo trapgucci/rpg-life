@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
-import { Brain, BookOpen, Calendar } from 'lucide-react'
+import { Brain, BookOpen, Calendar, Plus, FileText } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
 import { getTodayKey } from '../lib/reflectionUtils'
@@ -40,6 +40,7 @@ export default function ReflectionPage() {
   const permanentDeleteNote = useRpgStore((s) => s.permanentDeleteNote)
   const emptyTrash = useRpgStore((s) => s.emptyTrash)
   const reorderNotes = useRpgStore((s) => s.reorderNotes)
+  const reorderNoteFolders = useRpgStore((s) => s.reorderNoteFolders)
 
   const folders = useMemo(
     () => rawFolders.filter((f) => f.profileId === activeProfileId).sort((a, b) => a.sortOrder - b.sortOrder),
@@ -218,23 +219,48 @@ export default function ReflectionPage() {
                     onEditFolder={handleEditFolder}
                     onDeleteFolder={handleDeleteFolder}
                     onDropNote={handleDropNoteToFolder}
+                    onReorderFolders={reorderNoteFolders}
                   />
                 </div>
 
-                {/* Mobile folder selector */}
-                <div className="md:hidden shrink-0">
-                  <select
-                    value={activeFolderId ?? '__all__'}
-                    onChange={(e) => setActiveFolderId(e.target.value === '__all__' ? null : e.target.value)}
-                    className="input w-full text-sm"
+                {/* Mobile folder chips */}
+                <div className="md:hidden shrink-0 flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-1">
+                  <button
+                    onClick={() => { setActiveFolderId(null); setShowTrash(false) }}
+                    className={cn(
+                      'flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all border',
+                      activeFolderId === null
+                        ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
+                        : 'bg-[var(--surface-card)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)]',
+                    )}
                   >
-                    <option value="__all__">Все заметки ({noteCounts['all'] ?? 0})</option>
-                    {folders.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.icon} {f.name} ({noteCounts[f.id] ?? 0})
-                      </option>
-                    ))}
-                  </select>
+                    <FileText className="h-3 w-3" />
+                    Все
+                    <span className="opacity-70">{noteCounts['all'] ?? 0}</span>
+                  </button>
+                  {folders.map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => { setActiveFolderId(f.id); setShowTrash(false) }}
+                      className={cn(
+                        'flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all border',
+                        activeFolderId === f.id
+                          ? 'text-white shadow-sm'
+                          : 'bg-[var(--surface-card)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)]',
+                      )}
+                      style={activeFolderId === f.id ? { backgroundColor: f.color, borderColor: f.color } : undefined}
+                    >
+                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: activeFolderId === f.id ? 'rgba(255,255,255,0.7)' : f.color }} />
+                      {f.name}
+                      <span className="opacity-70">{noteCounts[f.id] ?? 0}</span>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => { setEditingFolder(null); setFolderModalOpen(true) }}
+                    className="flex items-center gap-1 shrink-0 rounded-full border border-dashed border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--fg-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
                 </div>
 
                 {/* Note list or Trash */}

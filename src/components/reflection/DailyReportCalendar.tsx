@@ -65,14 +65,30 @@ export default function DailyReportCalendar({ reports, selectedDate, onSelectDat
     <div className="flex flex-col gap-2">
       {/* Month nav */}
       <div className="flex items-center justify-between">
-        <button onClick={prevMonth} className="icon-btn h-7 w-7">
-          <ChevronLeft className="h-4 w-4" />
+        <button
+          onClick={prevMonth}
+          className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
+          style={{
+            background: 'var(--surface-elevated)',
+            boxShadow: 'inset 0 1px 0 var(--neu-inset-light), 0 1px 3px var(--neu-shadow-dark)',
+            border: '1px solid var(--border)',
+          }}
+        >
+          <ChevronLeft className="h-4 w-4 text-[var(--fg-muted)]" />
         </button>
-        <span className="text-sm font-medium text-[var(--fg)]">
+        <span className="text-sm font-semibold text-[var(--fg)]">
           {MONTHS[viewMonth]} {viewYear}
         </span>
-        <button onClick={nextMonth} className="icon-btn h-7 w-7">
-          <ChevronRight className="h-4 w-4" />
+        <button
+          onClick={nextMonth}
+          className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
+          style={{
+            background: 'var(--surface-elevated)',
+            boxShadow: 'inset 0 1px 0 var(--neu-inset-light), 0 1px 3px var(--neu-shadow-dark)',
+            border: '1px solid var(--border)',
+          }}
+        >
+          <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
         </button>
       </div>
 
@@ -95,6 +111,7 @@ export default function DailyReportCalendar({ reports, selectedDate, onSelectDat
           const isToday = key === todayKey
           const isSelected = key === selectedDate
           const isFuture = key > todayKey
+          const moodColor = mood ? MOOD_CONFIG[mood as keyof typeof MOOD_CONFIG].color : undefined
 
           return (
             <button
@@ -102,22 +119,38 @@ export default function DailyReportCalendar({ reports, selectedDate, onSelectDat
               onClick={() => !isFuture && onSelectDate(key)}
               disabled={isFuture}
               className={cn(
-                'relative flex h-8 w-8 items-center justify-center rounded-lg text-xs transition-all mx-auto',
-                isSelected
-                  ? 'bg-[var(--accent)] text-white font-bold shadow-md'
-                  : isToday
-                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-bold'
-                    : isFuture
-                      ? 'text-[var(--fg-muted)] opacity-30'
-                      : 'text-[var(--fg)] hover:bg-[var(--surface-elevated)]',
+                'relative flex h-8 w-8 items-center justify-center rounded-lg text-xs transition-all duration-200 mx-auto',
+                isFuture && 'text-[var(--fg-muted)] opacity-30',
+                !isSelected && !isToday && !isFuture && 'text-[var(--fg)] hover:bg-[var(--surface-elevated)]',
               )}
+              style={
+                isSelected
+                  ? {
+                      background: `linear-gradient(145deg, var(--accent), var(--accent-light, var(--accent)))`,
+                      color: 'white',
+                      fontWeight: 700,
+                      boxShadow: '0 2px 8px var(--accent-glow, rgba(99,102,241,0.3)), inset 0 1px 0 rgba(255,255,255,0.2)',
+                    }
+                  : isToday
+                    ? {
+                        background: 'var(--accent-subtle)',
+                        color: 'var(--accent)',
+                        fontWeight: 700,
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)',
+                        border: '1px solid var(--border-accent)',
+                      }
+                    : undefined
+              }
             >
               {day}
               {/* Mood dot */}
               {mood && !isSelected && (
                 <div
                   className="absolute -bottom-0.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full"
-                  style={{ backgroundColor: MOOD_CONFIG[mood as keyof typeof MOOD_CONFIG].color }}
+                  style={{
+                    backgroundColor: moodColor,
+                    boxShadow: `0 0 4px ${moodColor}60`,
+                  }}
                 />
               )}
             </button>

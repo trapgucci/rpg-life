@@ -10,7 +10,7 @@ const LEVELS: MoodLevel[] = [1, 2, 3, 4, 5]
 
 export default function MoodTracker({ value, onChange }: MoodTrackerProps) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3">
       {LEVELS.map((level) => {
         const cfg = MOOD_CONFIG[level]
         const isSelected = value === level
@@ -20,15 +20,19 @@ export default function MoodTracker({ value, onChange }: MoodTrackerProps) {
             onClick={() => onChange(level)}
             title={cfg.label}
             className={cn(
-              'flex h-11 w-11 items-center justify-center rounded-xl text-2xl transition-all duration-200',
+              'flex h-12 w-12 items-center justify-center rounded-xl text-2xl transition-all duration-200',
               isSelected
-                ? 'scale-125 shadow-lg ring-2'
-                : 'opacity-50 hover:opacity-100 hover:scale-110',
+                ? 'scale-125'
+                : 'opacity-40 hover:opacity-80 hover:scale-110',
             )}
-            style={{
-              backgroundColor: isSelected ? cfg.color + '20' : undefined,
-              ringColor: isSelected ? cfg.color : undefined,
-              boxShadow: isSelected ? `0 0 12px ${cfg.color}40` : undefined,
+            style={isSelected ? {
+              background: `linear-gradient(145deg, ${cfg.color}30, ${cfg.color}15)`,
+              boxShadow: `0 0 16px ${cfg.color}35, inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 8px ${cfg.color}20`,
+              border: `1.5px solid ${cfg.color}40`,
+            } : {
+              background: 'var(--surface-elevated)',
+              boxShadow: 'inset 0 1px 0 var(--neu-inset-light), 0 2px 4px var(--neu-shadow-dark)',
+              border: '1px solid var(--border)',
             }}
           >
             {cfg.emoji}

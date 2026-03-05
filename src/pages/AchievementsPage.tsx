@@ -68,6 +68,7 @@ function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDet
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const deleteAchievement = useRpgStore((s) => s.deleteAchievement)
   const unlockAchievement = useRpgStore((s) => s.unlockAchievement)
+  const markAchievementReady = useRpgStore((s) => s.markAchievementReady)
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const shopItems = useRpgStore((s) => s.shopItems)
@@ -269,8 +270,21 @@ function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDet
           </p>
         )}
 
-        {/* Unlock button — manual for custom, or claim for ready non-custom */}
-        {!achievement.unlocked && (achievement.condition.type === 'custom' || achievement.readyToUnlock) && (
+        {/* Unlock button — two-step for custom: first mark ready, then claim */}
+        {!achievement.unlocked && achievement.condition.type === 'custom' && !achievement.readyToUnlock && (
+          <button
+            type="button"
+            onClick={() => {
+              markAchievementReady(achievement.id)
+              onClose()
+            }}
+            className="mt-4 btn-primary text-sm py-2 w-full flex items-center justify-center"
+          >
+            <Unlock className="h-4 w-4 mr-2" />
+            Разблокировать
+          </button>
+        )}
+        {!achievement.unlocked && achievement.readyToUnlock && (
           <button
             type="button"
             onClick={() => {
@@ -279,8 +293,8 @@ function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDet
             }}
             className="mt-4 btn-primary text-sm py-2 w-full flex items-center justify-center"
           >
-            <Unlock className="h-4 w-4 mr-2" />
-            {achievement.condition.type === 'custom' ? 'Разблокировать' : 'Забрать награду'}
+            <Trophy className="h-4 w-4 mr-2" />
+            Забрать награду
           </button>
         )}
 
@@ -1966,9 +1980,15 @@ interface AchievementListItemProps {
   achievement: Achievement
   onClick: () => void
   groupColor?: string
+  draggable?: boolean
+  onDragStart?: (e: React.DragEvent) => void
+  onDragOver?: (e: React.DragEvent) => void
+  onDrop?: (e: React.DragEvent) => void
+  onDragEnd?: () => void
+  isDragOver?: boolean
 }
 
-function AchievementListItem({ achievement, onClick, groupColor }: AchievementListItemProps) {
+function AchievementListItem({ achievement, onClick, groupColor, draggable, onDragStart, onDragOver, onDrop, onDragEnd, isDragOver }: AchievementListItemProps) {
   const safeCurrentProgress = Number.isFinite(achievement.currentProgress) ? achievement.currentProgress : 0
   const safeTargetValue = Number.isFinite(achievement.condition.targetValue) ? achievement.condition.targetValue : 0
   const progress = safeTargetValue > 0
@@ -1992,14 +2012,22 @@ function AchievementListItem({ achievement, onClick, groupColor }: AchievementLi
   }, [achievement, shopItems])
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick() }}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
       className={cn(
-        'flex items-center gap-3 rounded-xl p-3 transition-all duration-200 text-left w-full',
+        'flex items-center gap-3 rounded-xl p-3 transition-all duration-200 text-left w-full cursor-pointer',
         'bg-[var(--surface-card)] border border-[var(--border)] hover:border-[var(--border-accent)]',
         achievement.unlocked ? 'hover:shadow-md' : 'opacity-80 hover:opacity-100',
-        isReady && 'achievement-ready-glow opacity-100'
+        isReady && 'achievement-ready-glow opacity-100',
+        isDragOver && 'border-t-2 border-t-[var(--accent)]'
       )}
     >
       {/* Icon */}
@@ -2125,7 +2153,7 @@ function AchievementListItem({ achievement, onClick, groupColor }: AchievementLi
           </div>
         )}
       </div>
-    </button>
+    </div>
   )
 }
 
@@ -2175,6 +2203,11 @@ export default function AchievementsPage() {
 
   // Folder delete confirm
   const [deletingFolderId, setDeletingFolderId] = useState<AchievementGroupId | null>(null)
+
+  // Drag & drop achievements
+  const reorderAchievements = useRpgStore((s) => s.reorderAchievements)
+  const draggedAchRef = useRef<AchievementId | null>(null)
+  const [dragOverAchId, setDragOverAchId] = useState<AchievementId | null>(null)
 
   useEffect(() => {
     if (isAddingFolder && newFolderInputRef.current) newFolderInputRef.current.focus()
@@ -2229,6 +2262,10 @@ export default function AchievementsPage() {
       const arr = map.get(g) ?? []
       arr.push(a)
       map.set(g, arr)
+    })
+    // Sort each group by sortOrder so drag & drop reordering is reflected
+    map.forEach((arr, key) => {
+      map.set(key, arr.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)))
     })
     return map
   }, [achievements])
@@ -2471,6 +2508,37 @@ export default function AchievementsPage() {
                   achievement={achievement}
                   onClick={() => setSelectedAchievement(achievement)}
                   groupColor={openFolder?.color}
+                  draggable
+                  isDragOver={dragOverAchId === achievement.id}
+                  onDragStart={(e) => {
+                    draggedAchRef.current = achievement.id
+                    e.dataTransfer.effectAllowed = 'move'
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    if (draggedAchRef.current && draggedAchRef.current !== achievement.id) {
+                      setDragOverAchId(achievement.id)
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    setDragOverAchId(null)
+                    const sourceId = draggedAchRef.current
+                    draggedAchRef.current = null
+                    if (!sourceId || sourceId === achievement.id) return
+                    const ids = openFolderAchievements.map((a) => a.id)
+                    const fromIdx = ids.indexOf(sourceId)
+                    const toIdx = ids.indexOf(achievement.id)
+                    if (fromIdx === -1 || toIdx === -1) return
+                    const reordered = [...ids]
+                    reordered.splice(fromIdx, 1)
+                    reordered.splice(toIdx, 0, sourceId)
+                    reorderAchievements(reordered)
+                  }}
+                  onDragEnd={() => {
+                    draggedAchRef.current = null
+                    setDragOverAchId(null)
+                  }}
                 />
               ))}
             </div>

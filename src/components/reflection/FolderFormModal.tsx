@@ -2,8 +2,12 @@ import { useState, useEffect } from 'react'
 import Modal from '../Modal'
 import type { NoteFolder } from '../../types/domain'
 
-const FOLDER_ICONS = ['📁', '📂', '📝', '💡', '🎯', '💪', '🧠', '🎨', '🎬', '📚', '🎮', '🍳', '🏃', '❤️', '⭐', '🔥']
-const FOLDER_COLORS = ['#14b8a6', '#6366f1', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#22c55e', '#f97316', '#3b82f6']
+const FOLDER_COLORS = [
+  '#14b8a6', '#6366f1', '#f59e0b', '#ef4444', '#8b5cf6',
+  '#ec4899', '#06b6d4', '#22c55e', '#f97316', '#3b82f6',
+  '#a855f7', '#84cc16', '#e11d48', '#0891b2', '#d946ef',
+  '#64748b', '#ea580c', '#059669', '#7c3aed', '#dc2626',
+]
 
 interface FolderFormModalProps {
   isOpen: boolean
@@ -14,21 +18,19 @@ interface FolderFormModalProps {
 
 export default function FolderFormModal({ isOpen, onClose, onSave, folder }: FolderFormModalProps) {
   const [name, setName] = useState(folder?.name ?? '')
-  const [icon, setIcon] = useState(folder?.icon ?? '📁')
   const [color, setColor] = useState(folder?.color ?? '#14b8a6')
 
   // Reset state when modal opens with new folder
   useEffect(() => {
     if (isOpen) {
       setName(folder?.name ?? '')
-      setIcon(folder?.icon ?? '📁')
       setColor(folder?.color ?? '#14b8a6')
     }
   }, [isOpen, folder])
 
   const handleSave = () => {
     if (!name.trim()) return
-    onSave(name.trim(), icon, color)
+    onSave(name.trim(), '', color)
     onClose()
   }
 
@@ -47,26 +49,6 @@ export default function FolderFormModal({ isOpen, onClose, onSave, folder }: Fol
             autoFocus
             onKeyDown={(e) => e.key === 'Enter' && handleSave()}
           />
-        </div>
-
-        {/* Icon */}
-        <div>
-          <label className="mb-1 block text-sm font-medium text-[var(--fg)]">Иконка</label>
-          <div className="flex flex-wrap gap-2">
-            {FOLDER_ICONS.map((emoji) => (
-              <button
-                key={emoji}
-                onClick={() => setIcon(emoji)}
-                className={`flex h-9 w-9 items-center justify-center rounded-lg text-lg transition-all ${
-                  icon === emoji
-                    ? 'bg-[var(--accent-subtle)] ring-2 ring-[var(--accent)] scale-110'
-                    : 'bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
-                }`}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Color */}
