@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
 import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
-import { X, Pencil, Trash2, Sparkles, CheckCircle2, Dice5, Crosshair, Search, Package, Folder, CheckSquare, Hash, ListChecks, ChevronDown, ChevronRight, Puzzle, Gift, TrendingUp, Percent, Gamepad2, Clapperboard } from 'lucide-react'
+import { X, Pencil, Trash2, Sparkles, CheckCircle2, Dice5, Crosshair, Search, Package, Folder, CheckSquare, Hash, ListChecks, ChevronDown, ChevronRight, Puzzle, Gift, TrendingUp, Percent, Gamepad2, Clapperboard, Coins, Gem } from 'lucide-react'
 
 const KIND_ICON_MAP = {
   checkbox: CheckSquare,
@@ -25,6 +26,7 @@ interface RecipeDetailPanelProps {
 }
 
 export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPanelProps) {
+  const navigate = useNavigate()
   const updateRecipe = useRpgStore((s) => s.updateCraftRecipe)
   const deleteRecipe = useRpgStore((s) => s.deleteCraftRecipe)
   const craftItem = useRpgStore((s) => s.craftItem)
@@ -403,10 +405,10 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                         <p className="text-xs text-[var(--fg-muted)] mt-0.5">
                           При крафте вместо предмета вы получите 70% его стоимости
                           {(resultItem?.cost[CURRENCY_IDS.COINS] ?? 0) > 0 && (
-                            <span className="font-bold text-red-600 dark:text-red-400"> 🪙 {Math.floor((resultItem.cost[CURRENCY_IDS.COINS] ?? 0) * 0.7)}</span>
+                            <span className="inline-flex items-center gap-0.5 font-bold text-red-600 dark:text-red-400 ml-1"><Coins className="h-3 w-3" /> {Math.floor((resultItem.cost[CURRENCY_IDS.COINS] ?? 0) * 0.7)}</span>
                           )}
                           {(resultItem?.cost[CURRENCY_IDS.GEMS] ?? 0) > 0 && (
-                            <span className="font-bold text-blue-500"> 💎 {Math.floor((resultItem.cost[CURRENCY_IDS.GEMS] ?? 0) * 0.7)}</span>
+                            <span className="inline-flex items-center gap-0.5 font-bold text-blue-500 ml-1"><Gem className="h-3 w-3" /> {Math.floor((resultItem.cost[CURRENCY_IDS.GEMS] ?? 0) * 0.7)}</span>
                           )}
                         </p>
                       </div>
@@ -424,10 +426,10 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                         <p className="text-xs text-[var(--fg-muted)] mt-0.5">
                           При крафте вместо предмета вы получите 80% его стоимости
                           {(resultItem?.cost[CURRENCY_IDS.COINS] ?? 0) > 0 && (
-                            <span className="font-bold text-amber-600 dark:text-amber-400"> 🪙 {Math.floor((resultItem.cost[CURRENCY_IDS.COINS] ?? 0) * 0.8)}</span>
+                            <span className="inline-flex items-center gap-0.5 font-bold text-amber-600 dark:text-amber-400 ml-1"><Coins className="h-3 w-3" /> {Math.floor((resultItem.cost[CURRENCY_IDS.COINS] ?? 0) * 0.8)}</span>
                           )}
                           {(resultItem?.cost[CURRENCY_IDS.GEMS] ?? 0) > 0 && (
-                            <span className="font-bold text-blue-500"> 💎 {Math.floor((resultItem.cost[CURRENCY_IDS.GEMS] ?? 0) * 0.8)}</span>
+                            <span className="inline-flex items-center gap-0.5 font-bold text-blue-500 ml-1"><Gem className="h-3 w-3" /> {Math.floor((resultItem.cost[CURRENCY_IDS.GEMS] ?? 0) * 0.8)}</span>
                           )}
                         </p>
                       </div>
@@ -442,8 +444,8 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                       <span className="text-emerald-500 shrink-0">✅</span>
                       <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                         {craftCompensation.outOfStock ? 'Компенсация за отсутствие в магазине:' : 'Компенсация выдана:'}
-                        {craftCompensation.coins > 0 && <span className="ml-1">🪙 {craftCompensation.coins}</span>}
-                        {craftCompensation.gems > 0 && <span className="ml-1">💎 {craftCompensation.gems}</span>}
+                        {craftCompensation.coins > 0 && <span className="inline-flex items-center gap-0.5 ml-1"><Coins className="h-3 w-3" /> {craftCompensation.coins}</span>}
+                        {craftCompensation.gems > 0 && <span className="inline-flex items-center gap-0.5 ml-1"><Gem className="h-3 w-3" /> {craftCompensation.gems}</span>}
                       </p>
                     </div>
                   </div>
@@ -453,12 +455,12 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                   <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-[var(--border)]">
                     {coinCost > 0 && (
                       <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-600 ring-1 ring-inset ring-amber-400/20">
-                        🪙 {coinCost}
+                        <Coins className="h-3.5 w-3.5" /> {coinCost}
                       </span>
                     )}
                     {gemCost > 0 && (
                       <span className="inline-flex items-center gap-1 rounded-lg bg-blue-500/10 px-2.5 py-1 text-xs font-bold text-blue-500 ring-1 ring-inset ring-blue-400/20">
-                        💎 {gemCost}
+                        <Gem className="h-3.5 w-3.5" /> {gemCost}
                       </span>
                     )}
                   </div>
@@ -537,10 +539,14 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                       {fragmentSource.linkedTaskIds.slice(0, 5).map((taskId: string) => {
                         const task = allTasks.find((t) => t.id === taskId)
                         return task ? (
-                          <span key={taskId} className="inline-flex items-center gap-1 rounded-lg bg-[var(--surface-elevated)] px-2 py-1 text-[11px] text-[var(--fg)]">
+                          <button
+                            key={taskId}
+                            onClick={() => navigate(`/?taskId=${taskId}`)}
+                            className="inline-flex items-center gap-1 rounded-lg bg-[var(--surface-elevated)] ring-1 ring-inset ring-[var(--border)] px-2 py-1 text-[11px] text-[var(--fg)] hover:ring-[var(--accent)] hover:bg-[var(--accent-muted)] transition-all cursor-pointer"
+                          >
                             <Puzzle className="h-2.5 w-2.5 shrink-0" style={{ color: themeColor }} />
                             <span className="truncate max-w-[120px]">{task.title}</span>
-                          </span>
+                          </button>
                         ) : null
                       })}
                       {fragmentSource.linkedTaskIds.length > 5 && (
@@ -574,12 +580,12 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                     <div className="flex items-center gap-2">
                       {coinCost > 0 && (
                         <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400">
-                          🪙 {coinCost}
+                          <Coins className="h-3 w-3" /> {coinCost}
                         </span>
                       )}
                       {gemCost > 0 && (
                         <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-500">
-                          💎 {gemCost}
+                          <Gem className="h-3 w-3" /> {gemCost}
                         </span>
                       )}
                     </div>
@@ -772,7 +778,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col items-center gap-2 rounded-xl bg-gradient-to-b from-amber-500/12 to-amber-500/4 ring-1 ring-inset ring-amber-400/20 p-3">
                   <div className="flex items-center gap-1.5">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/20 text-sm">🪙</span>
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 shadow-sm"><Coins className="h-3.5 w-3.5 text-white" /></span>
                     <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Монеты</span>
                   </div>
                   <input
@@ -785,7 +791,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                 </div>
                 <div className="flex flex-col items-center gap-2 rounded-xl bg-gradient-to-b from-blue-500/12 to-blue-500/4 ring-1 ring-inset ring-blue-400/20 p-3">
                   <div className="flex items-center gap-1.5">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-500/20 text-sm">💎</span>
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-purple-400 to-violet-600 shadow-sm"><Gem className="h-3.5 w-3.5 text-white" /></span>
                     <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Кристаллы</span>
                   </div>
                   <input
@@ -924,8 +930,8 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
             {isResultOutOfStock ? 'Получить компенсацию' : 'Крафтить!'}
             {hasCost && !isResultOutOfStock && (
               <span className="ml-1 flex items-center gap-2 text-sm opacity-90">
-                {coinCost > 0 && <span>🪙 {coinCost}</span>}
-                {gemCost > 0 && <span>💎 {gemCost}</span>}
+                {coinCost > 0 && <span className="inline-flex items-center gap-0.5"><Coins className="h-3.5 w-3.5" /> {coinCost}</span>}
+                {gemCost > 0 && <span className="inline-flex items-center gap-0.5"><Gem className="h-3.5 w-3.5" /> {gemCost}</span>}
               </span>
             )}
           </button>

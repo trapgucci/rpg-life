@@ -2,7 +2,7 @@ import { useState } from 'react'
 import {
   Settings, User, Palette, Bell, Database,
   Plus, Pencil, Trash2, X, Save, Download, Upload,
-  Sun, Moon, Monitor, Check, AlertTriangle, Clock, FolderOpen
+  Sun, Moon, Monitor, Check, AlertTriangle, Clock, FolderOpen, FlaskConical
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
@@ -10,6 +10,7 @@ import type { Attribute, ThemeMode, AccentColor } from '../types/domain'
 import { ACCENT_COLORS } from '../types/domain'
 import ConfirmModal from '../components/ConfirmModal'
 import { vaultStorage } from '../lib/vaultStorage'
+import { generateSeedData } from '../lib/seedData'
 
 // ─── Profile Section ────────────────────────────────────────────────────────
 
@@ -557,6 +558,25 @@ function DataSection() {
           Импорт
         </button>
       </div>
+
+      <button
+        type="button"
+        onClick={() => {
+          if (confirm('Загрузить тестовые данные? Текущие данные будут заменены.')) {
+            const json = generateSeedData()
+            if (importData(json)) {
+              // Даём время persist middleware записать данные (дебаунс 500мс)
+              setTimeout(() => window.location.reload(), 700)
+            } else {
+              alert('Ошибка загрузки тестовых данных')
+            }
+          }
+        }}
+        className="w-full flex items-center justify-center gap-2 rounded-xl bg-purple-500/10 py-3 text-purple-500 font-medium transition-all hover:bg-purple-500/20 mb-3"
+      >
+        <FlaskConical className="h-4 w-4" />
+        Загрузить тестовые данные
+      </button>
 
       <button
         type="button"

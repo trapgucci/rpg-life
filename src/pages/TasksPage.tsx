@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { useSearchParams } from 'react-router-dom'
 import { cn } from '../lib/cn'
 import { CheckSquare, Plus, Sparkles, Target, Folder, Pencil, Trash2, X, Archive, ArrowUpDown, ArrowUp, ArrowDown, Search, ChevronDown, List, FlaskConical } from 'lucide-react'
 import TaskCreateForm from '../components/TaskCreateForm'
@@ -72,6 +73,7 @@ export default function TasksPage() {
     [taskGroupsRaw, activeProfileId]
   )
 
+  const [searchParams, setSearchParams] = useSearchParams()
   const [selectedGroupId, setSelectedGroupId] = useState<TaskGroupId | null>(ALL_GROUPS_ID)
   const [selectedId, setSelectedId] = useState<TaskRpg['id'] | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -86,6 +88,17 @@ export default function TasksPage() {
   const groupSelectorRef = useRef<HTMLDivElement>(null)
   const groupButtonRef = useRef<HTMLButtonElement>(null)
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
+
+  // Навигация к задаче по ?taskId= (например, из раздела Крафт)
+  useEffect(() => {
+    const taskId = searchParams.get('taskId')
+    if (taskId) {
+      setSelectedId(taskId)
+      setTaskFilter('all')
+      setSelectedGroupId(ALL_GROUPS_ID)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   // Сброс recurring задач: при монтировании, каждые 60с, и при возврате на вкладку
   useEffect(() => {
