@@ -134,20 +134,20 @@ function RpgToastContent({ options, toastId }: { options: RpgToastOptions; toast
             </p>
           )}
           {hasRewards && (
-            <div className="flex items-center gap-2.5 mt-1.5">
-              {options.coins! > 0 && (
-                <span className="flex items-center gap-1 text-[13px] font-semibold text-amber-600 dark:text-amber-400">
-                  <Coins className="h-3.5 w-3.5" /> +{options.coins}
+            <div className="flex items-center gap-1.5 mt-1.5">
+              {options.xp! > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-lg bg-blue-500/15 px-2 py-0.5 text-[12px] font-semibold text-blue-500 dark:text-blue-400 ring-1 ring-inset ring-blue-500/20">
+                  <Zap className="h-3 w-3" /> +{options.xp} XP
                 </span>
               )}
-              {options.xp! > 0 && (
-                <span className="flex items-center gap-1 text-[13px] font-semibold text-blue-500 dark:text-blue-400">
-                  <Zap className="h-3.5 w-3.5" /> +{options.xp}
+              {options.coins! > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/15 px-2 py-0.5 text-[12px] font-semibold text-amber-600 dark:text-amber-400 ring-1 ring-inset ring-amber-400/20">
+                  <Coins className="h-3 w-3" /> +{options.coins}
                 </span>
               )}
               {options.gems! > 0 && (
-                <span className="flex items-center gap-1 text-[13px] font-semibold text-purple-500 dark:text-purple-400">
-                  <Gem className="h-3.5 w-3.5" /> +{options.gems}
+                <span className="inline-flex items-center gap-1 rounded-lg bg-purple-500/15 px-2 py-0.5 text-[12px] font-semibold text-purple-500 dark:text-purple-400 ring-1 ring-inset ring-purple-500/20">
+                  <Gem className="h-3 w-3" /> +{options.gems}
                 </span>
               )}
             </div>
@@ -254,11 +254,11 @@ export function rpgToast(options: RpgToastOptions) {
   if (options.type === 'achievement_complete') {
     return toast.custom(
       (id) => <AchievementCompleteToastContent options={options} toastId={id} />,
-      { duration: options.duration ?? 5000, position: 'bottom-right' },
+      { duration: options.duration ?? 5000, position: 'bottom-right', unstyled: true },
     )
   }
   return toast.custom(
     (id) => <RpgToastContent options={options} toastId={id} />,
-    { duration: options.duration ?? 3000 },
+    { duration: options.duration ?? 3000, unstyled: true },
   )
 }

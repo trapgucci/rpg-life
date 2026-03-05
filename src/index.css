@@ -998,6 +998,14 @@ html.dark,
   animation: slide-up 0.3s ease-out;
 }
 
+/* Sonner custom toast — remove default container styles */
+[data-sonner-toast][data-styled="false"] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
 /* RPG Toast shimmer sweep */
 @keyframes rpg-toast-shimmer {
   0% { transform: translateX(-100%) skewX(-12deg); }

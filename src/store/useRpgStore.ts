@@ -370,6 +370,8 @@ import type { PersistStorage, StorageValue } from 'zustand/middleware'
 let _writeTimer: ReturnType<typeof setTimeout> | null = null
 let _pendingWrite: (() => Promise<void>) | null = null
 const WRITE_DEBOUNCE_MS = 500
+const WRITE_MAX_WAIT_MS = 3000
+let _firstChangeAt: number | null = null
 let _hydrationComplete = false
 
 function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
@@ -515,15 +517,33 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
             vaultStorage.write('daily-condition-entries.json', state.dailyConditionEntries ?? []),
           ])
           _pendingWrite = null
+          _firstChangeAt = null
         } catch (err) {
           console.error('[vault] Failed to write state:', err)
         }
       }
 
-      // Debounce writes to avoid excessive disk I/O
+      // Debounce writes to avoid excessive disk I/O, but enforce maxWait
       _pendingWrite = doWrite
       if (_writeTimer) clearTimeout(_writeTimer)
-      _writeTimer = setTimeout(doWrite, WRITE_DEBOUNCE_MS)
+
+      const now = Date.now()
+      if (_firstChangeAt === null) _firstChangeAt = now
+
+      const elapsed = now - _firstChangeAt
+      if (elapsed >= WRITE_MAX_WAIT_MS) {
+        // Превышен maxWait — записать немедленно
+        _firstChangeAt = null
+        _writeTimer = null
+        doWrite()
+      } else {
+        // Обычный дебаунс, но не дольше оставшегося maxWait
+        const delay = Math.min(WRITE_DEBOUNCE_MS, WRITE_MAX_WAIT_MS - elapsed)
+        _writeTimer = setTimeout(() => {
+          _firstChangeAt = null
+          doWrite()
+        }, delay)
+      }
     },
 
     removeItem: async (): Promise<void> => {
@@ -538,13 +558,28 @@ export function flushVaultWrites() {
     clearTimeout(_writeTimer)
     _writeTimer = null
   }
+  _firstChangeAt = null
   if (_pendingWrite) {
     _pendingWrite()
   }
 }
 
-// Flush pending writes when the window is about to close
+// Expose flush for Electron close handler & browser beforeunload
 if (typeof window !== 'undefined') {
+  (window as any).__flushAndClose = async () => {
+    await new Promise<void>((resolve) => {
+      if (!_pendingWrite) { resolve(); return }
+      if (_writeTimer) {
+        clearTimeout(_writeTimer)
+        _writeTimer = null
+      }
+      _firstChangeAt = null
+      _pendingWrite().then(resolve).catch(resolve)
+    })
+    window.close()
+  }
+
+  // Для браузера (dev mode) — обычный beforeunload
   window.addEventListener('beforeunload', flushVaultWrites)
 }
 

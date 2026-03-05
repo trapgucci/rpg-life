@@ -32,6 +32,19 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   }
+
+  // Flush pending vault writes before closing
+  let isClosing = false
+  mainWindow.on('close', (e) => {
+    if (isClosing) return
+    isClosing = true
+    e.preventDefault()
+    mainWindow.webContents.executeJavaScript('window.__flushAndClose && window.__flushAndClose()').catch(() => {})
+    // Fallback: если рендерер не отвечает за 3 секунды — закрыть принудительно
+    setTimeout(() => {
+      mainWindow.destroy()
+    }, 3000)
+  })
 }
 
 // ─── IPC Handlers ───────────────────────────────────────────────────────────

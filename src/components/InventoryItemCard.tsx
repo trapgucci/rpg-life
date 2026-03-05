@@ -38,7 +38,7 @@ export default memo(function InventoryItemCard({
       onClick={onClick}
       className={cn(
         'group relative flex flex-col items-center rounded-2xl p-3 text-center transition-all duration-200',
-        'bg-[var(--surface-card)] backdrop-blur-lg overflow-hidden min-w-0',
+        'bg-[var(--surface-card)] backdrop-blur-lg min-w-0',
         'border border-[var(--border)]',
         'hover:border-[var(--border-accent)] hover:shadow-lg hover:scale-[1.02]',
       )}

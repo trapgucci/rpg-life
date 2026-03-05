@@ -885,7 +885,7 @@ export default function ShopPage() {
                 </p>
               </div>
             ) : (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 p-1">
                 {filteredItems.map((item) => (
                   <ShopItemCard
                     key={item.id}
@@ -911,7 +911,7 @@ export default function ShopPage() {
                 </p>
               </div>
             ) : (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 p-1">
                 {filteredRecipes.map((recipe) => (
                   <RecipeCard
                     key={recipe.id}
