@@ -238,7 +238,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
     const result = craftItem(recipe.id)
     if (result && typeof result === 'object' && 'compensated' in result) {
       setCraftCompensation({ coins: result.coins, gems: result.gems, outOfStock: result.outOfStock })
-      rpgToast({ title: `Компенсация за ${resultItem?.name ?? 'предмет'}`, type: 'info', coins: result.coins, gems: result.gems })
+      rpgToast({ title: `Компенсация за ${resultItem?.name ?? 'предмет'}`, type: 'info', coins: result.coins, gems: result.gems, category: 'toastCraft' })
     } else {
       rpgToast({ title: `Скрафчено: ${resultItem?.name ?? recipe.name}!`, type: 'loot' })
     }

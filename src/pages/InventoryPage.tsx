@@ -231,7 +231,7 @@ export default function InventoryPage() {
     // Plain item used
     const usedItem = shopItems.find((i) => i.id === itemId)
     if (usedItem) {
-      rpgToast({ title: `Использовано: ${usedItem.name}`, type: 'success' })
+      rpgToast({ title: `Использовано: ${usedItem.name}`, type: 'success', category: 'toastTaskActions' })
     }
     // Close modal if item is fully consumed
     const entry = inventory.find((e) => e.itemId === itemId)
@@ -285,7 +285,7 @@ export default function InventoryPage() {
       }))
     }
     removeFromInventory(deletingItemId, deleteQuantity)
-    rpgToast({ title: `${item?.name ?? 'Предмет'} удалён из инвентаря`, type: 'info' })
+    rpgToast({ title: `${item?.name ?? 'Предмет'} удалён из инвентаря`, type: 'info', category: 'toastTaskActions' })
     // Close modal if removing last units
     if (detailModalItemId === deletingItemId) {
       const entry = inventory.find((e) => e.itemId === deletingItemId)

@@ -901,6 +901,12 @@ export const ACCENT_COLORS: Record<AccentColor, { light: string; dark: string; n
 export interface AppSettings {
   theme: ThemeMode
   accentColor: AccentColor
+  /** Аватар персонажа (эмодзи) */
+  avatar: string
+  /** Компактный режим интерфейса */
+  compactMode: boolean
+  /** Анимации вкл/выкл */
+  animationsEnabled: boolean
   notificationsEnabled: boolean
   notifyDailyTasks: boolean
   notifyAchievements: boolean
@@ -919,11 +925,24 @@ export interface AppSettings {
   }
   /** Сколько записей отображать в истории инвентаря */
   historyDisplayLimit: number
+  /** Toast-уведомления по категориям */
+  toastTaskComplete: boolean
+  toastTaskCreate: boolean
+  toastTaskActions: boolean
+  toastPurchases: boolean
+  toastAchievements: boolean
+  toastCraft: boolean
+  toastErrors: boolean
+  /** Летающие монеты/самоцветы при выполнении задачи */
+  toastFloatingRewards: boolean
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'light',
   accentColor: 'blue',
+  avatar: '🧙',
+  compactMode: false,
+  animationsEnabled: true,
   notificationsEnabled: true,
   notifyDailyTasks: true,
   notifyAchievements: true,
@@ -938,7 +957,15 @@ export const DEFAULT_SETTINGS: AppSettings = {
     hard: 100,
     veryHard: 300,
   },
-  historyDisplayLimit: 50,
+  historyDisplayLimit: 300,
+  toastTaskComplete: true,
+  toastTaskCreate: true,
+  toastTaskActions: true,
+  toastPurchases: true,
+  toastAchievements: true,
+  toastCraft: true,
+  toastErrors: true,
+  toastFloatingRewards: true,
 }
 
 // ─── Database schema (SQLite-ready) ─────────────────────────────────────────

@@ -795,6 +795,18 @@ export const useRpgStore = create<RpgStoreState>()(
           if (currencyId === CURRENCY_IDS.GEMS) {
             updateStats((s) => ({ totalGemsEarned: (s.totalGemsEarned ?? 0) + amount }))
           }
+          // Pulse animation on currency icon in header
+          if (typeof window !== 'undefined' && amount > 0 && get().settings.toastFloatingRewards !== false) {
+            const type = currencyId === CURRENCY_IDS.COINS ? 'coins' : currencyId === CURRENCY_IDS.GEMS ? 'gems' : null
+            if (type) {
+              const el = document.querySelector(`[data-currency="${type}"]`) as HTMLElement | null
+              if (el) {
+                el.classList.remove('currency-reward-pulse')
+                void el.offsetWidth // force reflow to restart animation
+                el.classList.add('currency-reward-pulse')
+              }
+            }
+          }
         },
 
         deductCurrency: (currencyId, amount) => {
@@ -1099,19 +1111,7 @@ export const useRpgStore = create<RpgStoreState>()(
             get().addCurrency(CURRENCY_IDS.GEMS, gemGain)
           }
 
-          // Show coin animation
-          if (typeof window !== 'undefined' && coinGain > 0) {
-            import('../components/RewardNotifications').then(({ showReward }) => {
-              showReward('coins', coinGain)
-            })
-          }
 
-          // Show gem animation
-          if (typeof window !== 'undefined' && gemGain > 0) {
-            import('../components/RewardNotifications').then(({ showReward }) => {
-              showReward('gems', gemGain)
-            })
-          }
 
           // Проверка: достигла ли задача лимита повторов
           const isRecurrenceCompleted = isTaskRecurrenceCompleted(task)

@@ -67,7 +67,7 @@ export default function StreakMultiplierModal({
     if (!selectedTaskId || !itemId) return
     const success = applyStreakMultiplier(selectedTaskId, itemId)
     if (success) {
-      rpgToast({ title: `Множитель x${multiplierValue} применён!`, type: 'success' })
+      rpgToast({ title: `Множитель x${multiplierValue} применён!`, type: 'success', category: 'toastTaskActions' })
       setSelectedTaskId(null)
       setSearch('')
       onApplied()

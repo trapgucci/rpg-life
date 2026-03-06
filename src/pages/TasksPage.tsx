@@ -295,7 +295,7 @@ export default function TasksPage() {
     setNewGroupName('')
     setAddingGroup(false)
     setSelectedGroupId(group.id)
-    rpgToast({ title: `Группа «${name}» создана`, type: 'success' })
+    rpgToast({ title: `Группа «${name}» создана`, type: 'success', category: 'toastTaskActions' })
   }
 
   const handleSaveGroupEdit = (id: TaskGroupId) => {
@@ -315,7 +315,7 @@ export default function TasksPage() {
       deleteTaskGroup(deletingGroupId)
       if (selectedGroupId === deletingGroupId) setSelectedGroupId(NO_GROUP_ID)
       setEditingGroupId(null)
-      rpgToast({ title: 'Группа удалена', type: 'info' })
+      rpgToast({ title: 'Группа удалена', type: 'info', category: 'toastTaskActions' })
     }
     setDeletingGroupId(null)
   }

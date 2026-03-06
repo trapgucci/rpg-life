@@ -354,7 +354,7 @@ function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDet
           onConfirm={() => {
             setShowDeleteConfirm(false)
             deleteAchievement(achievement.id)
-            rpgToast({ title: 'Достижение удалено', type: 'info' })
+            rpgToast({ title: 'Достижение удалено', type: 'info', category: 'toastAchievements' })
             onClose()
           }}
           onCancel={() => setShowDeleteConfirm(false)}

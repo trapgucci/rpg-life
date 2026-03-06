@@ -868,6 +868,35 @@ html.dark,
     animation: shimmer 2s infinite;
   }
 
+  /* Settings input — frosted glass */
+  .settings-input {
+    @apply px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full;
+    background: var(--surface);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    color: var(--fg);
+    box-shadow:
+      inset 2px 2px 6px var(--neu-item-dark),
+      inset -1px -1px 4px var(--neu-item-light);
+  }
+
+  .settings-input::placeholder {
+    color: var(--fg-muted);
+  }
+
+  .settings-input:hover {
+    border-color: var(--border-strong);
+  }
+
+  .settings-input:focus {
+    border-color: var(--accent);
+    box-shadow:
+      inset 2px 2px 6px var(--neu-item-dark),
+      inset -1px -1px 4px var(--neu-item-light),
+      0 0 0 3px var(--accent-subtle);
+    outline: none;
+  }
+
   /* Empty state */
   .empty-state {
     @apply flex flex-col items-center justify-center py-12 text-center;

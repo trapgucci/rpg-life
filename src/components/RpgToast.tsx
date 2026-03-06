@@ -1,7 +1,21 @@
 import { toast } from 'sonner'
 import { Coins, Gem, Zap, Check, ShoppingBag, Package, Trophy, Swords, Star } from 'lucide-react'
+import { useRpgStore } from '../store/useRpgStore'
 
 type RpgToastType = 'success' | 'error' | 'info' | 'reward' | 'purchase' | 'loot' | 'achievement' | 'achievement_complete'
+
+type ToastSettingKey = 'toastTaskComplete' | 'toastTaskCreate' | 'toastTaskActions' | 'toastPurchases' | 'toastAchievements' | 'toastCraft' | 'toastErrors'
+
+const TOAST_TYPE_TO_SETTING: Record<RpgToastType, ToastSettingKey> = {
+  success: 'toastTaskCreate',
+  info: 'toastTaskActions',
+  reward: 'toastTaskComplete',
+  purchase: 'toastPurchases',
+  achievement: 'toastAchievements',
+  achievement_complete: 'toastAchievements',
+  loot: 'toastCraft',
+  error: 'toastErrors',
+}
 
 interface RpgToastRewardItem {
   name: string
@@ -18,6 +32,8 @@ interface RpgToastOptions {
   items?: RpgToastRewardItem[]
   duration?: number
   type?: RpgToastType
+  /** Override setting key for filtering (e.g. 'toastTaskActions' for action toasts that use 'success' type) */
+  category?: ToastSettingKey
 }
 
 const TYPE_CONFIG: Record<RpgToastType, {
@@ -251,6 +267,11 @@ function AchievementCompleteToastContent({ options, toastId }: { options: RpgToa
 }
 
 export function rpgToast(options: RpgToastOptions) {
+  const type = options.type ?? 'success'
+  const settingKey = options.category ?? TOAST_TYPE_TO_SETTING[type]
+  const settings = useRpgStore.getState().settings
+  if (settings[settingKey] === false) return
+
   if (options.type === 'achievement_complete') {
     return toast.custom(
       (id) => <AchievementCompleteToastContent options={options} toastId={id} />,

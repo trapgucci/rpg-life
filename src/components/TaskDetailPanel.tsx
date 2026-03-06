@@ -255,7 +255,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const confirmDelete = () => {
     setShowDeleteConfirm(false)
     deleteTask(task.id)
-    rpgToast({ title: 'Задача удалена', type: 'info' })
+    rpgToast({ title: 'Задача удалена', type: 'info', category: 'toastTaskActions' })
     onDeselect?.()
   }
 
@@ -285,7 +285,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const confirmSkip = () => {
     setShowSkipConfirm(false)
     skipTask(task.id)
-    rpgToast({ title: 'Задача пропущена', type: 'info' })
+    rpgToast({ title: 'Задача пропущена', type: 'info', category: 'toastTaskActions' })
     // Для instant задач НЕ десeлектим — задача сбрасывается и готова к повторному выполнению
     if (task.recurrence !== 'instant') {
       onDeselect?.()
@@ -300,7 +300,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const confirmArchive = () => {
     setShowArchiveConfirm(false)
     archiveTask(task.id)
-    rpgToast({ title: 'Задача архивирована', type: 'info' })
+    rpgToast({ title: 'Задача архивирована', type: 'info', category: 'toastTaskActions' })
     onDeselect?.()
   }
 
