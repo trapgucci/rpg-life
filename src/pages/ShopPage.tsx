@@ -756,7 +756,7 @@ export default function ShopPage() {
                                         setColorPickerGroupId(colorPickerGroupId === group.id ? null : group.id)
                                       }}
                                       className={cn(
-                                        'icon-btn h-6 w-6 p-0 relative',
+                                        'icon-btn flex items-center justify-center h-6 w-6 p-0 rounded-md relative',
                                         colorPickerGroupId === group.id && 'bg-[var(--accent-subtle)] text-[var(--accent)]',
                                       )}
                                       title="Цвет группы"
@@ -799,7 +799,7 @@ export default function ShopPage() {
                                       setEditingGroupId(group.id)
                                       setEditingGroupName(group.name)
                                     }}
-                                    className="icon-btn h-6 w-6 p-0"
+                                    className="icon-btn flex items-center justify-center h-6 w-6 p-0 rounded-md"
                                   >
                                     <Pencil className="h-3 w-3" />
                                   </button>
@@ -809,7 +809,7 @@ export default function ShopPage() {
                                       e.stopPropagation()
                                       handleDeleteGroup(group.id)
                                     }}
-                                    className="icon-btn icon-btn-danger h-6 w-6 p-0"
+                                    className="icon-btn icon-btn-danger flex items-center justify-center h-6 w-6 p-0 rounded-md"
                                   >
                                     <Trash2 className="h-3 w-3" />
                                   </button>

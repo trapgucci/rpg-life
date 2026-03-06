@@ -697,7 +697,7 @@ export default function TasksPage() {
                                     setEditingGroupId(group.id)
                                     setEditingGroupName(group.name)
                                   }}
-                                  className="icon-btn h-6 w-6 p-0"
+                                  className="icon-btn flex items-center justify-center h-6 w-6 p-0 rounded-md"
                                 >
                                   <Pencil className="h-3 w-3" />
                                 </button>
@@ -708,7 +708,7 @@ export default function TasksPage() {
                                     handleDeleteGroup(group.id)
                                     setShowGroupSelector(false)
                                   }}
-                                  className="icon-btn icon-btn-danger h-6 w-6 p-0"
+                                  className="icon-btn icon-btn-danger flex items-center justify-center h-6 w-6 p-0 rounded-md"
                                 >
                                   <Trash2 className="h-3 w-3" />
                                 </button>

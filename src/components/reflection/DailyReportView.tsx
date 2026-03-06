@@ -11,6 +11,7 @@ import { useRpgStore } from '../../store/useRpgStore'
 import { formatDateRu } from '../../lib/reflectionUtils'
 import { vaultStorage } from '../../lib/vaultStorage'
 import { resizeImageFile } from '../../lib/resizeImage'
+import ConditionStatsModal from './ConditionStatsModal'
 import type { DailySnapshot, MoodLevel, DailyCondition } from '../../types/domain'
 
 interface DailyReportViewProps {
@@ -157,13 +158,11 @@ function TaskRow({ task }: { task: SnapshotTask }) {
   )
 }
 
-const CONDITION_ICONS = ['✅', '📸', '💪', '📖', '🧘', '💊', '🥗', '🏃', '💧', '🎯', '✍️', '🧹']
-
 function ConditionsSection({
   dateKey, getConditionsForDate, conditionEntries, toggleConditionEntry,
   deleteDailyCondition, showAddCondition, setShowAddCondition,
-  newConditionName, setNewConditionName, newConditionIcon, setNewConditionIcon,
-  addDailyCondition, sectionNeuStyle,
+  newConditionName, setNewConditionName,
+  addDailyCondition, getConditionStats, sectionNeuStyle,
 }: {
   dateKey: string
   getConditionsForDate: (dateKey: string) => DailyCondition[]
@@ -174,19 +173,18 @@ function ConditionsSection({
   setShowAddCondition: (v: boolean) => void
   newConditionName: string
   setNewConditionName: (v: string) => void
-  newConditionIcon: string
-  setNewConditionIcon: (v: string) => void
   addDailyCondition: (name: string, icon?: string) => void
+  getConditionStats: (id: string) => { totalDays: number; checkedDays: number; missedDays: number; currentStreak: number; bestStreak: number; history: Record<string, boolean> }
   sectionNeuStyle: React.CSSProperties
 }) {
   const conditions = getConditionsForDate(dateKey)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [statsCondition, setStatsCondition] = useState<DailyCondition | null>(null)
 
   const handleAdd = () => {
     if (!newConditionName.trim()) return
-    addDailyCondition(newConditionName.trim(), newConditionIcon)
+    addDailyCondition(newConditionName.trim())
     setNewConditionName('')
-    setNewConditionIcon('✅')
     setShowAddCondition(false)
   }
 
@@ -242,14 +240,14 @@ function ConditionsSection({
                     </svg>
                   )}
                 </button>
-                <span className="text-sm select-none" title={cond.icon}>{cond.icon}</span>
-                <span
-                  className={`flex-1 text-sm transition-colors ${
+                <button
+                  onClick={() => setStatsCondition(cond)}
+                  className={`flex-1 text-left text-sm transition-colors hover:text-[var(--accent)] ${
                     checked ? 'text-[var(--fg-muted)] line-through' : 'text-[var(--fg)]'
                   }`}
                 >
                   {cond.name}
-                </span>
+                </button>
 
                 {/* Delete (two-step) */}
                 {isDeleting ? (
@@ -284,23 +282,6 @@ function ConditionsSection({
       {/* Add condition form */}
       {showAddCondition ? (
         <div className="flex flex-col gap-2 rounded-xl border border-dashed border-[var(--accent)]/40 bg-[var(--accent)]/[0.03] p-3">
-          <div className="flex items-center gap-2">
-            <div className="flex gap-1 flex-wrap">
-              {CONDITION_ICONS.map((icon) => (
-                <button
-                  key={icon}
-                  onClick={() => setNewConditionIcon(icon)}
-                  className={`flex h-7 w-7 items-center justify-center rounded-lg text-sm transition-all ${
-                    newConditionIcon === icon
-                      ? 'bg-[var(--accent)]/20 ring-1 ring-[var(--accent)]/40 scale-110'
-                      : 'hover:bg-[var(--surface-elevated)]'
-                  }`}
-                >
-                  {icon}
-                </button>
-              ))}
-            </div>
-          </div>
           <input
             type="text"
             value={newConditionName}
@@ -336,6 +317,13 @@ function ConditionsSection({
           Добавить условие
         </button>
       )}
+
+      <ConditionStatsModal
+        isOpen={!!statsCondition}
+        onClose={() => setStatsCondition(null)}
+        condition={statsCondition}
+        stats={statsCondition ? getConditionStats(statsCondition.id) : null}
+      />
     </div>
   )
 }
@@ -354,11 +342,11 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
   const addDailyCondition = useRpgStore((s) => s.addDailyCondition)
   const deleteDailyCondition = useRpgStore((s) => s.deleteDailyCondition)
   const toggleConditionEntry = useRpgStore((s) => s.toggleConditionEntry)
+  const getConditionStats = useRpgStore((s) => s.getConditionStats)
   const allConditionEntries = useRpgStore((s) => s.dailyConditionEntries) ?? []
 
   const [showAddCondition, setShowAddCondition] = useState(false)
   const [newConditionName, setNewConditionName] = useState('')
-  const [newConditionIcon, setNewConditionIcon] = useState('✅')
 
   const report = useMemo(
     () => rawReports.find((r) => r.profileId === activeProfileId && r.dateKey === dateKey) ?? null,
@@ -646,9 +634,8 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
         setShowAddCondition={setShowAddCondition}
         newConditionName={newConditionName}
         setNewConditionName={setNewConditionName}
-        newConditionIcon={newConditionIcon}
-        setNewConditionIcon={setNewConditionIcon}
         addDailyCondition={addDailyCondition}
+        getConditionStats={getConditionStats}
         sectionNeuStyle={sectionNeuStyle}
       />
 
@@ -688,7 +675,7 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
                 )}
                 {item.totalCost > 0 && (
                   <span className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold bg-amber-500/15 text-amber-400">
-                    <Coins className="h-3 w-3" /> -{item.totalCost}
+                    <Coins className="h-3 w-3" /> {item.totalCost}
                   </span>
                 )}
               </div>
@@ -751,70 +738,66 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
         </Section>
       )}
 
-      {/* Economy summary */}
-      {(snapshot.xpEarned > 0 || snapshot.coinsEarned > 0 || snapshot.coinsSpent > 0) && (
-        <div className="grid grid-cols-3 gap-3">
+      {/* Economy summary — compact */}
+      {(snapshot.xpEarned > 0 || snapshot.coinsEarned > 0 || (snapshot.gemsEarned ?? 0) > 0 || snapshot.coinsSpent > 0) && (
+        <div
+          className="flex items-center justify-center gap-4 rounded-2xl px-4 py-3"
+          style={sectionNeuStyle}
+        >
           {snapshot.xpEarned > 0 && (
-            <div
-              className="flex flex-col items-center gap-1.5 rounded-xl p-3"
-              style={{
-                ...sectionNeuStyle,
-                background: 'linear-gradient(145deg, var(--surface-card), var(--surface-elevated))',
-              }}
-            >
+            <div className="flex items-center gap-1.5">
               <div
-                className="flex h-8 w-8 items-center justify-center rounded-lg"
+                className="flex h-6 w-6 items-center justify-center rounded-md"
                 style={{
                   background: 'linear-gradient(145deg, rgba(59,130,246,0.2), rgba(59,130,246,0.1))',
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 4px rgba(59,130,246,0.15)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)',
                 }}
               >
-                <Zap className="h-4 w-4 text-blue-500" />
+                <Zap className="h-3.5 w-3.5 text-blue-500" />
               </div>
               <span className="text-sm font-bold text-[var(--fg)]">+{snapshot.xpEarned}</span>
-              <span className="text-[10px] text-[var(--fg-muted)]">XP</span>
             </div>
           )}
           {snapshot.coinsEarned > 0 && (
-            <div
-              className="flex flex-col items-center gap-1.5 rounded-xl p-3"
-              style={{
-                ...sectionNeuStyle,
-                background: 'linear-gradient(145deg, var(--surface-card), var(--surface-elevated))',
-              }}
-            >
+            <div className="flex items-center gap-1.5">
               <div
-                className="flex h-8 w-8 items-center justify-center rounded-lg"
+                className="flex h-6 w-6 items-center justify-center rounded-md"
                 style={{
                   background: 'linear-gradient(145deg, rgba(234,179,8,0.2), rgba(234,179,8,0.1))',
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 4px rgba(234,179,8,0.15)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)',
                 }}
               >
-                <Coins className="h-4 w-4 text-yellow-500" />
+                <Coins className="h-3.5 w-3.5 text-yellow-500" />
               </div>
               <span className="text-sm font-bold text-[var(--fg)]">+{snapshot.coinsEarned}</span>
-              <span className="text-[10px] text-[var(--fg-muted)]">Монет</span>
+            </div>
+          )}
+          {(snapshot.gemsEarned ?? 0) > 0 && (
+            <div className="flex items-center gap-1.5">
+              <div
+                className="flex h-6 w-6 items-center justify-center rounded-md"
+                style={{
+                  background: 'linear-gradient(145deg, rgba(6,182,212,0.2), rgba(6,182,212,0.1))',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)',
+                }}
+              >
+                <Gem className="h-3.5 w-3.5 text-cyan-400" strokeWidth={2.5} />
+              </div>
+              <span className="text-sm font-bold text-[var(--fg)]">+{snapshot.gemsEarned}</span>
             </div>
           )}
           {snapshot.coinsSpent > 0 && (
-            <div
-              className="flex flex-col items-center gap-1.5 rounded-xl p-3"
-              style={{
-                ...sectionNeuStyle,
-                background: 'linear-gradient(145deg, var(--surface-card), var(--surface-elevated))',
-              }}
-            >
+            <div className="flex items-center gap-1.5">
               <div
-                className="flex h-8 w-8 items-center justify-center rounded-lg"
+                className="flex h-6 w-6 items-center justify-center rounded-md"
                 style={{
                   background: 'linear-gradient(145deg, rgba(239,68,68,0.2), rgba(239,68,68,0.1))',
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 4px rgba(239,68,68,0.15)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)',
                 }}
               >
-                <ShoppingBag className="h-4 w-4 text-red-400" />
+                <ShoppingBag className="h-3.5 w-3.5 text-red-400" />
               </div>
-              <span className="text-sm font-bold text-[var(--fg)]">-{snapshot.coinsSpent}</span>
-              <span className="text-[10px] text-[var(--fg-muted)]">Потрачено</span>
+              <span className="text-sm font-bold text-[var(--fg)]">{snapshot.coinsSpent}</span>
             </div>
           )}
         </div>
@@ -894,7 +877,7 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
 
       {/* Mood chart + Weekly summary — side by side */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl p-4" style={sectionNeuStyle}>
+        <div className="overflow-hidden rounded-2xl p-4" style={sectionNeuStyle}>
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-[var(--fg)]">Настроение</h3>
             <div className="flex gap-1">
@@ -915,7 +898,7 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
           </div>
           <MoodChart reports={allReports} days={moodDays} />
         </div>
-        <div className="rounded-2xl p-4 flex flex-col" style={sectionNeuStyle}>
+        <div className="overflow-hidden rounded-2xl p-4 flex flex-col" style={sectionNeuStyle}>
           <h3 className="mb-3 text-sm font-semibold text-[var(--fg)]">За неделю</h3>
           <div className="flex flex-1 flex-col justify-center gap-2">
             <div className="flex items-center justify-between">
@@ -947,11 +930,11 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
               <span className="text-xs text-[var(--fg-muted)]">Потрачено</span>
               <div className="flex items-center gap-1">
                 <span className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold bg-amber-500/15 text-amber-400">
-                  <Coins className="h-3 w-3" /> -{weekSummary.totalSpent}
+                  <Coins className="h-3 w-3" /> {weekSummary.totalSpent}
                 </span>
                 {weekSummary.totalGemsSpent > 0 && (
                   <span className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold bg-cyan-500/15 text-cyan-400">
-                    <Gem className="h-3 w-3" strokeWidth={2.5} /> -{weekSummary.totalGemsSpent}
+                    <Gem className="h-3 w-3" strokeWidth={2.5} /> {weekSummary.totalGemsSpent}
                   </span>
                 )}
               </div>

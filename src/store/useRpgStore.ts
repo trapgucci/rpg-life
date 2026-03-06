@@ -294,8 +294,8 @@ interface RpgStoreState {
   addShopItem: (item: Omit<ShopItem, 'id'>) => ShopItem
   updateShopItem: (id: ItemId, updater: (i: ShopItem) => ShopItem) => void
   deleteShopItem: (id: ItemId) => void
-  purchaseItem: (itemId: ItemId) => boolean | { loot: { itemId: string; name: string; compensated?: boolean; compensationLabel?: string; compensationReason?: 'duplicate' | 'out_of_stock' } | null }
-  openLootbox: (itemId: ItemId) => { itemId: string; name: string; compensated?: boolean; compensationLabel?: string; compensationReason?: 'duplicate' | 'out_of_stock' } | null
+  purchaseItem: (itemId: ItemId) => boolean | { loot: { itemId: string; name: string; compensated?: boolean; compensationLabel?: string; compensationReason?: 'duplicate' | 'out_of_stock'; lootCoins?: number; lootGems?: number } | null }
+  openLootbox: (itemId: ItemId) => { itemId: string; name: string; compensated?: boolean; compensationLabel?: string; compensationReason?: 'duplicate' | 'out_of_stock'; lootCoins?: number; lootGems?: number } | null
   purchaseGameTime: (itemId: ItemId, packageId: string) => boolean
   useGameTime: (itemId: ItemId, minutes: number) => boolean
   purchaseEpisode: (itemId: ItemId, seasonId: string, episodeId: string) => boolean
@@ -344,6 +344,15 @@ interface RpgStoreState {
   toggleConditionEntry: (conditionId: DailyConditionId, dateKey: string) => void
   getConditionEntries: (dateKey: string) => DailyConditionEntry[]
   getConditionTotalChecked: (conditionId: DailyConditionId) => number
+  getConditionStats: (conditionId: DailyConditionId) => {
+    totalDays: number
+    checkedDays: number
+    missedDays: number
+    currentStreak: number
+    bestStreak: number
+    /** Map dateKey → checked */
+    history: Record<string, boolean>
+  }
 
   // Daily report actions
   getDailyReports: () => DailyReport[]
@@ -2371,7 +2380,7 @@ export const useRpgStore = create<RpgStoreState>()(
             const lbCoinCost = item.cost[CURRENCY_IDS.COINS] ?? 0
             const comp = Math.floor(lbCoinCost * 0.5)
             if (comp > 0) addCurrency(CURRENCY_IDS.COINS, comp)
-            return { itemId: 'empty', name: `Пусто (компенсация 🪙 ${comp})`, compensated: true, compensationLabel: `🪙 ${comp}` }
+            return { itemId: 'empty', name: `Пусто (компенсация 🪙 ${comp})`, compensated: true, compensationLabel: `🪙 ${comp}`, lootCoins: comp }
           }
           const random = Math.random() * 100 // 0..100; оставшиеся (100 - totalWeight)% — шанс ничего не выпасть
           if (random >= totalWeight) return null
@@ -2384,7 +2393,11 @@ export const useRpgStore = create<RpgStoreState>()(
               if (entry.id === CURRENCY_IDS.COINS || entry.id === CURRENCY_IDS.GEMS) {
                 addCurrency(entry.id as CurrencyId, qty)
                 const name = entry.id === CURRENCY_IDS.COINS ? `Монеты x${qty}` : `Кристаллы x${qty}`
-                return { itemId: entry.id, name }
+                return {
+                  itemId: entry.id, name,
+                  lootCoins: entry.id === CURRENCY_IDS.COINS ? qty : undefined,
+                  lootGems: entry.id === CURRENCY_IDS.GEMS ? qty : undefined,
+                }
               } else {
                 const resultItem = get().shopItems.find((i) => i.id === entry.id)
                 const isMediaItem = resultItem?.isVideoGame || resultItem?.isTvSerial
@@ -2405,7 +2418,7 @@ export const useRpgStore = create<RpgStoreState>()(
                   const compParts: string[] = []
                   if (compCoins > 0) compParts.push(`🪙 ${compCoins}`)
                   if (compGems > 0) compParts.push(`💎 ${compGems}`)
-                  return { itemId: entry.id, name, compensated: true, compensationLabel: compParts.join(' + ') || '—', compensationReason: 'duplicate' as const }
+                  return { itemId: entry.id, name, compensated: true, compensationLabel: compParts.join(' + ') || '—', compensationReason: 'duplicate' as const, lootCoins: compCoins || undefined, lootGems: compGems || undefined }
                 }
 
                 // Stock check — if item has stock and it's insufficient, compensate 80% (only if purchasable)
@@ -2434,12 +2447,12 @@ export const useRpgStore = create<RpgStoreState>()(
                     const compParts: string[] = []
                     if (compCoins > 0) compParts.push(`🪙 ${compCoins}`)
                     if (compGems > 0) compParts.push(`💎 ${compGems}`)
-                    return { itemId: entry.id, name, compensated: true, compensationLabel: compParts.join(' + ') || '—', compensationReason: 'out_of_stock' as const }
+                    return { itemId: entry.id, name, compensated: true, compensationLabel: compParts.join(' + ') || '—', compensationReason: 'out_of_stock' as const, lootCoins: compCoins || undefined, lootGems: compGems || undefined }
                   }
                   const partialCompParts: string[] = [`${name} x${available}`]
                   if (compCoins > 0) partialCompParts.push(`🪙 ${compCoins}`)
                   if (compGems > 0) partialCompParts.push(`💎 ${compGems}`)
-                  return { itemId: entry.id, name, compensated: true, compensationLabel: partialCompParts.join(' + '), compensationReason: 'out_of_stock' as const }
+                  return { itemId: entry.id, name, compensated: true, compensationLabel: partialCompParts.join(' + '), compensationReason: 'out_of_stock' as const, lootCoins: compCoins || undefined, lootGems: compGems || undefined }
                 }
 
                 addToInventory(entry.id, qty)
@@ -2690,6 +2703,8 @@ export const useRpgStore = create<RpgStoreState>()(
                 itemName: item.name,
                 action: 'opened_lootbox' as const,
                 lootResultName: loot?.name ?? null,
+                lootCoins: loot?.lootCoins,
+                lootGems: loot?.lootGems,
               })
             }
             checkAchievements()
@@ -2865,6 +2880,57 @@ export const useRpgStore = create<RpgStoreState>()(
           return (get().dailyConditionEntries ?? []).filter(
             (e) => e.conditionId === conditionId && e.checked
           ).length
+        },
+
+        getConditionStats: (conditionId) => {
+          const condition = (get().dailyConditions ?? []).find((c) => c.id === conditionId)
+          if (!condition) return { totalDays: 0, checkedDays: 0, missedDays: 0, currentStreak: 0, bestStreak: 0, history: {} }
+
+          const entries = (get().dailyConditionEntries ?? []).filter((e) => e.conditionId === conditionId)
+          const checkedSet = new Set(entries.filter((e) => e.checked).map((e) => e.dateKey))
+
+          // Build date range from activeFrom to today (or activeUntil)
+          const today = new Date()
+          const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+          const endDate = condition.activeUntil && condition.activeUntil < todayKey ? condition.activeUntil : todayKey
+
+          const history: Record<string, boolean> = {}
+          let totalDays = 0
+          let checkedDays = 0
+          let currentStreak = 0
+          let bestStreak = 0
+          let streak = 0
+
+          // Iterate day by day (today is shown but not counted as missed — day isn't over yet)
+          const cur = new Date(condition.activeFrom + 'T00:00:00')
+          const end = new Date(endDate + 'T00:00:00')
+          while (cur <= end) {
+            const key = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`
+            const checked = checkedSet.has(key)
+            const isToday = key === todayKey
+            history[key] = checked
+            if (!isToday) {
+              // Only count completed past days toward stats
+              totalDays++
+              if (checked) {
+                checkedDays++
+                streak++
+                if (streak > bestStreak) bestStreak = streak
+              } else {
+                streak = 0
+              }
+            } else {
+              // Today: count toward streak if checked, but don't break streak if not
+              if (checked) {
+                streak++
+                if (streak > bestStreak) bestStreak = streak
+              }
+            }
+            cur.setDate(cur.getDate() + 1)
+          }
+          currentStreak = streak
+
+          return { totalDays, checkedDays, missedDays: totalDays - checkedDays, currentStreak, bestStreak, history }
         },
 
         // ─── Reflection (Notes + Daily Reports) ──────────────────────────
@@ -3172,6 +3238,10 @@ export const useRpgStore = create<RpgStoreState>()(
                   for (const s of r.completedSubtasks) {
                     if (s.isCompleted) {
                       allSubtasks.push({ title: s.title, xpEarned: s.xpEarned, coinReward: s.coinReward, gemReward: s.gemReward })
+                      // Include subtask rewards in parent totals
+                      taskXp += s.xpEarned ?? 0
+                      taskCoins += s.coinReward ?? 0
+                      taskGems += s.gemReward ?? 0
                     }
                   }
                 }
@@ -3267,19 +3337,44 @@ export const useRpgStore = create<RpgStoreState>()(
               rewardXp: a.rewardXp ?? 0, rewardCoins: a.rewardCoins ?? 0, rewardGems: a.rewardGems ?? 0,
             }))
 
-          // XP & coins from task completions
+          // XP, coins & gems from all sources
           let xpEarned = 0
           let coinsEarned = 0
+          let gemsEarned = 0
           let coinsSpent = 0
           let gemsSpent = 0
+          // Tasks + subtasks
           for (const task of profileTasks) {
             for (const r of task.completionHistory ?? []) {
               if (r.status === 'completed' && r.completedAt && r.completedAt >= dayStart && r.completedAt <= dayEnd) {
                 xpEarned += r.xpEarned ?? 0
                 coinsEarned += r.coinsEarned ?? 0
+                gemsEarned += r.gemsEarned ?? 0
+                if (r.completedSubtasks) {
+                  for (const s of r.completedSubtasks) {
+                    if (s.isCompleted) {
+                      xpEarned += s.xpEarned ?? 0
+                      coinsEarned += s.coinReward ?? 0
+                      gemsEarned += s.gemReward ?? 0
+                    }
+                  }
+                }
               }
             }
           }
+          // Achievement rewards
+          for (const a of achievementsUnlocked) {
+            coinsEarned += a.rewardCoins
+            gemsEarned += a.rewardGems
+          }
+          // Lootbox drops (coins/gems from usage history)
+          for (const u of state.usageHistory) {
+            if (u.profileId === pid && u.action === 'opened_lootbox' && u.timestamp >= dayStart && u.timestamp <= dayEnd) {
+              coinsEarned += u.lootCoins ?? 0
+              gemsEarned += u.lootGems ?? 0
+            }
+          }
+          // Spending
           for (const entry of purchaseMap.values()) {
             coinsSpent += entry.totalCost
           }
@@ -3312,6 +3407,7 @@ export const useRpgStore = create<RpgStoreState>()(
             achievementsUnlocked,
             xpEarned,
             coinsEarned,
+            gemsEarned,
             coinsSpent,
             gemsSpent,
             activeStreaks,

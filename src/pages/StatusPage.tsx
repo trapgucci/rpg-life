@@ -333,7 +333,7 @@ function StatPill({ icon, label, value, subValue, color }: StatPillProps) {
         {icon}
       </div>
       <div className="min-w-0">
-        <p className="text-lg font-bold text-[var(--fg)] leading-tight">{value}</p>
+        <p className="text-lg font-bold text-[var(--fg)] leading-tight truncate">{value}</p>
         <p className="text-xs text-[var(--fg-muted)] truncate">{label}</p>
         {subValue && (
           <p className="text-[10px] font-medium mt-0.5" style={{ color }}>
@@ -587,7 +587,7 @@ export default function StatusPage() {
         <StatPill
           icon={<Gem className="h-5 w-5" />}
           label="Кристаллов заработано"
-          value={stats.totalGemsEarned}
+          value={stats.totalGemsEarned ?? 0}
           color="#8b5cf6"
         />
         <StatPill

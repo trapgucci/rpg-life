@@ -518,6 +518,10 @@ export interface UsageHistoryEntry {
   deactivationReason?: 'streak_break' | 'uses_exhausted' | 'task_expired' | 'task_missed'
   /** Для лутбокса: что выпало (имя предмета/валюты, или null = ничего) */
   lootResultName?: string | null
+  /** Для лутбокса: монеты полученные (прямой дроп или компенсация) */
+  lootCoins?: number
+  /** Для лутбокса: гемы полученные (прямой дроп или компенсация) */
+  lootGems?: number
   /** Для скидки: процент скидки */
   discountPercent?: number
   /** Для удаления: количество удалённых */
@@ -868,6 +872,7 @@ export interface DailySnapshot {
   }[]
   xpEarned: number
   coinsEarned: number
+  gemsEarned: number
   coinsSpent: number
   gemsSpent: number
   activeStreaks: { taskId: TaskId; title: string; streak: number }[]

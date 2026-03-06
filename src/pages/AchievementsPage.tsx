@@ -1136,7 +1136,6 @@ function ConditionPickerModal({
                           : 'border-transparent hover:bg-[var(--surface-elevated)]'
                       )}
                     >
-                      <span className="text-base">{cond.icon}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm truncate text-[var(--fg)]">{cond.name}</p>
                         <p className="text-[10px] mt-0.5 text-[var(--fg-muted)]">
@@ -1842,7 +1841,7 @@ function AchievementForm({ achievement, onClose, defaultGroupId }: AchievementFo
                       )}
                       {condDailyCond && (
                         <span className="ml-1.5 text-[var(--fg-muted)] font-medium">
-                          ({condDailyCond.icon} {condDailyCond.name})
+                          ({condDailyCond.name})
                         </span>
                       )}
                       {(conditionType === 'coins_earned_spent' || conditionType === 'gems_earned_spent') && (

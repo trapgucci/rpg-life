@@ -137,7 +137,7 @@ export default function Modal({
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="icon-btn h-8 w-8 p-0 ml-auto"
+                className="flex items-center justify-center h-8 w-8 rounded-lg text-[var(--fg-muted)] hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)] transition-all duration-200 ml-auto"
                 title="Закрыть"
                 aria-label="Закрыть модальное окно"
               >
