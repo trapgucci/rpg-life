@@ -75,11 +75,13 @@ export default function Sidebar() {
             key={to}
             to={to}
             end={to === '/'}
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
             className={({ isActive }) =>
               cn(
                 'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200',
                 collapsed && 'justify-center px-2',
-                isActive 
+                isActive
                   ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium shadow-sm'
                   : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)] hover:text-[var(--fg)]'
               )
@@ -117,6 +119,8 @@ export default function Sidebar() {
           <NavLink
             key={to}
             to={to}
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200',
