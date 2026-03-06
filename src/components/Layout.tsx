@@ -20,7 +20,7 @@ function CurrencyDisplay() {
   const progress = xpForNext > 0 ? (profile.xp / xpForNext) * 100 : 0
   
   return (
-    <div className="glass flex items-center justify-between px-3 py-2 md:px-5 md:py-3">
+    <div className="glass-neu flex items-center justify-between px-3 py-2 md:px-5 md:py-3">
       {/* Profile section */}
       <div className="flex items-center gap-2 md:gap-4 min-w-0">
         <div className="relative shrink-0">

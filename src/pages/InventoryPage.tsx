@@ -705,7 +705,7 @@ export default function InventoryPage() {
                             const coinMatch = part.match(/🪙\s*(\d+)/)
                             const gemMatch = part.match(/💎\s*(\d+)/)
                             if (coinMatch) return <span key={j} className="flex items-center gap-0.5"><Coins className="h-3 w-3" />+{coinMatch[1]}</span>
-                            if (gemMatch) return <span key={j} className="flex items-center gap-0.5 text-purple-400"><Gem className="h-3 w-3" />+{gemMatch[1]}</span>
+                            if (gemMatch) return <span key={j} className="flex items-center gap-0.5 text-cyan-400"><Gem className="h-3 w-3" />+{gemMatch[1]}</span>
                             return <span key={j}>{part}</span>
                           })}
                         </span>

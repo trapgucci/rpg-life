@@ -162,7 +162,7 @@ function RpgToastContent({ options, toastId }: { options: RpgToastOptions; toast
                 </span>
               )}
               {options.gems! > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-lg bg-purple-500/15 px-2 py-0.5 text-[12px] font-semibold text-purple-500 dark:text-purple-400 ring-1 ring-inset ring-purple-500/20">
+                <span className="inline-flex items-center gap-1 rounded-lg bg-cyan-500/15 px-2 py-0.5 text-[12px] font-semibold text-cyan-500 dark:text-cyan-400 ring-1 ring-inset ring-cyan-500/20">
                   <Gem className="h-3 w-3" /> +{options.gems}
                 </span>
               )}
@@ -248,7 +248,7 @@ function AchievementCompleteToastContent({ options, toastId }: { options: RpgToa
                 </span>
               )}
               {options.gems! > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-lg bg-purple-500/15 px-2 py-0.5 text-[12px] font-semibold text-purple-400 ring-1 ring-inset ring-purple-500/20">
+                <span className="inline-flex items-center gap-1 rounded-lg bg-cyan-500/15 px-2 py-0.5 text-[12px] font-semibold text-cyan-400 ring-1 ring-inset ring-cyan-500/20">
                   <Gem className="h-3 w-3" /> +{options.gems}
                 </span>
               )}

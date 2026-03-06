@@ -168,8 +168,8 @@ export default function CartModal({ cart, onRemove, onClear, onCheckout, onClose
                             )}
                             {hasGems && (
                               <>
-                                <Gem className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" strokeWidth={2.5} />
-                                <span className="text-purple-600 dark:text-purple-400 tabular-nums">
+                                <Gem className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" strokeWidth={2.5} />
+                                <span className="text-cyan-600 dark:text-cyan-400 tabular-nums">
                                   {totalItemGems.toLocaleString('ru-RU')}
                                 </span>
                               </>
@@ -254,8 +254,8 @@ export default function CartModal({ cart, onRemove, onClear, onCheckout, onClose
                     )}
                     {totals.totalGems > 0 && (
                       <>
-                        <Gem className={cn('h-4 w-4', gems >= totals.totalGems ? 'text-purple-600 dark:text-purple-400' : 'text-red-500')} strokeWidth={2.5} />
-                        <span className={cn('tabular-nums', gems >= totals.totalGems ? 'text-purple-600 dark:text-purple-400' : 'text-red-500')}>
+                        <Gem className={cn('h-4 w-4', gems >= totals.totalGems ? 'text-cyan-600 dark:text-cyan-400' : 'text-red-500')} strokeWidth={2.5} />
+                        <span className={cn('tabular-nums', gems >= totals.totalGems ? 'text-cyan-600 dark:text-cyan-400' : 'text-red-500')}>
                           {totals.totalGems.toLocaleString('ru-RU')}
                         </span>
                       </>

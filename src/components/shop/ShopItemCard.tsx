@@ -140,7 +140,7 @@ export default memo(function ShopItemCard({
             )}
 
             {availableForPurchase && !canGetForFree && gemCost > 0 && !(item.isTvSerial && basePurchased) && !(item.isVideoGame && basePurchased) && (
-              <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-bold bg-gradient-to-b from-purple-500/20 to-purple-500/10 text-purple-600 dark:text-purple-400 ring-1 ring-inset ring-purple-400/25 shadow-sm shadow-purple-500/10">
+              <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-bold bg-gradient-to-b from-cyan-500/20 to-cyan-500/10 text-cyan-600 dark:text-cyan-400 ring-1 ring-inset ring-cyan-400/25 shadow-sm shadow-cyan-500/10">
                 <Gem className="h-3.5 w-3.5" />
                 <span className="font-black">{gemCost.toLocaleString('ru-RU')}</span>
               </span>

@@ -795,7 +795,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                 </div>
                 <div className="flex flex-col items-center gap-2 rounded-xl bg-gradient-to-b from-blue-500/12 to-blue-500/4 ring-1 ring-inset ring-blue-400/20 p-3">
                   <div className="flex items-center gap-1.5">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-purple-400 to-violet-600 shadow-sm"><Gem className="h-3.5 w-3.5 text-white" /></span>
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-sky-400 to-cyan-500 shadow-sm"><Gem className="h-3.5 w-3.5 text-white" /></span>
                     <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Кристаллы</span>
                   </div>
                   <input

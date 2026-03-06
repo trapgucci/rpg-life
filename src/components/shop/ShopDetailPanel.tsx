@@ -1065,12 +1065,12 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                 )}
 
                 {availableForPurchase && !canGetForFree && gemCostRaw > 0 && (
-                  <div className="flex flex-1 min-w-0 items-center gap-2 rounded-2xl bg-gradient-to-b from-purple-500/15 to-purple-500/5 px-4 py-2.5 ring-1 ring-inset ring-purple-400/20 shadow-sm shadow-purple-500/10">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-purple-500/25 to-purple-500/10 ring-1 ring-inset ring-purple-400/30">
-                      <Gem className="h-4 w-4 text-purple-600 dark:text-purple-400" strokeWidth={2.5} />
+                  <div className="flex flex-1 min-w-0 items-center gap-2 rounded-2xl bg-gradient-to-b from-cyan-500/15 to-cyan-500/5 px-4 py-2.5 ring-1 ring-inset ring-cyan-400/20 shadow-sm shadow-cyan-500/10">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-cyan-500/25 to-cyan-500/10 ring-1 ring-inset ring-cyan-400/30">
+                      <Gem className="h-4 w-4 text-cyan-600 dark:text-cyan-400" strokeWidth={2.5} />
                     </div>
                     <div>
-                      <p className="text-lg font-bold text-purple-600 dark:text-purple-400">{gemCostRaw}</p>
+                      <p className="text-lg font-bold text-cyan-600 dark:text-cyan-400">{gemCostRaw}</p>
                       <p className="text-xs text-[var(--fg-muted)]">Кристаллов</p>
                     </div>
                   </div>
@@ -1458,7 +1458,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                     <div className="mb-3">
                       <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--surface-elevated)]/50 px-2 py-1 text-[11px] text-[var(--fg-muted)] backdrop-blur-sm">
                         {recipeCoinCost > 0 && <span className="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400"><span className="flex h-4 w-4 items-center justify-center rounded bg-gradient-to-br from-amber-400 to-orange-500"><Coins className="h-2.5 w-2.5 text-white" /></span>{recipeCoinCost}</span>}
-                        {recipeGemCost > 0 && <span className="inline-flex items-center gap-1 font-semibold text-purple-600 dark:text-purple-400"><span className="flex h-4 w-4 items-center justify-center rounded bg-gradient-to-br from-purple-400 to-violet-600"><Gem className="h-2.5 w-2.5 text-white" /></span>{recipeGemCost}</span>}
+                        {recipeGemCost > 0 && <span className="inline-flex items-center gap-1 font-semibold text-cyan-600 dark:text-cyan-400"><span className="flex h-4 w-4 items-center justify-center rounded bg-gradient-to-br from-sky-400 to-cyan-500"><Gem className="h-2.5 w-2.5 text-white" /></span>{recipeGemCost}</span>}
                       </span>
                     </div>
                   )}
@@ -1733,12 +1733,12 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                     )}
                     {/* Total gems spent */}
                     {totalSpentGems > 0 && (
-                      <div className="rounded-xl bg-gradient-to-b from-violet-500/12 to-violet-500/4 p-3 text-center ring-1 ring-inset ring-violet-400/15 shadow-sm shadow-violet-500/5">
+                      <div className="rounded-xl bg-gradient-to-b from-cyan-500/12 to-cyan-500/4 p-3 text-center ring-1 ring-inset ring-cyan-400/15 shadow-sm shadow-cyan-500/5">
                         <div className="flex items-center justify-center gap-1.5">
-                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-b from-violet-500/25 to-violet-500/10 ring-1 ring-inset ring-violet-400/30">
-                            <Gem className="h-3.5 w-3.5 text-violet-500" />
+                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-b from-cyan-500/25 to-cyan-500/10 ring-1 ring-inset ring-cyan-400/30">
+                            <Gem className="h-3.5 w-3.5 text-cyan-500" />
                           </div>
-                          <span className="text-xl font-bold text-violet-500">{totalSpentGems.toLocaleString('ru-RU')}</span>
+                          <span className="text-xl font-bold text-cyan-500">{totalSpentGems.toLocaleString('ru-RU')}</span>
                         </div>
                         <div className="text-[10px] mt-1.5 text-[var(--fg-muted)] uppercase tracking-wide">Гемов потрачено</div>
                       </div>

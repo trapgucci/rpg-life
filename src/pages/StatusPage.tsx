@@ -606,7 +606,7 @@ export default function StatusPage() {
           icon={<Gem className="h-5 w-5" />}
           label="Кристаллов заработано"
           value={stats.totalGemsEarned ?? 0}
-          color="#8b5cf6"
+          color="#06b6d4"
         />
         <StatPill
           icon={<Hammer className="h-5 w-5" />}

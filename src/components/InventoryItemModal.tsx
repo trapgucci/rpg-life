@@ -605,7 +605,7 @@ const LootTableBlock = memo(function LootTableBlock({ lootTable }: { lootTable: 
                 <Coins className="h-3.5 w-3.5 text-white" />
               </div>
             ) : entry.isGems ? (
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-purple-400 to-violet-600 shadow-sm">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-sky-400 to-cyan-500 shadow-sm">
                 <Gem className="h-3.5 w-3.5 text-white" />
               </div>
             ) : entry.item ? (
