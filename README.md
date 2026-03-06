@@ -4,9 +4,6 @@
 
 RPG Life is a gamified task planner that turns every completed task into XP, coins, and character progression. Built for people who struggle with discipline — even those who have never had it. When your to-do list feels like a quest log and completing tasks earns you loot, staying productive becomes addictive.
 
-<!-- TODO: Add screenshots/GIF here -->
-<!-- ![RPG Life Screenshot](docs/screenshot.png) -->
-
 ## Why RPG Life?
 
 Traditional planners rely on willpower alone. That works for about 3 days. RPG Life adds the missing ingredient — **instant reward feedback**.
