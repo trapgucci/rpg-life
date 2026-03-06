@@ -908,6 +908,8 @@ export interface AppSettings {
   accentColor: AccentColor
   /** Аватар персонажа (эмодзи) */
   avatar: string
+  /** Кастомная аватарка (путь к медиафайлу или data URL) */
+  avatarImage?: string
   /** Показывать полосы прокрутки */
   showScrollbars: boolean
   notificationsEnabled: boolean

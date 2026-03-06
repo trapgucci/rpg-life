@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   Check, SkipForward, Pencil, Trash2, X,
-  Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder, Edit2, Target, Hash, ListChecks, CheckSquare, Flag, Coins, Gem, Zap, Archive, XCircle, AlertTriangle
+  Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder, Edit2, Target, Hash, ListChecks, CheckSquare, Flag, Coins, Gem, Zap, Archive, XCircle, AlertTriangle, FileText
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { cn } from '../lib/cn'
 import type { TaskRpg, TaskDifficulty, TaskRecurrence, AttributeId, SubtaskItem, TaskGroupId, TaskPriority, RecurrenceSettings } from '../types/domain'
 import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
@@ -64,6 +65,7 @@ interface TaskDetailPanelProps {
 }
 
 export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelProps) {
+  const navigate = useNavigate()
   const { notifyTaskComplete } = useNotifications()
   const getTaskRewardPreview = useRpgStore((s) => s.getTaskRewardPreview)
   const completeTask = useRpgStore((s) => s.completeTask)
@@ -79,6 +81,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const getCraftRecipes = useRpgStore((s) => s.getCraftRecipes)
   const shopItems = useRpgStore((s) => s.shopItems)
+  const getNotes = useRpgStore((s) => s.getNotes)
 
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(task.title)
@@ -139,6 +142,11 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
       return false
     })
   }, [getCraftRecipes, task.id])
+
+  // Notes linked to this task (not deleted)
+  const linkedNotes = useMemo(() => {
+    return getNotes().filter((n) => !n.deletedAt && n.linkedTaskIds.includes(task.id))
+  }, [getNotes, task.id])
 
   const canComplete = canCompleteTask(task)
 
@@ -1049,35 +1057,6 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   )
                 })
 
-                // Повтор
-                if (task.recurrence !== 'once') {
-                  badges.push(
-                    <span key="recurrence" className="rounded-2xl bg-gradient-to-b from-blue-500/22 to-blue-500/8 px-3.5 py-1.5 text-sm font-medium text-blue-500 ring-1 ring-inset ring-blue-400/25 shadow-sm shadow-blue-500/10">
-                      <Clock className="h-3.5 w-3.5 inline mr-1" />
-                      {RECURRENCE_LABELS[task.recurrence]}
-                      {task.recurrenceSettings && (
-                        <>
-                          {task.recurrenceSettings.type === 'weekly' && task.recurrenceSettings.weeklyMode === 'timesPerWeek' && task.recurrenceSettings.weeklyTimesPerWeek && (
-                            <span className="ml-1 text-xs opacity-80">
-                              ({task.recurrenceSettings.weeklyTimesPerWeek} {task.recurrenceSettings.weeklyTimesPerWeek === 1 ? 'раз' : task.recurrenceSettings.weeklyTimesPerWeek < 5 ? 'раза' : 'раз'}/нед)
-                            </span>
-                          )}
-                          {task.recurrenceSettings.type === 'weekly' && (task.recurrenceSettings.weeklyMode ?? 'days') === 'days' && task.recurrenceSettings.weeklyDays && task.recurrenceSettings.weeklyDays.length > 0 && (
-                            <span className="ml-1 text-xs opacity-80">
-                              ({task.recurrenceSettings.weeklyDays.length} {task.recurrenceSettings.weeklyDays.length === 1 ? 'день' : task.recurrenceSettings.weeklyDays.length < 5 ? 'дня' : 'дней'})
-                            </span>
-                          )}
-                          {task.recurrenceSettings.type === 'custom' && task.recurrenceSettings.customIntervalDays && (
-                            <span className="ml-1 text-xs opacity-80">
-                              (каждые {task.recurrenceSettings.customIntervalDays} {task.recurrenceSettings.customIntervalDays === 1 ? 'день' : task.recurrenceSettings.customIntervalDays < 5 ? 'дня' : 'дней'})
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </span>
-                  )
-                }
-
                 // Приоритет
                 if (task.priority && task.priority !== 'none') {
                   badges.push(
@@ -1510,6 +1489,34 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
             <TaskMultiplierBlock task={task} />
             {task.recurrence !== 'once' && <TaskStatsBlock task={task} />}
             <TaskHistoryBlock task={task} nowMs={Date.now()} />
+          </div>
+        )}
+
+        {/* Linked notes */}
+        {!isEditing && linkedNotes.length > 0 && (
+          <div className="glass rounded-2xl p-4 mt-6">
+            <h3 className="text-sm font-semibold text-[var(--fg)] mb-3">Заметки</h3>
+            <div className="flex flex-col gap-2">
+              {linkedNotes.map((note) => (
+                <button
+                  key={note.id}
+                  type="button"
+                  onClick={() => navigate('/reflection')}
+                  className="flex items-center gap-3 rounded-xl bg-[var(--surface)] px-4 py-3 text-left transition-all hover:bg-[var(--surface-elevated)] ring-1 ring-inset ring-[var(--border)] hover:ring-[var(--accent)]/30 hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-violet-500/15 to-violet-500/5 text-violet-500 ring-1 ring-inset ring-violet-400/20 shadow-sm shadow-violet-500/10">
+                    <FileText className="h-4.5 w-4.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-[var(--fg)] truncate">{note.title}</p>
+                    {note.excerpt && (
+                      <p className="text-xs text-[var(--fg-muted)] truncate mt-0.5">{note.excerpt}</p>
+                    )}
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" />
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>

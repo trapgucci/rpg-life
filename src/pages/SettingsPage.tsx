@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Settings, User, Palette, Bell, Database, Gamepad2, MessageCircle,
-  Plus, Pencil, Trash2, X, Save, Download, Upload,
+  Plus, Pencil, Trash2, X, Save, Download, Upload, ImagePlus,
   Sun, Moon, Monitor, Check, AlertTriangle, Clock, FolderOpen, FlaskConical,
   Sparkles, Zap, Shield, Swords, ExternalLink,
   ChevronRight
@@ -122,10 +122,57 @@ function ProfileSection() {
   const [name, setName] = useState(profile?.name ?? '')
   const [saved, setSaved] = useState(false)
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
+  const [avatarImageUrl, setAvatarImageUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (settings.avatarImage) {
+      vaultStorage.readMedia(settings.avatarImage).then((url) => {
+        if (url) setAvatarImageUrl(url)
+      })
+    } else {
+      setAvatarImageUrl(null)
+    }
+  }, [settings.avatarImage])
 
   if (!profile) return null
 
   const avatar = settings.avatar || '🧙'
+
+  const handleAvatarUpload = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/png,image/jpeg,image/webp'
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file) return
+
+      const canvas = document.createElement('canvas')
+      const size = 256
+      canvas.width = size
+      canvas.height = size
+      const ctx = canvas.getContext('2d')!
+      const img = new Image()
+      img.onload = async () => {
+        // center-crop to square
+        const min = Math.min(img.width, img.height)
+        const sx = (img.width - min) / 2
+        const sy = (img.height - min) / 2
+        ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size)
+        const base64 = canvas.toDataURL('image/webp', 0.85).split(',')[1]
+        const path = await vaultStorage.saveMedia(base64, 'webp')
+        updateSettings({ avatarImage: path })
+      }
+      img.src = URL.createObjectURL(file)
+    }
+    input.click()
+  }
+
+  const handleRemoveAvatar = () => {
+    if (settings.avatarImage) {
+      vaultStorage.deleteMedia(settings.avatarImage)
+      updateSettings({ avatarImage: undefined })
+    }
+  }
   const coins = profile.currencies?.coins ?? 0
   const gems = profile.currencies?.gems ?? 0
 
@@ -147,18 +194,27 @@ function ProfileSection() {
 
       {/* Avatar + Name */}
       <div className="flex items-start gap-4 mb-6">
-        <button
-          type="button"
-          onClick={() => setShowAvatarPicker(!showAvatarPicker)}
-          className="relative group"
-        >
-          <div className="h-16 w-16 rounded-2xl neu-convex flex items-center justify-center text-3xl transition-transform group-hover:scale-105">
-            {avatar}
-          </div>
-          <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-[var(--accent)] flex items-center justify-center shadow-lg">
-            <Pencil className="h-3 w-3 text-white" />
-          </div>
-        </button>
+        <div className="relative group">
+          <button
+            type="button"
+            onClick={() => setShowAvatarPicker(!showAvatarPicker)}
+            className="relative overflow-hidden h-20 w-20 rounded-2xl neu-convex flex items-center justify-center text-4xl transition-transform group-hover:scale-105"
+          >
+            {avatarImageUrl ? (
+              <img src={avatarImageUrl} alt="avatar" className="h-full w-full object-cover" />
+            ) : (
+              avatar
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={handleAvatarUpload}
+            className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-[var(--accent)] flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
+            title="Загрузить фото"
+          >
+            <ImagePlus className="h-3.5 w-3.5 text-white" />
+          </button>
+        </div>
         <div className="flex-1 flex flex-col gap-2">
           <input
             type="text"
@@ -188,13 +244,27 @@ function ProfileSection() {
       {/* Avatar Picker */}
       {showAvatarPicker && (
         <div className="mb-6 p-4 rounded-2xl neu-inset">
-          <p className="text-xs font-medium text-[var(--fg-muted)] mb-3">Выберите аватар</p>
+          {avatarImageUrl && (
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-medium text-[var(--fg-muted)]">Текущая аватарка</p>
+              <button
+                type="button"
+                onClick={() => { handleRemoveAvatar(); setShowAvatarPicker(false) }}
+                className="text-xs text-red-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+              >
+                <Trash2 className="h-3 w-3" />
+                Удалить фото
+              </button>
+            </div>
+          )}
+          <p className="text-xs font-medium text-[var(--fg-muted)] mb-3">Или выберите эмодзи</p>
           <div className="flex flex-wrap gap-2">
             {AVATAR_OPTIONS.map((a) => (
               <button
                 key={a}
                 type="button"
                 onClick={() => {
+                  handleRemoveAvatar()
                   updateSettings({ avatar: a })
                   setShowAvatarPicker(false)
                 }}

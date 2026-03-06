@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRpgStore } from '../store/useRpgStore'
 import { xpForLevelStandard, xpForLevelFast, xpForLevelCustom } from '../types/domain'
 import type { Profile } from '../types/domain'
@@ -6,6 +6,7 @@ import {
   CheckCircle2, Coins, Hammer,
   Gem, Sparkles, TrendingUp, ShieldCheck
 } from 'lucide-react'
+import { vaultStorage } from '../lib/vaultStorage'
 
 // ─── Title by level ────────────────────────────────────────────────────────
 
@@ -454,7 +455,19 @@ export default function StatusPage() {
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const stats = useRpgStore((s) => s.stats)
+  const settings = useRpgStore((s) => s.settings)
   const [showRanks, setShowRanks] = useState(false)
+  const [avatarImageUrl, setAvatarImageUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (settings.avatarImage) {
+      vaultStorage.readMedia(settings.avatarImage).then((url) => {
+        if (url) setAvatarImageUrl(url)
+      })
+    } else {
+      setAvatarImageUrl(null)
+    }
+  }, [settings.avatarImage])
 
   const profile = profiles.find((p) => p.id === activeProfileId) ?? profiles[0] ?? null
   const attributes = profile?.attributes ?? []
@@ -508,12 +521,16 @@ export default function StatusPage() {
           {/* Avatar */}
           <div className="relative shrink-0">
             <div
-              className="neu-avatar flex h-24 w-24 md:h-28 md:w-28 items-center justify-center text-5xl md:text-6xl"
+              className="neu-avatar flex h-24 w-24 md:h-28 md:w-28 items-center justify-center text-5xl md:text-6xl overflow-hidden"
               style={{
                 background: 'linear-gradient(145deg, var(--surface-elevated), var(--surface))',
               }}
             >
-              {dominantClass?.icon ?? '👤'}
+              {avatarImageUrl ? (
+                <img src={avatarImageUrl} alt="avatar" className="h-full w-full object-cover" />
+              ) : (
+                dominantClass?.icon ?? '👤'
+              )}
             </div>
             {/* Level badge */}
             <div

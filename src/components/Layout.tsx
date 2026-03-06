@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import WindowTitleBar from './WindowTitleBar'
 import Sidebar from './Sidebar'
@@ -5,11 +6,24 @@ import MobileBottomNav from './MobileBottomNav'
 import { useRpgStore } from '../store/useRpgStore'
 import { CURRENCY_IDS, xpForLevelStandard } from '../types/domain'
 import { Coins, Gem } from 'lucide-react'
+import { vaultStorage } from '../lib/vaultStorage'
 
 function CurrencyDisplay() {
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
-  
+  const settings = useRpgStore((s) => s.settings)
+  const [avatarImageUrl, setAvatarImageUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (settings.avatarImage) {
+      vaultStorage.readMedia(settings.avatarImage).then((url) => {
+        if (url) setAvatarImageUrl(url)
+      })
+    } else {
+      setAvatarImageUrl(null)
+    }
+  }, [settings.avatarImage])
+
   const profile = profiles.find((p) => p.id === activeProfileId) ?? profiles[0] ?? null
   const coins = profile?.currencies[CURRENCY_IDS.COINS] ?? 0
   const gems = profile?.currencies[CURRENCY_IDS.GEMS] ?? 0
@@ -24,8 +38,12 @@ function CurrencyDisplay() {
       {/* Profile section */}
       <div className="flex items-center gap-2 md:gap-4 min-w-0">
         <div className="relative shrink-0">
-          <div className="flex h-9 w-9 md:h-11 md:w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-base md:text-lg shadow-lg shadow-indigo-500/30">
-            👤
+          <div className="flex h-9 w-9 md:h-11 md:w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-base md:text-lg shadow-lg shadow-indigo-500/30 overflow-hidden">
+            {avatarImageUrl ? (
+              <img src={avatarImageUrl} alt="avatar" className="h-full w-full object-cover" />
+            ) : (
+              settings.avatar || '👤'
+            )}
           </div>
           <div className="absolute -bottom-1 -right-1 flex h-4 w-4 md:h-5 md:w-5 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-[8px] md:text-[10px] font-bold text-white shadow-md">
             {profile.level}
