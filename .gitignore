@@ -34,3 +34,24 @@ dist-ssr
 # npm artifacts
 concurrently
 rpg-life@*
+
+# License server (private)
+license-server/
+
+# Build output
+release/
+
+# AI tool configs
+.claude/
+.cursorrules
+CLAUDE.md
+
+# Internal docs
+CHANGELOG.md
+roadmap.md
+
+# Media files
+media/
+
+# Sync scripts
+scripts/

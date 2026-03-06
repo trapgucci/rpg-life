@@ -1,69 +1,50 @@
-# React + TypeScript + Vite
+# RPG Life
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Gamified task planner in RPG style. Turn your daily routine into an adventure.
 
-Currently, two official plugins are available:
+<!-- TODO: Add screenshot here -->
+<!-- ![RPG Life Screenshot](docs/screenshot.png) -->
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## Expanding the ESLint configuration
+- **Tasks** — daily, recurring, and one-time tasks with XP and coin rewards
+- **Character** — level up, attributes (STR, INT, DEX...), radar chart
+- **Shop** — buy real-life rewards with earned coins and gems
+- **Inventory** — track purchased items, loot boxes with drop tables
+- **Crafting** — combine fragments into items
+- **Achievements** — unlock milestones and earn bonus rewards
+- **Reflection** — built-in journal with Tiptap WYSIWYG editor, mood tracker, daily reports
+- **Habits** — track daily conditions and streaks
+- **Profiles** — multiple character profiles
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Tech Stack
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- React 19 + TypeScript + Tailwind CSS v4
+- Zustand (state management + persistence)
+- Electron 40 (desktop app — macOS, Windows, Linux)
+- Tiptap (rich text editor)
+- Vite 7 (build tool)
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+## Getting Started
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# Install dependencies
+npm install
+
+# Run in browser (dev mode)
+npm run dev
+
+# Run as desktop app
+npm run electron:dev
+
+# Build desktop app
+npm run electron:build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Data Storage
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+All data is stored locally on your machine in `~/Documents/RPGLife/` as JSON files. No cloud, no telemetry, no tracking. Your data stays on your device.
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## License
+
+[MIT](LICENSE)
