@@ -6,7 +6,8 @@ import {
   Zap, Shield, Clock, Repeat, BarChart3, Layers,
   Gift, Sparkles, Puzzle, Palette, Settings, Heart,
   Info, Lightbulb, AlertTriangle, TrendingUp, Flag,
-  Dumbbell,
+  Dumbbell, Scale, Calculator, PiggyBank, Timer, Percent,
+  Box, CircleDollarSign, Award,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
@@ -690,6 +691,411 @@ function DemoInventoryCard() {
   )
 }
 
+// ─── Economy Demo Components ────────────────────────────────────────────────
+
+function DemoEconomyAnchor() {
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Принцип: 1 монета = 1 минута усилий</p>
+      <div className="flex items-center gap-4 flex-wrap">
+        {/* Time → Coins visual */}
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5 rounded-xl px-3 py-2 bg-blue-500/10 border border-blue-500/20">
+            <Timer className="h-4 w-4 text-blue-500" />
+            <span className="text-sm font-bold text-blue-600 dark:text-blue-400">30 мин</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
+          <div className="flex items-center gap-1.5 rounded-xl px-3 py-2 bg-amber-500/10 border border-amber-500/20">
+            <Coins className="h-4 w-4 text-amber-500" />
+            <span className="text-sm font-bold text-amber-600 dark:text-amber-400">30–36</span>
+          </div>
+        </div>
+        {/* Difficulty multiplier */}
+        <div className="flex items-center gap-1.5 rounded-xl px-3 py-2 bg-purple-500/10 border border-purple-500/20">
+          <TrendingUp className="h-4 w-4 text-purple-500" />
+          <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">× множитель сложности</span>
+        </div>
+      </div>
+      <p className="text-[10px] text-[var(--fg-muted)] mt-2.5">Монеты привязаны к реальному времени — чем сложнее задача, тем выше множитель.</p>
+    </div>
+  )
+}
+
+function DemoDifficultyPricing() {
+  const tiers = [
+    { label: 'Лёгкая', color: '#22c55e', time: '5–15 мин', coins: '5–15', mult: '×1.0', xp: '10' },
+    { label: 'Средняя', color: '#3b82f6', time: '15–40 мин', coins: '18–48', mult: '×1.2', xp: '30' },
+    { label: 'Сложная', color: '#f97316', time: '1–2 ч', coins: '90–180', mult: '×1.5', xp: '100' },
+    { label: 'Очень сложная', color: '#ef4444', time: '3+ ч', coins: '270–540+', mult: '×1.8', xp: '300' },
+  ]
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Рекомендуемые награды по сложности</p>
+      <div className="space-y-2">
+        {tiers.map(t => (
+          <div key={t.label} className="flex items-center gap-2 rounded-xl p-2.5 bg-[var(--surface-card)] border border-[var(--border)]">
+            {/* Difficulty badge */}
+            <span
+              className="inline-flex items-center gap-1 rounded-xl px-2 py-1 text-[10px] font-semibold ring-1 ring-inset shadow-sm shrink-0 w-28 justify-center"
+              style={{
+                background: `${t.color}18`,
+                color: t.color,
+                boxShadow: `inset 0 0 0 1px ${t.color}30`,
+              }}
+            >
+              <Zap className="h-3 w-3" />
+              {t.xp} XP
+            </span>
+            {/* Time */}
+            <div className="flex items-center gap-1 text-[10px] text-[var(--fg-muted)] w-16 shrink-0">
+              <Timer className="h-3 w-3" />
+              {t.time}
+            </div>
+            {/* Multiplier */}
+            <span className="text-[10px] font-bold w-8 shrink-0" style={{ color: t.color }}>{t.mult}</span>
+            {/* Coins */}
+            <div className="flex items-center gap-1 ml-auto">
+              <Coins className="h-3.5 w-3.5 text-amber-500" />
+              <span className="text-xs font-bold text-amber-600 dark:text-amber-400">{t.coins}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DemoDailyBalance() {
+  const income = [
+    { label: 'Зарядка', coins: 12, color: '#22c55e' },
+    { label: 'Чтение 30 мин', coins: 36, color: '#3b82f6' },
+    { label: 'Работа над проектом', coins: 90, color: '#f97316' },
+    { label: 'Уборка', coins: 15, color: '#22c55e' },
+  ]
+  const totalIncome = income.reduce((s, i) => s + i.coins, 0)
+  const spending = 120
+  const savings = totalIncome - spending
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Пример дневного баланса</p>
+      <div className="grid grid-cols-2 gap-3">
+        {/* Income */}
+        <div className="rounded-xl p-3 bg-emerald-500/5 border border-emerald-500/20">
+          <div className="flex items-center gap-1.5 mb-2">
+            <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
+            <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Доход</span>
+          </div>
+          <div className="space-y-1.5">
+            {income.map(i => (
+              <div key={i.label} className="flex items-center justify-between">
+                <span className="text-[10px] text-[var(--fg-secondary)] truncate">{i.label}</span>
+                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
+                  <Coins className="h-2.5 w-2.5 text-amber-500" />{i.coins}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 pt-2 border-t border-emerald-500/20 flex items-center justify-between">
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Итого</span>
+            <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
+              <Coins className="h-3 w-3 text-amber-500" />{totalIncome}
+            </span>
+          </div>
+        </div>
+        {/* Balance */}
+        <div className="flex flex-col gap-2">
+          <div className="rounded-xl p-3 bg-red-500/5 border border-red-500/20 flex-1">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <ShoppingBag className="h-3.5 w-3.5 text-red-500" />
+              <span className="text-[10px] font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider">Расход</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Coins className="h-3.5 w-3.5 text-amber-500" />
+              <span className="text-sm font-bold text-amber-600 dark:text-amber-400">{spending}</span>
+            </div>
+            <span className="text-[10px] text-[var(--fg-muted)]">2ч игры + серия</span>
+          </div>
+          <div className="rounded-xl p-3 bg-blue-500/5 border border-blue-500/20 flex-1">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <PiggyBank className="h-3.5 w-3.5 text-blue-500" />
+              <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Накопления</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Coins className="h-3.5 w-3.5 text-amber-500" />
+              <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">+{savings}</span>
+            </div>
+            <span className="text-[10px] text-[var(--fg-muted)]">на долгоср. цели</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DemoShopPricing() {
+  const items = [
+    { icon: 'Pizza', name: 'Перекус', time: '1 день', coins: 50, color: '#f97316' },
+    { icon: 'Tv', name: 'Серия сериала', time: '1–2 дня', coins: 80, color: '#ec4899' },
+    { icon: 'Gamepad2', name: 'Вечер игр (3ч)', time: '3–5 дней', coins: 300, color: '#06b6d4' },
+    { icon: 'ShoppingBag', name: 'Новая игра', time: '1–2 нед', coins: 1200, color: '#8b5cf6' },
+    { icon: 'Gift', name: 'Большая награда', time: '1+ мес', coins: 5000, color: '#f59e0b' },
+  ]
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Примеры ценообразования в магазине</p>
+      <div className="space-y-1.5">
+        {items.map(item => (
+          <div key={item.name} className="flex items-center gap-2.5 rounded-xl p-2 bg-[var(--surface-card)] border border-[var(--border)]">
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-white shrink-0"
+              style={{
+                background: `linear-gradient(145deg, ${item.color}ee, ${item.color}99)`,
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 6px rgba(0,0,0,0.15)',
+              }}
+            >
+              <HabitIcon iconName={item.icon} size={16} />
+            </div>
+            <span className="text-xs font-medium text-[var(--fg)] flex-1 min-w-0 truncate">{item.name}</span>
+            <div className="flex items-center gap-1 shrink-0">
+              <Clock className="h-3 w-3 text-[var(--fg-muted)]" />
+              <span className="text-[10px] text-[var(--fg-muted)]">{item.time}</span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0 ml-1">
+              <Coins className="h-3.5 w-3.5 text-amber-500" />
+              <span className="text-xs font-bold text-amber-600 dark:text-amber-400">{item.coins.toLocaleString()}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="text-[10px] text-[var(--fg-muted)] mt-2">Время — ориентировочный срок накопления при среднем заработке ~100 монет/день.</p>
+    </div>
+  )
+}
+
+function DemoGemEconomy() {
+  const sources = [
+    { label: 'Очень сложная задача', gems: '1–3', icon: Zap, color: '#ef4444' },
+    { label: 'Стрик 7 дней', gems: '1', icon: Flame, color: '#f59e0b' },
+    { label: 'Стрик 30 дней', gems: '5', icon: Flame, color: '#f97316' },
+    { label: 'Достижение (среднее)', gems: '2–5', icon: Trophy, color: '#eab308' },
+    { label: 'Достижение (сложное)', gems: '5–15', icon: Trophy, color: '#a855f7' },
+  ]
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Когда и сколько давать кристаллов</p>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="glass-neu-gem flex items-center gap-1.5 rounded-xl px-3 py-1.5">
+          <Gem className="h-4 w-4 text-cyan-500" strokeWidth={2.5} />
+          <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">1 кристалл</span>
+        </div>
+        <span className="text-[10px] text-[var(--fg-muted)]">≈</span>
+        <div className="glass-neu-coin flex items-center gap-1.5 rounded-xl px-3 py-1.5">
+          <Coins className="h-4 w-4 text-amber-500" />
+          <span className="text-xs font-bold text-amber-600 dark:text-amber-400">50–100 монет</span>
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        {sources.map(s => {
+          const Icon = s.icon
+          return (
+            <div key={s.label} className="flex items-center gap-2.5">
+              <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: s.color }} />
+              <span className="text-[10px] text-[var(--fg-secondary)] flex-1">{s.label}</span>
+              <div className="flex items-center gap-1 shrink-0">
+                <Gem className="h-3 w-3 text-cyan-500" strokeWidth={2.5} />
+                <span className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400">{s.gems}</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <div className="mt-3 rounded-lg px-3 py-2 bg-amber-500/8 border border-amber-500/15">
+        <p className="text-[10px] text-amber-700 dark:text-amber-400">Лёгкие и средние задачи никогда не дают кристаллы — это сохраняет их ценность.</p>
+      </div>
+    </div>
+  )
+}
+
+function DemoAchievementEconomy() {
+  const tiers = [
+    { label: 'Лёгкое', example: '5 задач', coins: '30–50', gems: '0', xp: '50', days: '~1 дн', color: '#22c55e' },
+    { label: 'Среднее', example: '50 задач', coins: '100–300', gems: '2–5', xp: '200', days: '~1 нед', color: '#3b82f6' },
+    { label: 'Сложное', example: '30-дн стрик', coins: '500–1000', gems: '5–15', xp: '500', days: '~1 мес', color: '#a855f7' },
+    { label: 'Легендарное', example: '100-дн стрик', coins: '2000–5000', gems: '15–30', xp: '1500', days: '~3 мес', color: '#f59e0b' },
+  ]
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Рекомендуемые награды за достижения</p>
+      <div className="space-y-2">
+        {tiers.map(t => (
+          <div key={t.label} className="rounded-xl p-2.5 border" style={{ borderColor: `${t.color}25`, background: `${t.color}06` }}>
+            <div className="flex items-center gap-2 mb-1.5">
+              <Trophy className="h-3.5 w-3.5" style={{ color: t.color }} />
+              <span className="text-xs font-bold" style={{ color: t.color }}>{t.label}</span>
+              <span className="text-[10px] text-[var(--fg-muted)]">({t.example})</span>
+              <span className="text-[9px] text-[var(--fg-muted)] ml-auto">{t.days}</span>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold">
+                <Zap className="h-3 w-3 text-indigo-500" />
+                <span className="text-indigo-500">{t.xp} XP</span>
+              </span>
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold">
+                <Coins className="h-3 w-3 text-amber-500" />
+                <span className="text-amber-600 dark:text-amber-400">{t.coins}</span>
+              </span>
+              {t.gems !== '0' && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold">
+                  <Gem className="h-3 w-3 text-cyan-500" strokeWidth={2.5} />
+                  <span className="text-cyan-600 dark:text-cyan-400">{t.gems}</span>
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DemoFormula() {
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Формулы ценообразования</p>
+      <div className="space-y-3">
+        {/* Task formula */}
+        <div className="rounded-xl px-3 py-2.5 bg-[var(--surface-card)] border border-[var(--border)]">
+          <div className="flex items-center gap-1.5 mb-1">
+            <CheckSquare className="h-3 w-3 text-indigo-500" />
+            <span className="text-[10px] font-bold text-[var(--fg)]">Задача</span>
+          </div>
+          <p className="text-xs font-mono text-[var(--accent)] leading-relaxed">
+            монеты = минуты × множитель_сложности
+          </p>
+          <p className="text-[10px] text-[var(--fg-muted)] mt-1">Множители: Лёгкая ×1.0, Средняя ×1.2, Сложная ×1.5, Оч.сложная ×1.8</p>
+        </div>
+        {/* Shop formula */}
+        <div className="rounded-xl px-3 py-2.5 bg-[var(--surface-card)] border border-[var(--border)]">
+          <div className="flex items-center gap-1.5 mb-1">
+            <ShoppingBag className="h-3 w-3 text-amber-500" />
+            <span className="text-[10px] font-bold text-[var(--fg)]">Предмет (время)</span>
+          </div>
+          <p className="text-xs font-mono text-[var(--accent)] leading-relaxed">
+            цена = минуты_удовольствия × 0.5–1.0
+          </p>
+          <p className="text-[10px] text-[var(--fg-muted)] mt-1">40-мин серия → 20–40 монет, 2ч игры → 60–120 монет</p>
+        </div>
+        {/* Achievement formula */}
+        <div className="rounded-xl px-3 py-2.5 bg-[var(--surface-card)] border border-[var(--border)]">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Trophy className="h-3 w-3 text-yellow-500" />
+            <span className="text-[10px] font-bold text-[var(--fg)]">Достижение</span>
+          </div>
+          <p className="text-xs font-mono text-[var(--accent)] leading-relaxed">
+            монеты = дней_до_цели × дневной_доход × 0.15
+          </p>
+          <p className="text-[10px] text-[var(--fg-muted)] mt-1">30-дн стрик, доход 100/день → 30 × 100 × 0.15 = 450 монет</p>
+        </div>
+        {/* Lootbox formula */}
+        <div className="rounded-xl px-3 py-2.5 bg-[var(--surface-card)] border border-[var(--border)]">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Gift className="h-3 w-3 text-purple-500" />
+            <span className="text-[10px] font-bold text-[var(--fg)]">Лутбокс</span>
+          </div>
+          <p className="text-xs font-mono text-[var(--accent)] leading-relaxed">
+            цена = средняя_ценность_дропа × 1.3
+          </p>
+          <p className="text-[10px] text-[var(--fg-muted)] mt-1">Средний выигрыш ~60–80% от цены — элемент риска</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DemoBalanceTarget() {
+  const barMax = 150
+  const income = 130
+  const expense = 105
+  const saving = income - expense
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Целевой дневной баланс</p>
+      {/* Income bar */}
+      <div className="mb-2">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+            <TrendingUp className="h-3 w-3" /> Доход
+          </span>
+          <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">{income} монет</span>
+        </div>
+        <div className="h-3 rounded-full bg-[var(--border)] overflow-hidden">
+          <div
+            className="h-full rounded-full"
+            style={{
+              width: `${(income / barMax) * 100}%`,
+              background: 'linear-gradient(90deg, #22c55e, #10b981)',
+              boxShadow: '0 0 8px rgba(34,197,94,0.3)',
+            }}
+          />
+        </div>
+      </div>
+      {/* Expense bar */}
+      <div className="mb-2">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] font-medium text-red-500 flex items-center gap-1">
+            <ShoppingBag className="h-3 w-3" /> Расход
+          </span>
+          <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">{expense} монет</span>
+        </div>
+        <div className="h-3 rounded-full bg-[var(--border)] overflow-hidden">
+          <div
+            className="h-full rounded-full"
+            style={{
+              width: `${(expense / barMax) * 100}%`,
+              background: 'linear-gradient(90deg, #ef4444, #f97316)',
+              boxShadow: '0 0 8px rgba(239,68,68,0.3)',
+            }}
+          />
+        </div>
+      </div>
+      {/* Savings bar */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] font-medium text-blue-500 flex items-center gap-1">
+            <PiggyBank className="h-3 w-3" /> Накопления
+          </span>
+          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">+{saving} монет</span>
+        </div>
+        <div className="h-3 rounded-full bg-[var(--border)] overflow-hidden">
+          <div
+            className="h-full rounded-full"
+            style={{
+              width: `${(saving / barMax) * 100}%`,
+              background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
+              boxShadow: '0 0 8px rgba(59,130,246,0.3)',
+            }}
+          />
+        </div>
+      </div>
+      {/* Target metrics */}
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <div className="rounded-lg p-2 bg-emerald-500/8 border border-emerald-500/15 text-center">
+          <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">80–150</p>
+          <p className="text-[9px] text-[var(--fg-muted)]">доход/день</p>
+        </div>
+        <div className="rounded-lg p-2 bg-red-500/8 border border-red-500/15 text-center">
+          <p className="text-sm font-bold text-red-500">50–120</p>
+          <p className="text-[9px] text-[var(--fg-muted)]">расход/день</p>
+        </div>
+        <div className="rounded-lg p-2 bg-blue-500/8 border border-blue-500/15 text-center">
+          <p className="text-sm font-bold text-blue-500">10–30</p>
+          <p className="text-[9px] text-[var(--fg-muted)]">копить/день</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Map demo IDs to components
 const DEMO_COMPONENTS: Record<string, () => React.ReactNode> = {
   'currencies': DemoCurrencies,
@@ -710,6 +1116,14 @@ const DEMO_COMPONENTS: Record<string, () => React.ReactNode> = {
   'archive-badges': DemoArchiveBadges,
   'accent-colors': DemoAccentColors,
   'inventory-card': DemoInventoryCard,
+  'economy-anchor': DemoEconomyAnchor,
+  'difficulty-pricing': DemoDifficultyPricing,
+  'daily-balance': DemoDailyBalance,
+  'shop-pricing': DemoShopPricing,
+  'gem-economy': DemoGemEconomy,
+  'achievement-economy': DemoAchievementEconomy,
+  'formula': DemoFormula,
+  'balance-target': DemoBalanceTarget,
 }
 
 // ─── Encyclopedia Data ───────────────────────────────────────────────────────
@@ -809,7 +1223,207 @@ const GUIDE_DATA: GuideCategory[] = [
   },
 
   // ────────────────────────────────────────────────────────────────────────────
-  // 2. ЗАДАЧИ
+  // 2. ЭКОНОМИКА
+  // ────────────────────────────────────────────────────────────────────────────
+  {
+    id: 'economy',
+    title: 'Экономика',
+    icon: Scale,
+    iconGradient: 'from-amber-500 to-yellow-600',
+    articles: [
+      {
+        id: 'economy-overview',
+        title: 'Основы экономики',
+        icon: Scale,
+        iconColor: '#f59e0b',
+        content: [
+          { type: 'text', text: 'Экономика RPG Life — это система баланса между заработком (задачи, достижения) и тратами (магазин, развлечения). Правильно настроенная экономика — ключ к долгосрочной мотивации.' },
+          { type: 'heading', text: 'Якорь всей системы' },
+          { type: 'text', text: 'Вся экономика привязана к одному простому принципу: 1 монета ≈ 1 минута реального усилия. Это «якорь», от которого рассчитываются все награды и цены.' },
+          { type: 'demo', demoId: 'economy-anchor' },
+          { type: 'heading', text: 'Три потока' },
+          { type: 'list', items: [
+            'Заработок — монеты и кристаллы за задачи, привычки, достижения',
+            'Траты — покупки в магазине, игровое время, сериалы',
+            'Накопления — разница между заработком и тратами, идёт на крупные цели',
+          ] },
+          { type: 'tip', text: 'Идеальный баланс: заработок чуть больше трат. Если монеты копятся слишком быстро — награды за задачи завышены. Если всегда не хватает — занижены или цены в магазине слишком высокие.' },
+        ],
+      },
+      {
+        id: 'task-pricing',
+        title: 'Награды за задачи',
+        icon: Calculator,
+        iconColor: '#6366f1',
+        content: [
+          { type: 'text', text: 'Правильная награда за задачу зависит от двух факторов: сколько времени она занимает и насколько она сложна.' },
+          { type: 'heading', text: 'Формула' },
+          { type: 'text', text: 'Монеты за задачу = минуты реального усилия × множитель сложности. Множитель увеличивает награду за задачи, требующие больше концентрации и воли.' },
+          { type: 'demo', demoId: 'difficulty-pricing' },
+          { type: 'heading', text: 'Множители сложности' },
+          { type: 'table', headers: ['Сложность', 'Множитель', 'Когда использовать'], rows: [
+            ['Лёгкая', '×1.0', 'Бытовые дела, рутина — минимум когнитивной нагрузки'],
+            ['Средняя', '×1.2', 'Задачи с концентрацией — чтение, учёба, планирование'],
+            ['Сложная', '×1.5', 'Серьёзная работа — проект, тренировка, сложная учёба'],
+            ['Очень сложная', '×1.8', 'Максимальные усилия — экзамен, дедлайн, марафон'],
+          ] },
+          { type: 'heading', text: 'Примеры' },
+          { type: 'list', items: [
+            'Зарядка 10 мин (лёгкая): 10 × 1.0 = 10 монет',
+            'Чтение 30 мин (средняя): 30 × 1.2 = 36 монет',
+            'Тренировка 60 мин (сложная): 60 × 1.5 = 90 монет',
+            'Подготовка к экзамену 3ч (очень сложная): 180 × 1.8 = 324 монеты',
+          ] },
+          { type: 'warning', text: 'Не завышайте награды! Если за 5-минутное дело давать 50 монет, экономика быстро обесценится и мотивация пропадёт.' },
+          { type: 'tip', text: 'Будьте честны с самой собой: реальное время усилия, а не время «от и до». 2 часа в библиотеке с перерывами = ~60–90 минут усилий.' },
+        ],
+      },
+      {
+        id: 'modifiers',
+        title: 'Подзадачи-модификаторы',
+        icon: Puzzle,
+        iconColor: '#8b5cf6',
+        content: [
+          { type: 'text', text: 'Подзадачи вложенных (nested) задач можно использовать как модификаторы — опциональные условия, которые добавляют бонус к базовой награде задачи.' },
+          { type: 'heading', text: 'Как это работает' },
+          { type: 'text', text: 'Базовая задача имеет фиксированную стоимость в монетах. К ней добавляются подзадачи-модификаторы — дополнительные трудности или условия. Каждый модификатор имеет свою цену в монетах. Отмечайте только те, которые реально произошли.' },
+          { type: 'heading', text: 'Категории модификаторов' },
+          { type: 'table', headers: ['Категория', 'Примеры', 'Монеты'], rows: [
+            ['Дорога', 'Пешком, на велосипеде, общественный транспорт', '5–15 за км'],
+            ['Погода', 'Дождь, мороз, жара, ветер', '5–15'],
+            ['Расписание', 'Раннее утро (до 7:00), поздний вечер', '5–10'],
+            ['Доп. нагрузка', 'Тяжёлый рюкзак, доп. упражнения', '5–20'],
+            ['Дискомфорт', 'Плохое самочувствие, усталость', '5–15'],
+          ] },
+          { type: 'heading', text: 'Пример' },
+          { type: 'text', text: 'Задача «Бассейн» = 55 монет (база). Подзадачи: «Пешком туда 1.5 км» (+8), «Пешком обратно 1.5 км» (+8), «Плохая погода» (+10). Если все условия выполнены — итого 81 монета.' },
+          { type: 'heading', text: 'Правила' },
+          { type: 'list', items: [
+            'Модификаторы дают только монеты — кристаллы зависят от базовой сложности задачи',
+            'Сумма всех модификаторов не должна превышать ×2 от базовой стоимости',
+            'Нельзя ставить взаимоисключающие модификаторы (дождь + жара, мороз + жара)',
+            'Модификаторы опциональны — отмечайте только когда условие реально выполнено',
+          ] },
+          { type: 'tip', text: 'Модификаторы мотивируют выполнять задачи даже в неидеальных условиях. Плохая погода или далёкая дорога — теперь не помеха, а бонус!' },
+        ],
+      },
+      {
+        id: 'shop-pricing',
+        title: 'Цены в магазине',
+        icon: ShoppingBag,
+        iconColor: '#f97316',
+        content: [
+          { type: 'text', text: 'Цена предмета в магазине определяется его реальной ценностью для вас и временем удовольствия, которое он даёт.' },
+          { type: 'heading', text: 'Формула для «времени»' },
+          { type: 'text', text: 'Цена = минуты удовольствия × коэффициент (0.5–1.0). Коэффициент — это «ставка», сколько монет стоит минута отдыха. Рекомендуем 0.5–0.7 для начала.' },
+          { type: 'demo', demoId: 'shop-pricing' },
+          { type: 'heading', text: 'Формула для «покупок»' },
+          { type: 'text', text: 'Для реальных вещей (не время): Цена = реальная стоимость ÷ ваш «курс». Определите сколько стоит 1 монета в рублях для вас — например, 1 монета = 5₽. Тогда вещь за 3000₽ = 600 монет.' },
+          { type: 'heading', text: 'Ориентиры по времени накопления' },
+          { type: 'table', headers: ['Срок', 'Для чего', 'Примерная цена'], rows: [
+            ['1 день', 'Мелкие радости', '50–150 монет'],
+            ['3–5 дней', 'Средние награды', '200–500 монет'],
+            ['1–2 недели', 'Крупные покупки', '500–1500 монет'],
+            ['1 месяц', 'Большие награды', '1500–5000 монет'],
+            ['2+ месяца', 'Грандиозные цели', '5000+ монет'],
+          ] },
+          { type: 'info', text: 'Ориентиры рассчитаны при среднем заработке ~80–120 монет в день (5–8 задач разной сложности).' },
+          { type: 'heading', text: 'Видеоигры — цена за час' },
+          { type: 'text', text: 'Формула: цена 1 часа = дневной заработок ÷ максимум часов игры. Пример: зарабатываете ~100 монет/день, играете макс 3 часа → 1 час = ~33 монеты.' },
+          { type: 'heading', text: 'Сериалы — цена за серию' },
+          { type: 'text', text: 'Формула: цена серии = длительность в минутах × 0.5. Серия 40 минут → ~20 монет. Идея: вы «отрабатываете» половину времени просмотра.' },
+          { type: 'tip', text: 'Если предмет стоит 1 день накоплений — это ежедневная награда. Если 2 недели — это цель, к которой нужно стремиться. Именно долгосрочные цели лучше всего мотивируют!' },
+        ],
+      },
+      {
+        id: 'gem-economy',
+        title: 'Экономика кристаллов',
+        icon: Gem,
+        iconColor: '#06b6d4',
+        content: [
+          { type: 'text', text: 'Кристаллы — премиальная валюта. Они должны быть редкими и ценными, иначе теряют смысл.' },
+          { type: 'demo', demoId: 'gem-economy' },
+          { type: 'heading', text: 'Правила' },
+          { type: 'list', items: [
+            'Лёгкие и средние задачи НИКОГДА не дают кристаллы',
+            'Сложные задачи — опционально, 1 кристалл за очень сложные',
+            'Достижения — основной источник кристаллов',
+            'Стрики — бонус за длительные серии (7+ дней)',
+          ] },
+          { type: 'heading', text: 'Покупательная способность' },
+          { type: 'text', text: '1 кристалл ≈ 50–100 монет. Используйте кристаллы в ценах предметов только для самых ценных наград. Это создаёт ощущение эксклюзивности и дополнительную мотивацию для сложных задач.' },
+          { type: 'heading', text: 'Примеры цен с кристаллами' },
+          { type: 'table', headers: ['Предмет', 'Монеты', 'Кристаллы'], rows: [
+            ['Обычная награда', '50–300', '0'],
+            ['Хорошая награда', '300–800', '3–5'],
+            ['Отличная награда', '800–2000', '5–15'],
+            ['Премиальная награда', '2000+', '15–50'],
+          ] },
+          { type: 'tip', text: 'Если кристаллы копятся быстро — вы даёте их слишком много. В месяц игрок должен зарабатывать ~15–30 кристаллов.' },
+        ],
+      },
+      {
+        id: 'achievement-economy',
+        title: 'Награды за достижения',
+        icon: Award,
+        iconColor: '#eab308',
+        content: [
+          { type: 'text', text: 'Достижения — важная часть экономики. Они создают «бонусные инъекции» валюты за долгосрочный прогресс.' },
+          { type: 'heading', text: 'Формулы' },
+          { type: 'list', items: [
+            'Монеты = дней до выполнения × дневной доход × 0.15',
+            'Кристаллы = округление вверх (дней до выполнения ÷ 10)',
+            'XP = дней до выполнения × 15',
+          ] },
+          { type: 'demo', demoId: 'achievement-economy' },
+          { type: 'heading', text: 'Почему ×0.15?' },
+          { type: 'text', text: 'Награда за достижение должна быть приятным бонусом (~15% от заработка за этот период), а не основным доходом. Если достижения дают слишком много — задачи становятся менее значимыми.' },
+          { type: 'heading', text: 'Повторяемые достижения' },
+          { type: 'text', text: 'Для повторяемых достижений (например, «выполнить 10 задач» — можно бесконечно) уменьшайте награду на 30–50% от базовой, чтобы не создать бесконечный источник валюты.' },
+          { type: 'tip', text: 'Создайте несколько легендарных достижений с большими наградами (100-дневный стрик, 1000 задач) — они станут долгосрочными целями и мощным мотиватором.' },
+        ],
+      },
+      {
+        id: 'economy-balance',
+        title: 'Баланс и золотое правило',
+        icon: Scale,
+        iconColor: '#10b981',
+        content: [
+          { type: 'text', text: 'Здоровая экономика — это когда игрок стабильно зарабатывает чуть больше, чем тратит. Это создаёт чувство прогресса и позволяет копить на большие цели.' },
+          { type: 'heading', text: 'Золотое правило' },
+          { type: 'info', text: 'Дневной заработок > Дневные траты × 1.1. Профицит ~10% идёт на накопления для долгосрочных целей.' },
+          { type: 'demo', demoId: 'balance-target' },
+          { type: 'heading', text: 'Все формулы' },
+          { type: 'demo', demoId: 'formula' },
+          { type: 'heading', text: 'Множители и скидки' },
+          { type: 'text', text: 'Множители и скидки — «ускорители» экономики. Их цена должна окупаться, но с запасом:' },
+          { type: 'list', items: [
+            'Множитель стрика: цена = (значение - 1) × интервал × средняя награда × использований × 0.7',
+            'Скидочный талон: цена = средняя покупка × (скидка% / 100) × 0.6',
+            'Выгода для игрока ~30–40% — мотивирует покупать, но не ломает экономику',
+          ] },
+          { type: 'heading', text: 'Лутбоксы' },
+          { type: 'text', text: 'Средняя ценность содержимого лутбокса = 60–80% от его цены. Игрок в среднем «проигрывает», но шанс на редкий дроп создаёт азарт.' },
+          { type: 'heading', text: 'Крафт — фрагменты' },
+          { type: 'text', text: 'Шанс дропа фрагмента = 100 ÷ (нужно фрагментов × задач/день × дней крафта). Пример: 10 фрагментов, 6 задач/день, цель 2 недели → ~12% шанс.' },
+          { type: 'heading', text: 'Признаки дисбаланса' },
+          { type: 'table', headers: ['Проблема', 'Причина', 'Решение'], rows: [
+            ['Монеты копятся, нечего купить', 'Мало товаров или цены низкие', 'Добавьте дорогие награды или поднимите цены'],
+            ['Вечно не хватает', 'Награды занижены или цены завышены', 'Пересмотрите множители или снизьте цены'],
+            ['Кристаллы бесполезны', 'Нет товаров за кристаллы', 'Добавьте эксклюзивные предметы за кристаллы'],
+            ['Нет мотивации', 'Нет долгосрочных целей', 'Создайте дорогие «мечты» — 1-3 месяца копить'],
+            ['Легко получить всё', 'Экономика слишком щедрая', 'Уменьшите награды на 20–30%'],
+          ] },
+          { type: 'demo', demoId: 'daily-balance' },
+          { type: 'warning', text: 'Не меняйте экономику резко! Если нужна корректировка, делайте её постепенно — по 10–15% за раз. Иначе потеряете ощущение прогресса.' },
+          { type: 'tip', text: 'Время до первой «большой» покупки — 1–2 недели. Это оптимальный срок: достаточно быстро, чтобы не потерять мотивацию, и достаточно долго, чтобы чувствовалась ценность.' },
+        ],
+      },
+    ],
+  },
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // 3. ЗАДАЧИ
   // ────────────────────────────────────────────────────────────────────────────
   {
     id: 'tasks',
@@ -1793,7 +2407,7 @@ export default function GuideSection() {
                 Полное руководство по всем функциям приложения. Выберите статью слева или воспользуйтесь поиском.
               </p>
               <div className="grid grid-cols-3 gap-3 max-w-md">
-                {GUIDE_DATA.slice(0, 6).map(cat => {
+                {GUIDE_DATA.slice(0, 9).map(cat => {
                   const CatIcon = cat.icon
                   return (
                     <button

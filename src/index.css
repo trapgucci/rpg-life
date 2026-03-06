@@ -71,7 +71,7 @@
   
   /* UI elements */
   --sidebar-bg: rgba(255, 255, 255, 0.7);
-  --titlebar-bg: rgba(255, 255, 255, 0.8);
+  --titlebar-bg: #ffffff;
   --input-bg: rgba(255, 255, 255, 0.9);
   
   /* Scrollbar */
@@ -233,7 +233,7 @@ html.dark,
   --accent-glow: rgba(129, 140, 248, 0.3);
   
   --sidebar-bg: rgba(15, 23, 42, 0.8);
-  --titlebar-bg: rgba(15, 23, 42, 0.9);
+  --titlebar-bg: #0f172a;
   --input-bg: rgba(30, 41, 59, 0.9);
   
   --scrollbar: rgba(148, 163, 184, 0.2);
@@ -280,7 +280,7 @@ html.dark,
     --accent-glow: rgba(129, 140, 248, 0.3);
     
     --sidebar-bg: rgba(15, 23, 42, 0.8);
-    --titlebar-bg: rgba(15, 23, 42, 0.9);
+    --titlebar-bg: #0f172a;
     --input-bg: rgba(30, 41, 59, 0.9);
     
     --scrollbar: rgba(148, 163, 184, 0.2);
@@ -769,8 +769,28 @@ html.dark,
 
   .glass-titlebar {
     background: var(--titlebar-bg);
-    backdrop-filter: blur(40px) saturate(180%);
-    -webkit-backdrop-filter: blur(40px) saturate(180%);
+  }
+
+  .titlebar-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 32px;
+    color: var(--fg-secondary);
+    background: transparent;
+    border: none;
+    cursor: default;
+    transition: background 0.1s, color 0.1s;
+    -webkit-app-region: no-drag;
+  }
+  .titlebar-btn:hover {
+    background: var(--accent-subtle);
+    color: var(--fg);
+  }
+  .titlebar-btn-close:hover {
+    background: #e81123;
+    color: #fff;
   }
 
   /* Gradient text */

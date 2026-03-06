@@ -11,8 +11,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // App info
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
 
-  // Title bar
-  updateTitleBar: (color, symbolColor) => ipcRenderer.invoke('titlebar:update', { color, symbolColor }),
+  // Window controls
+  minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
+  maximizeWindow: () => ipcRenderer.invoke('window:maximize'),
+  closeWindow: () => ipcRenderer.invoke('window:close'),
+  isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+  onMaximizeChange: (cb) => {
+    ipcRenderer.on('window:maximized', () => cb(true))
+    ipcRenderer.on('window:unmaximized', () => cb(false))
+  },
 })
 
 // License API

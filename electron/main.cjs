@@ -14,12 +14,9 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    titleBarStyle: 'hidden',
-    titleBarOverlay: {
-      color: '#0f172a',
-      symbolColor: '#e8e8e8',
-      height: 32,
-    },
+    ...(process.platform === 'darwin'
+      ? { titleBarStyle: 'hidden' }
+      : { frame: false }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
@@ -34,6 +31,9 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   }
+
+  mainWindow.on('maximize', () => mainWindow.webContents.send('window:maximized'))
+  mainWindow.on('unmaximize', () => mainWindow.webContents.send('window:unmaximized'))
 
   // Flush pending vault writes before closing
   let isClosing = false
@@ -74,12 +74,14 @@ ipcMain.handle('get-app-version', () => {
   return app.getVersion()
 })
 
-// Update title bar overlay colors (Windows)
-ipcMain.handle('titlebar:update', (_, { color, symbolColor }) => {
-  if (mainWindow && process.platform === 'win32') {
-    mainWindow.setTitleBarOverlay({ color, symbolColor, height: 32 })
-  }
+// Window controls
+ipcMain.handle('window:minimize', () => { mainWindow?.minimize() })
+ipcMain.handle('window:maximize', () => {
+  if (mainWindow?.isMaximized()) mainWindow.unmaximize()
+  else mainWindow?.maximize()
 })
+ipcMain.handle('window:close', () => { mainWindow?.close() })
+ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false)
 
 // ─── License System ─────────────────────────────────────────────────────────
 

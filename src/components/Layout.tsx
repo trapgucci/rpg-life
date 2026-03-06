@@ -38,9 +38,9 @@ function CurrencyDisplay() {
       {/* Profile section */}
       <div className="flex items-center gap-2 md:gap-4 min-w-0">
         <div className="relative shrink-0">
-          <div className="flex h-9 w-9 md:h-11 md:w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-base md:text-lg shadow-lg shadow-indigo-500/30 overflow-hidden">
+          <div className="flex h-9 w-9 md:h-11 md:w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-base md:text-lg shadow-lg shadow-indigo-500/30">
             {avatarImageUrl ? (
-              <img src={avatarImageUrl} alt="avatar" className="h-full w-full object-cover" />
+              <img src={avatarImageUrl} alt="avatar" className="h-full w-full rounded-xl object-cover" />
             ) : (
               settings.avatar || '👤'
             )}
@@ -114,7 +114,7 @@ export default function Layout() {
         color: 'var(--fg)',
       }}
     >
-      <WindowTitleBar title="RPG Life" />
+      <WindowTitleBar />
       <div className="flex min-h-0 flex-1">
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col">

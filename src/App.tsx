@@ -71,14 +71,6 @@ function App() {
     root.style.setProperty('--accent-glow', `rgba(${r},${g},${b},${isDark ? 0.3 : 0.4})`)
 
     root.classList.toggle('hide-scrollbars', !(settings.showScrollbars ?? true))
-
-    // Update Windows title bar overlay to match theme
-    if (window.electronAPI?.updateTitleBar) {
-      window.electronAPI.updateTitleBar(
-        isDark ? '#0f172a' : '#f5f7fa',
-        isDark ? '#e8e8e8' : '#1e293b'
-      )
-    }
   }, [settings.theme, settings.accentColor, settings.showScrollbars])
 
   // Show nothing while checking license
