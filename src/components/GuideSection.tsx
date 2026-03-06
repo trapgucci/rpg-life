@@ -1,14 +1,16 @@
 import { useState, useMemo } from 'react'
 import {
-  BookOpen, Search, ChevronRight, ChevronDown,
+  BookOpen, Search, ChevronRight,
   CheckSquare, ShoppingBag, Package, Trophy, Brain, Activity,
   Gamepad2, Swords, Coins, Gem, Star, Flame, Target,
   Zap, Shield, Clock, Repeat, BarChart3, Layers,
   Gift, Sparkles, Puzzle, Palette, Settings, Heart,
-  Info, Lightbulb, AlertTriangle,
+  Info, Lightbulb, AlertTriangle, TrendingUp, Flag,
+  Dumbbell,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
+import { HabitIcon } from './HabitIcon'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -39,6 +41,676 @@ type GuideBlock =
   | { type: 'steps'; items: string[] }
   | { type: 'divider' }
   | { type: 'link'; text: string; articleId: string }
+  | { type: 'demo'; demoId: string }
+
+// ─── UI Demo Components ─────────────────────────────────────────────────────
+
+function DemoCurrencies() {
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Как выглядят валюты в интерфейсе</p>
+      <div className="flex items-center gap-4 flex-wrap">
+        {/* Coins pill */}
+        <div className="glass-neu-coin flex items-center gap-2 rounded-xl px-3.5 py-2">
+          <Coins className="h-4 w-4 text-amber-500" />
+          <span className="text-sm font-bold text-amber-600 dark:text-amber-400">1,250</span>
+        </div>
+        {/* Gems pill */}
+        <div className="glass-neu-gem flex items-center gap-2 rounded-xl px-3.5 py-2">
+          <Gem className="h-4 w-4 text-cyan-500" strokeWidth={2.5} />
+          <span className="text-sm font-bold text-cyan-600 dark:text-cyan-400">42</span>
+        </div>
+        {/* Combined reward badge */}
+        <span className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-semibold bg-gradient-to-r from-amber-500/15 via-amber-500/8 to-cyan-500/15 ring-1 ring-inset ring-amber-400/15 shadow-sm shadow-amber-500/5">
+          <Coins className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+          <span className="text-amber-600 dark:text-amber-400">50</span>
+          <span className="w-px h-3 bg-[var(--border)] rounded-full self-center" />
+          <Gem className="h-4 w-4 text-cyan-600 dark:text-cyan-400" strokeWidth={2.5} />
+          <span className="text-cyan-600 dark:text-cyan-400">5</span>
+        </span>
+      </div>
+      <p className="text-[10px] text-[var(--fg-muted)] mt-2.5">Слева: отображение в хедере. Справа: бейдж награды на задаче.</p>
+    </div>
+  )
+}
+
+function DemoDifficultyBadges() {
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Бейджи сложности и XP</p>
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold ring-1 ring-inset shadow-sm bg-gradient-to-b from-emerald-500/20 to-emerald-500/8 text-emerald-500 ring-emerald-400/25 shadow-emerald-500/10">
+          <Zap className="h-3.5 w-3.5" />
+          10 XP
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold ring-1 ring-inset shadow-sm bg-gradient-to-b from-blue-500/20 to-blue-500/8 text-blue-500 ring-blue-400/25 shadow-blue-500/10">
+          <Zap className="h-3.5 w-3.5" />
+          30 XP
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold ring-1 ring-inset shadow-sm bg-gradient-to-b from-orange-500/20 to-orange-500/8 text-orange-500 ring-orange-400/25 shadow-orange-500/10">
+          <Zap className="h-3.5 w-3.5" />
+          100 XP
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold ring-1 ring-inset shadow-sm bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-red-400/25 shadow-red-500/10">
+          <Zap className="h-3.5 w-3.5" />
+          300 XP
+        </span>
+      </div>
+      <div className="flex items-center gap-2 flex-wrap mt-3">
+        <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold bg-gradient-to-b from-purple-500/20 to-purple-500/8 text-purple-500 ring-1 ring-inset ring-purple-400/25 shadow-sm shadow-purple-500/10">
+          <Zap className="h-3.5 w-3.5" />
+          75 XP
+        </span>
+        <span className="text-[10px] text-[var(--fg-muted)]">Фиолетовый — кастомный XP</span>
+      </div>
+    </div>
+  )
+}
+
+function DemoXpBar() {
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Полоска опыта (XP)</p>
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-lg shadow-md">
+            🧙
+          </div>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-bold text-[var(--fg)]">Герой</span>
+              <span className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
+                Ур. 12
+              </span>
+            </div>
+            <div className="mt-1 w-48 h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: '65%',
+                  background: 'linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.25)',
+                }}
+              />
+            </div>
+            <p className="text-[10px] text-[var(--fg-muted)] mt-0.5">650 / 1,000 XP</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DemoItemTypes() {
+  const types = [
+    { label: 'Обычный', color: '#9ca3af', icon: 'Package' },
+    { label: 'Лутбокс', color: '#8b5cf6', icon: 'Gift' },
+    { label: 'Видеоигра', color: '#06b6d4', icon: 'Gamepad2' },
+    { label: 'Сериал', color: '#ec4899', icon: 'Clapperboard' },
+    { label: 'Множитель', color: '#f59e0b', icon: 'TrendingUp' },
+    { label: 'Скидка', color: '#ef4444', icon: 'Tag' },
+  ]
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Типы предметов — стиль «эмалевый значок»</p>
+      <div className="flex items-center gap-3 flex-wrap">
+        {types.map(t => (
+          <div key={t.label} className="flex flex-col items-center gap-1.5">
+            <div
+              className="flex h-12 w-12 items-center justify-center rounded-xl text-white transition-all shrink-0"
+              style={{
+                background: `linear-gradient(145deg, ${t.color}ee, ${t.color}99)`,
+                boxShadow: `inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.2)`,
+              }}
+            >
+              <HabitIcon iconName={t.icon} size={22} />
+            </div>
+            <span className="text-[10px] text-[var(--fg-muted)] font-medium">{t.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DemoTaskCard() {
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Пример карточки задачи</p>
+      {/* Mini task card */}
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-card)] p-3 hover:border-[var(--border-accent)] transition-all max-w-md">
+        <div className="flex items-center gap-3">
+          {/* Icon */}
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0 text-white"
+            style={{ background: 'linear-gradient(145deg, var(--accent), var(--accent))' }}
+          >
+            <Dumbbell className="h-5 w-5" />
+          </div>
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <span className="text-sm font-semibold text-[var(--fg)] block truncate">Тренировка в зале</span>
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              {/* Recurrence badge */}
+              <span className="inline-flex items-center gap-1 rounded-lg px-1.5 py-0.5 text-[10px] font-medium bg-blue-500/10 text-blue-500 ring-1 ring-inset ring-blue-400/20">
+                <Repeat className="h-2.5 w-2.5" />
+                Ежедневно
+              </span>
+              {/* Streak badge */}
+              <span className="inline-flex items-center gap-1 rounded-lg px-1.5 py-0.5 text-[10px] font-medium bg-amber-500/10 text-amber-500 ring-1 ring-inset ring-amber-400/20">
+                <Flame className="h-2.5 w-2.5" />
+                12
+              </span>
+              {/* Priority */}
+              <span className="inline-flex items-center gap-1 rounded-lg px-1.5 py-0.5 text-[10px] font-medium bg-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/20">
+                <Flag className="h-2.5 w-2.5" />
+              </span>
+              {/* Fragment drop */}
+              <span className="inline-flex items-center gap-1 rounded-lg px-1.5 py-0.5 text-[10px] font-medium bg-purple-500/10 text-purple-500 ring-1 ring-inset ring-purple-400/20">
+                <Puzzle className="h-2.5 w-2.5" />
+              </span>
+            </div>
+          </div>
+          {/* Reward */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="inline-flex items-center gap-1 rounded-xl px-2 py-0.5 text-xs font-semibold bg-gradient-to-b from-orange-500/20 to-orange-500/8 text-orange-500 ring-1 ring-inset ring-orange-400/25 shadow-sm shadow-orange-500/10">
+              <Zap className="h-3 w-3" />
+              100
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-xl px-2 py-0.5 text-xs font-semibold bg-gradient-to-b from-amber-500/15 to-amber-500/5 ring-1 ring-inset ring-amber-400/20 shadow-sm shadow-amber-500/10">
+              <Coins className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+              <span className="text-amber-600 dark:text-amber-400">30</span>
+            </span>
+          </div>
+        </div>
+      </div>
+      {/* Labels */}
+      <div className="mt-2.5 flex items-center gap-3 flex-wrap text-[10px] text-[var(--fg-muted)]">
+        <span className="flex items-center gap-1"><Repeat className="h-3 w-3 text-blue-500" /> Повторяемость</span>
+        <span className="flex items-center gap-1"><Flame className="h-3 w-3 text-amber-500" /> Стрик</span>
+        <span className="flex items-center gap-1"><Flag className="h-3 w-3 text-red-500" /> Приоритет</span>
+        <span className="flex items-center gap-1"><Puzzle className="h-3 w-3 text-purple-500" /> Фрагмент</span>
+      </div>
+    </div>
+  )
+}
+
+function DemoStreaks() {
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Стрики и множители</p>
+      <div className="flex items-center gap-4 flex-wrap">
+        {/* Streak examples */}
+        {[3, 7, 14, 30].map(n => (
+          <div key={n} className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 bg-gradient-to-b from-amber-500/15 to-orange-500/8 ring-1 ring-inset ring-amber-400/20">
+            <Flame className="h-4 w-4 text-amber-500" style={{ filter: n >= 14 ? 'drop-shadow(0 0 4px rgba(245,158,11,0.5))' : undefined }} />
+            <span className="text-sm font-bold text-amber-600 dark:text-amber-400">{n}</span>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-3 mt-3">
+        <div className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 bg-gradient-to-b from-amber-500/15 to-amber-500/8 ring-1 ring-inset ring-amber-400/20">
+          <TrendingUp className="h-4 w-4 text-amber-500" />
+          <span className="text-sm font-bold text-amber-600 dark:text-amber-400">x2.0</span>
+        </div>
+        <span className="text-[10px] text-[var(--fg-muted)]">Множитель стрика — увеличивает награды</span>
+      </div>
+    </div>
+  )
+}
+
+function DemoPriorities() {
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Бейджи приоритета</p>
+      <div className="flex items-center gap-3">
+        <span className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-semibold ring-1 ring-inset shadow-sm bg-gradient-to-b from-red-500/20 to-red-500/8 text-red-500 ring-red-400/25 shadow-red-500/10">
+          <Flag className="h-3.5 w-3.5" />
+          Высокий
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-semibold ring-1 ring-inset shadow-sm bg-gradient-to-b from-yellow-500/20 to-yellow-500/8 text-yellow-500 ring-yellow-400/25 shadow-yellow-500/10">
+          <Flag className="h-3.5 w-3.5" />
+          Средний
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-semibold ring-1 ring-inset shadow-sm bg-gradient-to-b from-emerald-500/20 to-emerald-500/8 text-emerald-500 ring-emerald-400/25 shadow-emerald-500/10">
+          <Flag className="h-3.5 w-3.5" />
+          Низкий
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function DemoRecurrence() {
+  const types = ['Ежедневно', 'Еженедельно', 'Ежемесячно', 'Мгновенно']
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Бейджи повторяемости</p>
+      <div className="flex items-center gap-2 flex-wrap">
+        {types.map(t => (
+          <span
+            key={t}
+            className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-medium bg-blue-500/10 text-blue-500 ring-1 ring-inset ring-blue-400/20"
+          >
+            <Repeat className="h-3 w-3" />
+            {t}
+          </span>
+        ))}
+        <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-medium bg-indigo-500/10 text-indigo-500 ring-1 ring-inset ring-indigo-400/20">
+          <Clock className="h-3 w-3" />
+          Каждые 3 дня
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function DemoAttributes() {
+  const attrs = [
+    { name: 'Сила', key: 'СИЛ', emoji: '💪', color: '#ef4444', level: 8, pct: 45 },
+    { name: 'Интеллект', key: 'ИНТ', emoji: '🧠', color: '#6366f1', level: 12, pct: 70 },
+    { name: 'Ловкость', key: 'ЛОВ', emoji: '🏃', color: '#22c55e', level: 5, pct: 30 },
+    { name: 'Креативность', key: 'КРЕ', emoji: '🎨', color: '#ec4899', level: 10, pct: 85 },
+  ]
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Атрибуты персонажа</p>
+      <div className="grid grid-cols-2 gap-2">
+        {attrs.map(a => (
+          <div key={a.key} className="flex items-center gap-2.5 rounded-xl p-2 bg-[var(--surface-card)] border border-[var(--border)]">
+            <div
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-lg shrink-0"
+              style={{ background: `${a.color}18` }}
+            >
+              {a.emoji}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[var(--fg)]">{a.name}</span>
+                <span
+                  className="text-[10px] font-bold px-1.5 py-0.5 rounded-md text-white"
+                  style={{ background: a.color }}
+                >
+                  {a.key} {a.level}
+                </span>
+              </div>
+              <div className="mt-1 h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${a.pct}%`,
+                    background: `linear-gradient(90deg, ${a.color}, ${a.color}aa)`,
+                    boxShadow: `0 0 6px ${a.color}40`,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DemoRanks() {
+  const ranks = [
+    { emoji: '🌱', name: 'Новичок', level: '1+', color: '#94a3b8' },
+    { emoji: '🔨', name: 'Подмастерье', level: '5+', color: '#a855f7' },
+    { emoji: '🧭', name: 'Следопыт', level: '10+', color: '#06b6d4' },
+    { emoji: '⚔️', name: 'Воин', level: '15+', color: '#ef4444' },
+    { emoji: '🛡️', name: 'Ветеран', level: '20+', color: '#22c55e' },
+    { emoji: '🎯', name: 'Эксперт', level: '25+', color: '#3b82f6' },
+    { emoji: '👑', name: 'Мастер', level: '30+', color: '#6366f1' },
+    { emoji: '🏆', name: 'Грандмастер', level: '40+', color: '#8b5cf6' },
+    { emoji: '⭐', name: 'Легенда', level: '50+', color: '#f59e0b' },
+  ]
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Ранги персонажа</p>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {ranks.map(r => (
+          <div
+            key={r.name}
+            className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 border transition-all"
+            style={{ borderColor: `${r.color}30`, background: `${r.color}08` }}
+          >
+            <span className="text-base">{r.emoji}</span>
+            <div>
+              <span className="text-[10px] font-bold block" style={{ color: r.color }}>{r.name}</span>
+              <span className="text-[9px] text-[var(--fg-muted)]">Ур. {r.level}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DemoAchievementCard() {
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Пример карточки достижения</p>
+      <div className="flex gap-3">
+        {/* Locked */}
+        <div className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface-card)] p-3 opacity-60">
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md">
+              <Trophy className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-xs font-bold text-[var(--fg)] block">Марафонец</span>
+              <span className="text-[10px] text-[var(--fg-muted)]">Выполни 100 задач</span>
+            </div>
+            <Shield className="h-4 w-4 text-[var(--fg-muted)]" />
+          </div>
+          <div className="h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
+            <div className="h-full rounded-full bg-amber-500" style={{ width: '37%' }} />
+          </div>
+          <p className="text-[10px] text-[var(--fg-muted)] mt-1">37 / 100</p>
+        </div>
+        {/* Unlocked */}
+        <div className="flex-1 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3">
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-md">
+              <Star className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-xs font-bold text-[var(--fg)] block">Первые шаги</span>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">Разблокировано!</span>
+            </div>
+            <CheckSquare className="h-4 w-4 text-emerald-500" />
+          </div>
+          <div className="h-1.5 rounded-full bg-emerald-500/20 overflow-hidden">
+            <div className="h-full rounded-full bg-emerald-500" style={{ width: '100%' }} />
+          </div>
+          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">10 / 10</p>
+        </div>
+      </div>
+      <p className="text-[10px] text-[var(--fg-muted)] mt-2">Слева: заблокированное. Справа: разблокированное.</p>
+    </div>
+  )
+}
+
+function DemoCraftFragments() {
+  const rarities = [
+    { label: 'Обычный', from: '#9ca3af', to: '#6b7280' },
+    { label: 'Необычный', from: '#22c55e', to: '#10b981' },
+    { label: 'Редкий', from: '#3b82f6', to: '#6366f1' },
+    { label: 'Эпический', from: '#a855f7', to: '#7c3aed' },
+    { label: 'Легендарный', from: '#f59e0b', to: '#ea580c' },
+  ]
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Фрагменты крафта — стиль «призматический кристалл»</p>
+      <div className="flex items-center gap-3 flex-wrap">
+        {rarities.map(r => (
+          <div key={r.label} className="flex flex-col items-center gap-1.5">
+            <div
+              className="flex h-12 w-12 items-center justify-center rounded-xl text-white relative overflow-hidden"
+              style={{
+                background: `linear-gradient(135deg, ${r.from} 0%, ${r.to} 50%, ${r.from} 100%)`,
+                boxShadow: `0 0 12px ${r.from}40, inset 0 1px 0 rgba(255,255,255,0.4)`,
+              }}
+            >
+              {/* Glare effect */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%, rgba(255,255,255,0.1) 100%)',
+                }}
+              />
+              <Puzzle className="h-5 w-5 relative z-10" />
+            </div>
+            <span className="text-[10px] font-medium" style={{ color: r.from }}>{r.label}</span>
+          </div>
+        ))}
+      </div>
+      {/* Progress bar demo */}
+      <div className="mt-3 flex items-center gap-3">
+        <div className="flex-1">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] text-[var(--fg-muted)]">Прогресс сборки</span>
+            <span className="text-[10px] font-bold text-blue-500">7 / 10</span>
+          </div>
+          <div className="h-2 rounded-full bg-[var(--border)] overflow-hidden">
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: '70%',
+                background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
+                boxShadow: '0 0 8px rgba(59,130,246,0.4)',
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DemoShopCard() {
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Пример карточки магазина</p>
+      <div className="flex gap-3">
+        {/* Normal item */}
+        <div className="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--surface-card)] p-3 group">
+          <div className="flex items-center gap-3">
+            <div
+              className="flex h-11 w-11 items-center justify-center rounded-xl text-white shrink-0"
+              style={{
+                background: 'linear-gradient(145deg, #9ca3afee, #9ca3af99)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.2)',
+              }}
+            >
+              <HabitIcon iconName="Pizza" size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-sm font-bold text-[var(--fg)] block truncate">Пицца вечером</span>
+              <span className="inline-flex items-center gap-1 mt-1 rounded-xl px-2 py-0.5 text-[10px] font-semibold bg-gradient-to-b from-amber-500/15 to-amber-500/5 ring-1 ring-inset ring-amber-400/20">
+                <Coins className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                <span className="text-amber-600 dark:text-amber-400">100</span>
+              </span>
+            </div>
+          </div>
+        </div>
+        {/* Lootbox */}
+        <div className="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--surface-card)] p-3 relative">
+          <div className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-white">
+            <Gift className="h-3 w-3" />
+          </div>
+          <div className="flex items-center gap-3">
+            <div
+              className="flex h-11 w-11 items-center justify-center rounded-xl text-white shrink-0"
+              style={{
+                background: 'linear-gradient(145deg, #8b5cf6ee, #8b5cf699)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.2)',
+              }}
+            >
+              <HabitIcon iconName="Gift" size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-sm font-bold text-[var(--fg)] block truncate">Тайный ларец</span>
+              <span className="inline-flex items-center gap-1.5 mt-1 rounded-xl px-2 py-0.5 text-[10px] font-semibold bg-gradient-to-r from-amber-500/15 via-amber-500/8 to-cyan-500/15 ring-1 ring-inset ring-amber-400/15">
+                <Coins className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                <span className="text-amber-600 dark:text-amber-400">200</span>
+                <span className="w-px h-2.5 bg-[var(--border)]" />
+                <Gem className="h-3 w-3 text-cyan-600 dark:text-cyan-400" strokeWidth={2.5} />
+                <span className="text-cyan-600 dark:text-cyan-400">10</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DemoMoodTracker() {
+  const moods = [
+    { emoji: '😫', label: 'Ужасно', color: '#ef4444' },
+    { emoji: '😔', label: 'Плохо', color: '#f97316' },
+    { emoji: '😐', label: 'Нормально', color: '#eab308' },
+    { emoji: '😊', label: 'Хорошо', color: '#22c55e' },
+    { emoji: '🤩', label: 'Отлично', color: '#06b6d4' },
+  ]
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Трекер настроения</p>
+      <div className="flex items-center justify-center gap-2">
+        {moods.map((m, i) => (
+          <button
+            key={m.label}
+            type="button"
+            className={cn(
+              'flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition-all border',
+              i === 3
+                ? 'border-emerald-500/40 bg-emerald-500/10 scale-110 shadow-md'
+                : 'border-transparent hover:bg-[var(--surface-card)]'
+            )}
+          >
+            <span className="text-2xl">{m.emoji}</span>
+            <span className="text-[9px] font-medium" style={{ color: m.color }}>{m.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DemoTaskStatuses() {
+  const statuses = [
+    { label: 'Выполнено', color: '#22c55e', icon: CheckSquare, desc: 'Стрик +1' },
+    { label: 'Пропущено', color: '#3b82f6', icon: Clock, desc: 'Стрик сохр.' },
+    { label: 'Просрочено', color: '#ef4444', icon: AlertTriangle, desc: 'Стрик = 0!' },
+  ]
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Статусы цикла задачи</p>
+      <div className="flex items-center gap-3">
+        {statuses.map(s => {
+          const Icon = s.icon
+          return (
+            <div key={s.label} className="flex-1 flex items-center gap-2.5 rounded-xl p-2.5 border" style={{ borderColor: `${s.color}30`, background: `${s.color}08` }}>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: `${s.color}20` }}>
+                <Icon className="h-4 w-4" style={{ color: s.color }} />
+              </div>
+              <div>
+                <span className="text-xs font-bold block" style={{ color: s.color }}>{s.label}</span>
+                <span className="text-[10px] text-[var(--fg-muted)]">{s.desc}</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function DemoArchiveBadges() {
+  const reasons = [
+    { label: 'Завершена', color: '#22c55e' },
+    { label: 'Истекла', color: '#f97316' },
+    { label: 'Провалена', color: '#ef4444' },
+    { label: 'Вручную', color: '#94a3b8' },
+  ]
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Бейджи причин архивации</p>
+      <div className="flex items-center gap-2 flex-wrap">
+        {reasons.map(r => (
+          <span key={r.label} className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold ring-1 ring-inset" style={{ color: r.color, background: `${r.color}15`, borderColor: `${r.color}25`, boxShadow: `0 1px 2px ${r.color}10` }}>
+            {r.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DemoAccentColors() {
+  const colors = [
+    { name: 'Синий', value: '#3b82f6' },
+    { name: 'Фиолетовый', value: '#8b5cf6' },
+    { name: 'Розовый', value: '#ec4899' },
+    { name: 'Красный', value: '#ef4444' },
+    { name: 'Оранжевый', value: '#f97316' },
+    { name: 'Жёлтый', value: '#eab308' },
+    { name: 'Зелёный', value: '#22c55e' },
+    { name: 'Бирюзовый', value: '#06b6d4' },
+  ]
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Цвета акцента</p>
+      <div className="flex items-center gap-2 flex-wrap">
+        {colors.map(c => (
+          <div key={c.name} className="flex flex-col items-center gap-1">
+            <div
+              className="h-8 w-8 rounded-xl shadow-md transition-transform hover:scale-110 cursor-pointer"
+              style={{ background: c.value, boxShadow: `0 2px 8px ${c.value}40` }}
+            />
+            <span className="text-[9px] text-[var(--fg-muted)]">{c.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DemoInventoryCard() {
+  return (
+    <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--fg-muted)] mb-3">Предметы в инвентаре</p>
+      <div className="flex items-center gap-3">
+        {[
+          { icon: 'Pizza', name: 'Пицца', color: '#9ca3af', qty: 3 },
+          { icon: 'Gamepad2', name: 'Ведьмак 3', color: '#06b6d4', qty: 1 },
+          { icon: 'Gift', name: 'Тайный ларец', color: '#8b5cf6', qty: 2 },
+        ].map(item => (
+          <div key={item.name} className="flex flex-col items-center gap-1.5 rounded-2xl p-3 bg-[var(--surface-card)] border border-[var(--border)] relative w-20">
+            {item.qty > 1 && (
+              <span className="absolute top-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-[var(--surface)] text-[var(--fg-muted)] border border-[var(--border)]">
+                x{item.qty}
+              </span>
+            )}
+            <div
+              className="flex h-11 w-11 items-center justify-center rounded-xl text-white shrink-0"
+              style={{
+                background: `linear-gradient(145deg, ${item.color}ee, ${item.color}99)`,
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.2)',
+              }}
+            >
+              <HabitIcon iconName={item.icon} size={20} />
+            </div>
+            <span className="text-[10px] font-medium text-[var(--fg)] text-center line-clamp-2">{item.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Map demo IDs to components
+const DEMO_COMPONENTS: Record<string, () => JSX.Element> = {
+  'currencies': DemoCurrencies,
+  'difficulty-badges': DemoDifficultyBadges,
+  'xp-bar': DemoXpBar,
+  'item-types': DemoItemTypes,
+  'task-card': DemoTaskCard,
+  'streaks': DemoStreaks,
+  'priorities': DemoPriorities,
+  'recurrence': DemoRecurrence,
+  'attributes': DemoAttributes,
+  'ranks': DemoRanks,
+  'achievement-card': DemoAchievementCard,
+  'craft-fragments': DemoCraftFragments,
+  'shop-card': DemoShopCard,
+  'mood-tracker': DemoMoodTracker,
+  'task-statuses': DemoTaskStatuses,
+  'archive-badges': DemoArchiveBadges,
+  'accent-colors': DemoAccentColors,
+  'inventory-card': DemoInventoryCard,
+}
 
 // ─── Encyclopedia Data ───────────────────────────────────────────────────────
 
@@ -68,6 +740,7 @@ const GUIDE_DATA: GuideCategory[] = [
             'Разблокируйте достижения — отслеживайте прогресс',
             'Крафтите уникальные предметы — собирайте фрагменты из задач',
           ] },
+          { type: 'demo', demoId: 'task-card' },
           { type: 'tip', text: 'Начните с 3-5 простых ежедневных задач. Не перегружайте себя — постепенно добавляйте новые по мере привыкания.' },
         ],
       },
@@ -80,6 +753,7 @@ const GUIDE_DATA: GuideCategory[] = [
           { type: 'text', text: 'Интерфейс RPG Life состоит из нескольких ключевых зон.' },
           { type: 'heading', text: 'Верхняя панель' },
           { type: 'text', text: 'Показывает аватар и имя персонажа, текущий уровень, полоску опыта (XP), а также баланс монет и кристаллов. Уровень отображается на бейдже аватара.' },
+          { type: 'demo', demoId: 'xp-bar' },
           { type: 'heading', text: 'Боковое меню (Sidebar)' },
           { type: 'list', items: [
             'Задачи — основной раздел для управления делами',
@@ -100,10 +774,7 @@ const GUIDE_DATA: GuideCategory[] = [
         iconColor: '#f59e0b',
         content: [
           { type: 'text', text: 'В RPG Life две основные валюты, которые вы зарабатываете за выполнение задач.' },
-          { type: 'table', headers: ['Валюта', 'Иконка', 'Источники'], rows: [
-            ['Монеты', 'Золотая монета', 'Основная награда за задачи, достижения, компенсации'],
-            ['Кристаллы', 'Голубой кристалл', 'Редкая валюта — из лутбоксов, за достижения, особые задачи'],
-          ] },
+          { type: 'demo', demoId: 'currencies' },
           { type: 'heading', text: 'На что тратить?' },
           { type: 'list', items: [
             'Покупка предметов в магазине',
@@ -123,12 +794,7 @@ const GUIDE_DATA: GuideCategory[] = [
         content: [
           { type: 'text', text: 'Каждая выполненная задача приносит очки опыта (XP). XP идёт как в общий уровень профиля, так и в выбранные атрибуты.' },
           { type: 'heading', text: 'Сколько XP за задачу?' },
-          { type: 'table', headers: ['Сложность', 'XP по умолч.', 'Цвет'], rows: [
-            ['Легко', '10 XP', 'Зелёный'],
-            ['Средне', '30 XP', 'Синий'],
-            ['Сложно', '100 XP', 'Оранжевый'],
-            ['Очень сложно', '300 XP', 'Красный'],
-          ] },
+          { type: 'demo', demoId: 'difficulty-badges' },
           { type: 'info', text: 'Значения XP за сложности можно изменить в Настройки → Геймплей → «Опыт за сложности».' },
           { type: 'heading', text: 'Режимы прогрессии' },
           { type: 'list', items: [
@@ -167,6 +833,7 @@ const GUIDE_DATA: GuideCategory[] = [
           { type: 'heading', text: 'Вложенные подзадачи (Nested)' },
           { type: 'text', text: 'Задача со списком подзадач. Каждая подзадача может иметь свою сложность и награды. Основная задача считается выполненной, когда все подзадачи завершены.' },
           { type: 'text', text: 'Пример: «Генеральная уборка» → Кухня, Ванная, Спальня, Гостиная.' },
+          { type: 'demo', demoId: 'task-card' },
           { type: 'tip', text: 'Используйте вложенные задачи для сложных проектов — разбейте их на мелкие шаги и получайте награду за каждый.' },
         ],
       },
@@ -178,20 +845,10 @@ const GUIDE_DATA: GuideCategory[] = [
         content: [
           { type: 'heading', text: 'Сложность' },
           { type: 'text', text: 'Определяет базовый XP за выполнение. Выбирайте честно — от этого зависит баланс прогрессии.' },
-          { type: 'table', headers: ['Уровень', 'XP', 'Когда использовать'], rows: [
-            ['Легко', '10', 'Рутина: почистить зубы, заправить кровать'],
-            ['Средне', '30', 'Обычные задачи: тренировка, чтение, уборка'],
-            ['Сложно', '100', 'Серьёзный вызов: экзамен, сложный проект'],
-            ['Очень сложно', '300', 'Эпическое достижение: марафон, запуск продукта'],
-          ] },
+          { type: 'demo', demoId: 'difficulty-badges' },
           { type: 'heading', text: 'Приоритет' },
           { type: 'text', text: 'Помогает организовать задачи по важности. Не влияет на награды — только на сортировку.' },
-          { type: 'list', items: [
-            'Высокий — срочные и важные дела',
-            'Средний — важные, но не горящие',
-            'Низкий — хорошо бы сделать, но не критично',
-            'Без приоритета — без особого значения',
-          ] },
+          { type: 'demo', demoId: 'priorities' },
         ],
       },
       {
@@ -201,16 +858,7 @@ const GUIDE_DATA: GuideCategory[] = [
         iconColor: '#14b8a6',
         content: [
           { type: 'text', text: 'Задачи могут повторяться по расписанию. После выполнения цикла задача автоматически сбрасывается для следующего периода.' },
-          { type: 'heading', text: 'Типы повторяемости' },
-          { type: 'table', headers: ['Тип', 'Описание'], rows: [
-            ['Одноразовая', 'Выполняется один раз и архивируется'],
-            ['Ежедневная', 'Каждый день сбрасывается в полночь'],
-            ['Еженедельная', 'Раз в неделю. Можно выбрать дни или «N раз в неделю»'],
-            ['Ежемесячная', 'Раз в месяц'],
-            ['Ежегодная', 'Раз в год'],
-            ['Мгновенная', 'Можно выполнять сколько угодно раз подряд (не сбрасывается)'],
-            ['Кастомная', 'Свой интервал в днях (каждые 3 дня, каждые 14 дней...)'],
-          ] },
+          { type: 'demo', demoId: 'recurrence' },
           { type: 'heading', text: 'Еженедельные опции' },
           { type: 'list', items: [
             'По дням — выбрать конкретные дни (Пн, Ср, Пт)',
@@ -232,6 +880,7 @@ const GUIDE_DATA: GuideCategory[] = [
         iconColor: '#ef4444',
         content: [
           { type: 'text', text: 'Стрик — это серия последовательных выполнений повторяющейся задачи. Каждое выполнение увеличивает стрик на 1.' },
+          { type: 'demo', demoId: 'streaks' },
           { type: 'heading', text: 'Как работает стрик?' },
           { type: 'steps', items: [
             'Выполните задачу → стрик +1',
@@ -256,6 +905,7 @@ const GUIDE_DATA: GuideCategory[] = [
         content: [
           { type: 'text', text: 'При создании задачи вы задаёте её награды. Награды выдаются автоматически при выполнении.' },
           { type: 'heading', text: 'Что можно получить' },
+          { type: 'demo', demoId: 'currencies' },
           { type: 'list', items: [
             'XP — опыт (по сложности или кастомный)',
             'Монеты — основная валюта',
@@ -301,14 +951,10 @@ const GUIDE_DATA: GuideCategory[] = [
         iconColor: '#64748b',
         content: [
           { type: 'text', text: 'Каждая задача проходит через определённые стадии.' },
-          { type: 'heading', text: 'Статусы цикла' },
-          { type: 'table', headers: ['Статус', 'Значение', 'Стрик'], rows: [
-            ['Выполнено', 'Задача выполнена в текущем цикле', 'Растёт +1'],
-            ['Пропущено', 'Осознанно пропущено пользователем', 'Сохраняется'],
-            ['Просрочено', 'Не выполнено до дедлайна / сброса', 'Обнуляется!'],
-          ] },
+          { type: 'demo', demoId: 'task-statuses' },
           { type: 'heading', text: 'Архивация' },
           { type: 'text', text: 'Задача попадает в архив по одной из причин:' },
+          { type: 'demo', demoId: 'archive-badges' },
           { type: 'list', items: [
             'Завершена — все циклы выполнены (одноразовая или по количеству)',
             'Истекла — срок закончился, часть циклов выполнена',
@@ -337,15 +983,7 @@ const GUIDE_DATA: GuideCategory[] = [
         iconColor: '#22c55e',
         content: [
           { type: 'text', text: 'Атрибуты — это ключевые характеристики вашего персонажа. Каждый атрибут развивается независимо от других.' },
-          { type: 'heading', text: 'Стандартные атрибуты' },
-          { type: 'table', headers: ['Атрибут', 'Ключ', 'Примеры задач'], rows: [
-            ['Сила', 'СИЛ', 'Тренировки, физический труд'],
-            ['Интеллект', 'ИНТ', 'Чтение, обучение, головоломки'],
-            ['Ловкость', 'ЛОВ', 'Спорт, координация, танцы'],
-            ['Выносливость', 'ВЫН', 'Бег, плавание, выдержка'],
-            ['Креативность', 'КРЕ', 'Рисование, музыка, писательство'],
-            ['Харизма', 'ХАР', 'Общение, презентации, нетворкинг'],
-          ] },
+          { type: 'demo', demoId: 'attributes' },
           { type: 'info', text: 'Атрибуты полностью кастомизируемы! Можно добавить свои, удалить ненужные, изменить иконки и цвета в Настройки → Атрибуты.' },
           { type: 'heading', text: 'Как качать атрибуты' },
           { type: 'text', text: 'Создавая задачу, привяжите её к атрибутам. При выполнении XP распределится между ними поровну. Например: 100 XP, два атрибута → каждый получит 50.' },
@@ -359,17 +997,7 @@ const GUIDE_DATA: GuideCategory[] = [
         iconColor: '#8b5cf6',
         content: [
           { type: 'text', text: 'По мере повышения уровня вы получаете новые ранги — это показатель вашего общего прогресса.' },
-          { type: 'table', headers: ['Ранг', 'Уровень', 'Иконка'], rows: [
-            ['Новичок', '1+', 'Росток'],
-            ['Подмастерье', '5+', 'Молот'],
-            ['Следопыт', '10+', 'Компас'],
-            ['Воин', '15+', 'Мечи'],
-            ['Ветеран', '20+', 'Щит'],
-            ['Эксперт', '25+', 'Мишень'],
-            ['Мастер', '30+', 'Корона'],
-            ['Грандмастер', '40+', 'Кубок'],
-            ['Легенда', '50+', 'Звезда'],
-          ] },
+          { type: 'demo', demoId: 'ranks' },
           { type: 'text', text: 'Ранг отображается на странице «Профиль» и является чисто визуальной наградой за ваш прогресс.' },
         ],
       },
@@ -380,6 +1008,7 @@ const GUIDE_DATA: GuideCategory[] = [
         iconColor: '#3b82f6',
         content: [
           { type: 'text', text: 'Страница «Профиль» (раздел в меню) показывает полную информацию о вашем персонаже.' },
+          { type: 'demo', demoId: 'xp-bar' },
           { type: 'heading', text: 'Что здесь есть' },
           { type: 'list', items: [
             'Уровень и XP профиля — общий прогресс',
@@ -410,6 +1039,7 @@ const GUIDE_DATA: GuideCategory[] = [
         iconColor: '#f59e0b',
         content: [
           { type: 'text', text: 'Магазин — ваша система наград. Вы сами создаёте предметы, которые хотите «купить» за заработанную валюту. Это главный мотиватор!' },
+          { type: 'demo', demoId: 'shop-card' },
           { type: 'heading', text: 'Покупка' },
           { type: 'steps', items: [
             'Нажмите на предмет в магазине',
@@ -430,6 +1060,7 @@ const GUIDE_DATA: GuideCategory[] = [
         iconColor: '#8b5cf6',
         content: [
           { type: 'text', text: 'Помимо обычных предметов, в магазине есть несколько специальных типов с уникальными механиками.' },
+          { type: 'demo', demoId: 'item-types' },
           { type: 'heading', text: 'Обычный предмет' },
           { type: 'text', text: 'Базовый предмет без специальных механик. Просто награда за прогресс. Примеры: «Пицца», «Прогулка в парке», «Новая книга».' },
           { type: 'heading', text: 'Лутбокс' },
@@ -442,14 +1073,6 @@ const GUIDE_DATA: GuideCategory[] = [
           { type: 'text', text: 'Привязывается к задаче и увеличивает награды при определённой серии выполнений. Например: x2 каждые 5 выполнений подряд.' },
           { type: 'heading', text: 'Скидочный талон' },
           { type: 'text', text: 'Активирует скидку (1-85%) на следующую покупку. Автоматически применяется при следующем чекауте.' },
-          { type: 'table', headers: ['Тип', 'Цвет иконки'], rows: [
-            ['Обычный', 'Серый'],
-            ['Лутбокс', 'Фиолетовый'],
-            ['Видеоигра', 'Голубой'],
-            ['Сериал', 'Розовый'],
-            ['Множитель', 'Янтарный'],
-            ['Скидка', 'Красный'],
-          ] },
         ],
       },
       {
@@ -535,6 +1158,7 @@ const GUIDE_DATA: GuideCategory[] = [
         iconColor: '#8b5cf6',
         content: [
           { type: 'text', text: 'Инвентарь — это ваш рюкзак приключенца. Все купленные и скрафченные предметы попадают сюда.' },
+          { type: 'demo', demoId: 'inventory-card' },
           { type: 'heading', text: 'Действия с предметами' },
           { type: 'table', headers: ['Тип', 'Действие в инвентаре'], rows: [
             ['Обычный', 'Просмотр, удаление'],
@@ -570,6 +1194,7 @@ const GUIDE_DATA: GuideCategory[] = [
         iconColor: '#eab308',
         content: [
           { type: 'text', text: 'Достижения — это награды за определённые милестоуны. Они проверяются автоматически и дают дополнительные бонусы.' },
+          { type: 'demo', demoId: 'achievement-card' },
           { type: 'heading', text: 'Создание достижения' },
           { type: 'steps', items: [
             'Перейдите на страницу «Достижения»',
@@ -619,6 +1244,7 @@ const GUIDE_DATA: GuideCategory[] = [
             'Кристаллы — указанное количество',
             'Предметы — конкретные предметы из магазина с указанным количеством',
           ] },
+          { type: 'demo', demoId: 'currencies' },
           { type: 'tip', text: 'Создавайте достижения с крупными наградами за долгосрочные цели — это мощнейший мотиватор для формирования привычек.' },
         ],
       },
@@ -670,6 +1296,7 @@ const GUIDE_DATA: GuideCategory[] = [
         iconColor: '#8b5cf6',
         content: [
           { type: 'text', text: 'Фрагменты имеют уникальный визуальный стиль «призматический кристалл» — многослойный градиент с бликом и свечением.' },
+          { type: 'demo', demoId: 'craft-fragments' },
           { type: 'heading', text: 'Настройка фрагмента' },
           { type: 'list', items: [
             'Название — как называется фрагмент',
@@ -734,13 +1361,7 @@ const GUIDE_DATA: GuideCategory[] = [
             'Фото дня — можно прикрепить фотографии',
           ] },
           { type: 'heading', text: 'Трекер настроения' },
-          { type: 'table', headers: ['Уровень', 'Эмодзи', 'Цвет'], rows: [
-            ['1 — Ужасно', 'Измождение', 'Красный'],
-            ['2 — Плохо', 'Грусть', 'Оранжевый'],
-            ['3 — Нормально', 'Нейтральный', 'Жёлтый'],
-            ['4 — Хорошо', 'Улыбка', 'Зелёный'],
-            ['5 — Отлично', 'Восторг', 'Бирюзовый'],
-          ] },
+          { type: 'demo', demoId: 'mood-tracker' },
           { type: 'heading', text: 'Календарь и график' },
           { type: 'text', text: 'Календарь дневника показывает дни с записями. График настроения визуализирует ваше эмоциональное состояние за период.' },
           { type: 'tip', text: 'Заполняйте дневник каждый вечер — даже короткий отчёт помогает отслеживать прогресс и замечать паттерны настроения.' },
@@ -825,7 +1446,8 @@ const GUIDE_DATA: GuideCategory[] = [
             'Системная — следует за настройками ОС',
           ] },
           { type: 'heading', text: 'Цвет акцента' },
-          { type: 'text', text: '8 цветов на выбор: синий, фиолетовый, розовый, красный, оранжевый, жёлтый, зелёный, бирюзовый. Цвет акцента используется для кнопок, ссылок и выделений.' },
+          { type: 'demo', demoId: 'accent-colors' },
+          { type: 'text', text: 'Цвет акцента используется для кнопок, ссылок и выделений по всему приложению.' },
           { type: 'heading', text: 'Прочее' },
           { type: 'list', items: [
             'Показать скроллбары — вкл/выкл видимость скроллбаров',
@@ -840,6 +1462,7 @@ const GUIDE_DATA: GuideCategory[] = [
         content: [
           { type: 'heading', text: 'Опыт за сложности' },
           { type: 'text', text: 'Здесь можно изменить базовые значения XP для каждого уровня сложности задач. По умолчанию: 10/30/100/300.' },
+          { type: 'demo', demoId: 'difficulty-badges' },
           { type: 'heading', text: 'Режим прогрессии' },
           { type: 'text', text: 'Выбор кривой опыта: стандартная, быстрая или кастомная. Влияет на то, сколько XP нужно для каждого уровня.' },
           { type: 'heading', text: 'Тост-уведомления' },
@@ -958,6 +1581,12 @@ function BlockSteps({ items }: { items: string[] }) {
   )
 }
 
+function BlockDemo({ demoId }: { demoId: string }) {
+  const Component = DEMO_COMPONENTS[demoId]
+  if (!Component) return null
+  return <Component />
+}
+
 function RenderBlock({ block }: { block: GuideBlock }) {
   switch (block.type) {
     case 'text': return <BlockText text={block.text} />
@@ -969,6 +1598,7 @@ function RenderBlock({ block }: { block: GuideBlock }) {
     case 'list': return <BlockList items={block.items} />
     case 'steps': return <BlockSteps items={block.items} />
     case 'divider': return <hr className="my-4 border-[var(--border)]" />
+    case 'demo': return <BlockDemo demoId={block.demoId} />
     default: return null
   }
 }
@@ -1039,7 +1669,7 @@ export default function GuideSection() {
   }
 
   return (
-    <div className="neu-card p-6">
+    <div className="p-6">
       {/* Section header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg">

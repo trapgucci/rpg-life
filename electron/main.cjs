@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Notification, dialog } = require('electron')
+const { app, BrowserWindow, ipcMain, Notification, dialog, safeStorage } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const os = require('os')
@@ -94,16 +94,38 @@ function generateMachineId() {
 }
 
 function readLicense() {
+  const filePath = getLicenseFilePath()
   try {
-    const raw = fs.readFileSync(getLicenseFilePath(), 'utf-8')
-    return JSON.parse(raw)
+    const buffer = fs.readFileSync(filePath)
+    // Try encrypted format first (safeStorage)
+    if (safeStorage.isEncryptionAvailable()) {
+      try {
+        const decrypted = safeStorage.decryptString(buffer)
+        return JSON.parse(decrypted)
+      } catch {
+        // Not encrypted — try plain JSON (legacy migration)
+      }
+    }
+    // Fallback: plain JSON (legacy format)
+    const plain = buffer.toString('utf-8')
+    const data = JSON.parse(plain)
+    // Auto-migrate: re-save as encrypted
+    saveLicense(data)
+    return data
   } catch {
     return null
   }
 }
 
 function saveLicense(data) {
-  fs.writeFileSync(getLicenseFilePath(), JSON.stringify(data, null, 2), 'utf-8')
+  const json = JSON.stringify(data)
+  if (safeStorage.isEncryptionAvailable()) {
+    const encrypted = safeStorage.encryptString(json)
+    fs.writeFileSync(getLicenseFilePath(), encrypted)
+  } else {
+    // Fallback if OS keychain unavailable (rare)
+    fs.writeFileSync(getLicenseFilePath(), json, 'utf-8')
+  }
 }
 
 ipcMain.handle('license:getMachineId', () => {

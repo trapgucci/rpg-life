@@ -392,7 +392,7 @@ export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
 
 export interface ShopItem {
   id: ItemId
-  profileId?: ProfileId
+  profileId: ProfileId
   name: string
   description?: string
   /** Эмодзи/иконка товара (по умолчанию по типу: лутбокс, талон, меч) */

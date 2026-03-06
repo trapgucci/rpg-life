@@ -2,7 +2,6 @@
 // Handles license activation via Cloudflare Worker.
 // In browser dev mode (npm run dev), license is always valid.
 
-// TODO: Replace with your actual Cloudflare Worker URL after deployment
 const LICENSE_SERVER_URL = 'https://rpg-life-license.mercedes-rpg.workers.dev'
 
 const isElectron = () => typeof window !== 'undefined' && !!window.electronLicense

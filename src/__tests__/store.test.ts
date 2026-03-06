@@ -8,6 +8,7 @@ import type { ShopItem, TaskRpg } from '../types/domain'
 function makeShopItem(overrides: Partial<ShopItem> = {}): ShopItem {
   return {
     id: overrides.id ?? `item-${crypto.randomUUID()}`,
+    profileId: overrides.profileId ?? 'test-profile',
     name: overrides.name ?? 'Тестовый товар',
     rarity: overrides.rarity ?? 'common',
     cost: overrides.cost ?? { [CURRENCY_IDS.COINS]: 100, [CURRENCY_IDS.GEMS]: 0 },

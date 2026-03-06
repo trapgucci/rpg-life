@@ -61,7 +61,8 @@
       "Bash(git rm --cached src/components/CharacterBar.tsx src/components/TaskList.tsx src/store/useGameStore.ts)",
       "Bash(git rm src/components/CharacterBar.tsx src/components/TaskList.tsx src/store/useGameStore.ts)",
       "WebFetch(domain:app.ulives.io)",
-      "Bash(open /Users/mercedes/Desktop/rpg-life-landing/index.html)"
+      "Bash(open /Users/mercedes/Desktop/rpg-life-landing/index.html)",
+      "Bash(git rm -q \"КАК_СОХРАНИТЬ_И_РАБОТАТЬ.md\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\Jahseh\\Desktop\\rpg-life"
