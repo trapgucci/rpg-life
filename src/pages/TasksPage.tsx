@@ -875,7 +875,7 @@ export default function TasksPage() {
       </div>
 
       {/* Desktop right panel */}
-      <div className="hidden md:block flex-1 min-w-[240px]">
+      <div className="hidden md:block flex-1 min-w-[240px] h-full min-h-0 pb-1">
         {showForm ? (
           <div className="glass-card relative flex h-full flex-col rounded-2xl overflow-hidden">
             {/* Accent strip */}

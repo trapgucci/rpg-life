@@ -970,7 +970,7 @@ export default function ShopPage() {
       </div>
 
       {/* ─── RIGHT PANEL (desktop) ──────────────────────────────────────── */}
-      <div className="hidden md:block flex-1 min-w-[240px]">
+      <div className="hidden md:block flex-1 min-w-[240px] h-full min-h-0 pb-1">
         {/* Shop item form */}
         {tab === 'shop' && showItemForm ? (
           <ShopItemForm
