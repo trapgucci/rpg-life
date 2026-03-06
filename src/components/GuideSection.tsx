@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import {
   BookOpen, Search, ChevronRight,
   CheckSquare, ShoppingBag, Package, Trophy, Brain, Activity,
@@ -691,7 +691,7 @@ function DemoInventoryCard() {
 }
 
 // Map demo IDs to components
-const DEMO_COMPONENTS: Record<string, () => JSX.Element> = {
+const DEMO_COMPONENTS: Record<string, () => React.ReactNode> = {
   'currencies': DemoCurrencies,
   'difficulty-badges': DemoDifficultyBadges,
   'xp-bar': DemoXpBar,

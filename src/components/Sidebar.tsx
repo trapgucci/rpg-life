@@ -9,9 +9,9 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Gamepad2,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
+import appIcon from '../assets/app-icon.png'
 import { useState, useEffect } from 'react'
 
 const navItems = [
@@ -51,9 +51,7 @@ export default function Sidebar() {
     >
       {/* Logo */}
       <div className="flex h-14 items-center gap-3 border-b border-[var(--border)] px-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30">
-          <Gamepad2 className="h-5 w-5 text-white" />
-        </div>
+        <img src={appIcon} alt="RPG Life" className="h-9 w-9 shrink-0 rounded-xl" />
         {!collapsed && (
           <div className="flex flex-col">
             <span className="text-sm font-bold text-[var(--fg)]">RPG Life</span>

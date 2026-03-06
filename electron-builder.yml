@@ -18,9 +18,10 @@ mac:
 win:
   target:
     - nsis
-  nsis:
-    oneClick: false
-    allowToChangeInstallationDirectory: true
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
 
 linux:
   target:

@@ -1,7 +1,9 @@
 {
   "name": "rpg-life",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Gamified task planner that turns your routine into an RPG adventure",
+  "author": "RPG Life",
   "type": "module",
   "scripts": {
     "dev": "vite",
