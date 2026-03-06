@@ -5,7 +5,7 @@ import {
   Plus, Pencil, Trash2, X, Save, Download, Upload, ImagePlus,
   Sun, Moon, Monitor, Check, AlertTriangle, Clock, FolderOpen, FlaskConical,
   Sparkles, Zap, Shield, Swords, ExternalLink,
-  ChevronRight
+  ChevronRight, BookOpen
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
@@ -14,6 +14,7 @@ import { ACCENT_COLORS } from '../types/domain'
 import ConfirmModal from '../components/ConfirmModal'
 import { vaultStorage } from '../lib/vaultStorage'
 import { generateSeedData } from '../lib/seedData'
+import GuideSection from '../components/GuideSection'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -40,7 +41,7 @@ const DIFFICULTY_LABELS: Record<string, { label: string; color: string }> = {
   veryHard: { label: 'Очень сложно', color: '#ef4444' },
 }
 
-type SettingsTab = 'profile' | 'attributes' | 'appearance' | 'gameplay' | 'notifications' | 'data' | 'feedback'
+type SettingsTab = 'profile' | 'attributes' | 'appearance' | 'gameplay' | 'notifications' | 'data' | 'feedback' | 'guide'
 
 const TABS: { id: SettingsTab; label: string; icon: React.ReactNode; gradient: string }[] = [
   { id: 'profile', label: 'Профиль', icon: <User className="h-4 w-4" />, gradient: 'from-indigo-500 to-purple-600' },
@@ -50,6 +51,7 @@ const TABS: { id: SettingsTab; label: string; icon: React.ReactNode; gradient: s
   { id: 'notifications', label: 'Уведомления', icon: <Bell className="h-4 w-4" />, gradient: 'from-cyan-500 to-blue-600' },
   { id: 'data', label: 'Данные', icon: <Database className="h-4 w-4" />, gradient: 'from-slate-500 to-slate-700' },
   { id: 'feedback', label: 'Обратная связь', icon: <MessageCircle className="h-4 w-4" />, gradient: 'from-violet-500 to-purple-700' },
+  { id: 'guide', label: 'Энциклопедия', icon: <BookOpen className="h-4 w-4" />, gradient: 'from-amber-500 to-orange-600' },
 ]
 
 // ─── Shared UI Components ───────────────────────────────────────────────────
@@ -1111,6 +1113,7 @@ const TAB_COMPONENTS: Record<SettingsTab, React.FC> = {
   notifications: NotificationsSection,
   data: DataSection,
   feedback: FeedbackSection,
+  guide: GuideSection,
 }
 
 export default function SettingsPage() {

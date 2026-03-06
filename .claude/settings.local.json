@@ -59,7 +59,9 @@
       "Bash(grep -r \"license\\\\|License\" /Users/mercedes/Desktop/rpg-life/*.md)",
       "Bash(npm ls electron-builder)",
       "Bash(git rm --cached src/components/CharacterBar.tsx src/components/TaskList.tsx src/store/useGameStore.ts)",
-      "Bash(git rm src/components/CharacterBar.tsx src/components/TaskList.tsx src/store/useGameStore.ts)"
+      "Bash(git rm src/components/CharacterBar.tsx src/components/TaskList.tsx src/store/useGameStore.ts)",
+      "WebFetch(domain:app.ulives.io)",
+      "Bash(open /Users/mercedes/Desktop/rpg-life-landing/index.html)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Jahseh\\Desktop\\rpg-life"
