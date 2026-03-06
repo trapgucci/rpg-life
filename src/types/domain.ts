@@ -882,6 +882,16 @@ export interface DailySnapshot {
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 
+export type FontFamily = 'nunito' | 'inter' | 'manrope' | 'rubik' | 'comfortaa'
+
+export const FONT_FAMILIES: Record<FontFamily, { name: string; css: string; preview: string }> = {
+  nunito:     { name: 'Nunito',     css: '"Nunito Variable", Nunito',         preview: 'Мягкий и округлый' },
+  inter:      { name: 'Inter',      css: '"Inter Variable", Inter',           preview: 'Чистый и современный' },
+  manrope:    { name: 'Manrope',    css: '"Manrope Variable", Manrope',       preview: 'Геометричный' },
+  rubik:      { name: 'Rubik',      css: '"Rubik Variable", Rubik',           preview: 'Дружелюбный' },
+  comfortaa:  { name: 'Comfortaa',  css: '"Comfortaa Variable", Comfortaa',   preview: 'Игровой и стильный' },
+}
+
 export type AccentColor = 
   | 'blue'      // #0078d4
   | 'purple'    // #8764b8
@@ -906,6 +916,8 @@ export const ACCENT_COLORS: Record<AccentColor, { light: string; dark: string; n
 export interface AppSettings {
   theme: ThemeMode
   accentColor: AccentColor
+  /** Шрифт интерфейса */
+  fontFamily: FontFamily
   /** Аватар персонажа (эмодзи) */
   avatar: string
   /** Кастомная аватарка (путь к медиафайлу или data URL) */
@@ -945,6 +957,7 @@ export interface AppSettings {
 export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'light',
   accentColor: 'blue',
+  fontFamily: 'nunito',
   avatar: '🧙',
   showScrollbars: true,
   notificationsEnabled: true,

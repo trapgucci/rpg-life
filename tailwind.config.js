@@ -5,7 +5,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Segoe UI Variable"', '"Segoe UI"', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-family)', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         'xl': '12px',

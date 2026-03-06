@@ -5,12 +5,12 @@ import {
   Plus, Pencil, Trash2, X, Save, Download, Upload, ImagePlus,
   Sun, Moon, Monitor, Check, AlertTriangle, Clock, FolderOpen, FlaskConical,
   Sparkles, Zap, Shield, Swords, ExternalLink,
-  ChevronRight, BookOpen
+  ChevronRight, BookOpen, Type
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
-import type { Attribute, ThemeMode, AccentColor } from '../types/domain'
-import { ACCENT_COLORS } from '../types/domain'
+import type { Attribute, ThemeMode, AccentColor, FontFamily } from '../types/domain'
+import { ACCENT_COLORS, FONT_FAMILIES } from '../types/domain'
 import ConfirmModal from '../components/ConfirmModal'
 import { vaultStorage } from '../lib/vaultStorage'
 import { generateSeedData } from '../lib/seedData'
@@ -642,6 +642,51 @@ function AppearanceSection() {
         </div>
       </div>
 
+      {/* Font Family — only on Windows where system font renders poorly */}
+      {navigator.platform.startsWith('Win') && (
+      <div className="mb-6">
+        <label className="block text-xs font-medium text-[var(--fg-muted)] mb-3 uppercase tracking-wider">Шрифт</label>
+        <div className="grid grid-cols-1 gap-2">
+          {(Object.entries(FONT_FAMILIES) as [FontFamily, typeof FONT_FAMILIES[FontFamily]][]).map(([key, font]) => {
+            const isActive = (settings.fontFamily ?? 'nunito') === key
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => updateSettings({ fontFamily: key })}
+                className={cn(
+                  'flex items-center gap-3 rounded-2xl px-4 py-3 transition-all duration-300 text-left',
+                  isActive
+                    ? 'neu-convex shadow-[0_0_12px_var(--accent-glow)] ring-1 ring-[var(--accent)]/30'
+                    : 'neu-inset hover:shadow-md'
+                )}
+              >
+                <Type className={cn(
+                  'h-4 w-4 shrink-0 transition-colors',
+                  isActive ? 'text-[var(--accent)]' : 'text-[var(--fg-muted)]'
+                )} />
+                <div className="min-w-0">
+                  <span
+                    className={cn(
+                      'block text-sm font-semibold transition-colors',
+                      isActive ? 'text-[var(--fg)]' : 'text-[var(--fg-secondary)]'
+                    )}
+                    style={{ fontFamily: `${font.css}, system-ui, sans-serif` }}
+                  >
+                    {font.name}
+                  </span>
+                  <span className="block text-[10px] text-[var(--fg-muted)]">{font.preview}</span>
+                </div>
+                {isActive && (
+                  <Check className="h-4 w-4 ml-auto text-[var(--accent)] shrink-0" />
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      )}
+
       {/* Scrollbars */}
       <div className="flex flex-col gap-3">
         <NeuSettingRow label="Полосы прокрутки" desc="Отображать скроллбары в интерфейсе">
@@ -1121,7 +1166,7 @@ export default function SettingsPage() {
   const ActiveComponent = TAB_COMPONENTS[activeTab]
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex h-full flex-col min-h-0">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4 shrink-0 px-1">
         <div className="flex h-10 w-10 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-500 to-slate-700 shadow-lg">
@@ -1133,7 +1178,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="flex flex-1 gap-6 overflow-hidden min-h-0">
+      <div className="flex flex-1 gap-6 min-h-0">
         {/* Sidebar tabs — desktop */}
         <nav className="hidden lg:flex flex-col gap-1.5 w-52 shrink-0 py-1">
           {TABS.map((tab) => (
@@ -1187,7 +1232,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto pb-20 lg:pb-6 min-h-0">
+        <div className="flex-1 overflow-y-auto pb-20 lg:pb-6 min-h-0 p-3">
           <ActiveComponent />
         </div>
       </div>

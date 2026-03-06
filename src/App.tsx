@@ -15,7 +15,7 @@ import VaultSetup from './components/VaultSetup'
 import LicenseGate from './components/LicenseGate'
 import { licenseService } from './lib/licenseService'
 import { useRpgStore } from './store/useRpgStore'
-import { ACCENT_COLORS } from './types/domain'
+import { ACCENT_COLORS, FONT_FAMILIES } from './types/domain'
 import { vaultStorage } from './lib/vaultStorage'
 import { Toaster } from 'sonner'
 
@@ -71,7 +71,13 @@ function App() {
     root.style.setProperty('--accent-glow', `rgba(${r},${g},${b},${isDark ? 0.3 : 0.4})`)
 
     root.classList.toggle('hide-scrollbars', !(settings.showScrollbars ?? true))
-  }, [settings.theme, settings.accentColor, settings.showScrollbars])
+
+    // Apply font family (Windows only; macOS uses system font)
+    if (navigator.platform.startsWith('Win')) {
+      const font = FONT_FAMILIES[settings.fontFamily ?? 'nunito']
+      root.style.setProperty('--font-family', font.css)
+    }
+  }, [settings.theme, settings.accentColor, settings.showScrollbars, settings.fontFamily])
 
   // Show nothing while checking license
   if (checkingLicense) return null

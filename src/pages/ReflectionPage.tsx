@@ -144,7 +144,7 @@ export default function ReflectionPage() {
   )
 
   return (
-    <div className={`flex flex-col gap-4 pb-2 ${selectedNote ? 'min-h-full' : 'h-full overflow-hidden'}`}>
+    <div className={`flex flex-col gap-4 pb-2 ${selectedNote ? 'min-h-full' : 'h-full min-h-0'}`}>
       {/* Header — hidden when note is open */}
       {!selectedNote && (
         <div className="flex items-center gap-2 md:gap-3 shrink-0">

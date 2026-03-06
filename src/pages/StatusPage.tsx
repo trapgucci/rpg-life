@@ -513,7 +513,7 @@ export default function StatusPage() {
   }))
 
   return (
-    <div className="flex h-full flex-col gap-5 overflow-y-auto pb-6">
+    <div className="flex h-full flex-col gap-5 overflow-y-auto px-3 pt-2 pb-6">
 
       {/* ── Hero Banner ─────────────────────────────────────────────── */}
       <div className="neu-card status-glow p-5 md:p-6">

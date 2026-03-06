@@ -389,7 +389,7 @@ export default function ShopPage() {
   // ═══════════════════════════════════════════════════════════════════════════
 
   return (
-    <div className="flex h-full min-h-0 gap-2 md:gap-4 overflow-hidden">
+    <div className="flex h-full min-h-0 gap-2 md:gap-4">
       {/* ─── LEFT PANEL ─────────────────────────────────────────────────── */}
       <div className="flex w-full md:basis-[42%] md:max-w-[560px] md:min-w-[320px] md:shrink-0 flex-col gap-2 md:gap-4">
         {/* Header — glassmorphic neumorphism */}

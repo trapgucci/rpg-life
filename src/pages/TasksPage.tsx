@@ -414,7 +414,7 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 gap-2 md:gap-4 overflow-hidden">
+    <div className="flex h-full min-h-0 gap-2 md:gap-4">
       <div className="flex w-full md:basis-[42%] md:max-w-[560px] md:min-w-[320px] md:shrink-0 flex-col gap-2 md:gap-4">
         {/* Header — glassmorphic neumorphism */}
         <div className="glass-neu rounded-2xl p-3 md:p-4">
