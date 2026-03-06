@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { cn } from '../../lib/cn'
 import { X, Plus, Trash2, ChevronRight, Check } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
@@ -105,7 +105,7 @@ export function ItemPickerModal({
             <input
               type="number"
               min={1}
-              value={quantity}
+              value={quantity || ''}
               onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
               className="input w-20 text-center"
             />
@@ -132,7 +132,8 @@ interface CraftingCreateItemModalProps {
 }
 
 export function CraftingCreateItemModal({ onClose, defaultResultName, defaultResultIcon }: CraftingCreateItemModalProps) {
-  const shopItems = useRpgStore((s) => s.shopItems)
+  const allShopItems = useRpgStore((s) => s.shopItems)
+  const shopItems = useMemo(() => allShopItems.filter((i) => !i.deletedFromShop), [allShopItems])
   const [recipeName, setRecipeName] = useState('')
   const [recipeDescription, setRecipeDescription] = useState('')
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([])
@@ -224,7 +225,7 @@ export function CraftingCreateItemModal({ onClose, defaultResultName, defaultRes
                         <li key={itemId} className="flex items-center gap-3 rounded-xl bg-[var(--bg)]/80 p-3 border border-[var(--border)]/50">
                           <span className="shrink-0 text-[var(--fg-muted)]"><HabitIcon iconName={item ? getItemIcon(item) : 'Sword'} size={24} /></span>
                           <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--fg)]">{item?.name ?? itemId}</span>
-                          <input type="number" min={1} value={quantity} onChange={(e) => updateIngredientQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))} className="input w-16 text-center text-sm py-1.5 rounded-lg" />
+                          <input type="number" min={1} value={quantity || ''} onChange={(e) => updateIngredientQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))} className="input w-16 text-center text-sm py-1.5 rounded-lg" />
                           <button type="button" onClick={() => removeIngredient(itemId)} className="p-2 rounded-lg hover:bg-[var(--surface-elevated)] text-[var(--fg-muted)]"><Trash2 className="h-4 w-4" /></button>
                         </li>
                       )
@@ -242,7 +243,7 @@ export function CraftingCreateItemModal({ onClose, defaultResultName, defaultRes
                 <div className="flex items-center gap-3 rounded-xl bg-[var(--bg)]/80 p-3 border border-[var(--accent)]/40 shadow-sm">
                   <span className="shrink-0 text-[var(--fg-muted)]"><HabitIcon iconName={mainResultIconName} size={24} /></span>
                   <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--fg)]">{mainResultLabel}</span>
-                  <input type="number" min={1} value={mainResultQuantity} onChange={(e) => setMainResultQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))} className="input w-16 text-center text-sm py-1.5 rounded-lg" />
+                  <input type="number" min={1} value={mainResultQuantity || ''} onChange={(e) => setMainResultQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))} className="input w-16 text-center text-sm py-1.5 rounded-lg" />
                 </div>
                 {extraResults.length > 0 && (
                   <ul className="space-y-2">
@@ -252,7 +253,7 @@ export function CraftingCreateItemModal({ onClose, defaultResultName, defaultRes
                         <li key={itemId} className="flex items-center gap-3 rounded-xl bg-[var(--bg)]/80 p-3 border border-[var(--border)]/50">
                           <span className="shrink-0 text-[var(--fg-muted)]"><HabitIcon iconName={item ? getItemIcon(item) : 'Sword'} size={24} /></span>
                           <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--fg)]">{item?.name ?? itemId}</span>
-                          <input type="number" min={1} value={quantity} onChange={(e) => updateExtraResultQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))} className="input w-16 text-center text-sm py-1.5 rounded-lg" />
+                          <input type="number" min={1} value={quantity || ''} onChange={(e) => updateExtraResultQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))} className="input w-16 text-center text-sm py-1.5 rounded-lg" />
                           <button type="button" onClick={() => removeExtraResult(itemId)} className="p-2 rounded-lg hover:bg-[var(--surface-elevated)] text-[var(--fg-muted)]"><Trash2 className="h-4 w-4" /></button>
                         </li>
                       )
@@ -291,7 +292,8 @@ interface CraftingMaterialModalProps {
 }
 
 export function CraftingMaterialModal({ onClose, defaultIngredientName, defaultIngredientIcon }: CraftingMaterialModalProps) {
-  const shopItems = useRpgStore((s) => s.shopItems)
+  const allShopItems = useRpgStore((s) => s.shopItems)
+  const shopItems = useMemo(() => allShopItems.filter((i) => !i.deletedFromShop), [allShopItems])
   const [recipeName, setRecipeName] = useState('')
   const [recipeDescription, setRecipeDescription] = useState('')
   const [mainIngredientQuantity, setMainIngredientQuantity] = useState(1)
@@ -368,7 +370,7 @@ export function CraftingMaterialModal({ onClose, defaultIngredientName, defaultI
                 <div className="flex items-center gap-3 rounded-xl bg-[var(--bg)]/80 p-3 border border-[var(--accent)]/40 shadow-sm">
                   <span className="shrink-0 text-[var(--fg-muted)]"><HabitIcon iconName={mainIngredientIconName} size={24} /></span>
                   <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--fg)]">{mainIngredientLabel}</span>
-                  <input type="number" min={1} value={mainIngredientQuantity} onChange={(e) => setMainIngredientQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))} className="input w-16 text-center text-sm py-1.5 rounded-lg" />
+                  <input type="number" min={1} value={mainIngredientQuantity || ''} onChange={(e) => setMainIngredientQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))} className="input w-16 text-center text-sm py-1.5 rounded-lg" />
                 </div>
                 {extraIngredients.length > 0 && (
                   <ul className="space-y-2">
@@ -378,7 +380,7 @@ export function CraftingMaterialModal({ onClose, defaultIngredientName, defaultI
                         <li key={itemId} className="flex items-center gap-3 rounded-xl bg-[var(--bg)]/80 p-3 border border-[var(--border)]/50">
                           <span className="shrink-0 text-[var(--fg-muted)]"><HabitIcon iconName={it ? getItemIcon(it) : 'Sword'} size={24} /></span>
                           <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--fg)]">{it?.name ?? itemId}</span>
-                          <input type="number" min={1} value={quantity} onChange={(e) => updateExtraIngredientQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))} className="input w-16 text-center text-sm py-1.5 rounded-lg" />
+                          <input type="number" min={1} value={quantity || ''} onChange={(e) => updateExtraIngredientQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))} className="input w-16 text-center text-sm py-1.5 rounded-lg" />
                           <button type="button" onClick={() => removeExtraIngredient(itemId)} className="p-2 rounded-lg hover:bg-[var(--surface-elevated)] text-[var(--fg-muted)]"><Trash2 className="h-4 w-4" /></button>
                         </li>
                       )
@@ -403,7 +405,7 @@ export function CraftingMaterialModal({ onClose, defaultIngredientName, defaultI
                         <li key={itemId} className="flex items-center gap-3 rounded-xl bg-[var(--bg)]/80 p-3 border border-[var(--border)]/50">
                           <span className="shrink-0 text-[var(--fg-muted)]"><HabitIcon iconName={it ? getItemIcon(it) : 'Sword'} size={24} /></span>
                           <span className="flex-1 min-w-0 truncate text-sm font-medium text-[var(--fg)]">{it?.name ?? itemId}</span>
-                          <input type="number" min={1} value={quantity} onChange={(e) => updateResultQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))} className="input w-16 text-center text-sm py-1.5 rounded-lg" />
+                          <input type="number" min={1} value={quantity || ''} onChange={(e) => updateResultQuantity(itemId, Math.max(1, parseInt(e.target.value, 10) || 1))} className="input w-16 text-center text-sm py-1.5 rounded-lg" />
                           <button type="button" onClick={() => removeResult(itemId)} className="p-2 rounded-lg hover:bg-[var(--surface-elevated)] text-[var(--fg-muted)]"><Trash2 className="h-4 w-4" /></button>
                         </li>
                       )

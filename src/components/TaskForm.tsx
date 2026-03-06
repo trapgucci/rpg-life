@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import type { TaskKind } from '../types/domain'
+import type { TaskDifficulty, TaskKind } from '../types/domain'
 
 interface Props {
-  onSubmit: (data: { title: string; kind: TaskKind; difficulty: 'easy' | 'normal' | 'hard' }) => void
+  onSubmit: (data: { title: string; kind: TaskKind; difficulty: TaskDifficulty }) => void
 }
 
 function TaskForm({ onSubmit }: Props) {
   const [title, setTitle] = useState('')
   const [kind, setKind] = useState<TaskKind>('todo')
-  const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal')
+  const [difficulty, setDifficulty] = useState<TaskDifficulty>('medium')
 
   return (
     <form
@@ -18,7 +18,7 @@ function TaskForm({ onSubmit }: Props) {
         onSubmit({ title: title.trim(), kind, difficulty })
         setTitle('')
         setKind('todo')
-        setDifficulty('normal')
+        setDifficulty('medium')
       }}
       style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}
     >
@@ -31,11 +31,10 @@ function TaskForm({ onSubmit }: Props) {
       <select value={kind} onChange={(e) => setKind(e.target.value as TaskKind)}>
         <option value="todo">Обычная</option>
         <option value="daily">Ежедневная</option>
-        <option value="habit">Привычка</option>
       </select>
-      <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as any)}>
+      <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as TaskDifficulty)}>
         <option value="easy">Лёгкая</option>
-        <option value="normal">Нормальная</option>
+        <option value="medium">Нормальная</option>
         <option value="hard">Сложная</option>
       </select>
       <button type="submit">Добавить</button>

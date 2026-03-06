@@ -1,11 +1,13 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '../lib/cn'
 import {
-  ShoppingBag, Plus, Search, X, ArrowUpDown, ArrowUp, ArrowDown,
+  ShoppingBag, ShoppingCart, Plus, Search, X, ArrowUpDown, ArrowUp, ArrowDown,
   Folder, List, ChevronDown, Sparkles, History, Pencil, Trash2, CheckSquare,
   Package, Puzzle, Palette,
 } from 'lucide-react'
+import { rpgToast } from '../components/RpgToast'
+import { CURRENCY_IDS } from '../types/domain'
 
 const GROUP_COLORS = [
   '#ef4444', '#f97316', '#f59e0b', '#eab308',
@@ -15,6 +17,7 @@ const GROUP_COLORS = [
   '#f43f5e', '#78716c', '#9ca3af', '#64748b',
 ]
 import { useRpgStore } from '../store/useRpgStore'
+import { useShallow } from 'zustand/react/shallow'
 import ConfirmModal from '../components/ConfirmModal'
 
 import ShopItemCard from '../components/shop/ShopItemCard'
@@ -24,6 +27,7 @@ import RecipeCard from '../components/shop/RecipeCard'
 import RecipeDetailPanel from '../components/shop/RecipeDetailPanel'
 import RecipeForm from '../components/shop/RecipeForm'
 import PurchaseHistoryModal from '../components/shop/PurchaseHistoryModal'
+import CartModal, { type CartEntry } from '../components/shop/CartModal'
 
 import {
   filterShopItems, sortShopItems, filterRecipes,
@@ -49,10 +53,17 @@ type Tab = 'shop' | 'fragments'
 
 export default function ShopPage() {
   // ── Store ────────────────────────────────────────────────────────────────
-  const shopItems = useRpgStore((s) => s.shopItems)
-  const craftRecipes = useRpgStore((s) => s.craftRecipes)
-  const activeProfileId = useRpgStore((s) => s.activeProfileId)
-  const allItemGroups = useRpgStore((s) => s.itemGroups)
+  const { shopItems, craftRecipes, activeProfileId, allItemGroups, profiles, achievements, activeShopDiscountPercent } = useRpgStore(
+    useShallow((s) => ({
+      shopItems: s.shopItems,
+      craftRecipes: s.craftRecipes,
+      activeProfileId: s.activeProfileId,
+      allItemGroups: s.itemGroups,
+      profiles: s.profiles,
+      achievements: s.achievements,
+      activeShopDiscountPercent: s.activeShopDiscountPercent,
+    }))
+  )
 
   const itemGroups = useMemo(
     () =>
@@ -64,6 +75,38 @@ export default function ShopPage() {
         : [],
     [allItemGroups, activeProfileId],
   )
+
+  // ── Precomputed data for ShopItemCard ────────────────────────────────────
+  const profile = profiles.find((p) => p.id === activeProfileId)
+  const coins = profile?.currencies[CURRENCY_IDS.COINS] ?? 0
+  const gems = profile?.currencies[CURRENCY_IDS.GEMS] ?? 0
+
+  const craftableItemIds = useMemo(() => {
+    const set = new Set<string>()
+    for (const r of craftRecipes) {
+      if (!r.crafted) set.add(r.resultItemId)
+    }
+    return set
+  }, [craftRecipes])
+
+  const achievementRewardItemIds = useMemo(() => {
+    const set = new Set<string>()
+    for (const a of achievements) {
+      if (a.rewardItems?.length) {
+        for (const ri of a.rewardItems) set.add(ri.itemId)
+      }
+      if (a.rewardItemId) set.add(a.rewardItemId)
+    }
+    return set
+  }, [achievements])
+
+  const groupColorMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const g of allItemGroups) {
+      if (g.color) map.set(g.id, g.color)
+    }
+    return map
+  }, [allItemGroups])
 
   // ── Local state ──────────────────────────────────────────────────────────
   const [tab, setTab] = useState<Tab>('shop')
@@ -108,6 +151,68 @@ export default function ShopPage() {
 
   // Modals
   const [showPurchaseHistory, setShowPurchaseHistory] = useState(false)
+  const [showCart, setShowCart] = useState(false)
+
+  // Cart
+  const [cart, setCart] = useState<CartEntry[]>([])
+  const purchaseItem = useRpgStore((s) => s.purchaseItem)
+
+  const addToCart = useCallback((itemId: string) => {
+    const item = shopItems.find((i) => i.id === itemId)
+    if (!item) return
+    // Медиа-предметы (видеоигры, сериалы) с basePurchased нельзя добавить повторно
+    if ((item.isVideoGame || item.isTvSerial) && item.basePurchased) return
+    setCart((prev) => {
+      const existing = prev.find((c) => c.itemId === itemId)
+      const currentQty = existing?.quantity ?? 0
+      // If item has limited stock, don't exceed it
+      if (item.stock !== undefined && currentQty >= item.stock) return prev
+      if (existing) return prev.map((c) => c.itemId === itemId ? { ...c, quantity: c.quantity + 1 } : c)
+      return [...prev, { itemId, quantity: 1 }]
+    })
+  }, [shopItems])
+  const removeFromCart = (itemId: string) => setCart((prev) => prev.filter((c) => c.itemId !== itemId))
+  const clearCart = () => setCart([])
+  const updateCartQuantity = (itemId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(itemId)
+      return
+    }
+    const item = shopItems.find((i) => i.id === itemId)
+    const maxQty = item?.stock !== undefined ? item.stock : Infinity
+    setCart((prev) => prev.map((c) => c.itemId === itemId ? { ...c, quantity: Math.min(quantity, maxQty) } : c))
+  }
+  const checkoutCart = () => {
+    // Скидка действует на ОДНУ покупку — весь чекаут корзины считается одной покупкой.
+    // purchaseItem сбрасывает скидку после каждого вызова, поэтому сохраняем/восстанавливаем вручную.
+    const savedDiscount = useRpgStore.getState().activeShopDiscountPercent
+    const failedItems: string[] = []
+    for (const entry of cart) {
+      for (let i = 0; i < entry.quantity; i++) {
+        // Восстанавливаем скидку перед каждым предметом в рамках одной покупки
+        if (savedDiscount != null) {
+          useRpgStore.setState({ activeShopDiscountPercent: savedDiscount })
+        }
+        const ok = purchaseItem(entry.itemId)
+        if (!ok) {
+          failedItems.push(entry.itemId)
+          break // не пытаемся купить оставшиеся единицы этого предмета
+        }
+      }
+    }
+    // Гарантируем сброс скидки после чекаута
+    useRpgStore.setState({ activeShopDiscountPercent: null })
+    // Оставить в корзине только те предметы, которые не удалось купить
+    if (failedItems.length > 0) {
+      setCart((prev) => prev.filter((c) => failedItems.includes(c.itemId)))
+      rpgToast({ title: 'Не все предметы удалось купить', type: 'error' })
+    } else {
+      const totalItems = cart.reduce((s, c) => s + c.quantity, 0)
+      rpgToast({ title: `Куплено ${totalItems} предметов!`, type: 'purchase' })
+      setCart([])
+      setShowCart(false)
+    }
+  }
 
   // ── Close sort menu on outside click ─────────────────────────────────────
   useEffect(() => {
@@ -150,7 +255,7 @@ export default function ShopPage() {
   // ── Derived data ─────────────────────────────────────────────────────────
 
   const profileItems = useMemo(
-    () => activeProfileId ? shopItems.filter((i) => i.profileId === activeProfileId) : [],
+    () => activeProfileId ? shopItems.filter((i) => i.profileId === activeProfileId && (i.stock !== 0 || i.basePurchased) && !i.deletedFromShop) : [],
     [shopItems, activeProfileId],
   )
 
@@ -184,16 +289,12 @@ export default function ShopPage() {
   }, [profileItems])
 
   const totalItemCount = profileItems.length
-  const countNoGroup = itemCountByGroup.get(null) ?? 0
 
   // Look up selected items in ALL items (not just filtered) to persist selection across filter changes
   const selectedItem = selectedItemId ? shopItems.find((i) => i.id === selectedItemId) ?? null : null
   const selectedRecipe = selectedRecipeId ? craftRecipes.find((r) => r.id === selectedRecipeId) ?? null : null
 
   // ── Helpers ──────────────────────────────────────────────────────────────
-
-  const showForm = tab === 'shop' ? showItemForm : showRecipeForm
-  const hasRightPanel = showForm || (tab === 'shop' ? !!selectedItem : !!selectedRecipe)
 
   const handleNewClick = () => {
     if (tab === 'shop') {
@@ -213,6 +314,12 @@ export default function ShopPage() {
   const handleRecipeCreated = (id: string) => {
     setShowRecipeForm(false)
     setSelectedRecipeId(id)
+  }
+
+  const handleNavigateToRecipe = (recipeId: string) => {
+    setTab('fragments')
+    setSelectedItemId(null)
+    setSelectedRecipeId(recipeId)
   }
 
   // ── Group management helpers ──────────────────────────────────────────────
@@ -267,18 +374,28 @@ export default function ShopPage() {
   }
   const handleDragEnd = () => { setDraggedGroupId(null); setDragOverGroupId(null) }
 
+  const handleSelectItem = useCallback((itemId: string) => {
+    setSelectedItemId(itemId)
+    setShowItemForm(false)
+  }, [])
+
+  const handleSelectRecipe = useCallback((recipeId: string) => {
+    setSelectedRecipeId(recipeId)
+    setShowRecipeForm(false)
+  }, [])
+
   // ═══════════════════════════════════════════════════════════════════════════
   // ─── RENDER ────────────────────────────────────────────────────────────────
   // ═══════════════════════════════════════════════════════════════════════════
 
   return (
-    <div className="flex h-full min-h-0 gap-4">
+    <div className="flex h-full min-h-0 gap-2 md:gap-4 overflow-hidden">
       {/* ─── LEFT PANEL ─────────────────────────────────────────────────── */}
-      <div className="flex w-full md:basis-[42%] md:max-w-[560px] md:min-w-[420px] md:shrink-0 flex-col gap-4">
-        {/* Header */}
-        <div className="glass-card rounded-2xl p-3 md:p-4">
+      <div className="flex w-full md:basis-[42%] md:max-w-[560px] md:min-w-[320px] md:shrink-0 flex-col gap-2 md:gap-4">
+        {/* Header — glassmorphic neumorphism */}
+        <div className="glass-neu rounded-2xl p-3 md:p-4">
           {/* Title row */}
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 md:gap-3 min-w-0">
               <div className="flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/30">
                 <ShoppingBag className="h-4.5 w-4.5 md:h-5 md:w-5 text-white" />
@@ -293,17 +410,30 @@ export default function ShopPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+              {/* Cart */}
+              {tab === 'shop' && (
+                <button
+                  type="button"
+                  onClick={() => setShowCart(true)}
+                  className="neu-icon-btn relative flex h-9 w-9 items-center justify-center rounded-xl text-[var(--fg-muted)] hover:text-[var(--accent)]"
+                  title="Корзина"
+                >
+                  <ShoppingCart className="h-4 w-4" />
+                  {cart.length > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] text-white text-[9px] font-bold px-0.5 leading-none">
+                      {cart.reduce((s, c) => s + c.quantity, 0)}
+                    </span>
+                  )}
+                </button>
+              )}
+
               {/* History */}
               {tab === 'shop' && (
                 <button
                   type="button"
                   onClick={() => setShowPurchaseHistory(true)}
-                  className={cn(
-                    'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
-                    'border border-[var(--border)] text-[var(--fg-muted)]',
-                    'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
-                  )}
+                  className="neu-icon-btn flex h-9 w-9 items-center justify-center rounded-xl text-[var(--fg-muted)] hover:text-[var(--accent)]"
                   title="История покупок"
                 >
                   <History className="h-4 w-4" />
@@ -316,10 +446,9 @@ export default function ShopPage() {
                   type="button"
                   onClick={() => setShowSortMenu((v) => !v)}
                   className={cn(
-                    'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
-                    'border border-[var(--border)] text-[var(--fg-muted)]',
-                    'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
-                    showSortMenu && 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-subtle)]',
+                    'neu-icon-btn flex h-9 w-9 items-center justify-center rounded-xl text-[var(--fg-muted)]',
+                    'hover:text-[var(--accent)]',
+                    showSortMenu && 'neu-pressed text-[var(--accent)]',
                   )}
                   title="Сортировка"
                 >
@@ -370,10 +499,9 @@ export default function ShopPage() {
                 type="button"
                 onClick={() => setShowSearch(!showSearch)}
                 className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
-                  'border border-[var(--border)] text-[var(--fg-muted)]',
-                  'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
-                  showSearch && 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-subtle)]',
+                  'neu-icon-btn flex h-9 w-9 items-center justify-center rounded-xl text-[var(--fg-muted)]',
+                  'hover:text-[var(--accent)]',
+                  showSearch && 'neu-pressed text-[var(--accent)]',
                 )}
                 title="Поиск"
               >
@@ -393,14 +521,14 @@ export default function ShopPage() {
           </div>
 
           {/* Tab switcher */}
-          <div className="mt-4 flex rounded-2xl bg-[var(--surface)] p-1">
+          <div className="neu-tab-bar mt-4 flex rounded-2xl p-1.5">
             <button
               type="button"
               onClick={() => { setTab('shop'); setSearchQuery('') }}
               className={cn(
                 'flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all',
                 tab === 'shop'
-                  ? 'bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/25'
+                  ? 'neu-tab-active text-[var(--accent)]'
                   : 'text-[var(--fg-muted)] hover:text-[var(--fg)]',
               )}
             >
@@ -413,7 +541,7 @@ export default function ShopPage() {
               className={cn(
                 'flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all',
                 tab === 'fragments'
-                  ? 'bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/25'
+                  ? 'neu-tab-active text-[var(--accent)]'
                   : 'text-[var(--fg-muted)] hover:text-[var(--fg)]',
               )}
             >
@@ -437,7 +565,7 @@ export default function ShopPage() {
                   }
                 }}
                 placeholder={tab === 'shop' ? 'Поиск по предметам...' : 'Поиск по рецептам...'}
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-9 pr-9 py-2.5 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all"
+                className="neu-input w-full rounded-xl pl-9 pr-9 py-2.5 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] outline-none transition-all"
                 autoFocus
               />
               {searchQuery && (
@@ -457,17 +585,17 @@ export default function ShopPage() {
             <>
               {/* Group selector */}
               <div className="mt-4">
+                <div className="neu-divider mb-3" />
                 <p className="mb-2 text-xs font-medium text-[var(--fg-muted)]">Группа</p>
                 <button
                   ref={groupButtonRef}
                   type="button"
                   onClick={() => setShowGroupSelector(!showGroupSelector)}
                   className={cn(
-                    'flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition-all',
-                    'border border-[var(--border)]',
+                    'neu-selector flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm',
                     showGroupSelector
-                      ? 'border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]'
-                      : 'text-[var(--fg-secondary)] hover:border-[var(--border-accent)] hover:bg-[var(--surface)]',
+                      ? 'text-[var(--accent)]'
+                      : 'text-[var(--fg-secondary)]',
                   )}
                 >
                   {(() => {
@@ -537,28 +665,6 @@ export default function ShopPage() {
                       </span>
                     </button>
 
-                    {/* No group */}
-                    <button
-                      type="button"
-                      onClick={() => { setGroupFilter('__no_group__'); setShowGroupSelector(false) }}
-                      className={cn(
-                        'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-all',
-                        groupFilter === '__no_group__'
-                          ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium'
-                          : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)] hover:text-[var(--fg)]',
-                      )}
-                    >
-                      <div className={cn(
-                        'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg',
-                        groupFilter === '__no_group__' ? 'bg-[var(--accent)]/15' : 'bg-[var(--surface)]',
-                      )}>
-                        <Folder className="h-3.5 w-3.5" />
-                      </div>
-                      <span className="flex-1 truncate">Без группы</span>
-                      <span className="shrink-0 rounded-md bg-[var(--surface)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--fg-muted)] tabular-nums">
-                        {countNoGroup}
-                      </span>
-                    </button>
                   </div>
 
                   {/* Custom groups */}
@@ -640,7 +746,7 @@ export default function ShopPage() {
                                         setColorPickerGroupId(colorPickerGroupId === group.id ? null : group.id)
                                       }}
                                       className={cn(
-                                        'icon-btn h-6 w-6 p-0 relative',
+                                        'icon-btn flex items-center justify-center h-6 w-6 p-0 rounded-md relative',
                                         colorPickerGroupId === group.id && 'bg-[var(--accent-subtle)] text-[var(--accent)]',
                                       )}
                                       title="Цвет группы"
@@ -683,7 +789,7 @@ export default function ShopPage() {
                                       setEditingGroupId(group.id)
                                       setEditingGroupName(group.name)
                                     }}
-                                    className="icon-btn h-6 w-6 p-0"
+                                    className="icon-btn flex items-center justify-center h-6 w-6 p-0 rounded-md"
                                   >
                                     <Pencil className="h-3 w-3" />
                                   </button>
@@ -693,7 +799,7 @@ export default function ShopPage() {
                                       e.stopPropagation()
                                       handleDeleteGroup(group.id)
                                     }}
-                                    className="icon-btn icon-btn-danger h-6 w-6 p-0"
+                                    className="icon-btn icon-btn-danger flex items-center justify-center h-6 w-6 p-0 rounded-md"
                                   >
                                     <Trash2 className="h-3 w-3" />
                                   </button>
@@ -762,9 +868,10 @@ export default function ShopPage() {
 
           {/* ── Fragments tab controls ─────────────────────────────────── */}
           {tab === 'fragments' && (
-            <div className="mt-4 border-t border-[var(--border)] pt-4">
+            <div className="mt-4 pt-4">
+              <div className="neu-divider mb-4" />
               <p className="mb-2 text-xs font-medium text-[var(--fg-muted)]">Статус рецепта</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="neu-tab-bar grid grid-cols-3 gap-1.5 rounded-2xl p-1.5">
                 {([
                   { key: 'all', icon: <List className="h-5 w-5" />, title: 'Все' },
                   { key: 'active', icon: <Sparkles className="h-5 w-5" />, title: 'Активные' },
@@ -777,8 +884,8 @@ export default function ShopPage() {
                     className={cn(
                       'flex items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
                       recipeFilter === key
-                        ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
-                        : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]',
+                        ? 'neu-tab-active text-[var(--accent)]'
+                        : 'text-[var(--fg-secondary)]',
                     )}
                     title={title}
                   >
@@ -806,16 +913,20 @@ export default function ShopPage() {
                 </p>
               </div>
             ) : (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 p-1">
                 {filteredItems.map((item) => (
                   <ShopItemCard
                     key={item.id}
                     item={item}
                     selected={item.id === selectedItemId}
-                    onSelect={() => {
-                      setSelectedItemId(item.id)
-                      setShowItemForm(false)
-                    }}
+                    onSelect={() => handleSelectItem(item.id)}
+                    onAddToCart={addToCart}
+                    coins={coins}
+                    gems={gems}
+                    discountPercent={activeShopDiscountPercent}
+                    groupColor={item.groupId ? groupColorMap.get(item.groupId) ?? null : null}
+                    hasCraftRecipe={craftableItemIds.has(item.id)}
+                    isAchievementReward={achievementRewardItemIds.has(item.id)}
                   />
                 ))}
               </div>
@@ -834,16 +945,13 @@ export default function ShopPage() {
                 </p>
               </div>
             ) : (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 p-1">
                 {filteredRecipes.map((recipe) => (
                   <RecipeCard
                     key={recipe.id}
                     recipe={recipe}
                     selected={recipe.id === selectedRecipeId}
-                    onSelect={() => {
-                      setSelectedRecipeId(recipe.id)
-                      setShowRecipeForm(false)
-                    }}
+                    onSelect={() => handleSelectRecipe(recipe.id)}
                   />
                 ))}
               </div>
@@ -853,7 +961,7 @@ export default function ShopPage() {
       </div>
 
       {/* ─── RIGHT PANEL (desktop) ──────────────────────────────────────── */}
-      <div className="hidden md:block min-w-0 flex-1">
+      <div className="hidden md:block flex-1 min-w-[240px] h-full min-h-0 pb-1">
         {/* Shop item form */}
         {tab === 'shop' && showItemForm ? (
           <ShopItemForm
@@ -870,6 +978,7 @@ export default function ShopPage() {
           <ShopDetailPanel
             item={selectedItem}
             onDeselect={() => setSelectedItemId(null)}
+            onNavigateToRecipe={handleNavigateToRecipe}
           />
         ) : tab === 'fragments' && selectedRecipe ? (
           <RecipeDetailPanel
@@ -897,7 +1006,7 @@ export default function ShopPage() {
 
       {/* Item form */}
       {tab === 'shop' && showItemForm && (
-        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-habit-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
+        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
           <ShopItemForm
             defaultGroupId={groupFilter === '__no_group__' ? null : groupFilter}
             onCreated={handleItemCreated}
@@ -908,7 +1017,7 @@ export default function ShopPage() {
 
       {/* Recipe form */}
       {tab === 'fragments' && showRecipeForm && (
-        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-habit-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
+        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
           <RecipeForm
             onCreated={handleRecipeCreated}
             onClose={() => setShowRecipeForm(false)}
@@ -918,17 +1027,18 @@ export default function ShopPage() {
 
       {/* Item detail panel */}
       {tab === 'shop' && selectedItem && !showItemForm && (
-        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-habit-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
+        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
           <ShopDetailPanel
             item={selectedItem}
             onDeselect={() => setSelectedItemId(null)}
+            onNavigateToRecipe={handleNavigateToRecipe}
           />
         </div>
       )}
 
       {/* Recipe detail panel */}
       {tab === 'fragments' && selectedRecipe && !showRecipeForm && (
-        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-habit-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
+        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
           <RecipeDetailPanel
             recipe={selectedRecipe}
             onDeselect={() => setSelectedRecipeId(null)}
@@ -938,6 +1048,16 @@ export default function ShopPage() {
 
       {/* ─── MODALS ─────────────────────────────────────────────────────── */}
       {showPurchaseHistory && <PurchaseHistoryModal onClose={() => setShowPurchaseHistory(false)} />}
+      {showCart && (
+        <CartModal
+          cart={cart}
+          onRemove={removeFromCart}
+          onClear={clearCart}
+          onCheckout={checkoutCart}
+          onClose={() => setShowCart(false)}
+          onUpdateQuantity={updateCartQuantity}
+        />
+      )}
       <ConfirmModal
         isOpen={deletingGroupId !== null}
         title="Удалить группу?"

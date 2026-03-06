@@ -185,7 +185,7 @@ export default function SubtaskCreateModal({ isOpen, editingSubtask, onAdd, onEd
               <input
                 type="number"
                 min={0}
-                value={coinReward}
+                value={coinReward || ''}
                 onChange={(e) => setCoinReward(Math.max(0, parseInt(e.target.value, 10) || 0))}
                 className="input flex-1 text-center h-10 font-semibold"
               />
@@ -241,7 +241,7 @@ export default function SubtaskCreateModal({ isOpen, editingSubtask, onAdd, onEd
               <input
                 type="number"
                 min={0}
-                value={gemReward}
+                value={gemReward || ''}
                 onChange={(e) => setGemReward(Math.max(0, parseInt(e.target.value, 10) || 0))}
                 className="input flex-1 text-center h-10 font-semibold"
               />

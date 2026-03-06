@@ -7,7 +7,7 @@ export type ItemGroupId = string
 export type ItemId = string
 export type CurrencyId = string
 export type AchievementId = string
-export type HabitId = string
+export type AchievementGroupId = string
 export type CraftRecipeId = string
 
 // ─── Task System (Core) ────────────────────────────────────────────────────
@@ -137,6 +137,19 @@ export interface TaskBase {
   totalSkipped?: number
   coinReward: number
   gemReward: number
+  /** Активный множитель за стрик (привязан к задаче через предмет из инвентаря) */
+  streakMultiplier?: {
+    /** Значение множителя (1.5, 2, 2.5) */
+    value: number
+    /** Каждые N выполнений срабатывает множитель */
+    interval: number
+    /** Режим: streak (для циклических) | instant (для инстант задач) */
+    mode: 'streak' | 'instant'
+    /** Оставшееся количество выполнений (для instant режима) */
+    remainingUses?: number
+    /** Timestamp привязки */
+    appliedAt: number
+  }
 }
 
 /** Simple checkbox: done or not */
@@ -214,73 +227,8 @@ export interface NestedTask extends TaskBase {
 /** New RPG task (checkbox / counter / nested) */
 export type TaskRpg = CheckboxTask | CounterTask | NestedTask
 
-// ─── Habits System ──────────────────────────────────────────────────────────
-
-/** Привычка с +/- действиями */
-export interface Habit {
-  id: HabitId
-  profileId: ProfileId
-  title: string
-  notes?: string
-  icon: string
-  color: string
-  /** Можно ли нажимать + */
-  positiveEnabled: boolean
-  /** Можно ли нажимать - */
-  negativeEnabled: boolean
-  /** XP за + действие */
-  positiveXp: number
-  /** XP за - действие (отнимается) */
-  negativeXp: number
-  /** Монеты за + действие */
-  positiveCoins: number
-  /** Монеты за - действие (отнимаются) */
-  negativeCoins: number
-  /** Включены ли гемы за + действие */
-  positiveGemsEnabled?: boolean
-  /** Гемы за + действие */
-  positiveGems?: number
-  /** Включены ли гемы за − действие (отнимаются) */
-  negativeGemsEnabled?: boolean
-  /** Гемы за − действие (отнимаются) */
-  negativeGems?: number
-  /** Привязка к атрибуту */
-  attributeId: AttributeId | null
-  /** Включён множитель сложности (награда увеличивается через N дней) */
-  difficultyMultiplierEnabled?: boolean
-  /** Уровень сложности: easy 1.25, medium 1.75, hard 2.5, custom — своё значение */
-  difficultyMultiplierLevel?: 'easy' | 'medium' | 'hard' | 'custom'
-  /** Кастомный множитель (когда level === 'custom') */
-  difficultyMultiplierCustom?: number
-  /** Множитель срабатывает раз в N дней */
-  multiplierIntervalDays?: number
-  /** Множитель применяется к XP */
-  multiplierAppliesToXp?: boolean
-  /** Множитель применяется к монетам */
-  multiplierAppliesToCoins?: boolean
-  /** Множитель применяется к гемам */
-  multiplierAppliesToGems?: boolean
-  /** История по дням: ключ YYYY-MM-DD, значение positive | negative | frozen (защищён заморозкой) */
-  dailyCompletion?: Record<string, 'positive' | 'negative' | 'frozen'>
-  /** Счётчик + за сегодня */
-  todayPositive: number
-  /** Счётчик - за сегодня */
-  todayNegative: number
-  /** Дата последнего сброса счётчиков (начало дня) */
-  lastResetDate: number
-  /** Streak: сколько дней подряд был хотя бы 1 + */
-  streak: number
-  /** Всего + за всё время */
-  totalPositive: number
-  /** Всего - за всё время */
-  totalNegative: number
-  createdAt: number
-  updatedAt: number
-  archived?: boolean
-}
-
 // ─── Legacy (existing store / TasksPage — migrate to TaskRpg later) ───────
-export type TaskKindLegacy = 'habit' | 'daily' | 'todo'
+export type TaskKindLegacy = 'daily' | 'todo'
 /** Legacy task kind for store/TasksPage. New code: use TaskKindRpg. */
 export type TaskKind = TaskKindLegacy
 export interface TaskBaseLegacy {
@@ -292,11 +240,6 @@ export interface TaskBaseLegacy {
   kind: TaskKindLegacy
   difficulty: 'easy' | 'normal' | 'hard'
   archived?: boolean
-}
-export interface HabitTask extends TaskBaseLegacy {
-  kind: 'habit'
-  positive: boolean
-  negative: boolean
 }
 export interface DailyTask extends TaskBaseLegacy {
   kind: 'daily'
@@ -310,7 +253,7 @@ export interface TodoTask extends TaskBaseLegacy {
   completedAt?: number
   isCompleted: boolean
 }
-export type Task = HabitTask | DailyTask | TodoTask
+export type Task = DailyTask | TodoTask
 
 export interface CharacterStats {
   level: number
@@ -385,11 +328,24 @@ export interface LevelCurveSegment {
 /** Leveling system mode */
 export type LevelingMode = 'standard' | 'fast' | 'custom'
 
-/** Standard (Linear): Lv1 0, Lv2 400, Lv3 900 (+500), Lv4 1.6K, Lv5 2.5K */
+/** Standard (Soft power curve): each level costs more XP.
+ *  Formula: round(400 × level^1.5 / 50) × 50
+ *  Lv1→2: 400, Lv2→3: 550, Lv5→6: 1100, Lv10→11: 2500, Lv20→21: 7150, Lv50→51: 28300
+ */
 export function xpForLevelStandard(level: number): number {
   if (level <= 1) return 0
-  return 400 + (level - 2) * 500 // Lv2=400, Lv3=900, Lv4=1400, Lv5=1900... spec says 2.5K for Lv5 so we use 400,900,1400,1900,2400
+  // Cumulative XP: sum of costs for levels 2..level
+  let total = 0
+  for (let i = 2; i <= level; i++) {
+    total += Math.round((400 * Math.pow(i - 1, 1.5)) / 50) * 50
+  }
+  return total
 }
+/** Cost of a single level (XP needed to go from `level` to `level+1`) */
+export function xpCostForLevel(level: number): number {
+  return Math.round((400 * Math.pow(level, 1.5)) / 50) * 50
+}
+
 /** Fast (Early gratification): Lv1 0, Lv2 600, Lv3 900, Lv4 1.2K, Lv5 1.5K */
 export function xpForLevelFast(level: number): number {
   if (level <= 1) return 0
@@ -436,6 +392,7 @@ export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
 
 export interface ShopItem {
   id: ItemId
+  profileId: ProfileId
   name: string
   description?: string
   /** Эмодзи/иконка товара (по умолчанию по типу: лутбокс, талон, меч) */
@@ -457,6 +414,8 @@ export interface ShopItem {
   canGetForFree?: boolean
   /** Множитель за стрик: при использовании предмета увеличивает награды */
   streakMultiplierEnabled?: boolean
+  /** Режим множителя: 'streak' (классический стрик) | 'instant' (для мгновенных задач, ограничен N выполнениями) */
+  streakMultiplierMode?: 'streak' | 'instant'
   /** Значение множителя: 1.5 (простой), 2 (средний), 2.5 (сложный) */
   streakMultiplierValue?: number
   /** Промежуток срабатывания множителя: каждые N выполнений (3, 5, 7) */
@@ -469,8 +428,10 @@ export interface ShopItem {
   isVideoGame?: boolean
   /** Пакеты времени для видеоигры: [{ hours, cost }] */
   gameTimePackages?: GameTimePackage[]
-  /** Суммарное накопленное время (в минутах) */
+  /** Суммарное накопленное время (в минутах) — текущий запас */
   gameTimeTotalMinutes?: number
+  /** Всего наигранных минут (увеличивается при использовании часов) */
+  gameTimePlayedMinutes?: number
   /** Сериал: серии разбиты по сезонам с индивидуальной ценой за серию */
   isTvSerial?: boolean
   /** Настройки сезонов сериала */
@@ -479,6 +440,8 @@ export interface ShopItem {
   stock?: number
   /** Базовая покупка сделана (для isVideoGame / isTvSerial — после покупки открываются сессии/серии) */
   basePurchased?: boolean
+  /** Предмет удалён из магазина, но остаётся в инвентаре */
+  deletedFromShop?: boolean
 }
 
 /** Сезон сериала */
@@ -499,6 +462,8 @@ export interface SerialEpisode {
   cost: number
   /** Куплена ли серия */
   purchased?: boolean
+  /** Использована ли серия (просмотрена) */
+  used?: boolean
 }
 
 /** Пакет времени для видеоигры */
@@ -522,6 +487,49 @@ export interface PurchaseHistoryEntry {
   itemId: ItemId
   itemName: string
   timestamp: number
+  /** Номер сезона (для покупки серии сериала) */
+  seasonNumber?: number
+  /** Номер серии (для покупки серии сериала) */
+  episodeNumber?: number
+  /** Название купленного пакета времени (для видеоигр) */
+  packageName?: string
+}
+
+/** Запись в истории использования предмета из инвентаря */
+export interface UsageHistoryEntry {
+  profileId: ProfileId
+  itemId: ItemId
+  itemName: string
+  timestamp: number
+  action: 'used' | 'opened_lootbox' | 'activated_discount' | 'activated_multiplier' | 'deactivated_multiplier' | 'deleted' | 'crafted'
+  /** Для игр: сколько часов использовано */
+  gameHoursUsed?: number
+  /** Для сериалов: номер сезона */
+  seasonNumber?: number
+  /** Для сериалов: номер серии */
+  episodeNumber?: number
+  /** Для множителей: ID задачи */
+  taskId?: string
+  /** Для множителей: название задачи (снимок) */
+  taskName?: string
+  /** Для множителей: значение (1.5, 2, 2.5) */
+  multiplierValue?: number
+  /** Для деактивации: причина */
+  deactivationReason?: 'streak_break' | 'uses_exhausted' | 'task_expired' | 'task_missed'
+  /** Для лутбокса: что выпало (имя предмета/валюты, или null = ничего) */
+  lootResultName?: string | null
+  /** Для лутбокса: монеты полученные (прямой дроп или компенсация) */
+  lootCoins?: number
+  /** Для лутбокса: гемы полученные (прямой дроп или компенсация) */
+  lootGems?: number
+  /** Для скидки: процент скидки */
+  discountPercent?: number
+  /** Для удаления: количество удалённых */
+  deletedQuantity?: number
+  /** Для использования/удаления: количество (если > 1) */
+  quantity?: number
+  /** Для крафта: название рецепта/фрагмента */
+  recipeName?: string
 }
 
 /** Currencies (e.g. Gold, Diamonds) */
@@ -545,17 +553,34 @@ export const CURRENCY_IDS = {
   GEMS: 'gems' as CurrencyId,
 }
 
+// ─── Achievement Groups ─────────────────────────────────────────────────────
+
+export interface AchievementGroup {
+  id: AchievementGroupId
+  profileId: ProfileId
+  name: string
+  icon: string
+  /** Цвет папки (hex) — используется как акцент иконок ачивок внутри */
+  color?: string
+  sortOrder: number
+  createdAt: number
+  updatedAt: number
+}
+
 // ─── Achievements System ────────────────────────────────────────────────────
 
 /** Тип условия для достижения */
-export type AchievementConditionType = 
-  | 'tasks_completed'      // Выполнено N задач
-  | 'habits_positive'      // N положительных привычек
-  | 'attribute_level'      // Атрибут достиг уровня N
-  | 'streak_days'          // Streak N дней
-  | 'coins_earned'         // Заработано N монет
-  | 'items_crafted'        // Скрафчено N предметов
-  | 'custom'               // Разблокировать вручную
+export type AchievementConditionType =
+  | 'tasks_completed'        // Выполнено N задач (всего)
+  | 'task_completed_today'   // Задача N выполнена X раз сегодня
+  | 'task_completed_total'   // Задача N выполнена X раз за всё время
+  | 'task_streak'            // Серия для конкретной задачи N
+  | 'item_used'              // Предмет N использован X раз
+  | 'attribute_level'        // Атрибут достиг уровня N
+  | 'coins_earned_spent'     // Монет заработано / потрачено
+  | 'gems_earned_spent'      // Кристаллов заработано / потрачено
+  | 'condition_checked'      // Условие дневника выполнено N раз
+  | 'custom'                 // Разблокировать вручную
 
 export interface AchievementCondition {
   type: AchievementConditionType
@@ -563,11 +588,21 @@ export interface AchievementCondition {
   targetValue: number
   /** ID атрибута (для attribute_level) */
   attributeId?: AttributeId
+  /** ID задачи (для task_completed_today, task_completed_total, task_streak) */
+  taskId?: TaskId
+  /** ID предмета (для item_used) */
+  itemId?: ItemId
+  /** ID условия дневника (для condition_checked) */
+  conditionId?: DailyConditionId
+  /** Режим для coins_earned_spent: заработано или потрачено */
+  coinMode?: 'earned' | 'spent'
 }
 
 export interface Achievement {
   id: AchievementId
   profileId: ProfileId
+  /** Группа достижения; null = без группы */
+  groupId?: AchievementGroupId | null
   title: string
   description: string
   icon: string
@@ -579,29 +614,73 @@ export interface Achievement {
   rewardGems: number
   /** Награда: XP */
   rewardXp: number
-  /** Награда: ID предмета */
+  /** Награда: ID атрибута для XP (только один) */
+  rewardAttributeId?: AttributeId
+  /** Награда: сложность (определяет XP) */
+  rewardDifficulty?: TaskDifficulty
+  /** Награда: кастомный XP (переопределяет сложность) */
+  rewardCustomXp?: number
+  /** Награда: ID предмета (deprecated, используй rewardItems) */
   rewardItemId?: ItemId
+  /** Награда: количество предметов (deprecated, используй rewardItems) */
+  rewardItemQuantity?: number
+  /** Награда: массив предметов [{itemId, quantity}] */
+  rewardItems?: { itemId: ItemId; quantity: number }[]
+  /** Условия (тумблеры) */
+  conditions?: AchievementToggleConditions
+  /** Повторяемое достижение (сбрасывается после выполнения) */
+  repeatable?: boolean
+  /** Сколько раз выполнено всего (для повторяемых). 0 или undefined = ни разу */
+  completionCount?: number
+  /** Готово к разблокировке (условия выполнены, ждёт ручного забора) */
+  readyToUnlock?: boolean
   /** Разблокировано? */
   unlocked: boolean
   /** Когда разблокировано */
   unlockedAt?: number
   /** Текущий прогресс (для отображения) */
   currentProgress: number
+  /** Порядок сортировки внутри папки (меньше = выше) */
+  sortOrder?: number
   createdAt: number
   updatedAt: number
+}
+
+/** Тумблер-условия для достижений (пока без логики, только UI) */
+export interface AchievementToggleConditions {
+  /** Без подсказок */
+  noHints?: boolean
+  /** Без пропусков */
+  noSkips?: boolean
+  /** Подряд без перерыва */
+  consecutive?: boolean
+  /** Только в определённый день недели */
+  specificDay?: boolean
+  /** За один сеанс */
+  singleSession?: boolean
+  /** Без ошибок */
+  noMistakes?: boolean
+  /** В ограниченное время */
+  timeLimited?: boolean
+  /** Соло (без помощи) */
+  solo?: boolean
 }
 
 // ─── Crafting System ────────────────────────────────────────────────────────
 
 /** Источник получения фрагментов */
-export type FragmentSourceType = 'task_linked' | 'streak_reward' | 'random_drop'
+export type FragmentSourceType = 'task_linked' | 'habit_linked' | 'streak_reward' | 'random_drop'
 
 export interface FragmentSource {
   type: FragmentSourceType
-  /** ID задачи (для task_linked) */
+  /** ID задачи (для task_linked) — @deprecated используй linkedTaskIds */
   taskId?: TaskId
-  /** Шанс дропа 0.0-1.0 (для random_drop) */
+  /** Массив привязанных задач (для task_linked) */
+  linkedTaskIds?: TaskId[]
+  /** Шанс дропа в процентах 0-100 (для random_drop и task_linked) */
   dropChance?: number
+  /** Разрешить дроп при выполнении подзадачи */
+  allowSubtaskDrop?: boolean
   /** Необходимая длина стрика для получения фрагмента (для streak_reward) */
   streakRequired?: number
 }
@@ -633,14 +712,170 @@ export interface CraftRecipe {
   resultIcon: string
   /** Стоимость крафта (по валютам). Если не задано или всё 0 — крафт бесплатный */
   craftCost?: Record<CurrencyId, number>
-  /** Источники фрагментов */
-  sources?: FragmentSource[]
+  /** Источник фрагментов */
+  fragmentSource?: FragmentSource
+  /** Максимальное количество крафтов (undefined/1 = одноразовый) */
+  maxCrafts?: number
+  /** Сколько раз уже скрафчено */
+  craftCount?: number
   /** Скрафчен ли предмет */
   crafted: boolean
   /** Когда скрафчен */
   craftedAt?: number
   createdAt: number
   updatedAt: number
+}
+
+// ─── Daily Conditions (Checklist goals in daily reports) ─────────────────────
+
+export type DailyConditionId = string
+
+/** Условие дневника — ежедневный чекбокс (например "Фото тела") */
+export interface DailyCondition {
+  id: DailyConditionId
+  profileId: ProfileId
+  /** Название условия */
+  name: string
+  /** Эмодзи/иконка */
+  icon: string
+  /** Дата создания (YYYY-MM-DD) — условие появляется начиная с этого дня */
+  activeFrom: string
+  /** Дата удаления (YYYY-MM-DD) — условие скрывается начиная со следующего дня. null = активно */
+  activeUntil: string | null
+  createdAt: number
+  updatedAt: number
+}
+
+/** Запись о выполнении условия в конкретный день */
+export interface DailyConditionEntry {
+  conditionId: DailyConditionId
+  /** Дата (YYYY-MM-DD) */
+  dateKey: string
+  /** Выполнено ли */
+  checked: boolean
+}
+
+// ─── Reflection System (Notes + Daily Reports) ──────────────────────────────
+
+export type NoteId = string
+export type NoteFolderId = string
+export type DailyReportId = string
+
+/** Mood level 1-5 */
+export type MoodLevel = 1 | 2 | 3 | 4 | 5
+
+export const MOOD_CONFIG: Record<MoodLevel, { emoji: string; label: string; color: string }> = {
+  1: { emoji: '😫', label: 'Ужасно', color: '#ef4444' },
+  2: { emoji: '😕', label: 'Плохо', color: '#f97316' },
+  3: { emoji: '😐', label: 'Нормально', color: '#eab308' },
+  4: { emoji: '🙂', label: 'Хорошо', color: '#22c55e' },
+  5: { emoji: '😁', label: 'Отлично', color: '#14b8a6' },
+}
+
+/** Папка для заметок */
+export interface NoteFolder {
+  id: NoteFolderId
+  profileId: ProfileId
+  name: string
+  /** Эмодзи-иконка */
+  icon: string
+  /** Цвет папки (hex) */
+  color: string
+  sortOrder: number
+  createdAt: number
+  updatedAt: number
+}
+
+/** Заметка */
+export interface Note {
+  id: NoteId
+  profileId: ProfileId
+  /** Папка; null = без папки */
+  folderId: NoteFolderId | null
+  title: string
+  /** Контент (plain text) */
+  content: string
+  /** Текстовый отрывок для превью (~200 символов) */
+  excerpt: string
+  /** Теги (имена тегов) */
+  tags: string[]
+  /** Пути к медиафайлам (из vaultStorage.saveMedia) */
+  mediaFiles: string[]
+  /** Привязанные задачи */
+  linkedTaskIds: TaskId[]
+  /** Привязанные предметы */
+  linkedItemIds: ItemId[]
+  /** Закреплена вверху */
+  pinned: boolean
+  /** Порядок сортировки внутри папки (меньше = выше) */
+  sortOrder: number
+  /** Дата мягкого удаления (timestamp); null = не удалена */
+  deletedAt: number | null
+  createdAt: number
+  updatedAt: number
+}
+
+/** Ежедневный отчёт (настроение + мысли) */
+export interface DailyReport {
+  id: DailyReportId
+  profileId: ProfileId
+  /** Дата в формате YYYY-MM-DD */
+  dateKey: string
+  /** Настроение 1-5 */
+  mood: MoodLevel | null
+  /** Мысли за день (свободный текст) */
+  thoughts: string
+  /** Фото дня (пути к медиафайлам) */
+  photos: string[]
+  /** Сохранённый снапшот дня (для исторических отчётов). Отсутствует у старых записей — fallback на generateDailySnapshot */
+  snapshot?: DailySnapshot
+  createdAt: number
+  updatedAt: number
+}
+
+/** Автоматический снимок дня (вычисляется из данных приложения) */
+export interface DailySnapshot {
+  tasksCompleted: {
+    groupId: string | null
+    groupName: string
+    tasks: {
+      taskId: TaskId
+      title: string
+      count: number
+      xpEarned: number
+      coinsEarned: number
+      gemsEarned: number
+      subtasks?: { title: string; xpEarned?: number; coinReward?: number; gemReward?: number }[]
+    }[]
+  }[]
+  totalTasksCompleted: number
+  habitsPositive: { habitId: string; title: string }[]
+  habitsNegative: { habitId: string; title: string }[]
+  itemsPurchased: {
+    itemId: ItemId
+    name: string
+    count: number
+    totalCost: number
+    /** Пояснение: "покупка часов", "покупка серий" и тд */
+    details?: string
+  }[]
+  itemsUsed: { itemId: ItemId; name: string; count: number }[]
+  achievementsUnlocked: {
+    achievementId: AchievementId
+    title: string
+    icon: string
+    repeatable?: boolean
+    completionCount?: number
+    rewardXp: number
+    rewardCoins: number
+    rewardGems: number
+  }[]
+  xpEarned: number
+  coinsEarned: number
+  gemsEarned: number
+  coinsSpent: number
+  gemsSpent: number
+  activeStreaks: { taskId: TaskId; title: string; streak: number }[]
 }
 
 // ─── App Settings ───────────────────────────────────────────────────────────
@@ -671,9 +906,20 @@ export const ACCENT_COLORS: Record<AccentColor, { light: string; dark: string; n
 export interface AppSettings {
   theme: ThemeMode
   accentColor: AccentColor
+  /** Аватар персонажа (эмодзи) */
+  avatar: string
+  /** Кастомная аватарка (путь к медиафайлу или data URL) */
+  avatarImage?: string
+  /** Показывать полосы прокрутки */
+  showScrollbars: boolean
   notificationsEnabled: boolean
   notifyDailyTasks: boolean
   notifyAchievements: boolean
+  notifyLevelUp: boolean
+  notifyDailyReminder: boolean
+  notifyDeadlines: boolean
+  /** Время ежедневного напоминания (HH:MM) */
+  dailyReminderTime: string
   language: 'ru' | 'en'
   /** Настройки XP для сложностей задач */
   taskDifficultyXp: {
@@ -682,14 +928,32 @@ export interface AppSettings {
     hard: number
     veryHard: number
   }
+  /** Сколько записей отображать в истории инвентаря */
+  historyDisplayLimit: number
+  /** Toast-уведомления по категориям */
+  toastTaskComplete: boolean
+  toastTaskCreate: boolean
+  toastTaskActions: boolean
+  toastPurchases: boolean
+  toastAchievements: boolean
+  toastCraft: boolean
+  toastErrors: boolean
+  /** Летающие монеты/самоцветы при выполнении задачи */
+  toastFloatingRewards: boolean
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'light',
   accentColor: 'blue',
+  avatar: '🧙',
+  showScrollbars: true,
   notificationsEnabled: true,
   notifyDailyTasks: true,
   notifyAchievements: true,
+  notifyLevelUp: true,
+  notifyDailyReminder: true,
+  notifyDeadlines: true,
+  dailyReminderTime: '09:00',
   language: 'ru',
   taskDifficultyXp: {
     easy: 10,
@@ -697,6 +961,15 @@ export const DEFAULT_SETTINGS: AppSettings = {
     hard: 100,
     veryHard: 300,
   },
+  historyDisplayLimit: 300,
+  toastTaskComplete: true,
+  toastTaskCreate: true,
+  toastTaskActions: true,
+  toastPurchases: true,
+  toastAchievements: true,
+  toastCraft: true,
+  toastErrors: true,
+  toastFloatingRewards: true,
 }
 
 // ─── Database schema (SQLite-ready) ─────────────────────────────────────────

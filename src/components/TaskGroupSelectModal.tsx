@@ -51,26 +51,6 @@ export default function TaskGroupSelectModal({
     >
       <div className="px-4 pb-4 pt-3 max-h-[65vh] overflow-y-auto">
         <div className="space-y-2">
-          {/* Без группы */}
-          <button
-            type="button"
-            onClick={() => handleSelect(null)}
-            className={cn(
-              'flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all',
-              selectedGroupId === null
-                ? 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-lg shadow-[var(--accent)]/10'
-                : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-elevated)]'
-            )}
-          >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-elevated)]">
-              <Folder className="h-4 w-4 text-[var(--fg-muted)]" />
-            </div>
-            <span className="flex-1 text-sm font-medium text-[var(--fg)]">Без группы</span>
-            {selectedGroupId === null && (
-              <Check className="h-4 w-4 text-[var(--accent)] shrink-0" />
-            )}
-          </button>
-
           {/* Группы */}
           {groups.map((group) => (
             <button

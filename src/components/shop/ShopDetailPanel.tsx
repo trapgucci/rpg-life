@@ -1,37 +1,44 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { resizeImageFile } from '../../lib/resizeImage'
 import { cn } from '../../lib/cn'
 import {
   X, Pencil, Trash2, Coins, Gem, Gift, Percent, ShoppingCart,
   ChevronRight, Settings, Folder, TrendingUp, Gamepad2, Plus, Clock,
-  Clapperboard, ChevronDown, Check,
+  Clapperboard, ChevronDown, Check, Package, Hammer, Crosshair, Dice5,
+  BarChart3, Sparkles, Trophy, ExternalLink,
 } from 'lucide-react'
 import ItemGroupSelectModal from './ItemGroupSelectModal'
 import IconSourcePicker from './IconSourcePicker'
 import { HabitIcon } from '../HabitIcon'
+import { ItemIconBadge } from '../ItemIconBadge'
 import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem, GameTimePackage, SerialSeason } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
 import {
-  getItemIcon, getItemTypeBadge, migrateIcon,
-  RARITY_LABELS, RARITY_BADGE_CLASSES, RARITY_COLORS,
+  getItemIcon, getItemTypeBadge, getItemTypeColor, migrateIcon,
 } from './shopUtils'
 import type { LootTableEntry } from './shopUtils'
+import Modal from '../Modal'
 import ConfirmModal from '../ConfirmModal'
+import RewardBadge from '../RewardBadge'
 import EmojiPickerModal from './EmojiPickerModal'
 import LootboxEffectModal from './LootboxEffectModal'
 import DiscountVoucherModal from './DiscountVoucherModal'
+import { rpgToast } from '../RpgToast'
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
 interface ShopDetailPanelProps {
   item: ShopItem
   onDeselect?: () => void
+  onNavigateToRecipe?: (recipeId: string) => void
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelProps) {
+export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }: ShopDetailPanelProps) {
+  const navigate = useNavigate()
   // ── Store selectors ──────────────────────────────────────────────────────
   const updateItem = useRpgStore((s) => s.updateShopItem)
   const deleteShopItem = useRpgStore((s) => s.deleteShopItem)
@@ -43,7 +50,34 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const allItemGroups = useRpgStore((s) => s.itemGroups)
   const shopItems = useRpgStore((s) => s.shopItems)
+  const activeShopItems = useMemo(() => shopItems.filter((i) => !i.deletedFromShop), [shopItems])
   const purchaseHistory = useRpgStore((s) => s.purchaseHistory)
+  const craftRecipes = useRpgStore((s) => s.craftRecipes)
+  const achievements = useRpgStore((s) => s.achievements)
+  const allTasks = useRpgStore((s) => s.tasks)
+
+  // Find active recipe for this item
+  const itemRecipe = craftRecipes.find((r) => r.resultItemId === item.id && !r.crafted)
+
+  // Find achievements that reward this item
+  const rewardingAchievements = useMemo(
+    () => achievements.filter((a) =>
+      (a.rewardItems?.some((ri) => ri.itemId === item.id)) ||
+      (a.rewardItemId === item.id)
+    ),
+    [achievements, item.id],
+  )
+  const recipeLinkedTasks = itemRecipe
+    ? (() => {
+        const src = itemRecipe.fragmentSource
+        if (src?.type === 'task_linked' && Array.isArray(src.linkedTaskIds)) {
+          return src.linkedTaskIds
+            .map((id: string) => allTasks.find((t) => t.id === id))
+            .filter(Boolean)
+        }
+        return []
+      })()
+    : []
 
   const profile = profiles.find((p) => p.id === activeProfileId)
   const coins = profile?.currencies[CURRENCY_IDS.COINS] ?? 0
@@ -60,13 +94,14 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
   const iconBgColor = group?.color ?? '#9ca3af'
 
   // ── Cost calculations ────────────────────────────────────────────────────
-  const coinCostRaw = item.cost[CURRENCY_IDS.COINS] ?? 0
-  const gemCostRaw = item.cost[CURRENCY_IDS.GEMS] ?? 0
+  const coinCostRaw = item.cost?.[CURRENCY_IDS.COINS] ?? 0
+  const gemCostRaw = item.cost?.[CURRENCY_IDS.GEMS] ?? 0
   const effectiveCoinCost =
     activeShopDiscountPercent != null && coinCostRaw > 0
-      ? Math.ceil(coinCostRaw * (1 - activeShopDiscountPercent / 100))
+      ? Math.round(coinCostRaw * (1 - activeShopDiscountPercent / 100))
       : coinCostRaw
-  const canAfford = coins >= effectiveCoinCost && gems >= gemCostRaw
+  const effectiveGemCost = gemCostRaw // скидка не применяется к кристаллам
+  const canAfford = coins >= effectiveCoinCost && gems >= effectiveGemCost
   const availableForPurchase = item.availableForPurchase !== false
   const canGetForFree = item.canGetForFree === true
   const isMediaItem = item.isVideoGame || item.isTvSerial
@@ -88,6 +123,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
   const [editIsLootBox, setEditIsLootBox] = useState(item.isLootBox)
   const [editLootTable, setEditLootTable] = useState<LootTableEntry[]>(item.lootTable ?? [])
   const [editStreakMultiplierEnabled, setEditStreakMultiplierEnabled] = useState(item.streakMultiplierEnabled ?? false)
+  const [editStreakMultiplierMode, setEditStreakMultiplierMode] = useState<'streak' | 'instant'>(item.streakMultiplierMode ?? 'streak')
   const [editStreakMultiplierValue, setEditStreakMultiplierValue] = useState(item.streakMultiplierValue ?? 1.5)
   const [editStreakMultiplierInterval, setEditStreakMultiplierInterval] = useState(item.streakMultiplierInterval ?? 3)
   const [editIsDiscountVoucher, setEditIsDiscountVoucher] = useState(item.isDiscountVoucher ?? false)
@@ -107,6 +143,8 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
   const [showDiscountModal, setShowDiscountModal] = useState(false)
   const [showGroupModal, setShowGroupModal] = useState(false)
   const [showIconSource, setShowIconSource] = useState(false)
+  const [showGameCompletedConfirm, setShowGameCompletedConfirm] = useState(false)
+  const [showPurchaseConfirm, setShowPurchaseConfirm] = useState(false)
 
   const iconFileInputRef = useRef<HTMLInputElement>(null)
 
@@ -123,12 +161,13 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
     setEditGroupId(i.groupId ?? null)
     setEditAvailableForPurchase(i.availableForPurchase !== false)
     setEditCanGetForFree(i.canGetForFree === true)
-    setEditCoinCost(i.cost[CURRENCY_IDS.COINS] ?? 0)
-    setEditGemCost(i.cost[CURRENCY_IDS.GEMS] ?? 0)
-    setEditStock((i as any).stock)
+    setEditCoinCost(i.cost?.[CURRENCY_IDS.COINS] ?? 0)
+    setEditGemCost(i.cost?.[CURRENCY_IDS.GEMS] ?? 0)
+    setEditStock(i.stock)
     setEditIsLootBox(i.isLootBox)
     setEditLootTable(i.lootTable ?? [])
     setEditStreakMultiplierEnabled(i.streakMultiplierEnabled ?? false)
+    setEditStreakMultiplierMode(i.streakMultiplierMode ?? 'streak')
     setEditStreakMultiplierValue(i.streakMultiplierValue ?? 1.5)
     setEditStreakMultiplierInterval(i.streakMultiplierInterval ?? 3)
     setEditIsDiscountVoucher(i.isDiscountVoucher ?? false)
@@ -151,12 +190,13 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
       editGroupId !== (prev.groupId ?? null) ||
       editAvailableForPurchase !== (prev.availableForPurchase !== false) ||
       editCanGetForFree !== (prev.canGetForFree === true) ||
-      editCoinCost !== (prev.cost[CURRENCY_IDS.COINS] ?? 0) ||
-      editGemCost !== (prev.cost[CURRENCY_IDS.GEMS] ?? 0) ||
-      editStock !== (prev as any).stock ||
+      editCoinCost !== (prev.cost?.[CURRENCY_IDS.COINS] ?? 0) ||
+      editGemCost !== (prev.cost?.[CURRENCY_IDS.GEMS] ?? 0) ||
+      editStock !== prev.stock ||
       editIsLootBox !== prev.isLootBox ||
       JSON.stringify(editLootTable) !== JSON.stringify(prev.lootTable ?? []) ||
       editStreakMultiplierEnabled !== (prev.streakMultiplierEnabled ?? false) ||
+      editStreakMultiplierMode !== (prev.streakMultiplierMode ?? 'streak') ||
       editStreakMultiplierValue !== (prev.streakMultiplierValue ?? 1.5) ||
       editStreakMultiplierInterval !== (prev.streakMultiplierInterval ?? 3) ||
       editIsDiscountVoucher !== (prev.isDiscountVoucher ?? false) ||
@@ -169,7 +209,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
   }, [
     editName, editDescription, editIcon, editIconImage, editGroupId,
     editAvailableForPurchase, editCanGetForFree, editCoinCost, editGemCost,
-    editStock, editIsLootBox, editLootTable, editStreakMultiplierEnabled,
+    editStock, editIsLootBox, editLootTable, editStreakMultiplierEnabled, editStreakMultiplierMode,
     editStreakMultiplierValue, editStreakMultiplierInterval, editIsDiscountVoucher, editDiscountPercent,
     editIsVideoGame, editGameTimePackages, editIsTvSerial, editSerialSeasons,
   ])
@@ -228,11 +268,12 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
       cost,
       isLootBox: editIsLootBox,
       lootTable: editIsLootBox ? editLootTable : undefined,
-      stock: (editIsVideoGame || editIsTvSerial) ? (prev.basePurchased ? 0 : 1) : editStock,
+      stock: (editIsVideoGame || editIsTvSerial) ? prev.stock : editStock,
       availableForPurchase: editAvailableForPurchase,
       canGetForFree: editCanGetForFree,
       groupId: editGroupId,
       streakMultiplierEnabled: editStreakMultiplierEnabled || undefined,
+      streakMultiplierMode: editStreakMultiplierEnabled ? editStreakMultiplierMode : undefined,
       streakMultiplierValue: editStreakMultiplierEnabled ? editStreakMultiplierValue : undefined,
       streakMultiplierInterval: editStreakMultiplierEnabled ? editStreakMultiplierInterval : undefined,
       isDiscountVoucher: editIsDiscountVoucher || undefined,
@@ -257,15 +298,30 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
 
   // ── Purchase handler ─────────────────────────────────────────────────────
   const handlePurchase = () => {
+    setShowPurchaseConfirm(true)
+  }
+
+  const handleConfirmPurchase = () => {
+    setShowPurchaseConfirm(false)
     const result = purchaseItem(item.id)
-    if (result && typeof result === 'object' && 'loot' in result) {
-      if (result.loot) alert(`Вы получили: ${result.loot.name}!`)
-      else alert('Ничего не выпало.')
+    if (result === false) {
+      rpgToast({ title: 'Недостаточно средств!', type: 'error' })
+    } else {
+      rpgToast({
+        title: `Куплено: ${item.name}`,
+        type: 'purchase',
+        coins: effectiveCoinCost > 0 ? -effectiveCoinCost : undefined,
+        gems: effectiveGemCost > 0 ? -effectiveGemCost : undefined,
+      })
     }
   }
 
   // ── Stats ────────────────────────────────────────────────────────────────
-  const totalPurchases = purchaseHistory.filter((e) => e.itemId === item.id).length
+  const itemPurchases = purchaseHistory.filter((e) => e.itemId === item.id)
+  const totalPurchases = itemPurchases.length
+  const lastPurchaseTs = itemPurchases.length > 0 ? Math.max(...itemPurchases.map((e) => e.timestamp)) : null
+  const totalSpentCoins = totalPurchases * (item.cost?.[CURRENCY_IDS.COINS] ?? 0)
+  const totalSpentGems = totalPurchases * (item.cost?.[CURRENCY_IDS.GEMS] ?? 0)
   const typeBadge = getItemTypeBadge(item)
 
   // ── Divider helper ───────────────────────────────────────────────────────
@@ -277,16 +333,16 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
 
   return (
     <div className="glass-card relative flex h-full flex-col rounded-2xl overflow-hidden">
-      {/* Rarity accent strip at top */}
+      {/* Type accent strip at top */}
       <div
         className="absolute top-0 left-0 right-0 h-[3px] z-10"
-        style={{ background: `linear-gradient(90deg, ${RARITY_COLORS[item.rarity]}, ${RARITY_COLORS[item.rarity]}40)` }}
+        style={{ background: `linear-gradient(90deg, ${typeBadge ? ({ lootbox: '#8b5cf6', multiplier: '#f59e0b', discount: '#ef4444', videogame: '#06b6d4', serial: '#ec4899' })[typeBadge.type] : '#9ca3af'}, ${typeBadge ? ({ lootbox: '#8b5cf640', multiplier: '#f59e0b40', discount: '#ef444440', videogame: '#06b6d440', serial: '#ec489940' })[typeBadge.type] : '#9ca3af40'})` }}
       />
 
-      <div className="flex-1 min-h-0 overflow-y-auto p-6">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6">
 
         {/* ── HEADER ─────────────────────────────────────────────────────── */}
-        <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex items-start justify-between gap-3 md:gap-4 mb-4 md:mb-6">
           {isEditing ? (
             /* ── EDIT MODE (Glassmorphic Neumorphism) ─────────────────── */
             <div className="flex-1 flex flex-col gap-5">
@@ -398,9 +454,28 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                   {!editAvailableForPurchase && (
                     <>
                       {divider}
-                      <p className="px-4 py-3 text-xs text-[var(--fg-muted)]">
-                        Этот предмет не будет продаваться в магазине, но его по-прежнему можно получить за выполнение заданий, достижений или через другие игровые активности.
-                      </p>
+                      <div className="px-4 py-3 space-y-1.5">
+                        <p className="text-xs text-[var(--fg-muted)]">
+                          Этот предмет не продаётся в магазине.
+                        </p>
+                        {itemRecipe && (
+                          <p className="text-xs font-medium text-orange-600 dark:text-orange-400 flex items-center gap-1">
+                            <Hammer className="h-3 w-3" />
+                            Можно получить через крафт
+                          </p>
+                        )}
+                        {rewardingAchievements.length > 0 && (
+                          <p className="text-xs font-medium text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
+                            <Trophy className="h-3 w-3" />
+                            Награда за: {rewardingAchievements.map((a) => a.title).join(', ')}
+                          </p>
+                        )}
+                        {!itemRecipe && rewardingAchievements.length === 0 && (
+                          <p className="text-xs text-[var(--fg-muted)]">
+                            Привяжите к рецепту крафта или достижению, чтобы предмет можно было получить.
+                          </p>
+                        )}
+                      </div>
                     </>
                   )}
                   {editAvailableForPurchase && editCanGetForFree && (
@@ -427,7 +502,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                           <span className="text-sm font-bold">−</span>
                         </button>
                         <input type="number" min={0} value={editCoinCost || ''} placeholder="0" onChange={(e) => setEditCoinCost(e.target.value === '' ? 0 : Math.max(0, Number(e.target.value)))} onBlur={(e) => { if (e.target.value === '') setEditCoinCost(0) }} className="input w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold placeholder:text-[var(--fg-muted)]/40" />
-                        <button type="button" onClick={() => setEditCoinCost((prev) => prev + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
+                        <button type="button" onClick={() => setEditCoinCost((prev) => prev + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-indigo-500/35 to-indigo-600/20 text-indigo-400 ring-1 ring-inset ring-indigo-500/35 shadow-sm shadow-indigo-600/10 hover:from-indigo-500/50 hover:to-indigo-600/35 hover:text-indigo-300 hover:scale-105 active:scale-95">
                           <span className="text-sm font-bold">+</span>
                         </button>
                       </div>
@@ -440,7 +515,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                           <span className="text-sm font-bold">−</span>
                         </button>
                         <input type="number" min={0} value={editGemCost || ''} placeholder="0" onChange={(e) => setEditGemCost(e.target.value === '' ? 0 : Math.max(0, Number(e.target.value)))} onBlur={(e) => { if (e.target.value === '') setEditGemCost(0) }} className="input w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold placeholder:text-[var(--fg-muted)]/40" />
-                        <button type="button" onClick={() => setEditGemCost((prev) => prev + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
+                        <button type="button" onClick={() => setEditGemCost((prev) => prev + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-indigo-500/35 to-indigo-600/20 text-indigo-400 ring-1 ring-inset ring-indigo-500/35 shadow-sm shadow-indigo-600/10 hover:from-indigo-500/50 hover:to-indigo-600/35 hover:text-indigo-300 hover:scale-105 active:scale-95">
                           <span className="text-sm font-bold">+</span>
                         </button>
                       </div>
@@ -456,7 +531,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                             <span className="text-sm font-bold">−</span>
                           </button>
                           <input type="number" min={1} value={editStock ?? ''} onChange={(e) => { const value = e.target.value; setEditStock(value ? Math.max(1, Number(value) || 1) : undefined) }} placeholder="∞" className="input input-stock-infinite w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold" />
-                          <button type="button" onClick={() => setEditStock((prev) => (prev == null ? 1 : prev + 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
+                          <button type="button" onClick={() => setEditStock((prev) => (prev == null ? 1 : prev + 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-indigo-500/35 to-indigo-600/20 text-indigo-400 ring-1 ring-inset ring-indigo-500/35 shadow-sm shadow-indigo-600/10 hover:from-indigo-500/50 hover:to-indigo-600/35 hover:text-indigo-300 hover:scale-105 active:scale-95">
                             <span className="text-sm font-bold">+</span>
                           </button>
                         </div>
@@ -478,7 +553,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                         <span className="text-lg font-bold">−</span>
                       </button>
                       <input type="number" min={1} value={editStock ?? ''} onChange={(e) => { const value = e.target.value; setEditStock(value ? Math.max(1, Number(value) || 1) : undefined) }} placeholder="∞" className="input input-stock-infinite w-full flex-1 min-w-0 h-11 py-0 text-center text-lg font-bold" />
-                      <button type="button" onClick={() => setEditStock((prev) => (prev == null ? 1 : prev + 1))} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
+                      <button type="button" onClick={() => setEditStock((prev) => (prev == null ? 1 : prev + 1))} className="flex h-11 w-11 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-indigo-500/35 to-indigo-600/20 text-indigo-400 ring-1 ring-inset ring-indigo-500/35 shadow-sm shadow-indigo-600/10 hover:from-indigo-500/50 hover:to-indigo-600/35 hover:text-indigo-300 hover:scale-105 active:scale-95">
                         <span className="text-lg font-bold">+</span>
                       </button>
                     </div>
@@ -486,11 +561,11 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 </div>
               )}
 
-              {/* ─── Advanced settings ─── */}
+              {/* ─── Advanced settings trigger ─── */}
               <div className="glass rounded-2xl p-4">
                 <button
                   type="button"
-                  onClick={() => setShowAdvancedSettings((v) => !v)}
+                  onClick={() => setShowAdvancedSettings(true)}
                   className="flex w-full items-center gap-3 text-left"
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-b from-[var(--fg-muted)]/15 to-[var(--fg-muted)]/5 ring-1 ring-inset ring-[var(--fg-muted)]/15">
@@ -498,19 +573,17 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-[var(--fg)]">Свойства предмета</p>
-                    <p className="text-xs text-[var(--fg-muted)]">Лутбокс, множитель, скидочник, видеоигра, сериал</p>
+                    <p className="text-xs text-[var(--fg-muted)]">
+                      {editIsLootBox ? 'Лутбокс' : editStreakMultiplierEnabled ? 'Множитель за стрик' : editIsDiscountVoucher ? 'Скидочный талон' : editIsVideoGame ? 'Видеоигра' : editIsTvSerial ? 'Сериал' : 'Обычный предмет'}
+                    </p>
                   </div>
-                  <ChevronRight className={cn(
-                    'h-4 w-4 text-[var(--fg-muted)] transition-transform duration-200',
-                    showAdvancedSettings && 'rotate-90'
-                  )} />
+                  <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
                 </button>
+              </div>
 
-                <div className={cn(
-                  'overflow-hidden transition-all duration-300 ease-out',
-                  showAdvancedSettings ? 'max-h-[2000px] opacity-100 mt-4' : 'max-h-0 opacity-0'
-                )}>
-                  <div className="space-y-3">
+              {/* ─── Advanced settings modal ─── */}
+              <Modal isOpen={showAdvancedSettings} onClose={() => setShowAdvancedSettings(false)} title="Свойства предмета" size="md">
+                <div className="p-6 space-y-3">
                     <p className="text-xs text-[var(--fg-muted)]">
                       Включить можно только одну опцию.
                     </p>
@@ -542,6 +615,38 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                       </div>
                       {editStreakMultiplierEnabled && (
                         <div className="mt-4 pt-4 border-t border-[var(--border)] space-y-4">
+                          {/* Mode selector */}
+                          <div>
+                            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Режим</label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setEditStreakMultiplierMode('streak')}
+                                className={cn(
+                                  'flex flex-col items-center gap-1 rounded-xl border py-2.5 px-2 text-center transition-all',
+                                  editStreakMultiplierMode === 'streak'
+                                    ? 'border-[var(--accent)] bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]/30'
+                                    : 'border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
+                                )}
+                              >
+                                <span className={cn('text-sm font-bold', editStreakMultiplierMode === 'streak' ? 'text-[var(--accent)]' : 'text-[var(--fg)]')}>За стрик</span>
+                                <span className="text-[10px] text-[var(--fg-muted)]">Классический режим</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditStreakMultiplierMode('instant')}
+                                className={cn(
+                                  'flex flex-col items-center gap-1 rounded-xl border py-2.5 px-2 text-center transition-all',
+                                  editStreakMultiplierMode === 'instant'
+                                    ? 'border-[var(--accent)] bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]/30'
+                                    : 'border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
+                                )}
+                              >
+                                <span className={cn('text-sm font-bold', editStreakMultiplierMode === 'instant' ? 'text-[var(--accent)]' : 'text-[var(--fg)]')}>Для инстант</span>
+                                <span className="text-[10px] text-[var(--fg-muted)]">Ограничен N выполнениями</span>
+                              </button>
+                            </div>
+                          </div>
                           <div>
                             <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Множитель</label>
                             <div className="grid grid-cols-3 gap-2">
@@ -564,9 +669,15 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                             </div>
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Срабатывает каждые</label>
+                            <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">
+                              {editStreakMultiplierMode === 'streak' ? 'Срабатывает каждые' : 'Действует на'}
+                            </label>
                             <div className="grid grid-cols-3 gap-2">
-                              {([{ value: 3, label: '3', desc: 'выполнения' }, { value: 5, label: '5', desc: 'выполнений' }, { value: 7, label: '7', desc: 'выполнений' }] as const).map((opt) => (
+                              {([
+                                { value: 3, label: '3', desc: editStreakMultiplierMode === 'streak' ? 'выполнения' : 'выполнения' },
+                                { value: 5, label: '5', desc: 'выполнений' },
+                                { value: 7, label: '7', desc: 'выполнений' },
+                              ] as const).map((opt) => (
                                 <button
                                   key={opt.value}
                                   type="button"
@@ -584,6 +695,11 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                               ))}
                             </div>
                           </div>
+                          {editStreakMultiplierMode === 'instant' && (
+                            <p className="text-xs text-[var(--fg-muted)] bg-[var(--surface-elevated)] rounded-lg p-2.5">
+                              Множитель будет действовать на следующие {editStreakMultiplierInterval} выполнений мгновенной задачи. Инстант задачу нельзя пропустить, поэтому множитель не теряется.
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
@@ -852,9 +968,19 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                         </div>
                       )}
                     </div>
-                  </div>
                 </div>
-              </div>
+                {(editIsLootBox || editStreakMultiplierEnabled || editIsDiscountVoucher || editIsVideoGame || editIsTvSerial) && (
+                  <div className="px-6 pb-6">
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvancedSettings(false)}
+                      className="w-full rounded-xl bg-[var(--accent)] py-3 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                    >
+                      Готово
+                    </button>
+                  </div>
+                )}
+              </Modal>
 
               {/* ─── Save / Cancel buttons ─── */}
               <div className="flex gap-3 pt-2">
@@ -880,64 +1006,10 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
               <div className="flex-1 min-w-0 overflow-hidden">
                 {/* Icon + name */}
                 <div className="flex items-center gap-3 mb-3">
-                  <div
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl overflow-hidden transition-all ring-1 ring-inset shadow-md"
-                    style={{
-                      background: `linear-gradient(to bottom, ${iconBgColor}40, ${iconBgColor}20)`,
-                      boxShadow: `0 4px 12px ${iconBgColor}30`,
-                      '--tw-ring-color': `${iconBgColor}35`,
-                    } as React.CSSProperties}
-                  >
-                    {item.iconImage ? (
-                      <img src={item.iconImage} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <HabitIcon iconName={getItemIcon(item)} size={24} />
-                    )}
-                  </div>
-                  <h2 className="text-xl font-bold text-[var(--fg)] break-words min-w-0">
+                  <ItemIconBadge item={item} size="md" />
+                  <h2 className="text-base md:text-xl font-bold text-[var(--fg)] break-words min-w-0">
                     {item.name}
                   </h2>
-                </div>
-
-                {/* Badges row */}
-                <div className="flex flex-wrap items-center gap-2 mb-3">
-                  <span className={cn(
-                    'inline-flex items-center rounded-2xl px-3.5 py-1.5 text-sm font-medium',
-                    RARITY_BADGE_CLASSES[item.rarity]
-                  )}>
-                    {RARITY_LABELS[item.rarity]}
-                  </span>
-
-                  {typeBadge && (
-                    <>
-                      <span className="w-px h-5 bg-[var(--border)] rounded-full self-center select-none" />
-                      <span className={cn(
-                        'inline-flex items-center gap-1.5 rounded-2xl px-3.5 py-1.5 text-sm font-medium',
-                        typeBadge.type === 'lootbox' && 'bg-gradient-to-b from-violet-500/20 to-violet-500/10 text-violet-500 ring-1 ring-inset ring-violet-400/25',
-                        typeBadge.type === 'multiplier' && 'bg-gradient-to-b from-amber-500/20 to-amber-500/10 text-amber-500 ring-1 ring-inset ring-amber-400/25',
-                        typeBadge.type === 'discount' && 'bg-gradient-to-b from-red-500/20 to-red-500/10 text-red-500 ring-1 ring-inset ring-red-400/25',
-                        typeBadge.type === 'videogame' && 'bg-gradient-to-b from-cyan-500/20 to-cyan-500/10 text-cyan-500 ring-1 ring-inset ring-cyan-400/25',
-                        typeBadge.type === 'serial' && 'bg-gradient-to-b from-pink-500/20 to-pink-500/10 text-pink-500 ring-1 ring-inset ring-pink-400/25',
-                      )}>
-                        {typeBadge.type === 'lootbox' && <Gift className="h-3.5 w-3.5" />}
-                        {typeBadge.type === 'multiplier' && <TrendingUp className="h-3.5 w-3.5" />}
-                        {typeBadge.type === 'discount' && <Percent className="h-3.5 w-3.5" />}
-                        {typeBadge.type === 'videogame' && <Gamepad2 className="h-3.5 w-3.5" />}
-                        {typeBadge.type === 'serial' && <Clapperboard className="h-3.5 w-3.5" />}
-                        {typeBadge.label}
-                      </span>
-                    </>
-                  )}
-
-                  {group && (
-                    <>
-                      <span className="w-px h-5 bg-[var(--border)] rounded-full self-center select-none" />
-                      <span className="inline-flex items-center gap-1.5 rounded-2xl px-3.5 py-1.5 text-sm font-medium bg-[var(--surface)] text-[var(--fg-secondary)] border border-[var(--border)]">
-                        <Folder className="h-3.5 w-3.5 shrink-0" />
-                        {group.name}
-                      </span>
-                    </>
-                  )}
                 </div>
 
                 {/* Description */}
@@ -993,12 +1065,12 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 )}
 
                 {availableForPurchase && !canGetForFree && gemCostRaw > 0 && (
-                  <div className="flex flex-1 min-w-0 items-center gap-2 rounded-2xl bg-gradient-to-b from-purple-500/15 to-purple-500/5 px-4 py-2.5 ring-1 ring-inset ring-purple-400/20 shadow-sm shadow-purple-500/10">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-purple-500/25 to-purple-500/10 ring-1 ring-inset ring-purple-400/30">
-                      <Gem className="h-4 w-4 text-purple-600 dark:text-purple-400" strokeWidth={2.5} />
+                  <div className="flex flex-1 min-w-0 items-center gap-2 rounded-2xl bg-gradient-to-b from-cyan-500/15 to-cyan-500/5 px-4 py-2.5 ring-1 ring-inset ring-cyan-400/20 shadow-sm shadow-cyan-500/10">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-cyan-500/25 to-cyan-500/10 ring-1 ring-inset ring-cyan-400/30">
+                      <Gem className="h-4 w-4 text-cyan-600 dark:text-cyan-400" strokeWidth={2.5} />
                     </div>
                     <div>
-                      <p className="text-lg font-bold text-purple-600 dark:text-purple-400">{gemCostRaw}</p>
+                      <p className="text-lg font-bold text-cyan-600 dark:text-cyan-400">{gemCostRaw}</p>
                       <p className="text-xs text-[var(--fg-muted)]">Кристаллов</p>
                     </div>
                   </div>
@@ -1013,7 +1085,23 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                   </div>
                 )}
 
-                {!availableForPurchase && (
+                {!availableForPurchase && itemRecipe && (
+                  <div className="flex flex-1 min-w-0 items-center gap-2 rounded-2xl bg-gradient-to-b from-orange-400/15 to-orange-400/5 px-4 py-2.5 ring-1 ring-inset ring-orange-400/20 shadow-sm shadow-orange-400/10">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-orange-500/25 to-orange-500/10 ring-1 ring-inset ring-orange-400/30">
+                      <Hammer className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                    </div>
+                    <p className="text-sm font-medium text-orange-600 dark:text-orange-400">Только крафт</p>
+                  </div>
+                )}
+                {!availableForPurchase && !itemRecipe && rewardingAchievements.length > 0 && (
+                  <div className="flex flex-1 min-w-0 items-center gap-2 rounded-2xl bg-gradient-to-b from-yellow-400/15 to-yellow-400/5 px-4 py-2.5 ring-1 ring-inset ring-yellow-400/20 shadow-sm shadow-yellow-400/10">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-yellow-500/25 to-yellow-500/10 ring-1 ring-inset ring-yellow-400/30">
+                      <Trophy className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                    </div>
+                    <p className="text-sm font-medium text-yellow-600 dark:text-yellow-400">Награда за достижение</p>
+                  </div>
+                )}
+                {!availableForPurchase && !itemRecipe && rewardingAchievements.length === 0 && (
                   <div className="flex flex-1 min-w-0 items-center gap-2 rounded-2xl bg-gradient-to-b from-gray-400/15 to-gray-400/5 px-4 py-2.5 ring-1 ring-inset ring-gray-400/20 shadow-sm shadow-gray-400/10">
                     <p className="text-sm font-medium text-[var(--fg-muted)]">Не для продажи</p>
                   </div>
@@ -1028,11 +1116,19 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 )}
               </div>
 
-              {/* "Purchased" badge for media items */}
-              {isMediaItem && basePurchased && (
-                <div className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 bg-gradient-to-r from-emerald-500/15 to-emerald-500/5 ring-1 ring-inset ring-emerald-400/20">
-                  <Check className="h-5 w-5 text-emerald-500" />
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">Куплено</span>
+              {/* "Purchased" badge for video games — cyan themed */}
+              {item.isVideoGame && basePurchased && (
+                <div className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 bg-gradient-to-r from-cyan-500/15 to-cyan-500/5 ring-1 ring-inset ring-cyan-400/20">
+                  <Gamepad2 className="h-5 w-5 text-cyan-500" />
+                  <span className="font-semibold text-cyan-600 dark:text-cyan-400">Игра приобретена</span>
+                </div>
+              )}
+
+              {/* "Purchased" badge for serials — pink themed */}
+              {item.isTvSerial && basePurchased && (
+                <div className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 bg-gradient-to-r from-pink-500/15 to-pink-500/5 ring-1 ring-inset ring-pink-400/20">
+                  <Clapperboard className="h-5 w-5 text-pink-500" />
+                  <span className="font-semibold text-pink-600 dark:text-pink-400">Сериал приобретен</span>
                 </div>
               )}
 
@@ -1061,19 +1157,47 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                   </span>
                 </button>
               )}
-
-              {!showBuyButton && !availableForPurchase && (
-                <button
-                  type="button"
-                  disabled
-                  className="w-full rounded-2xl py-4 font-semibold bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed opacity-50"
-                >
-                  Не для продажи
-                </button>
+              {showBuyButton && item.stock === undefined && (
+                <p className="text-center text-xs text-[var(--fg-muted)] mt-3">Неограниченно</p>
               )}
 
-              {/* Stock remaining */}
-              {item.stock !== undefined && item.stock > 0 && (
+              {!showBuyButton && !availableForPurchase && (
+                <div className="space-y-3">
+                  {/* Link to recipe */}
+                  {itemRecipe && onNavigateToRecipe && (
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToRecipe(itemRecipe.id)}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all hover:scale-[1.01] active:scale-[0.98] bg-gradient-to-b from-orange-500/15 to-orange-500/5 text-orange-600 dark:text-orange-400 ring-1 ring-inset ring-orange-400/20"
+                    >
+                      <Hammer className="h-4 w-4" />
+                      Перейти к рецепту
+                      <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+                    </button>
+                  )}
+
+                  {/* Links to achievements */}
+                  {rewardingAchievements.length > 0 && (
+                    <div className="space-y-2">
+                      {rewardingAchievements.map((ach) => (
+                        <button
+                          key={ach.id}
+                          type="button"
+                          onClick={() => navigate('/achievements')}
+                          className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all hover:scale-[1.01] active:scale-[0.98] bg-gradient-to-b from-yellow-500/15 to-yellow-500/5 text-yellow-600 dark:text-yellow-400 ring-1 ring-inset ring-yellow-400/20"
+                        >
+                          <span>{ach.icon}</span>
+                          <span className="truncate">{ach.title}</span>
+                          <ExternalLink className="h-3.5 w-3.5 opacity-60 shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Stock remaining (hide for serials and video games — stock=1 is obvious) */}
+              {item.stock !== undefined && item.stock > 0 && !item.isTvSerial && !item.isVideoGame && (
                 <p className="text-center text-xs text-[var(--fg-muted)] mt-3">
                   Осталось: {item.stock}
                 </p>
@@ -1105,7 +1229,9 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
 
                   <p className="text-xs text-[var(--fg-muted)] mt-2">
                     {typeBadge.type === 'lootbox' && 'Открытие выдает случайный предмет из таблицы наград.'}
-                    {typeBadge.type === 'multiplier' && `Множитель ${item.streakMultiplierValue ?? 1.5}x каждые ${item.streakMultiplierInterval ?? 3} выполнений. Увеличивает награды за серию.`}
+                    {typeBadge.type === 'multiplier' && (item.streakMultiplierMode === 'instant'
+                      ? `Множитель ${item.streakMultiplierValue ?? 1.5}x на ${item.streakMultiplierInterval ?? 3} выполнений инстант задачи.`
+                      : `Множитель ${item.streakMultiplierValue ?? 1.5}x каждые ${item.streakMultiplierInterval ?? 3} выполнений. Увеличивает награды за серию.`)}
                     {typeBadge.type === 'discount' && `Скидка ${item.discountPercent ?? 10}% на следующую покупку (только монеты).`}
                     {typeBadge.type === 'videogame' && 'Видеоигра — после покупки можно докупать часы.'}
                     {typeBadge.type === 'serial' && 'Сериал — покупайте серии по мере просмотра.'}
@@ -1114,43 +1240,270 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
               )}
 
               {!typeBadge && (
-                <p className="text-xs text-[var(--fg-muted)] mb-3">Обычный предмет</p>
+                <div className="mb-3">
+                  <span className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium bg-gradient-to-b from-gray-400/20 to-gray-400/10 text-gray-500 ring-1 ring-inset ring-gray-400/25">
+                    <Package className="h-4 w-4" />
+                    Обычный предмет
+                  </span>
+                  <p className="text-xs text-[var(--fg-muted)] mt-2">Стандартный предмет без особых свойств.</p>
+                </div>
               )}
 
-              {/* Loot table preview */}
+              {/* Loot table preview — Glassmorphic Neumorphism */}
               {item.isLootBox && item.lootTable && item.lootTable.length > 0 && (
-                <div className="mt-3">
-                  <p className="text-xs font-semibold text-[var(--fg)] mb-2">Таблица наград</p>
-                  <div className="space-y-1.5">
-                    {item.lootTable.map((entry, idx) => {
-                      const lootItem = shopItems.find((i) => i.id === entry.id)
-                      const entryName =
-                        entry.id === CURRENCY_IDS.COINS ? 'Монеты'
-                        : entry.id === CURRENCY_IDS.GEMS ? 'Кристаллы'
-                        : lootItem?.name ?? entry.id
-                      const entryIconName =
-                        entry.id === CURRENCY_IDS.COINS ? 'Coins'
-                        : entry.id === CURRENCY_IDS.GEMS ? 'Gem'
-                        : lootItem ? getItemIcon(lootItem) : 'Sword'
-
-                      return (
-                        <div
-                          key={`${entry.id}-${idx}`}
-                          className="flex items-center gap-2 rounded-xl bg-[var(--surface-elevated)] px-3 py-2"
-                        >
-                          <span className="shrink-0 text-[var(--fg-muted)]"><HabitIcon iconName={entryIconName} size={18} /></span>
-                          <span className="flex-1 min-w-0 text-sm font-medium text-[var(--fg)] truncate">{entryName}</span>
-                          {(entry.quantity ?? 1) > 1 && (
-                            <span className="text-xs text-[var(--fg-muted)]">x{entry.quantity}</span>
-                          )}
-                          <span className="text-xs font-semibold text-[var(--accent)]">{entry.weight}%</span>
-                        </div>
-                      )
-                    })}
+                <div
+                  className="mt-4 rounded-2xl p-4 relative overflow-hidden"
+                  style={{
+                    background: 'var(--surface)',
+                    backdropFilter: 'blur(24px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+                    border: '1px solid var(--border)',
+                    boxShadow: `
+                      6px 6px 16px var(--neu-shadow-dark),
+                      -4px -4px 12px var(--neu-shadow-light),
+                      inset 0 1px 0 var(--neu-inset-light)
+                    `,
+                  }}
+                >
+                  {/* Subtle violet glow at top-right */}
+                  <div
+                    className="pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full opacity-30 blur-2xl"
+                    style={{ background: 'radial-gradient(circle, #8b5cf680, transparent 70%)' }}
+                  />
+                  {/* Header */}
+                  <div className="flex items-center gap-2.5 mb-4 relative">
+                    <div
+                      className="flex h-8 w-8 items-center justify-center rounded-xl"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(139,92,246,0.18), rgba(139,92,246,0.06))',
+                        boxShadow: `
+                          3px 3px 8px var(--neu-shadow-dark),
+                          -2px -2px 6px var(--neu-inset-item-light),
+                          inset 0 1px 0 var(--neu-inset-light)
+                        `,
+                        border: '1px solid rgba(139,92,246,0.15)',
+                      }}
+                    >
+                      <Dice5 className="h-4 w-4 text-violet-500" />
+                    </div>
+                    <span className="text-xs font-bold text-[var(--fg-muted)] uppercase tracking-wider">Возможный дроп</span>
                   </div>
+                  {/* Items grid */}
+                  {(() => {
+                    const maxWeight = Math.max(...item.lootTable!.map((e) => e.weight))
+                    const cols = item.lootTable!.length >= 6 ? 'grid-cols-4' : 'grid-cols-3'
+                    return (
+                      <div className={`grid ${cols} gap-2`}>
+                        {item.lootTable.map((entry, idx) => {
+                          const lootItem = shopItems.find((i) => i.id === entry.id)
+                          const entryName =
+                            entry.id === CURRENCY_IDS.COINS ? 'Монеты'
+                            : entry.id === CURRENCY_IDS.GEMS ? 'Кристаллы'
+                            : lootItem?.name ?? entry.id
+                          const entryIconName =
+                            entry.id === CURRENCY_IDS.COINS ? 'Coins'
+                            : entry.id === CURRENCY_IDS.GEMS ? 'Gem'
+                            : lootItem ? getItemIcon(lootItem) : 'Sword'
+                          const lootGroup = lootItem?.groupId ? allItemGroups.find((g) => g.id === lootItem.groupId) : null
+                          const lootTypeBadge = lootItem ? getItemTypeBadge(lootItem) : null
+                          const entryColor =
+                            entry.id === CURRENCY_IDS.COINS ? '#f59e0b'
+                            : entry.id === CURRENCY_IDS.GEMS ? '#a855f7'
+                            : lootTypeBadge ? getItemTypeColor(lootItem)
+                            : lootGroup?.color ?? '#9ca3af'
+                          const isTop = entry.weight >= maxWeight
+
+                          return (
+                            <div
+                              key={`${entry.id}-${idx}`}
+                              className="relative rounded-xl p-2.5 flex flex-col items-center gap-1.5 transition-all duration-200 hover:translate-y-[-1px]"
+                              style={{
+                                background: `linear-gradient(135deg, ${entryColor}0a, ${entryColor}04)`,
+                                border: `1px solid ${entryColor}18`,
+                                boxShadow: isTop ? `0 0 12px ${entryColor}25` : undefined,
+                              }}
+                            >
+                              {/* Percent badge */}
+                              <span
+                                className="absolute top-1.5 right-1.5 text-[9px] font-bold tabular-nums leading-none"
+                                style={{ color: entryColor }}
+                              >
+                                {entry.weight}%
+                              </span>
+                              {/* Icon */}
+                              {lootItem ? (
+                                <ItemIconBadge
+                                  item={lootItem}
+                                  size="sm"
+                                  groupColor={lootGroup?.color}
+                                />
+                              ) : (
+                                <div
+                                  className="flex h-8 w-8 items-center justify-center rounded-lg"
+                                  style={{
+                                    background: `linear-gradient(145deg, ${entryColor}ee, ${entryColor}99)`,
+                                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.2), 0 2px 6px rgba(0,0,0,0.2)',
+                                    color: 'white',
+                                  } as React.CSSProperties}
+                                >
+                                  <HabitIcon iconName={entryIconName} size={16} />
+                                </div>
+                              )}
+                              {/* Name */}
+                              <p className="text-[11px] font-medium text-[var(--fg)] truncate w-full text-center">{entryName}</p>
+                              {/* Quantity */}
+                              {(entry.quantity ?? 1) > 1 && (
+                                <span
+                                  className="text-[10px] font-bold"
+                                  style={{ color: entryColor }}
+                                >
+                                  x{entry.quantity}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )
+                  })()}
                 </div>
               )}
             </div>
+
+            {/* ── Crafting info block ───────────────────────────────────── */}
+            {itemRecipe && (() => {
+              const recipeSrc = itemRecipe.fragmentSource
+              const recipeSourceType = recipeSrc?.type === 'task_linked' ? 'task_linked' : 'random_drop'
+              const recipeDropChance = recipeSrc?.dropChance ?? 0
+              const recipeCraftCost = itemRecipe.craftCost
+              const recipeCoinCost = recipeCraftCost?.coins ?? 0
+              const recipeGemCost = recipeCraftCost?.gems ?? 0
+              const recipeProgress = itemRecipe.fragmentsRequired > 0
+                ? Math.min(1, itemRecipe.fragmentsCollected / itemRecipe.fragmentsRequired)
+                : 0
+
+              const craftThemeColor = getItemTypeColor(item)
+
+              return (
+                <div
+                  className="glass rounded-2xl p-4 mb-6 relative overflow-hidden"
+                  style={{
+                    boxShadow: `
+                      inset 0 1px 0 rgba(255,255,255,0.06),
+                      0 4px 24px rgba(0,0,0,0.08),
+                      0 1px 3px rgba(0,0,0,0.04)
+                    `,
+                  }}
+                >
+                  {/* Subtle accent glow */}
+                  <div
+                    className="absolute -top-8 -right-8 w-24 h-24 rounded-full blur-3xl opacity-10 pointer-events-none"
+                    style={{ background: craftThemeColor }}
+                  />
+
+                  {/* Header row: icon + name + progress */}
+                  <div className="flex items-center gap-3 mb-3">
+                    {/* Prismatic crystal icon */}
+                    <div className="relative flex h-9 w-9 shrink-0 items-center justify-center">
+                      <div
+                        className="absolute inset-0 rounded-xl blur-[5px] opacity-40"
+                        style={{ background: `linear-gradient(135deg, ${craftThemeColor}60, ${craftThemeColor}20)` }}
+                      />
+                      <div
+                        className="relative flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden"
+                        style={{
+                          background: `linear-gradient(135deg, ${craftThemeColor}dd 0%, ${craftThemeColor}90 30%, ${craftThemeColor}bb 50%, ${craftThemeColor}70 70%, ${craftThemeColor}dd 100%)`,
+                          boxShadow: `inset 2px 2px 4px rgba(255,255,255,0.35), inset -1px -1px 3px rgba(0,0,0,0.15), 0 2px 6px ${craftThemeColor}40`,
+                        }}
+                      >
+                        <div
+                          className="absolute top-0 left-0 w-[60%] h-[60%] rounded-bl-full opacity-30"
+                          style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.8), transparent)' }}
+                        />
+                        {itemRecipe.fragmentIconImage ? (
+                          <img src={itemRecipe.fragmentIconImage} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <HabitIcon iconName={migrateIcon(itemRecipe.fragmentIcon, 'Puzzle')} size={16} className="text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]" />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[var(--fg)] truncate">{itemRecipe.fragmentName}</p>
+                      {/* Progress bar */}
+                      <div className="mt-1.5 h-1.5 rounded-full bg-[var(--border)]/60 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${recipeProgress * 100}%`,
+                            background: recipeProgress >= 1
+                              ? `linear-gradient(90deg, ${craftThemeColor}, ${craftThemeColor}cc)`
+                              : `linear-gradient(90deg, ${craftThemeColor}cc, ${craftThemeColor}80)`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Multi-craft counter */}
+                  {(itemRecipe.maxCrafts ?? 1) > 1 && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-[var(--fg-muted)] mb-3">
+                      <Sparkles className="h-2.5 w-2.5 shrink-0 opacity-50" />
+                      <span>Крафтов: <span className="font-semibold text-[var(--fg)]">{itemRecipe.craftCount ?? 0}/{itemRecipe.maxCrafts}</span></span>
+                    </div>
+                  )}
+
+                  {/* Cost chips */}
+                  {(recipeCoinCost > 0 || recipeGemCost > 0) && (
+                    <div className="mb-3">
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--surface-elevated)]/50 px-2 py-1 text-[11px] text-[var(--fg-muted)] backdrop-blur-sm">
+                        {recipeCoinCost > 0 && <span className="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400"><span className="flex h-4 w-4 items-center justify-center rounded bg-gradient-to-br from-amber-400 to-orange-500"><Coins className="h-2.5 w-2.5 text-white" /></span>{recipeCoinCost}</span>}
+                        {recipeGemCost > 0 && <span className="inline-flex items-center gap-1 font-semibold text-cyan-600 dark:text-cyan-400"><span className="flex h-4 w-4 items-center justify-center rounded bg-gradient-to-br from-sky-400 to-cyan-500"><Gem className="h-2.5 w-2.5 text-white" /></span>{recipeGemCost}</span>}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Drop source info */}
+                  {recipeSourceType === 'random_drop' ? (
+                    <div className="flex items-center gap-1.5 text-[11px] text-[var(--fg-muted)] mb-3">
+                      <Dice5 className="h-2.5 w-2.5 shrink-0 opacity-50" />
+                      <span>Выпадает с любой задачи{recipeSrc?.allowSubtaskDrop && ' и подзадачи'}{recipeDropChance > 0 && <span className="font-semibold" style={{ color: craftThemeColor }}> {recipeDropChance}%</span>}</span>
+                    </div>
+                  ) : recipeLinkedTasks.length > 0 ? (
+                    <div className="space-y-1 mb-3">
+                      {recipeLinkedTasks.slice(0, 3).map((task: any) => (
+                        <div key={task.id} className="flex items-center gap-1.5 text-[11px] text-[var(--fg-muted)]">
+                          <Crosshair className="h-2.5 w-2.5 shrink-0 opacity-50" />
+                          <span className="truncate">{task.title}</span>
+                          {recipeDropChance > 0 && <span className="font-semibold shrink-0" style={{ color: craftThemeColor }}>{recipeDropChance}%</span>}
+                        </div>
+                      ))}
+                      {recipeLinkedTasks.length > 3 && (
+                        <p className="text-[10px] text-[var(--fg-muted)]/60 pl-4">+{recipeLinkedTasks.length - 3} ещё</p>
+                      )}
+                    </div>
+                  ) : null}
+
+                  {/* Navigate to crafting button */}
+                  {onNavigateToRecipe && (
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToRecipe(itemRecipe.id)}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition-all hover:scale-[1.01] active:scale-[0.98]"
+                      style={{
+                        color: craftThemeColor,
+                        background: `${craftThemeColor}10`,
+                        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 1px ${craftThemeColor}20`,
+                      }}
+                    >
+                      <Hammer className="h-3.5 w-3.5" />
+                      Перейти к крафту
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* ── Video Game: time balance + buy packages ─────────────── */}
             {item.isVideoGame && (
@@ -1221,6 +1574,16 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                 {(!item.gameTimePackages || item.gameTimePackages.length === 0) && (
                   <p className="text-xs text-[var(--fg-muted)] text-center">Нет пакетов времени. Настройте их в режиме редактирования.</p>
                 )}
+
+                {/* Game completed button */}
+                <button
+                  type="button"
+                  onClick={() => setShowGameCompletedConfirm(true)}
+                  className="w-full mt-4 flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-semibold text-cyan-600 dark:text-cyan-400 bg-gradient-to-r from-cyan-500/15 to-cyan-500/5 ring-1 ring-inset ring-cyan-400/20 shadow-sm shadow-cyan-500/10 backdrop-blur-sm hover:from-cyan-500/25 hover:to-cyan-500/10 hover:shadow-md hover:shadow-cyan-500/15 active:scale-[0.97] transition-all"
+                >
+                  <Check className="h-4 w-4" />
+                  Игра пройдена
+                </button>
               </div>
             )}
 
@@ -1269,7 +1632,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                         <div className="flex items-center gap-2 px-3 py-2.5">
                           <Clapperboard className="h-4 w-4 text-pink-500 shrink-0" />
                           <span className="text-sm font-bold text-[var(--fg)] flex-1">Сезон {season.number}</span>
-                          <span className={cn('text-[10px] font-medium', allPurchased ? 'text-emerald-500' : 'text-[var(--fg-muted)]')}>
+                          <span className={cn('text-[10px] font-medium', allPurchased ? 'text-pink-500' : 'text-[var(--fg-muted)]')}>
                             {purchasedInSeason}/{season.episodes.length}
                           </span>
                         </div>
@@ -1281,15 +1644,15 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
                                 key={ep.id}
                                 className={cn(
                                   'flex items-center gap-2 rounded-lg px-2.5 py-2 transition-all',
-                                  ep.purchased ? 'bg-emerald-500/8' : 'bg-[var(--surface)]'
+                                  ep.purchased ? 'bg-pink-500/8' : 'bg-[var(--surface)]'
                                 )}
                               >
-                                <span className={cn('text-xs w-14 shrink-0', ep.purchased ? 'text-emerald-500 font-medium' : 'text-[var(--fg-muted)]')}>
+                                <span className={cn('text-xs w-14 shrink-0', ep.purchased ? 'text-pink-500 font-medium' : 'text-[var(--fg-muted)]')}>
                                   Серия {ep.number}
                                 </span>
                                 <div className="flex-1" />
                                 {ep.purchased ? (
-                                  <span className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10px] font-semibold text-emerald-500 bg-emerald-500/10 ring-1 ring-inset ring-emerald-400/20">
+                                  <span className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10px] font-semibold text-pink-500 bg-pink-500/10 ring-1 ring-inset ring-pink-400/20">
                                     <Check className="h-3 w-3" />Куплено
                                   </span>
                                 ) : (
@@ -1319,24 +1682,94 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
               </div>
             )}
 
-            {/* ── Stats section ─────────────────────────────────────────── */}
-            <div className="glass rounded-2xl p-4">
-              <h3 className="text-sm font-semibold text-[var(--fg)] mb-3">Статистика</h3>
-              <div className="flex items-center gap-3 rounded-xl bg-[var(--surface-elevated)] px-4 py-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10">
-                  <ShoppingCart className="h-4 w-4" />
+            {/* ── Stats section ────────── */}
+            {totalPurchases > 0 && (
+              <div className="glass rounded-2xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 ring-1 ring-inset ring-[var(--accent)]/20">
+                    <BarChart3 className="h-3.5 w-3.5 text-[var(--accent)]" />
+                  </div>
+                  <span className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider">Статистика</span>
                 </div>
-                <div>
-                  <p className="text-lg font-bold text-[var(--fg)]">{totalPurchases}</p>
-                  <p className="text-xs text-[var(--fg-muted)]">Всего покупок</p>
+                {/* Top row — always 2 columns */}
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Total purchases */}
+                  <div className="rounded-xl bg-gradient-to-b from-blue-500/12 to-blue-500/4 p-3 text-center ring-1 ring-inset ring-blue-400/15 shadow-sm shadow-blue-500/5">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-b from-blue-500/25 to-blue-500/10 ring-1 ring-inset ring-blue-400/30">
+                        <ShoppingCart className="h-3.5 w-3.5 text-blue-500" />
+                      </div>
+                      <span className="text-xl font-bold text-blue-500">{totalPurchases}</span>
+                    </div>
+                    <div className="text-[10px] mt-1.5 text-[var(--fg-muted)] uppercase tracking-wide">Куплено</div>
+                  </div>
+                  {/* Last purchase */}
+                  <div className="rounded-xl bg-gradient-to-b from-emerald-500/12 to-emerald-500/4 p-3 text-center ring-1 ring-inset ring-emerald-400/15 shadow-sm shadow-emerald-500/5">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-b from-emerald-500/25 to-emerald-500/10 ring-1 ring-inset ring-emerald-400/30">
+                        <Clock className="h-3.5 w-3.5 text-emerald-500" />
+                      </div>
+                      <span className="text-sm font-bold text-emerald-500">
+                        {lastPurchaseTs ? new Date(lastPurchaseTs).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) : '—'}
+                      </span>
+                    </div>
+                    <div className="text-[10px] mt-1.5 text-[var(--fg-muted)] uppercase tracking-wide">Последняя</div>
+                  </div>
                 </div>
+                {/* Currency row — stretches to full width when only one currency */}
+                {(totalSpentCoins > 0 || totalSpentGems > 0) && (
+                  <div className={cn('grid gap-2 mt-2', totalSpentCoins > 0 && totalSpentGems > 0 ? 'grid-cols-2' : 'grid-cols-1')}>
+                    {/* Total coins spent */}
+                    {totalSpentCoins > 0 && (
+                      <div className="rounded-xl bg-gradient-to-b from-amber-500/12 to-amber-500/4 p-3 text-center ring-1 ring-inset ring-amber-400/15 shadow-sm shadow-amber-500/5">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-b from-amber-500/25 to-amber-500/10 ring-1 ring-inset ring-amber-400/30">
+                            <Coins className="h-3.5 w-3.5 text-amber-500" />
+                          </div>
+                          <span className="text-xl font-bold text-amber-500">{totalSpentCoins.toLocaleString('ru-RU')}</span>
+                        </div>
+                        <div className="text-[10px] mt-1.5 text-[var(--fg-muted)] uppercase tracking-wide">Монет потрачено</div>
+                      </div>
+                    )}
+                    {/* Total gems spent */}
+                    {totalSpentGems > 0 && (
+                      <div className="rounded-xl bg-gradient-to-b from-cyan-500/12 to-cyan-500/4 p-3 text-center ring-1 ring-inset ring-cyan-400/15 shadow-sm shadow-cyan-500/5">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-b from-cyan-500/25 to-cyan-500/10 ring-1 ring-inset ring-cyan-400/30">
+                            <Gem className="h-3.5 w-3.5 text-cyan-500" />
+                          </div>
+                          <span className="text-xl font-bold text-cyan-500">{totalSpentGems.toLocaleString('ru-RU')}</span>
+                        </div>
+                        <div className="text-[10px] mt-1.5 text-[var(--fg-muted)] uppercase tracking-wide">Гемов потрачено</div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </>
         )}
       </div>
 
       {/* ── MODALS ──────────────────────────────────────────────────────── */}
+
+      {/* Purchase confirmation */}
+      <ConfirmModal
+        isOpen={showPurchaseConfirm}
+        onConfirm={handleConfirmPurchase}
+        onCancel={() => setShowPurchaseConfirm(false)}
+        title={`Купить «${item.name}»?`}
+        message={
+          canGetForFree
+            ? 'Получить бесплатно'
+            : (
+              <RewardBadge coins={effectiveCoinCost} gems={gemCostRaw} className="justify-center" />
+            )
+        }
+        confirmText="Купить"
+        cancelText="Отмена"
+        variant="info"
+      />
 
       {/* Delete confirmation */}
       <ConfirmModal
@@ -1348,6 +1781,22 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
         confirmText="Удалить"
         cancelText="Отмена"
         variant="danger"
+      />
+
+      {/* Game completed confirmation */}
+      <ConfirmModal
+        isOpen={showGameCompletedConfirm}
+        onConfirm={() => {
+          setShowGameCompletedConfirm(false)
+          deleteShopItem(item.id)
+          onDeselect?.()
+        }}
+        onCancel={() => setShowGameCompletedConfirm(false)}
+        title="Игра пройдена?"
+        message={`«${item.name}» будет убрана из магазина. Предмет останется в инвентаре.`}
+        confirmText="Пройдена"
+        cancelText="Отмена"
+        variant="info"
       />
 
       {/* Unsaved changes confirmation */}
@@ -1384,7 +1833,7 @@ export default function ShopDetailPanel({ item, onDeselect }: ShopDetailPanelPro
       {showLootboxModal && (
         <LootboxEffectModal
           lootTable={editLootTable}
-          shopItems={shopItems}
+          shopItems={activeShopItems}
           onSave={setEditLootTable}
           onClose={() => setShowLootboxModal(false)}
         />

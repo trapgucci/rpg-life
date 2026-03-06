@@ -1,13 +1,17 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { useSearchParams } from 'react-router-dom'
 import { cn } from '../lib/cn'
-import { CheckSquare, Plus, Sparkles, Target, Folder, Pencil, Trash2, X, Archive, ArrowUpDown, ArrowUp, ArrowDown, Search, ChevronDown, List, FlaskConical } from 'lucide-react'
+import { CheckSquare, Plus, Sparkles, Target, Folder, Pencil, Trash2, X, Archive, ArrowUpDown, ArrowUp, ArrowDown, Search, ChevronDown, List } from 'lucide-react'
 import TaskCreateForm from '../components/TaskCreateForm'
-import TaskCard from '../components/TaskCard'
+import TaskCard, { type TaskCardFragment } from '../components/TaskCard'
 import TaskDetailPanel from '../components/TaskDetailPanel'
 import { useRpgStore } from '../store/useRpgStore'
+import { useShallow } from 'zustand/react/shallow'
 import ConfirmModal from '../components/ConfirmModal'
 import type { TaskRpg, TaskGroupId } from '../types/domain'
+import { getItemTypeColor } from '../components/shop/shopUtils'
+import { rpgToast } from '../components/RpgToast'
 
 /** Специальный id для «Без группы» */
 const NO_GROUP_ID: TaskGroupId | null = null
@@ -43,21 +47,22 @@ const PRIORITY_ORDER: Record<string, number> = {
 }
 
 export default function TasksPage() {
-  const tasks = useRpgStore((s) => s.tasks)
-  const activeProfileId = useRpgStore((s) => s.activeProfileId)
-  const taskGroupsRaw = useRpgStore((s) => s.taskGroups)
+  const { tasks, activeProfileId, taskGroupsRaw, shopItems } = useRpgStore(
+    useShallow((s) => ({
+      tasks: s.tasks,
+      activeProfileId: s.activeProfileId,
+      taskGroupsRaw: s.taskGroups,
+      shopItems: s.shopItems,
+    }))
+  )
+
   const addTaskGroup = useRpgStore((s) => s.addTaskGroup)
   const updateTaskGroup = useRpgStore((s) => s.updateTaskGroup)
   const deleteTaskGroup = useRpgStore((s) => s.deleteTaskGroup)
   const reorderTaskGroups = useRpgStore((s) => s.reorderTaskGroups)
   const resetRecurringTasks = useRpgStore((s) => s.resetRecurringTasks)
   const getTaskRewardPreview = useRpgStore((s) => s.getTaskRewardPreview)
-
-  // Debug mode
-  const debugDaysOffset = useRpgStore((s) => s.debugDaysOffset)
-  const debugNow = useRpgStore((s) => s.getDebugNow)()
-  const incrementDebugDay = useRpgStore((s) => s.incrementDebugDay)
-  const resetDebugTime = useRpgStore((s) => s.resetDebugTime)
+  const getCraftRecipes = useRpgStore((s) => s.getCraftRecipes)
 
   const taskGroups = useMemo(
     () =>
@@ -69,6 +74,7 @@ export default function TasksPage() {
     [taskGroupsRaw, activeProfileId]
   )
 
+  const [searchParams, setSearchParams] = useSearchParams()
   const [selectedGroupId, setSelectedGroupId] = useState<TaskGroupId | null>(ALL_GROUPS_ID)
   const [selectedId, setSelectedId] = useState<TaskRpg['id'] | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -83,6 +89,17 @@ export default function TasksPage() {
   const groupSelectorRef = useRef<HTMLDivElement>(null)
   const groupButtonRef = useRef<HTMLButtonElement>(null)
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
+
+  // Навигация к задаче по ?taskId= (например, из раздела Крафт)
+  useEffect(() => {
+    const taskId = searchParams.get('taskId')
+    if (taskId) {
+      setSelectedId(taskId)
+      setTaskFilter('all')
+      setSelectedGroupId(ALL_GROUPS_ID)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   // Сброс recurring задач: при монтировании, каждые 60с, и при возврате на вкладку
   useEffect(() => {
@@ -122,10 +139,20 @@ export default function TasksPage() {
     }
   }, [showGroupSelector])
 
+  const [newGroupName, setNewGroupName] = useState('')
+  const [addingGroup, setAddingGroup] = useState(false)
+  const [editingGroupId, setEditingGroupId] = useState<TaskGroupId | null>(null)
+  const [editingGroupName, setEditingGroupName] = useState('')
+  const [deletingGroupId, setDeletingGroupId] = useState<TaskGroupId | null>(null)
+  const [draggedGroupId, setDraggedGroupId] = useState<TaskGroupId | null>(null)
+  const [dragOverGroupId, setDragOverGroupId] = useState<TaskGroupId | null>(null)
+
   // Close group selector on outside click
   useEffect(() => {
     if (!showGroupSelector) return
     const handler = (e: MouseEvent) => {
+      // Don't close during drag operations
+      if (draggedGroupId) return
       if (
         groupSelectorRef.current &&
         !groupSelectorRef.current.contains(e.target as Node) &&
@@ -137,20 +164,12 @@ export default function TasksPage() {
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [showGroupSelector])
+  }, [showGroupSelector, draggedGroupId])
 
-  const [newGroupName, setNewGroupName] = useState('')
-  const [addingGroup, setAddingGroup] = useState(false)
-  const [editingGroupId, setEditingGroupId] = useState<TaskGroupId | null>(null)
-  const [editingGroupName, setEditingGroupName] = useState('')
-  const [deletingGroupId, setDeletingGroupId] = useState<TaskGroupId | null>(null)
-  const [draggedGroupId, setDraggedGroupId] = useState<TaskGroupId | null>(null)
-  const [dragOverGroupId, setDragOverGroupId] = useState<TaskGroupId | null>(null)
-  const [showDebugMode, setShowDebugMode] = useState(false)
 
   const filteredTasks = useMemo(() => {
     if (!activeProfileId) return []
-    const now = debugNow
+    const now = Date.now()
     let list = tasks.filter((t) => {
       if (t.profileId !== activeProfileId) return false
       if (t.archived) return false
@@ -179,8 +198,7 @@ export default function TasksPage() {
       }
 
       const g = t.groupId ?? null
-      if (selectedGroupId === ALL_GROUPS_ID) return true
-      if (selectedGroupId === NO_GROUP_ID) return g === null
+      if (selectedGroupId === ALL_GROUPS_ID || selectedGroupId === NO_GROUP_ID) return true
       return g === selectedGroupId
     })
 
@@ -191,22 +209,56 @@ export default function TasksPage() {
     }
 
     return list
-  }, [tasks, activeProfileId, selectedGroupId, taskFilter, searchQuery, debugNow])
+  }, [tasks, activeProfileId, selectedGroupId, taskFilter, searchQuery])
 
   // Вычисляем награды один раз, затем сортируем используя уже вычисленные значения
   const tasksWithRewards = useMemo(() => {
-    const rewardMap = new Map<string, { xp: number; coins: number; gems: number }>()
+    const rewardMap = new Map<string, { xp: number; coins: number; gems: number; multiplierActive?: boolean }>()
     for (const task of filteredTasks) {
       rewardMap.set(task.id, getTaskRewardPreview(task))
     }
 
+    // Build fragment map: taskId -> fragments that can drop from it
+    const recipes = getCraftRecipes().filter((r) => !r.crafted)
+    const fragmentMap = new Map<string, TaskCardFragment[]>()
+    for (const recipe of recipes) {
+      const fs = recipe.fragmentSource
+      if (!fs) continue
+      const frag: TaskCardFragment = {
+        id: recipe.id,
+        fragmentName: recipe.fragmentName,
+        fragmentIcon: recipe.fragmentIcon,
+        fragmentIconImage: recipe.fragmentIconImage,
+        fragmentColor: recipe.fragmentColor || getItemTypeColor(shopItems.find((i) => i.id === recipe.resultItemId)),
+        dropChance: fs.dropChance ?? 0,
+        sourceType: fs.type === 'task_linked' ? 'task_linked' : 'random_drop',
+      }
+      if (fs.type === 'random_drop') {
+        // random_drop applies to all tasks
+        for (const task of filteredTasks) {
+          const existing = fragmentMap.get(task.id) ?? []
+          existing.push(frag)
+          fragmentMap.set(task.id, existing)
+        }
+      } else if (fs.type === 'task_linked' && fs.linkedTaskIds) {
+        for (const tid of fs.linkedTaskIds) {
+          const existing = fragmentMap.get(tid) ?? []
+          existing.push(frag)
+          fragmentMap.set(tid, existing)
+        }
+      }
+    }
+
     const sorted = [...filteredTasks].sort((a, b) => {
-      if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1
+      // Only push non-recurring completed tasks to the bottom
+      const aEffectivelyDone = a.isCompleted && a.recurrence === 'once'
+      const bEffectivelyDone = b.isCompleted && b.recurrence === 'once'
+      if (aEffectivelyDone !== bEffectivelyDone) return aEffectivelyDone ? 1 : -1
 
       const dir = sortDirection === 'asc' ? 1 : -1
       switch (sortField) {
         case 'date':
-          return (b.updatedAt - a.updatedAt) * dir
+          return (b.createdAt - a.createdAt) * dir
         case 'priority': {
           const aP = PRIORITY_ORDER[a.priority ?? 'none'] ?? 0
           const bP = PRIORITY_ORDER[b.priority ?? 'none'] ?? 0
@@ -225,12 +277,12 @@ export default function TasksPage() {
           return (aD2 - bD2) * dir
         }
         default:
-          return b.updatedAt - a.updatedAt
+          return b.createdAt - a.createdAt
       }
     })
 
-    return sorted.map(task => ({ task, rewards: rewardMap.get(task.id)! }))
-  }, [filteredTasks, sortField, sortDirection, getTaskRewardPreview])
+    return sorted.map(task => ({ task, rewards: rewardMap.get(task.id)!, fragments: fragmentMap.get(task.id) }))
+  }, [filteredTasks, sortField, sortDirection, getTaskRewardPreview, getCraftRecipes])
 
   // Bug fix: look up selectedTask in ALL tasks (not just filteredTasks)
   // so switching filter/group doesn't lose the selected task panel
@@ -243,6 +295,7 @@ export default function TasksPage() {
     setNewGroupName('')
     setAddingGroup(false)
     setSelectedGroupId(group.id)
+    rpgToast({ title: `Группа «${name}» создана`, type: 'success', category: 'toastTaskActions' })
   }
 
   const handleSaveGroupEdit = (id: TaskGroupId) => {
@@ -262,6 +315,7 @@ export default function TasksPage() {
       deleteTaskGroup(deletingGroupId)
       if (selectedGroupId === deletingGroupId) setSelectedGroupId(NO_GROUP_ID)
       setEditingGroupId(null)
+      rpgToast({ title: 'Группа удалена', type: 'info', category: 'toastTaskActions' })
     }
     setDeletingGroupId(null)
   }
@@ -269,7 +323,7 @@ export default function TasksPage() {
   const taskCountByGroup = useMemo(() => {
     const map = new Map<TaskGroupId | null, number>()
     if (!activeProfileId) return map
-    const now = debugNow
+    const now = Date.now()
     tasks
       .filter((t) => {
         if (t.profileId !== activeProfileId || t.archived) return false
@@ -299,16 +353,25 @@ export default function TasksPage() {
         map.set(g, (map.get(g) ?? 0) + 1)
       })
     return map
-  }, [tasks, activeProfileId, taskFilter, debugNow])
+  }, [tasks, activeProfileId, taskFilter])
 
-  const countNoGroup = taskCountByGroup.get(null) ?? 0
+  const handleSelectTask = useCallback((taskId: string) => {
+    setSelectedId(taskId)
+    if (showSearch && searchQuery) {
+      setShowSearch(false)
+      setSearchQuery('')
+    }
+  }, [showSearch, searchQuery])
 
-  const handleDragStart = (groupId: TaskGroupId) => {
+  const handleDragStart = (e: React.DragEvent, groupId: TaskGroupId) => {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', groupId)
     setDraggedGroupId(groupId)
   }
 
   const handleDragOver = (e: React.DragEvent, groupId: TaskGroupId) => {
     e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
     if (draggedGroupId && draggedGroupId !== groupId) {
       setDragOverGroupId(groupId)
     }
@@ -320,12 +383,21 @@ export default function TasksPage() {
 
   const handleDrop = (e: React.DragEvent, targetGroupId: TaskGroupId) => {
     e.preventDefault()
-    if (!draggedGroupId || draggedGroupId === targetGroupId) return
+    e.stopPropagation()
+    if (!draggedGroupId || draggedGroupId === targetGroupId) {
+      setDraggedGroupId(null)
+      setDragOverGroupId(null)
+      return
+    }
 
     const draggedIndex = taskGroups.findIndex(g => g.id === draggedGroupId)
     const targetIndex = taskGroups.findIndex(g => g.id === targetGroupId)
 
-    if (draggedIndex === -1 || targetIndex === -1) return
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedGroupId(null)
+      setDragOverGroupId(null)
+      return
+    }
 
     const newGroups = [...taskGroups]
     const [removed] = newGroups.splice(draggedIndex, 1)
@@ -342,11 +414,11 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 gap-4">
-      <div className="flex w-full md:basis-[42%] md:max-w-[560px] md:min-w-[420px] md:shrink-0 flex-col gap-4">
-        {/* Header */}
-        <div className="glass-card rounded-2xl p-3 md:p-4">
-          <div className="flex items-center justify-between gap-2">
+    <div className="flex h-full min-h-0 gap-2 md:gap-4 overflow-hidden">
+      <div className="flex w-full md:basis-[42%] md:max-w-[560px] md:min-w-[320px] md:shrink-0 flex-col gap-2 md:gap-4">
+        {/* Header — glassmorphic neumorphism */}
+        <div className="glass-neu rounded-2xl p-3 md:p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 md:gap-3 min-w-0">
               <div className="flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30">
                 <Target className="h-4.5 w-4.5 md:h-5 md:w-5 text-white" />
@@ -361,32 +433,16 @@ export default function TasksPage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {/* Debug mode button */}
-              <button
-                type="button"
-                onClick={() => setShowDebugMode(!showDebugMode)}
-                className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
-                  'border border-[var(--border)] text-[var(--fg-muted)]',
-                  'hover:border-purple-500/50 hover:text-purple-500 hover:bg-purple-500/10',
-                  (showDebugMode || debugDaysOffset > 0) && 'border-purple-500 text-purple-500 bg-purple-500/10 animate-pulse'
-                )}
-                title="Экспериментальный режим"
-              >
-                <FlaskConical className="h-4 w-4" />
-              </button>
-
+            <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
               {/* Sort button */}
               <div className="relative" ref={sortMenuRef}>
                 <button
                   type="button"
                   onClick={() => setShowSortMenu((v) => !v)}
                   className={cn(
-                    'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
-                    'border border-[var(--border)] text-[var(--fg-muted)]',
-                    'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
-                    showSortMenu && 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-subtle)]'
+                    'neu-icon-btn flex h-9 w-9 items-center justify-center rounded-xl text-[var(--fg-muted)]',
+                    'hover:text-[var(--accent)]',
+                    showSortMenu && 'neu-pressed text-[var(--accent)]'
                   )}
                   title="Сортировка"
                 >
@@ -437,10 +493,9 @@ export default function TasksPage() {
                 type="button"
                 onClick={() => setShowSearch(!showSearch)}
                 className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
-                  'border border-[var(--border)] text-[var(--fg-muted)]',
-                  'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
-                  showSearch && 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-subtle)]'
+                  'neu-icon-btn flex h-9 w-9 items-center justify-center rounded-xl text-[var(--fg-muted)]',
+                  'hover:text-[var(--accent)]',
+                  showSearch && 'neu-pressed text-[var(--accent)]'
                 )}
                 title="Поиск"
               >
@@ -473,7 +528,7 @@ export default function TasksPage() {
                   }
                 }}
                 placeholder="Поиск по названию..."
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-9 pr-9 py-2.5 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all"
+                className="neu-input w-full rounded-xl pl-9 pr-9 py-2.5 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] outline-none transition-all"
                 autoFocus
               />
               {searchQuery && (
@@ -490,17 +545,17 @@ export default function TasksPage() {
 
           {/* Компактный селектор групп */}
           <div className="mt-4">
+            <div className="neu-divider mb-3" />
             <p className="mb-2 text-xs font-medium text-[var(--fg-muted)]">Группа</p>
             <button
               ref={groupButtonRef}
               type="button"
               onClick={() => setShowGroupSelector(!showGroupSelector)}
               className={cn(
-                'flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition-all',
-                'border border-[var(--border)]',
+                'neu-selector flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm',
                 showGroupSelector
-                  ? 'border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]'
-                  : 'text-[var(--fg-secondary)] hover:border-[var(--border-accent)] hover:bg-[var(--surface)]'
+                  ? 'text-[var(--accent)]'
+                  : 'text-[var(--fg-secondary)]'
               )}
             >
               <div className={cn(
@@ -510,17 +565,13 @@ export default function TasksPage() {
                 <Folder className="h-3.5 w-3.5 shrink-0" />
               </div>
               <span className="flex-1 truncate font-medium">
-                {selectedGroupId === ALL_GROUPS_ID
+                {selectedGroupId === ALL_GROUPS_ID || selectedGroupId === NO_GROUP_ID
                   ? 'Все группы'
-                  : selectedGroupId === NO_GROUP_ID
-                  ? 'Без группы'
                   : taskGroups.find((g) => g.id === selectedGroupId)?.name ?? 'Группа'}
               </span>
               <span className="shrink-0 rounded-md bg-[var(--surface)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--fg-muted)] tabular-nums">
-                {selectedGroupId === ALL_GROUPS_ID
+                {selectedGroupId === ALL_GROUPS_ID || selectedGroupId === NO_GROUP_ID
                   ? Array.from(taskCountByGroup.values()).reduce((a, b) => a + b, 0)
-                  : selectedGroupId === NO_GROUP_ID
-                  ? countNoGroup
                   : taskCountByGroup.get(selectedGroupId) ?? 0}
               </span>
               <ChevronDown className={cn(
@@ -568,30 +619,6 @@ export default function TasksPage() {
                     </span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedGroupId(NO_GROUP_ID)
-                      setShowGroupSelector(false)
-                    }}
-                    className={cn(
-                      'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-all',
-                      selectedGroupId === NO_GROUP_ID
-                        ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-medium'
-                        : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)] hover:text-[var(--fg)]'
-                    )}
-                  >
-                    <div className={cn(
-                      'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg',
-                      selectedGroupId === NO_GROUP_ID ? 'bg-[var(--accent)]/15' : 'bg-[var(--surface)]'
-                    )}>
-                      <Folder className="h-3.5 w-3.5" />
-                    </div>
-                    <span className="flex-1 truncate">Без группы</span>
-                    <span className="shrink-0 rounded-md bg-[var(--surface)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--fg-muted)] tabular-nums">
-                      {countNoGroup}
-                    </span>
-                  </button>
                 </div>
 
                 {/* Пользовательские группы */}
@@ -603,7 +630,7 @@ export default function TasksPage() {
                         <div
                           key={group.id}
                           draggable={editingGroupId !== group.id}
-                          onDragStart={() => handleDragStart(group.id)}
+                          onDragStart={(e) => handleDragStart(e, group.id)}
                           onDragOver={(e) => handleDragOver(e, group.id)}
                           onDragLeave={handleDragLeave}
                           onDrop={(e) => handleDrop(e, group.id)}
@@ -668,7 +695,7 @@ export default function TasksPage() {
                                     setEditingGroupId(group.id)
                                     setEditingGroupName(group.name)
                                   }}
-                                  className="icon-btn h-6 w-6 p-0"
+                                  className="icon-btn flex items-center justify-center h-6 w-6 p-0 rounded-md"
                                 >
                                   <Pencil className="h-3 w-3" />
                                 </button>
@@ -679,7 +706,7 @@ export default function TasksPage() {
                                     handleDeleteGroup(group.id)
                                     setShowGroupSelector(false)
                                   }}
-                                  className="icon-btn icon-btn-danger h-6 w-6 p-0"
+                                  className="icon-btn icon-btn-danger flex items-center justify-center h-6 w-6 p-0 rounded-md"
                                 >
                                   <Trash2 className="h-3 w-3" />
                                 </button>
@@ -743,71 +770,19 @@ export default function TasksPage() {
             document.body
           )}
 
-          {/* Экспериментальный режим */}
-          {showDebugMode && (
-            <div className="mt-4 rounded-xl p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/20">
-                    <FlaskConical className="h-4 w-4 text-purple-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-purple-400">Экспериментальный режим</h3>
-                    <p className="text-xs text-[var(--fg-muted)]">Тестирование циклов задач</p>
-                  </div>
-                </div>
-                {debugDaysOffset > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      resetDebugTime()
-                      setShowDebugMode(false)
-                    }}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-500/20 transition-colors font-semibold"
-                  >
-                    Выйти
-                  </button>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={incrementDebugDay}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 font-semibold transition-all duration-200 bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
-                >
-                  <Plus className="h-5 w-5" />
-                  +1 День
-                </button>
-                <div className="flex flex-col items-center justify-center px-4 py-2 rounded-xl bg-[var(--surface)] border border-[var(--border)]">
-                  <span className="text-2xl font-bold text-purple-500">{debugDaysOffset > 0 ? `+${debugDaysOffset}` : '0'}</span>
-                  <span className="text-xs text-[var(--fg-muted)]">дней</span>
-                </div>
-              </div>
-              {debugDaysOffset > 0 && (
-                <div className="mt-3 text-xs text-center text-purple-400">
-                  Виртуальная дата: {new Date(debugNow).toLocaleDateString('ru-RU', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                    weekday: 'long'
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Фильтр по статусу задач */}
-          <div className="mt-4 border-t border-[var(--border)] pt-4">
+          <div className="mt-4 pt-4">
+            <div className="neu-divider mb-4" />
             <p className="mb-2 text-xs font-medium text-[var(--fg-muted)]">Статус задач</p>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="neu-tab-bar grid grid-cols-4 gap-1.5 rounded-2xl p-1.5">
               <button
                 type="button"
                 onClick={() => setTaskFilter('all')}
                 className={cn(
                   'flex items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
                   taskFilter === 'all'
-                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
-                    : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
+                    ? 'neu-tab-active text-[var(--accent)]'
+                    : 'text-[var(--fg-secondary)]'
                 )}
                 title="Все задачи"
               >
@@ -819,8 +794,8 @@ export default function TasksPage() {
                 className={cn(
                   'flex items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
                   taskFilter === 'active'
-                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
-                    : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
+                    ? 'neu-tab-active text-[var(--accent)]'
+                    : 'text-[var(--fg-secondary)]'
                 )}
                 title="Активные"
               >
@@ -832,8 +807,8 @@ export default function TasksPage() {
                 className={cn(
                   'flex items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
                   taskFilter === 'completed'
-                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
-                    : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
+                    ? 'neu-tab-active text-[var(--accent)]'
+                    : 'text-[var(--fg-secondary)]'
                 )}
                 title="Выполненные"
               >
@@ -845,8 +820,8 @@ export default function TasksPage() {
                 className={cn(
                   'flex items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
                   taskFilter === 'canceled'
-                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
-                    : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
+                    ? 'neu-tab-active text-[var(--accent)]'
+                    : 'text-[var(--fg-secondary)]'
                 )}
                 title="Архив"
               >
@@ -882,20 +857,15 @@ export default function TasksPage() {
               </p>
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
-              {tasksWithRewards.map(({ task, rewards }) => (
+            <div className="flex flex-col gap-2 p-1">
+              {tasksWithRewards.map(({ task, rewards, fragments }) => (
                 <TaskCard
                   key={task.id}
                   task={task}
                   selected={task.id === selectedId}
-                  onSelect={() => {
-                    setSelectedId(task.id)
-                    if (showSearch && searchQuery) {
-                      setShowSearch(false)
-                      setSearchQuery('')
-                    }
-                  }}
+                  onSelect={() => handleSelectTask(task.id)}
                   rewards={rewards}
+                  fragments={fragments}
                 />
               ))}
             </div>
@@ -904,7 +874,7 @@ export default function TasksPage() {
       </div>
 
       {/* Desktop right panel */}
-      <div className="hidden md:block min-w-0 flex-1">
+      <div className="hidden md:block flex-1 min-w-[240px] h-full min-h-0 pb-1">
         {showForm ? (
           <div className="glass-card relative flex h-full flex-col rounded-2xl overflow-hidden">
             {/* Accent strip */}
@@ -922,7 +892,7 @@ export default function TasksPage() {
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-5 md:p-6 pt-5">
               <TaskCreateForm
-                defaultGroupId={selectedGroupId === NO_GROUP_ID ? null : selectedGroupId}
+                defaultGroupId={selectedGroupId === NO_GROUP_ID || selectedGroupId === ALL_GROUPS_ID ? null : selectedGroupId}
                 onCreated={() => setShowForm(false)}
               />
             </div>
@@ -942,7 +912,7 @@ export default function TasksPage() {
 
       {/* Mobile detail overlay */}
       {showForm && (
-        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-habit-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
+        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
           <div className="glass-card relative flex flex-col rounded-2xl overflow-hidden">
             {/* Accent strip */}
             <div className="absolute top-0 left-0 right-0 h-[3px] z-10" style={{ background: 'linear-gradient(90deg, var(--accent), var(--accent-hover))' }} />
@@ -959,7 +929,7 @@ export default function TasksPage() {
             </div>
             <div className="overflow-y-auto p-5 pt-5">
               <TaskCreateForm
-                defaultGroupId={selectedGroupId === NO_GROUP_ID ? null : selectedGroupId}
+                defaultGroupId={selectedGroupId === NO_GROUP_ID || selectedGroupId === ALL_GROUPS_ID ? null : selectedGroupId}
                 onCreated={() => setShowForm(false)}
               />
             </div>
@@ -967,7 +937,7 @@ export default function TasksPage() {
         </div>
       )}
       {selectedTask && !showForm && (
-        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-habit-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
+        <div className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-slide-up" style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}>
           <TaskDetailPanel task={selectedTask} onDeselect={() => setSelectedId(null)} />
         </div>
       )}

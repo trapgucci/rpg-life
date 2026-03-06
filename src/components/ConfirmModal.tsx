@@ -9,7 +9,7 @@ interface ConfirmModalProps {
   onConfirm: () => void
   onCancel: () => void
   title: string
-  message?: string
+  message?: React.ReactNode
   confirmText?: string
   cancelText?: string
   variant?: ConfirmVariant

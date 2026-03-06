@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Hammer, Plus, Pencil, Trash2, X, Sparkles,
-  Target, CheckCircle2, Package
+  CheckCircle2, Package
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
@@ -44,10 +44,14 @@ interface RecipeCardProps {
 function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
   const deleteRecipe = useRpgStore((s) => s.deleteCraftRecipe)
   const craftItem = useRpgStore((s) => s.craftItem)
+  const allShopItems = useRpgStore((s) => s.shopItems)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   // Старые сохранённые данные могут не содержать fragmentSource
-  const fragmentSource: any = (recipe as any).fragmentSource ?? { type: 'random_drop', dropChance: 0 }
+  const fragmentSource = recipe.fragmentSource ?? { type: 'random_drop' as const, dropChance: 0 }
+
+  const resultItem = recipe.resultItemId ? allShopItems.find((i) => i.id === recipe.resultItemId) : undefined
+  const isOutOfStock = !!(resultItem && resultItem.stock !== undefined && resultItem.stock === 0)
 
   const progress = recipe.fragmentsRequired > 0
     ? Math.min(1, recipe.fragmentsCollected / recipe.fragmentsRequired)
@@ -57,9 +61,7 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
   const rarityColor = RARITY_COLORS[recipe.resultRarity]
 
   const handleCraft = () => {
-    if (craftItem(recipe.id)) {
-      // Success!
-    }
+    craftItem(recipe.id)
   }
 
   return (
@@ -120,7 +122,7 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
             {RARITY_LABELS[recipe.resultRarity]}
           </span>
           <span className="text-xs text-[var(--fg-muted)]">→</span>
-          <span className="text-sm text-[var(--fg)]">{recipe.resultItemName}</span>
+          <span className="text-sm text-[var(--fg)]">{recipe.resultName}</span>
         </div>
 
         {/* Source info */}
@@ -159,26 +161,35 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
 
         {/* Craft button */}
         {!recipe.crafted && (
-          <button
-            type="button"
-            onClick={handleCraft}
-            disabled={!canCraft}
-            className={cn(
-              'mt-4 w-full rounded-xl py-3 font-semibold transition-all duration-200',
-              canCraft
-                ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40'
-                : 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed'
+          <>
+            {isOutOfStock && canCraft && (
+              <p className="mt-3 text-[11px] text-red-500 text-center font-medium">
+                Предмет закончился — получите 70% стоимости
+              </p>
             )}
-          >
-            {canCraft ? (
-              <>
-                <Sparkles className="h-4 w-4 inline mr-2" />
-                Скрафтить!
-              </>
-            ) : (
-              `Нужно ещё ${recipe.fragmentsRequired - recipe.fragmentsCollected} фрагментов`
-            )}
-          </button>
+            <button
+              type="button"
+              onClick={handleCraft}
+              disabled={!canCraft}
+              className={cn(
+                'mt-2 w-full rounded-xl py-3 font-semibold transition-all duration-200',
+                canCraft
+                  ? isOutOfStock
+                    ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40'
+                    : 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40'
+                  : 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed'
+              )}
+            >
+              {canCraft ? (
+                <>
+                  <Sparkles className="h-4 w-4 inline mr-2" />
+                  {isOutOfStock ? 'Получить компенсацию' : 'Скрафтить!'}
+                </>
+              ) : (
+                `Нужно ещё ${recipe.fragmentsRequired - recipe.fragmentsCollected} фрагментов`
+              )}
+            </button>
+          </>
         )}
       </div>
 
@@ -215,25 +226,25 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
   const [fragmentName, setFragmentName] = useState(recipe?.fragmentName ?? '')
   const [fragmentIcon, setFragmentIcon] = useState(migrateIcon(recipe?.fragmentIcon, 'Puzzle'))
   const [fragmentsRequired, setFragmentsRequired] = useState(recipe?.fragmentsRequired ?? 10)
-  const [resultItemName, setResultItemName] = useState(recipe?.resultItemName ?? '')
+  const [resultName, setResultName] = useState(recipe?.resultName ?? '')
   const [resultRarity, setResultRarity] = useState<ItemRarity>(recipe?.resultRarity ?? 'rare')
   const [sourceType, setSourceType] = useState<FragmentSourceType>(
-    recipe?.fragmentSource.type ?? 'random_drop'
+    recipe?.fragmentSource?.type ?? 'random_drop'
   )
-  const [dropChance, setDropChance] = useState(recipe?.fragmentSource.dropChance ?? 15)
+  const [dropChance, setDropChance] = useState(recipe?.fragmentSource?.dropChance ?? 15)
   const [linkedTaskIds, setLinkedTaskIds] = useState<string[]>(
-    recipe?.fragmentSource.linkedTaskIds ?? []
+    recipe?.fragmentSource?.linkedTaskIds ?? []
   )
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!fragmentName.trim() || !resultItemName.trim()) return
+    if (!fragmentName.trim() || !resultName.trim()) return
 
     const data = {
       fragmentName: fragmentName.trim(),
       fragmentIcon,
       fragmentsRequired,
-      resultItemName: resultItemName.trim(),
+      resultName: resultName.trim(),
       resultRarity,
       fragmentSource: sourceType === 'task_linked'
         ? { type: 'task_linked' as const, linkedTaskIds }
@@ -277,7 +288,7 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
               <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Нужно фрагментов</label>
               <input
                 type="number"
-                value={fragmentsRequired}
+                value={fragmentsRequired || ''}
                 onChange={(e) => setFragmentsRequired(Number(e.target.value) || 1)}
                 min={1}
                 className="input w-full"
@@ -313,8 +324,8 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
               <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Результат крафта</label>
               <input
                 type="text"
-                value={resultItemName}
-                onChange={(e) => setResultItemName(e.target.value)}
+                value={resultName}
+                onChange={(e) => setResultName(e.target.value)}
                 placeholder="Меч тьмы"
                 className="input w-full"
               />
@@ -376,7 +387,7 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
               </label>
               <input
                 type="number"
-                value={dropChance}
+                value={dropChance || ''}
                 onChange={(e) => setDropChance(Number(e.target.value) || 1)}
                 min={1}
                 max={100}

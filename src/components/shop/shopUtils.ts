@@ -187,6 +187,23 @@ export function getItemTypeBadge(item: ShopItem): ItemTypeBadge | null {
   return null
 }
 
+/** Color associated with item type (for fragment UI theming) */
+export const ITEM_TYPE_COLORS: Record<string, string> = {
+  lootbox: '#8b5cf6',
+  multiplier: '#f59e0b',
+  discount: '#ef4444',
+  videogame: '#06b6d4',
+  serial: '#ec4899',
+}
+
+/** Get a theme color for an item based on its type. Falls back to gray for regular items. */
+export function getItemTypeColor(item: ShopItem | null | undefined): string {
+  if (!item) return '#9ca3af'
+  const badge = getItemTypeBadge(item)
+  if (badge) return ITEM_TYPE_COLORS[badge.type] ?? '#9ca3af'
+  return '#9ca3af'
+}
+
 // ─── Filtering ──────────────────────────────────────────────────────────────
 
 export function filterShopItems(

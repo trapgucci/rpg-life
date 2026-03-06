@@ -115,7 +115,7 @@ export default function TaskRewardsModal({
                 <input
                   type="number"
                   min={0}
-                  value={localCoins}
+                  value={localCoins || ''}
                   onChange={(e) => setLocalCoins(Math.max(0, parseInt(e.target.value, 10) || 0))}
                   className="input flex-1 text-center h-10 font-semibold"
                 />
@@ -173,7 +173,7 @@ export default function TaskRewardsModal({
                 <input
                   type="number"
                   min={0}
-                  value={localGems}
+                  value={localGems || ''}
                   onChange={(e) => setLocalGems(Math.max(0, parseInt(e.target.value, 10) || 0))}
                   className="input flex-1 text-center h-10 font-semibold"
                 />

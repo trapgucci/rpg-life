@@ -1,12 +1,14 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   Check, SkipForward, Pencil, Trash2, X,
-  Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder, Edit2, Target, Hash, ListChecks, CheckSquare, Flag, Coins, Gem, Zap, Archive, XCircle, AlertTriangle
+  Plus, Minus, Clock, Award, ChevronRight, BarChart3, Gift, Folder, Edit2, Target, Hash, ListChecks, CheckSquare, Flag, Coins, Gem, Zap, Archive, XCircle, AlertTriangle, FileText
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { cn } from '../lib/cn'
 import type { TaskRpg, TaskDifficulty, TaskRecurrence, AttributeId, SubtaskItem, TaskGroupId, TaskPriority, RecurrenceSettings } from '../types/domain'
 import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
 import { useRpgStore } from '../store/useRpgStore'
+import { rpgToast } from './RpgToast'
 import TaskGroupSelectModal from './TaskGroupSelectModal'
 import TaskAttributeSelectModal from './TaskAttributeSelectModal'
 import TaskRewardsModal from './TaskRewardsModal'
@@ -14,7 +16,10 @@ import SubtaskCreateModal, { type SubtaskEditData, type SubtaskFormData } from '
 import RecurrenceSelectModal from './RecurrenceSelectModal'
 import ConfirmModal from './ConfirmModal'
 import RewardBadge from './RewardBadge'
-import { TaskCurrentCycleBlock, TaskStatsBlock, TaskHistoryBlock } from './TaskCycleSections'
+import { HabitIcon } from './HabitIcon'
+import { TaskCurrentCycleBlock, TaskMultiplierBlock, TaskStatsBlock, TaskHistoryBlock } from './TaskCycleSections'
+import { getItemTypeColor } from './shop/shopUtils'
+import { useNotifications } from '../hooks/useNotifications'
 import { getNextAvailableDate, getRelativeTimeRu, getSubtaskXp, isTodayScheduled } from '../lib/taskCycleUtils'
 
 const DIFFICULTY_LABELS: Record<TaskDifficulty, string> = {
@@ -22,13 +27,6 @@ const DIFFICULTY_LABELS: Record<TaskDifficulty, string> = {
   medium: 'Средняя',
   hard: 'Сложная',
   veryHard: 'Очень сложная',
-}
-
-const DIFFICULTY_COLORS: Record<TaskDifficulty, string> = {
-  easy: '#10b981',
-  medium: '#3b82f6',
-  hard: '#f59e0b',
-  veryHard: '#ef4444',
 }
 
 const RECURRENCE_LABELS: Record<TaskRecurrence, string> = {
@@ -67,12 +65,12 @@ interface TaskDetailPanelProps {
 }
 
 export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelProps) {
+  const navigate = useNavigate()
+  const { notifyTaskComplete } = useNotifications()
   const getTaskRewardPreview = useRpgStore((s) => s.getTaskRewardPreview)
   const completeTask = useRpgStore((s) => s.completeTask)
   const canCompleteTask = useRpgStore((s) => s.canCompleteTask)
   const skipTask = useRpgStore((s) => s.skipTask)
-  const debugNow = useRpgStore((s) => s.getDebugNow)()
-
   const archiveTask = useRpgStore((s) => s.archiveTask)
   const deleteTask = useRpgStore((s) => s.deleteTask)
   const updateTask = useRpgStore((s) => s.updateTask)
@@ -81,6 +79,9 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const toggleSubtask = useRpgStore((s) => s.toggleSubtask)
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
+  const getCraftRecipes = useRpgStore((s) => s.getCraftRecipes)
+  const shopItems = useRpgStore((s) => s.shopItems)
+  const getNotes = useRpgStore((s) => s.getNotes)
 
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(task.title)
@@ -127,8 +128,27 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const { xp, coins, gems } = getTaskRewardPreview(task)
   const isCustomXp = task.customXp != null
 
+  // Fragments linked to this task
+  const linkedFragments = useMemo(() => {
+    const recipes = getCraftRecipes().filter((r) => !r.crafted)
+    return recipes.filter((recipe) => {
+      const fs = recipe.fragmentSource
+      if (!fs) return false
+      if (fs.type === 'random_drop') return true
+      if (fs.type === 'task_linked') {
+        const linked = fs.linkedTaskIds ?? []
+        return linked.includes(task.id)
+      }
+      return false
+    })
+  }, [getCraftRecipes, task.id])
+
+  // Notes linked to this task (not deleted)
+  const linkedNotes = useMemo(() => {
+    return getNotes().filter((n) => !n.deletedAt && n.linkedTaskIds.includes(task.id))
+  }, [getNotes, task.id])
+
   const canComplete = canCompleteTask(task)
-  const diffColor = DIFFICULTY_COLORS[task.difficulty]
 
   const progress =
     task.kind === 'counter'
@@ -184,7 +204,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
       const resetFields: Record<string, unknown> = shouldResetCompletion ? {
         isCompleted: false,
         completedAt: undefined,
-        currentCycleStart: debugNow,
+        currentCycleStart: Date.now(),
         // Сбрасываем weeklyCompletedThisWeek при изменении расписания
         ...(editRecurrenceSettings?.weeklyMode === 'timesPerWeek' ? {
           recurrenceSettings: {
@@ -243,12 +263,22 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const confirmDelete = () => {
     setShowDeleteConfirm(false)
     deleteTask(task.id)
+    rpgToast({ title: 'Задача удалена', type: 'info', category: 'toastTaskActions' })
     onDeselect?.()
   }
 
   const handleComplete = () => {
     if (!canComplete) return
+    const reward = getTaskRewardPreview(task)
     completeTask(task.id)
+    rpgToast({
+      title: 'Задача выполнена!',
+      type: 'reward',
+      coins: reward.coins,
+      xp: reward.xp,
+      gems: reward.gems,
+    })
+    notifyTaskComplete(task.title, reward.xp, reward.coins)
     // Для instant задач НЕ десeлектим — задача сбрасывается и готова к повторному выполнению
     if (task.recurrence !== 'instant') {
       onDeselect?.()
@@ -263,6 +293,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const confirmSkip = () => {
     setShowSkipConfirm(false)
     skipTask(task.id)
+    rpgToast({ title: 'Задача пропущена', type: 'info', category: 'toastTaskActions' })
     // Для instant задач НЕ десeлектим — задача сбрасывается и готова к повторному выполнению
     if (task.recurrence !== 'instant') {
       onDeselect?.()
@@ -277,6 +308,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const confirmArchive = () => {
     setShowArchiveConfirm(false)
     archiveTask(task.id)
+    rpgToast({ title: 'Задача архивирована', type: 'info', category: 'toastTaskActions' })
     onDeselect?.()
   }
 
@@ -461,9 +493,9 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
         <div className="absolute top-0 left-0 right-0 h-[3px] z-10" style={{ background: 'linear-gradient(90deg, var(--accent), var(--accent-hover))' }} />
       )}
       {/* Scrollable content */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-6">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex items-start justify-between gap-3 md:gap-4 mb-4 md:mb-6">
           {isEditing ? (
             <div className="flex-1 flex flex-col gap-5">
               {/* Название и описание */}
@@ -497,7 +529,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                     <Folder className="h-4 w-4" />
                   </div>
                   <span className="flex-1 text-sm font-medium">
-                    {editGroupId ? getTaskGroups().find((g) => g.id === editGroupId)?.name : 'Без группы'}
+                    {editGroupId ? getTaskGroups().find((g) => g.id === editGroupId)?.name : 'Выберите группу'}
                   </span>
                   <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
                 </button>
@@ -594,7 +626,6 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Приоритет</label>
                 <div className="grid grid-cols-4 gap-2">
                   {(['none', 'low', 'medium', 'high'] as const).map((p) => {
-                    const priorityStyle = PRIORITY_COLORS[p]
                     return (
                       <button
                         key={p}
@@ -915,7 +946,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                     {(() => { const KindIcon = KIND_ICON[task.kind]; return <KindIcon className="h-5 w-5" /> })()}
                   </div>
                   <h2 className={cn(
-                    'text-xl font-bold text-[var(--fg)] break-words min-w-0',
+                    'text-base md:text-xl font-bold text-[var(--fg)] break-words min-w-0',
                     task.isCompleted && 'opacity-70'
                   )}>
                     {task.title}
@@ -1026,55 +1057,6 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   )
                 })
 
-                // Сложность (только если есть атрибуты)
-                if (taskAttrs.length > 0) {
-                  badges.push(
-                    <span
-                      key="difficulty"
-                      className="rounded-2xl px-3.5 py-1.5 text-sm font-medium shadow-sm"
-                      style={{
-                        background: `linear-gradient(to bottom, ${diffColor}22, ${diffColor}10)`,
-                        color: diffColor,
-                        boxShadow: `0 1px 3px ${diffColor}15, inset 0 1px 0 ${diffColor}15`,
-                        outline: `1px solid ${diffColor}25`,
-                        outlineOffset: '-1px',
-                      }}
-                    >
-                      <Zap className="h-3.5 w-3.5 inline mr-1" />
-                      {DIFFICULTY_LABELS[task.difficulty]}
-                    </span>
-                  )
-                }
-
-                // Повтор
-                if (task.recurrence !== 'once') {
-                  badges.push(
-                    <span key="recurrence" className="rounded-2xl bg-gradient-to-b from-blue-500/22 to-blue-500/8 px-3.5 py-1.5 text-sm font-medium text-blue-500 ring-1 ring-inset ring-blue-400/25 shadow-sm shadow-blue-500/10">
-                      <Clock className="h-3.5 w-3.5 inline mr-1" />
-                      {RECURRENCE_LABELS[task.recurrence]}
-                      {task.recurrenceSettings && (
-                        <>
-                          {task.recurrenceSettings.type === 'weekly' && task.recurrenceSettings.weeklyMode === 'timesPerWeek' && task.recurrenceSettings.weeklyTimesPerWeek && (
-                            <span className="ml-1 text-xs opacity-80">
-                              ({task.recurrenceSettings.weeklyTimesPerWeek} {task.recurrenceSettings.weeklyTimesPerWeek === 1 ? 'раз' : task.recurrenceSettings.weeklyTimesPerWeek < 5 ? 'раза' : 'раз'}/нед)
-                            </span>
-                          )}
-                          {task.recurrenceSettings.type === 'weekly' && (task.recurrenceSettings.weeklyMode ?? 'days') === 'days' && task.recurrenceSettings.weeklyDays && task.recurrenceSettings.weeklyDays.length > 0 && (
-                            <span className="ml-1 text-xs opacity-80">
-                              ({task.recurrenceSettings.weeklyDays.length} {task.recurrenceSettings.weeklyDays.length === 1 ? 'день' : task.recurrenceSettings.weeklyDays.length < 5 ? 'дня' : 'дней'})
-                            </span>
-                          )}
-                          {task.recurrenceSettings.type === 'custom' && task.recurrenceSettings.customIntervalDays && (
-                            <span className="ml-1 text-xs opacity-80">
-                              (каждые {task.recurrenceSettings.customIntervalDays} {task.recurrenceSettings.customIntervalDays === 1 ? 'день' : task.recurrenceSettings.customIntervalDays < 5 ? 'дня' : 'дней'})
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </span>
-                  )
-                }
-
                 // Приоритет
                 if (task.priority && task.priority !== 'none') {
                   badges.push(
@@ -1096,7 +1078,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
 
                 // Вставляем точки-разделители между группами: архив | атрибуты+сложность | повтор | приоритет
                 const archiveCount = task.canceledAt ? 1 : 0
-                const attrCount = taskAttrs.filter(Boolean).length + (taskAttrs.length > 0 ? 1 : 0) // attrs + difficulty
+                const attrCount = taskAttrs.filter(Boolean).length
                 const groups: React.ReactNode[][] = []
                 if (archiveCount > 0) groups.push(badges.slice(0, archiveCount))
                 if (attrCount > 0) groups.push(badges.slice(archiveCount, archiveCount + attrCount))
@@ -1162,7 +1144,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                       >
                         +{xp}
                       </p>
-                      <p className="text-xs text-[var(--fg-muted)]">XP опыта</p>
+                      <p className="text-xs text-[var(--fg-muted)]">XP опыта{!isCustomXp && ` (${DIFFICULTY_LABELS[task.difficulty].toLowerCase()})`}</p>
                     </div>
                   </div>
                 )}
@@ -1193,6 +1175,79 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   </div>
                 )}
               </div>
+
+              {/* Fragment rewards */}
+              {linkedFragments.length > 0 && (
+                <div className="space-y-2 mt-3 pt-3 border-t border-[var(--border)]">
+                  <p className="text-[10px] font-semibold text-[var(--fg-muted)] uppercase tracking-wider">Шанс дропа фрагментов</p>
+                  {linkedFragments.map((recipe) => {
+                    const fs = recipe.fragmentSource
+                    const chance = fs?.dropChance ?? 0
+                    const fragmentColor = recipe.fragmentColor || getItemTypeColor(shopItems.find((i) => i.id === recipe.resultItemId))
+                    const isTaskLinked = fs?.type === 'task_linked'
+                    return (
+                      <div
+                        key={recipe.id}
+                        className="flex items-center gap-3 rounded-2xl p-3 ring-1 ring-inset shadow-sm"
+                        style={{
+                          background: `linear-gradient(135deg, ${fragmentColor}12, ${fragmentColor}06, ${fragmentColor}0a)`,
+                          boxShadow: `0 2px 8px ${fragmentColor}12`,
+                          '--tw-ring-color': `${fragmentColor}25`,
+                        } as React.CSSProperties}
+                      >
+                        {/* Shard icon — prismatic crystal look */}
+                        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center">
+                          {/* Outer glow */}
+                          <div
+                            className="absolute inset-0 rounded-xl blur-[6px] opacity-50"
+                            style={{
+                              background: `linear-gradient(135deg, ${fragmentColor}60, ${fragmentColor}20)`,
+                            }}
+                          />
+                          {/* Crystal shape */}
+                          <div
+                            className="relative flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden"
+                            style={{
+                              background: `
+                                linear-gradient(135deg,
+                                  ${fragmentColor}dd 0%,
+                                  ${fragmentColor}90 30%,
+                                  ${fragmentColor}bb 50%,
+                                  ${fragmentColor}70 70%,
+                                  ${fragmentColor}dd 100%
+                                )
+                              `,
+                              boxShadow: `
+                                inset 2px 2px 4px rgba(255,255,255,0.35),
+                                inset -1px -1px 3px rgba(0,0,0,0.15),
+                                0 2px 6px ${fragmentColor}40
+                              `,
+                            }}
+                          >
+                            {/* Glass refraction highlight */}
+                            <div
+                              className="absolute top-0 left-0 w-[60%] h-[60%] rounded-bl-full opacity-30"
+                              style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.8), transparent)' }}
+                            />
+                            {recipe.fragmentIconImage ? (
+                              <img src={recipe.fragmentIconImage} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <HabitIcon iconName={recipe.fragmentIcon || 'Puzzle'} size={18} className="text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]" />
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold truncate" style={{ color: fragmentColor }}>{recipe.fragmentName}</p>
+                          <p className="text-[11px] text-[var(--fg-muted)] mt-0.5">
+                            {isTaskLinked ? 'За выполнение задачи' : 'За выполнение любой задачи'} — <span className="font-semibold" style={{ color: fragmentColor }}>{chance}%</span>
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Counter controls - only show when not completed */}
@@ -1302,9 +1357,9 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                         {!task.isCompleted ? (
                           <button
                             type="button"
-                            disabled={!isTodayScheduled(task, debugNow)}
+                            disabled={!isTodayScheduled(task, Date.now())}
                             onClick={() => {
-                              if (!isTodayScheduled(task, debugNow)) return
+                              if (!isTodayScheduled(task, Date.now())) return
                               if (!subtask.isCompleted) {
                                 const cr = subtask.coinReward ?? 0
                                 const xr = getSubtaskEffectiveXp(subtask)
@@ -1317,7 +1372,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                             }}
                             className={cn(
                               'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-all',
-                              !isTodayScheduled(task, debugNow)
+                              !isTodayScheduled(task, Date.now())
                                 ? 'border-2 border-[var(--border)] opacity-40 cursor-not-allowed'
                                 : subtask.isCompleted
                                 ? 'bg-emerald-500 text-white'
@@ -1429,10 +1484,39 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
         {!isEditing && (
           <div className="mt-2">
             {(task.recurrence !== 'once' || (task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate)) && (
-              <TaskCurrentCycleBlock task={task} nowMs={debugNow} />
+              <TaskCurrentCycleBlock task={task} nowMs={Date.now()} />
             )}
+            <TaskMultiplierBlock task={task} />
             {task.recurrence !== 'once' && <TaskStatsBlock task={task} />}
-            <TaskHistoryBlock task={task} nowMs={debugNow} />
+            <TaskHistoryBlock task={task} nowMs={Date.now()} />
+          </div>
+        )}
+
+        {/* Linked notes */}
+        {!isEditing && linkedNotes.length > 0 && (
+          <div className="glass rounded-2xl p-4 mt-6">
+            <h3 className="text-sm font-semibold text-[var(--fg)] mb-3">Заметки</h3>
+            <div className="flex flex-col gap-2">
+              {linkedNotes.map((note) => (
+                <button
+                  key={note.id}
+                  type="button"
+                  onClick={() => navigate('/reflection')}
+                  className="flex items-center gap-3 rounded-xl bg-[var(--surface)] px-4 py-3 text-left transition-all hover:bg-[var(--surface-elevated)] ring-1 ring-inset ring-[var(--border)] hover:ring-[var(--accent)]/30 hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-violet-500/15 to-violet-500/5 text-violet-500 ring-1 ring-inset ring-violet-400/20 shadow-sm shadow-violet-500/10">
+                    <FileText className="h-4.5 w-4.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-[var(--fg)] truncate">{note.title}</p>
+                    {note.excerpt && (
+                      <p className="text-xs text-[var(--fg-muted)] truncate mt-0.5">{note.excerpt}</p>
+                    )}
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" />
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -1441,44 +1525,50 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
       {!isEditing && !task.canceledAt && (
         <div className="mt-4 shrink-0">
           {!task.isCompleted && (
-            <div className="flex gap-2">
+            <div
+              className={cn(
+                'flex rounded-2xl overflow-hidden shadow-lg transition-shadow duration-200',
+                canComplete
+                  ? 'shadow-emerald-500/20 hover:shadow-xl'
+                  : 'opacity-50'
+              )}
+            >
               {/* Main complete button */}
               <button
                 type="button"
                 onClick={handleComplete}
                 disabled={!canComplete}
                 className={cn(
-                  'flex-1 flex items-center justify-center gap-2 rounded-2xl py-4 font-semibold transition-all duration-200',
+                  'group/complete flex-[3] flex items-center justify-center gap-2 py-4 font-semibold transition-all duration-300 hover:flex-[5] active:scale-y-95',
                   canComplete
-                    ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98]'
-                    : 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed opacity-50'
+                    ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white'
+                    : 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed'
                 )}
               >
                 <Check className="h-5 w-5" />
                 Выполнить
               </button>
 
-              {/* Skip button (smaller) */}
+              {/* Skip button */}
               <button
                 type="button"
                 onClick={handleSkip}
                 disabled={!canComplete}
                 className={cn(
-                  'flex items-center justify-center gap-1.5 rounded-2xl px-3 md:px-4 py-4 font-medium text-sm transition-all duration-200 min-w-[48px]',
+                  'group/skip flex-[1] flex items-center justify-center gap-1.5 py-4 font-medium text-sm transition-all duration-300 hover:flex-[3] active:scale-y-95 min-w-0',
                   canComplete
-                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98]'
-                    : 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed opacity-50'
+                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white'
+                    : 'bg-[var(--surface)] text-[var(--fg-muted)] cursor-not-allowed'
                 )}
                 title="Пропустить (отметить как выполненное без наград)"
               >
                 <SkipForward className="h-4 w-4 shrink-0" />
                 <span className="hidden sm:inline">Пропустить</span>
               </button>
-
             </div>
           )}
           {task.isCompleted && (() => {
-            const nextDate = getNextAvailableDate(task, debugNow)
+            const nextDate = getNextAvailableDate(task, Date.now())
             return (
               <div className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-b from-blue-500/18 to-blue-500/6 ring-1 ring-inset ring-blue-400/20 shadow-sm shadow-blue-500/10 py-4 text-blue-500">
                 <div className="flex items-center gap-2">
@@ -1487,13 +1577,13 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 </div>
                 {nextDate != null && (
                   <span className="text-xs text-blue-400">
-                    Следующий цикл: {getRelativeTimeRu(nextDate, debugNow).toLowerCase()}
+                    Следующий цикл: {getRelativeTimeRu(nextDate, Date.now()).toLowerCase()}
                   </span>
                 )}
               </div>
             )
           })()}
-          {!canComplete && !task.isCompleted && task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate && debugNow >= task.recurrenceSettings.endDate && (
+          {!canComplete && !task.isCompleted && task.recurrenceSettings?.endMode === 'byDate' && task.recurrenceSettings.endDate && Date.now() >= task.recurrenceSettings.endDate && (
             <div className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-red-500/18 to-red-500/6 ring-1 ring-inset ring-red-400/20 shadow-sm shadow-red-500/10 py-4 text-red-500">
               <Clock className="h-5 w-5" />
               <span className="font-semibold">Крайний срок истёк</span>

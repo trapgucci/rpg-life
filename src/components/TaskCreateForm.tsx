@@ -1,11 +1,11 @@
 import { useState, useRef } from 'react'
-import { Plus, X, ChevronRight, Calendar, BarChart3, Gift, Target, Construction, ListPlus, Flag, Folder, Edit2, Coins, Gem, Zap } from 'lucide-react'
+import { Plus, X, ChevronRight, Calendar, BarChart3, Gift, Target, ListPlus, Flag, Folder, Edit2, Coins, Gem, Zap } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRecurrence, SubtaskItem, TaskDifficulty, AttributeId, TaskPriority, RecurrenceSettings } from '../types/domain'
 import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
 import { useRpgStore } from '../store/useRpgStore'
 import type { TaskGroupId } from '../types/domain'
-import RewardBadge from './RewardBadge'
+import { rpgToast } from './RpgToast'
 import TaskGroupSelectModal from './TaskGroupSelectModal'
 import TaskAttributeSelectModal from './TaskAttributeSelectModal'
 import TaskRewardsModal from './TaskRewardsModal'
@@ -66,7 +66,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   const [countingTaskEnabled, setCountingTaskEnabled] = useState(false)
   const [targetQuantity, setTargetQuantity] = useState(2)
   const [countUnit, setCountUnit] = useState('раз')
-  const [reflectionOnCompletion, setReflectionOnCompletion] = useState(false)
+
 
   const counterSectionRef = useRef<HTMLDivElement>(null)
   const scrollToCounterSection = () => {
@@ -102,6 +102,11 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
     setError(null)
     if (!title.trim()) {
       setError('Введите название задачи')
+      return
+    }
+
+    if (!selectedGroupId) {
+      setError('Выберите группу для задачи')
       return
     }
 
@@ -192,6 +197,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
 
     try {
       addTask(newTask)
+      rpgToast({ title: 'Задача создана!', type: 'success' })
       setTitle('')
       setDescription('')
       setSelectedGroupId(defaultGroupId)
@@ -207,7 +213,6 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       setCountingTaskEnabled(false)
       setTargetQuantity(2)
       setCountUnit('раз')
-      setReflectionOnCompletion(false)
       onCreated?.()
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Не удалось создать задачу'
@@ -267,7 +272,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
             <Folder className="h-4 w-4" />
           </div>
           <span className="flex-1 text-sm font-medium text-[var(--fg)]">
-            {selectedGroupId ? getTaskGroups().find((g) => g.id === selectedGroupId)?.name ?? 'Без группы' : 'Без группы'}
+            {selectedGroupId ? getTaskGroups().find((g) => g.id === selectedGroupId)?.name ?? 'Выберите группу' : 'Выберите группу'}
           </span>
           <ChevronRight className="h-4 w-4 text-[var(--fg-muted)]" />
         </button>
@@ -662,56 +667,6 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
           </div>
         </div>
       )}
-
-      {/* 8. Настройки завершения */}
-      <div className="glass rounded-2xl p-4">
-        <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Настройки завершения</label>
-        <div className="rounded-xl bg-[var(--surface)] overflow-hidden ring-1 ring-inset ring-[var(--border)]">
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => setReflectionOnCompletion((v) => !v)}
-            onKeyDown={(e) => e.key === 'Enter' && setReflectionOnCompletion((v) => !v)}
-            className={cn(
-              'flex w-full items-center justify-between px-4 py-3 text-left transition-colors cursor-pointer',
-              'hover:bg-[var(--surface-elevated)]'
-            )}
-          >
-            <span className="text-sm font-medium text-[var(--fg)]">Отзыв после выполнения</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={reflectionOnCompletion}
-              onClick={(e) => {
-                e.stopPropagation()
-                setReflectionOnCompletion((v) => !v)
-              }}
-              className={cn(
-                'relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200',
-                reflectionOnCompletion ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
-              )}
-            >
-              <span
-                className={cn(
-                  'absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
-                  reflectionOnCompletion ? 'right-1 left-auto' : 'left-1 right-auto'
-                )}
-              />
-            </button>
-          </div>
-          {reflectionOnCompletion && (
-            <div className="border-t border-[var(--border)] px-4 pb-3 pt-2">
-              <p className="text-xs text-[var(--fg-muted)]">
-                После выполнения каждой задачи вам будет предложено записать свои мысли и впечатления.
-              </p>
-              <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-500/20 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
-                <Construction className="h-3.5 w-3.5 shrink-0" />
-                Функция в разработке
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
 
       <button
         type="submit"

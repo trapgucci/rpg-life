@@ -1,0 +1,319 @@
+import { useState, useMemo, useCallback } from 'react'
+import { Brain, BookOpen, Calendar, Plus, FileText } from 'lucide-react'
+import { cn } from '../lib/cn'
+import { useRpgStore } from '../store/useRpgStore'
+import { getTodayKey } from '../lib/reflectionUtils'
+import ReflectionSidebar from '../components/reflection/ReflectionSidebar'
+import FolderFormModal from '../components/reflection/FolderFormModal'
+import NoteList from '../components/reflection/NoteList'
+import NoteEditor from '../components/reflection/NoteEditor'
+import DailyReportCalendar from '../components/reflection/DailyReportCalendar'
+import DailyReportView from '../components/reflection/DailyReportView'
+import NoteTrash from '../components/reflection/NoteTrash'
+import type { NoteFolder, NoteFolderId } from '../types/domain'
+
+type Tab = 'notes' | 'diary'
+
+export default function ReflectionPage() {
+  const [activeTab, setActiveTab] = useState<Tab>('notes')
+  const [activeFolderId, setActiveFolderId] = useState<NoteFolderId | null>(null)
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
+  const [showTrash, setShowTrash] = useState(false)
+  const [selectedDate, setSelectedDate] = useState(getTodayKey())
+
+  // Folder modal state
+  const [folderModalOpen, setFolderModalOpen] = useState(false)
+  const [editingFolder, setEditingFolder] = useState<NoteFolder | null>(null)
+
+  // Store — use raw data + useMemo to avoid infinite re-render
+  const activeProfileId = useRpgStore((s) => s.activeProfileId)
+  const rawFolders = useRpgStore((s) => s.noteFolders)
+  const rawNotes = useRpgStore((s) => s.notes)
+  const rawReports = useRpgStore((s) => s.dailyReports)
+  const addFolder = useRpgStore((s) => s.addNoteFolder)
+  const updateFolder = useRpgStore((s) => s.updateNoteFolder)
+  const deleteFolder = useRpgStore((s) => s.deleteNoteFolder)
+  const addNote = useRpgStore((s) => s.addNote)
+  const updateNote = useRpgStore((s) => s.updateNote)
+  const deleteNote = useRpgStore((s) => s.deleteNote)
+  const restoreNote = useRpgStore((s) => s.restoreNote)
+  const permanentDeleteNote = useRpgStore((s) => s.permanentDeleteNote)
+  const emptyTrash = useRpgStore((s) => s.emptyTrash)
+  const reorderNotes = useRpgStore((s) => s.reorderNotes)
+  const reorderNoteFolders = useRpgStore((s) => s.reorderNoteFolders)
+
+  const folders = useMemo(
+    () => rawFolders.filter((f) => f.profileId === activeProfileId).sort((a, b) => a.sortOrder - b.sortOrder),
+    [rawFolders, activeProfileId],
+  )
+  const notes = useMemo(
+    () => rawNotes
+      .filter((n) => n.profileId === activeProfileId && !n.deletedAt)
+      .sort((a, b) => {
+        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+        return (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
+      }),
+    [rawNotes, activeProfileId],
+  )
+  const trashedNotes = useMemo(
+    () => rawNotes
+      .filter((n) => n.profileId === activeProfileId && n.deletedAt)
+      .sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0)),
+    [rawNotes, activeProfileId],
+  )
+  const dailyReports = useMemo(
+    () => rawReports.filter((r) => r.profileId === activeProfileId && r.dateKey).sort((a, b) => b.dateKey.localeCompare(a.dateKey)),
+    [rawReports, activeProfileId],
+  )
+
+  // Note counts per folder
+  const noteCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: notes.length }
+    let unfiled = 0
+    for (const n of notes) {
+      if (n.folderId) counts[n.folderId] = (counts[n.folderId] ?? 0) + 1
+      else unfiled++
+    }
+    counts['unfiled'] = unfiled
+    return counts
+  }, [notes])
+
+  // Selected note
+  const selectedNote = useMemo(
+    () => notes.find((n) => n.id === selectedNoteId) ?? null,
+    [notes, selectedNoteId],
+  )
+
+  // Filtered notes for current folder
+  const filteredNotes = useMemo(() => {
+    if (activeFolderId === null) return notes
+    return notes.filter((n) => n.folderId === activeFolderId)
+  }, [notes, activeFolderId])
+
+  // Handlers
+  const handleSelectNote = useCallback((id: string) => {
+    setSelectedNoteId(id)
+  }, [])
+
+  const handleCreateNote = useCallback(() => {
+    const note = addNote({
+      title: '',
+      folderId: activeFolderId,
+    })
+    setSelectedNoteId(note.id)
+  }, [addNote, activeFolderId])
+
+  const handleDeleteNote = useCallback(() => {
+    if (!selectedNoteId) return
+    deleteNote(selectedNoteId)
+    setSelectedNoteId(null)
+  }, [selectedNoteId, deleteNote])
+
+  const handleSaveFolder = useCallback(
+    (name: string, icon: string, color: string) => {
+      if (editingFolder) {
+        updateFolder(editingFolder.id, (f) => ({ ...f, name, icon, color }))
+      } else {
+        addFolder(name, icon, color)
+      }
+      setEditingFolder(null)
+    },
+    [editingFolder, addFolder, updateFolder],
+  )
+
+  const handleEditFolder = useCallback((folder: NoteFolder) => {
+    setEditingFolder(folder)
+    setFolderModalOpen(true)
+  }, [])
+
+  const handleDeleteFolder = useCallback(
+    (id: NoteFolderId) => {
+      if (confirm('Удалить папку? Заметки из неё будут перемещены в «Все заметки».')) {
+        deleteFolder(id)
+        if (activeFolderId === id) setActiveFolderId(null)
+      }
+    },
+    [deleteFolder, activeFolderId],
+  )
+
+  const handleDropNoteToFolder = useCallback(
+    (noteId: string, folderId: NoteFolderId | null) => {
+      updateNote(noteId, (n) => ({ ...n, folderId }))
+    },
+    [updateNote],
+  )
+
+  return (
+    <div className={`flex flex-col gap-4 pb-2 ${selectedNote ? 'min-h-full' : 'h-full overflow-hidden'}`}>
+      {/* Header — hidden when note is open */}
+      {!selectedNote && (
+        <div className="flex items-center gap-2 md:gap-3 shrink-0">
+          <div className="flex h-10 w-10 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 shadow-lg shadow-teal-500/30">
+            <Brain className="h-5 w-5 md:h-6 md:w-6 text-white" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg md:text-xl font-bold text-[var(--fg)]">Рефлексия</h1>
+            <p className="text-xs md:text-sm text-[var(--fg-muted)]">Заметки и дневник</p>
+          </div>
+        </div>
+      )}
+
+      {/* Tabs — hidden when note is open */}
+      {!selectedNote && (
+        <div className="flex shrink-0 gap-1 rounded-xl bg-[var(--surface)] p-1 border border-[var(--border)]">
+          <button
+            onClick={() => setActiveTab('notes')}
+            className={cn(
+              'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
+              activeTab === 'notes'
+                ? 'bg-[var(--accent)] text-white shadow-md'
+                : 'text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]',
+            )}
+          >
+            <BookOpen className="h-4 w-4" />
+            Заметки
+          </button>
+          <button
+            onClick={() => setActiveTab('diary')}
+            className={cn(
+              'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
+              activeTab === 'diary'
+                ? 'bg-[var(--accent)] text-white shadow-md'
+                : 'text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]',
+            )}
+          >
+            <Calendar className="h-4 w-4" />
+            Дневник
+          </button>
+        </div>
+      )}
+
+      {/* Content */}
+      <div className={`flex gap-4 ${selectedNote ? 'flex-1' : 'min-h-0 flex-1'}`}>
+        {activeTab === 'notes' ? (
+          <>
+            {/* Desktop: sidebar + list + editor */}
+            {/* Mobile: list OR editor (not both) */}
+            {selectedNote && (
+              <div className="flex flex-1 flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface-card)] backdrop-blur-lg">
+                <NoteEditor
+                  note={selectedNote}
+                  onBack={() => setSelectedNoteId(null)}
+                  onDelete={handleDeleteNote}
+                />
+              </div>
+            )}
+
+            {!selectedNote && (
+              <div className="flex flex-1 flex-col gap-4 md:flex-row">
+                {/* Sidebar — desktop only */}
+                <div className="hidden md:flex md:w-56 shrink-0 flex-col overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface-card)] backdrop-blur-lg p-3">
+                  <ReflectionSidebar
+                    folders={folders}
+                    activeFolderId={activeFolderId}
+                    noteCounts={noteCounts}
+                    trashCount={trashedNotes.length}
+                    onSelectFolder={(id) => { setActiveFolderId(id); setShowTrash(false) }}
+                    onShowTrash={() => { setShowTrash(true) }}
+                    onCreateFolder={() => { setEditingFolder(null); setFolderModalOpen(true) }}
+                    onEditFolder={handleEditFolder}
+                    onDeleteFolder={handleDeleteFolder}
+                    onDropNote={handleDropNoteToFolder}
+                    onReorderFolders={reorderNoteFolders}
+                  />
+                </div>
+
+                {/* Mobile folder chips */}
+                <div className="md:hidden shrink-0 flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-1">
+                  <button
+                    onClick={() => { setActiveFolderId(null); setShowTrash(false) }}
+                    className={cn(
+                      'flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all border',
+                      activeFolderId === null
+                        ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
+                        : 'bg-[var(--surface-card)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)]',
+                    )}
+                  >
+                    <FileText className="h-3 w-3" />
+                    Все
+                    <span className="opacity-70">{noteCounts['all'] ?? 0}</span>
+                  </button>
+                  {folders.map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => { setActiveFolderId(f.id); setShowTrash(false) }}
+                      className={cn(
+                        'flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all border',
+                        activeFolderId === f.id
+                          ? 'text-white shadow-sm'
+                          : 'bg-[var(--surface-card)] text-[var(--fg-muted)] border-[var(--border)] hover:text-[var(--fg)]',
+                      )}
+                      style={activeFolderId === f.id ? { backgroundColor: f.color, borderColor: f.color } : undefined}
+                    >
+                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: activeFolderId === f.id ? 'rgba(255,255,255,0.7)' : f.color }} />
+                      {f.name}
+                      <span className="opacity-70">{noteCounts[f.id] ?? 0}</span>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => { setEditingFolder(null); setFolderModalOpen(true) }}
+                    className="flex items-center gap-1 shrink-0 rounded-full border border-dashed border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--fg-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
+                </div>
+
+                {/* Note list or Trash */}
+                <div className="flex-1 overflow-y-auto">
+                  {showTrash ? (
+                    <NoteTrash
+                      notes={trashedNotes}
+                      onRestore={(id) => { restoreNote(id); if (trashedNotes.length <= 1) setShowTrash(false) }}
+                      onPermanentDelete={permanentDeleteNote}
+                      onEmptyTrash={() => { emptyTrash(); setShowTrash(false) }}
+                      onBack={() => setShowTrash(false)}
+                    />
+                  ) : (
+                    <NoteList
+                      notes={filteredNotes}
+                      selectedNoteId={selectedNoteId}
+                      activeFolderId={activeFolderId}
+                      onSelectNote={handleSelectNote}
+                      onReorder={reorderNotes}
+                      onCreateNote={handleCreateNote}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          /* Diary tab */
+          <div className="flex flex-1 flex-col gap-4 md:flex-row">
+            {/* Calendar sidebar */}
+            <div className="md:w-64 shrink-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-card)] backdrop-blur-lg p-4">
+              <DailyReportCalendar
+                reports={dailyReports}
+                selectedDate={selectedDate}
+                onSelectDate={setSelectedDate}
+              />
+            </div>
+
+            {/* Report */}
+            <div className="flex-1 overflow-y-auto">
+              <DailyReportView dateKey={selectedDate} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Folder modal */}
+      <FolderFormModal
+        isOpen={folderModalOpen}
+        onClose={() => { setFolderModalOpen(false); setEditingFolder(null) }}
+        onSave={handleSaveFolder}
+        folder={editingFolder}
+      />
+    </div>
+  )
+}

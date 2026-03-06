@@ -33,7 +33,7 @@ export default function DiscountVoucherModal({ value, onSave, onClose }: Discoun
             type="number"
             min={1}
             max={85}
-            value={percent}
+            value={percent || ''}
             onChange={(e) => setPercent(Math.min(85, Math.max(1, Number(e.target.value) || 1)))}
             className="input flex-1 h-10 text-center text-lg"
           />

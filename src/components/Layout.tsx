@@ -1,16 +1,29 @@
+import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import WindowTitleBar from './WindowTitleBar'
 import Sidebar from './Sidebar'
 import MobileBottomNav from './MobileBottomNav'
-import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
 import { CURRENCY_IDS, xpForLevelStandard } from '../types/domain'
-import { Coins, Gem, Zap, TrendingUp } from 'lucide-react'
+import { Coins, Gem } from 'lucide-react'
+import { vaultStorage } from '../lib/vaultStorage'
 
 function CurrencyDisplay() {
   const profiles = useRpgStore((s) => s.profiles)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
-  
+  const settings = useRpgStore((s) => s.settings)
+  const [avatarImageUrl, setAvatarImageUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (settings.avatarImage) {
+      vaultStorage.readMedia(settings.avatarImage).then((url) => {
+        if (url) setAvatarImageUrl(url)
+      })
+    } else {
+      setAvatarImageUrl(null)
+    }
+  }, [settings.avatarImage])
+
   const profile = profiles.find((p) => p.id === activeProfileId) ?? profiles[0] ?? null
   const coins = profile?.currencies[CURRENCY_IDS.COINS] ?? 0
   const gems = profile?.currencies[CURRENCY_IDS.GEMS] ?? 0
@@ -21,12 +34,16 @@ function CurrencyDisplay() {
   const progress = xpForNext > 0 ? (profile.xp / xpForNext) * 100 : 0
   
   return (
-    <div className="glass flex items-center justify-between px-3 py-2 md:px-5 md:py-3">
+    <div className="glass-neu flex items-center justify-between px-3 py-2 md:px-5 md:py-3">
       {/* Profile section */}
       <div className="flex items-center gap-2 md:gap-4 min-w-0">
         <div className="relative shrink-0">
-          <div className="flex h-9 w-9 md:h-11 md:w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-base md:text-lg shadow-lg shadow-indigo-500/30">
-            👤
+          <div className="flex h-9 w-9 md:h-11 md:w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-base md:text-lg shadow-lg shadow-indigo-500/30 overflow-hidden">
+            {avatarImageUrl ? (
+              <img src={avatarImageUrl} alt="avatar" className="h-full w-full object-cover" />
+            ) : (
+              settings.avatar || '👤'
+            )}
           </div>
           <div className="absolute -bottom-1 -right-1 flex h-4 w-4 md:h-5 md:w-5 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-[8px] md:text-[10px] font-bold text-white shadow-md">
             {profile.level}
@@ -54,28 +71,28 @@ function CurrencyDisplay() {
         </div>
       </div>
 
-      {/* Currency section */}
+      {/* Currency section — glassmorphic neumorphism */}
       <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
         <div
           data-currency="coins"
-          className="flex items-center gap-1.5 md:gap-2 rounded-xl bg-amber-500/10 px-2 py-1.5 md:px-3 md:py-2 transition-all hover:bg-amber-500/15"
+          className="glass-neu-coin flex items-center gap-1.5 md:gap-2 rounded-2xl px-2.5 py-1.5 md:px-3.5 md:py-2 transition-all"
         >
-          <div className="flex h-6 w-6 md:h-7 md:w-7 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 shadow-sm">
-            <Coins className="h-3.5 w-3.5 md:h-4 md:w-4 text-white" />
+          <div className="flex h-6 w-6 md:h-7 md:w-7 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-md shadow-amber-500/30">
+            <Coins className="h-3.5 w-3.5 md:h-4 md:w-4 text-white drop-shadow-sm" />
           </div>
-          <span className="font-semibold text-amber-600 dark:text-amber-400 text-sm md:text-base">
+          <span className="font-bold text-amber-600 dark:text-amber-400 text-sm md:text-base">
             {coins.toLocaleString('ru-RU')}
           </span>
         </div>
 
         <div
           data-currency="gems"
-          className="flex items-center gap-1.5 md:gap-2 rounded-xl bg-purple-500/10 px-2 py-1.5 md:px-3 md:py-2 transition-all hover:bg-purple-500/15"
+          className="glass-neu-gem flex items-center gap-1.5 md:gap-2 rounded-2xl px-2.5 py-1.5 md:px-3.5 md:py-2 transition-all"
         >
-          <div className="flex h-6 w-6 md:h-7 md:w-7 items-center justify-center rounded-lg bg-gradient-to-br from-purple-400 to-violet-600 shadow-sm">
-            <Gem className="h-3.5 w-3.5 md:h-4 md:w-4 text-white" />
+          <div className="flex h-6 w-6 md:h-7 md:w-7 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 to-cyan-500 shadow-md shadow-sky-500/30">
+            <Gem className="h-3.5 w-3.5 md:h-4 md:w-4 text-white drop-shadow-sm" />
           </div>
-          <span className="font-semibold text-purple-600 dark:text-purple-400 text-sm md:text-base">
+          <span className="font-bold text-sky-600 dark:text-sky-400 text-sm md:text-base">
             {gems.toLocaleString('ru-RU')}
           </span>
         </div>

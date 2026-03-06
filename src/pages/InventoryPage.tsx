@@ -1,33 +1,63 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { cn } from '../lib/cn'
-import { Package, Search, X } from 'lucide-react'
+import { Package, Search, X, Clock, Gift, Frown, Minus, Plus, Trash2, Coins, Gem } from 'lucide-react'
 import { useRpgStore } from '../store/useRpgStore'
+import { useShallow } from 'zustand/react/shallow'
 import InventoryItemCard from '../components/InventoryItemCard'
-import InventoryDetailPanel from '../components/InventoryDetailPanel'
-import ConfirmModal from '../components/ConfirmModal'
+import InventoryItemModal from '../components/InventoryItemModal'
+import InventoryHistorySidebar from '../components/InventoryHistorySidebar'
+import StreakMultiplierModal from '../components/StreakMultiplierModal'
+import Modal from '../components/Modal'
 import type { ShopItem, InventoryEntry, ItemGroup } from '../types/domain'
+import { CURRENCY_IDS } from '../types/domain'
+import { rpgToast } from '../components/RpgToast'
+
+/* ─── Types ─────────────────────────────────────────────────────────────────── */
+
+interface EnrichedEntry {
+  entry: InventoryEntry
+  item: ShopItem
+  group: ItemGroup | null
+}
+
+interface GroupBucket {
+  group: ItemGroup | null
+  items: EnrichedEntry[]
+}
+
+/* ─── Component ─────────────────────────────────────────────────────────────── */
 
 export default function InventoryPage() {
   // ── Store ──────────────────────────────────────────────────────────────────
-  const shopItems = useRpgStore((s) => s.shopItems)
-  const inventory = useRpgStore((s) => s.inventory)
-  const allItemGroups = useRpgStore((s) => s.itemGroups)
-  const activeProfileId = useRpgStore((s) => s.activeProfileId)
+  const { shopItems, inventory, allItemGroups, activeProfileId } = useRpgStore(
+    useShallow((s) => ({
+      shopItems: s.shopItems,
+      inventory: s.inventory,
+      allItemGroups: s.itemGroups,
+      activeProfileId: s.activeProfileId,
+    }))
+  )
+
   const removeFromInventory = useRpgStore((s) => s.removeFromInventory)
   const useItem = useRpgStore((s) => s.useItem)
 
   // ── Local state ────────────────────────────────────────────────────────────
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
+  const [detailModalItemId, setDetailModalItemId] = useState<string | null>(null)
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null)
   const [showSearch, setShowSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
+  const [deleteQuantity, setDeleteQuantity] = useState(1)
+  const [showMobileHistory, setShowMobileHistory] = useState(false)
+  const [lootResult, setLootResult] = useState<{ itemId: string; itemName: string; compensated?: boolean; compensationLabel?: string; compensationReason?: 'duplicate' | 'out_of_stock' } | 'empty' | null>(null)
+  const [batchLootResults, setBatchLootResults] = useState<Array<{ itemId: string; itemName: string; compensated?: boolean; compensationLabel?: string; compensationReason?: 'duplicate' | 'out_of_stock' } | 'empty'> | null>(null)
+  const [multiplierItemId, setMultiplierItemId] = useState<string | null>(null)
 
-  // ── Refs ────────────────────────────────────────────────────────────────────
+  // ── Refs ──────────────────────────────────────────────────────────────────
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
-  // ── Derived data ───────────────────────────────────────────────────────────
+  // ── Derived data ─────────────────────────────────────────────────────────
   const itemGroups = useMemo(
     () =>
       activeProfileId
@@ -39,18 +69,35 @@ export default function InventoryPage() {
     [allItemGroups, activeProfileId],
   )
 
+  const groupMap = useMemo(() => {
+    const map = new Map<string, ItemGroup>()
+    for (const g of itemGroups) map.set(g.id, g)
+    return map
+  }, [itemGroups])
+
+  const shopItemMap = useMemo(() => {
+    const map = new Map<string, ShopItem>()
+    for (const item of shopItems) map.set(item.id, item)
+    return map
+  }, [shopItems])
+
   const enrichedInventory = useMemo(() => {
-    return inventory
-      .map((entry) => ({
+    const query = searchQuery.trim().toLowerCase()
+    const result: EnrichedEntry[] = []
+
+    for (const entry of inventory) {
+      const item = shopItemMap.get(entry.itemId)
+      if (!item) continue
+      if (query && !item.name.toLowerCase().includes(query)) continue
+      result.push({
         entry,
-        item: shopItems.find((i) => i.id === entry.itemId) as ShopItem | undefined,
-      }))
-      .filter((x): x is { entry: InventoryEntry; item: ShopItem } => x.item != null)
-      .filter((x) => {
-        if (!searchQuery.trim()) return true
-        return x.item.name.toLowerCase().includes(searchQuery.toLowerCase())
+        item,
+        group: item.groupId ? groupMap.get(item.groupId) ?? null : null,
       })
-  }, [inventory, shopItems, searchQuery])
+    }
+
+    return result
+  }, [inventory, shopItemMap, groupMap, searchQuery])
 
   const orderedGroupIds = useMemo(() => {
     const ids = itemGroups.map((g) => g.id)
@@ -59,7 +106,7 @@ export default function InventoryPage() {
   }, [itemGroups])
 
   const groupedInventory = useMemo(() => {
-    const groups = new Map<string, { group: ItemGroup | null; items: typeof enrichedInventory }>()
+    const groups = new Map<string, GroupBucket>()
 
     for (const g of itemGroups) {
       groups.set(g.id, { group: g, items: [] })
@@ -79,26 +126,30 @@ export default function InventoryPage() {
     return groups
   }, [enrichedInventory, itemGroups])
 
-  const totalUniqueItems = enrichedInventory.length
-  const totalQuantity = enrichedInventory.reduce((sum, x) => sum + x.entry.quantity, 0)
+  const nonEmptyGroupIds = useMemo(
+    () => orderedGroupIds.filter((id) => (groupedInventory.get(id)?.items.length ?? 0) > 0),
+    [orderedGroupIds, groupedInventory],
+  )
 
-  // Selected entry lookup (across all inventory, not just filtered)
-  const selectedEntry = useMemo(() => {
-    if (!selectedItemId) return null
-    const entry = inventory.find((e) => e.itemId === selectedItemId)
-    if (!entry) return null
-    const item = shopItems.find((i) => i.id === entry.itemId)
-    if (!item) return null
-    return { entry, item }
-  }, [selectedItemId, inventory, shopItems])
+  const { totalQuantity } = useMemo(() => {
+    let unique = 0
+    let qty = 0
+    for (const e of enrichedInventory) {
+      unique++
+      qty += e.entry.quantity
+    }
+    return { totalUniqueItems: unique, totalQuantity: qty }
+  }, [enrichedInventory])
 
-  // ── Section refs ───────────────────────────────────────────────────────────
+  const hasGroups = nonEmptyGroupIds.length > 1
+
+  // ── Section refs ─────────────────────────────────────────────────────────
   const setSectionRef = useCallback((groupId: string, el: HTMLDivElement | null) => {
     if (el) sectionRefs.current.set(groupId, el)
     else sectionRefs.current.delete(groupId)
   }, [])
 
-  // ── IntersectionObserver ───────────────────────────────────────────────────
+  // ── IntersectionObserver ─────────────────────────────────────────────────
   useEffect(() => {
     const container = scrollContainerRef.current
     if (!container) return
@@ -134,119 +185,212 @@ export default function InventoryPage() {
     }
 
     return () => observer.disconnect()
-  }, [orderedGroupIds, enrichedInventory])
+  }, [orderedGroupIds])
 
-  // ── Scroll to group ────────────────────────────────────────────────────────
+  // ── Scroll to group ──────────────────────────────────────────────────────
   const scrollToGroup = useCallback((groupId: string) => {
     setActiveGroupId(groupId)
     const el = sectionRefs.current.get(groupId)
     const container = scrollContainerRef.current
     if (el && container) {
       const stickyNavHeight = 52
-      const elTop = el.offsetTop - stickyNavHeight
-      container.scrollTo({ top: elTop, behavior: 'smooth' })
+      const containerRect = container.getBoundingClientRect()
+      const elRect = el.getBoundingClientRect()
+      const scrollTop = container.scrollTop + (elRect.top - containerRect.top) - stickyNavHeight
+      container.scrollTo({ top: scrollTop, behavior: 'smooth' })
     }
   }, [])
 
-  // ── Handlers ───────────────────────────────────────────────────────────────
-  const handleUse = useCallback(() => {
-    if (!selectedItemId) return
-    useItem(selectedItemId)
-  }, [selectedItemId, useItem])
+  // ── Handlers ─────────────────────────────────────────────────────────────
+  const handleUse = useCallback((itemId: string, quantity?: number) => {
+    const result = useItem(itemId, quantity)
+    // Handle lootbox result
+    if (result && typeof result === 'object' && 'loot' in result) {
+      setDetailModalItemId(null)
+      if (result.loot) {
+        setLootResult({ itemId: result.loot.itemId, itemName: result.loot.name, compensated: result.loot.compensated, compensationLabel: result.loot.compensationLabel, compensationReason: result.loot.compensationReason })
+      } else {
+        setLootResult('empty')
+      }
+      return
+    }
+    // Handle streak multiplier — open task selection modal
+    if (result && typeof result === 'object' && 'multiplier' in result) {
+      setDetailModalItemId(null)
+      setMultiplierItemId(result.itemId)
+      return
+    }
+    // Handle serial — modal stays open, episodes are used inline
+    if (result && typeof result === 'object' && 'serial' in result) {
+      return
+    }
+    // Handle video game — modal stays open, game time is used inline
+    if (result && typeof result === 'object' && 'videogame' in result) {
+      return
+    }
+    // Plain item used
+    const usedItem = shopItems.find((i) => i.id === itemId)
+    if (usedItem) {
+      rpgToast({ title: `Использовано: ${usedItem.name}`, type: 'success', category: 'toastTaskActions' })
+    }
+    // Close modal if item is fully consumed
+    const entry = inventory.find((e) => e.itemId === itemId)
+    if (entry && entry.quantity <= (quantity ?? 1)) {
+      setDetailModalItemId(null)
+    }
+  }, [useItem, inventory])
+
+  const handleOpenAll = useCallback((itemId: string, quantity: number) => {
+    setDetailModalItemId(null)
+    const results: Array<{ itemId: string; itemName: string; compensated?: boolean; compensationLabel?: string; compensationReason?: 'duplicate' | 'out_of_stock' } | 'empty'> = []
+    for (let i = 0; i < quantity; i++) {
+      const result = useItem(itemId)
+      if (result && typeof result === 'object' && 'loot' in result) {
+        if (result.loot) {
+          results.push({ itemId: result.loot.itemId, itemName: result.loot.name, compensated: result.loot.compensated, compensationLabel: result.loot.compensationLabel, compensationReason: result.loot.compensationReason })
+        } else {
+          results.push('empty')
+        }
+      } else {
+        break // item no longer available
+      }
+    }
+    if (results.length > 0) {
+      setBatchLootResults(results)
+    }
+  }, [useItem])
+
+  const handleDelete = useCallback((itemId: string) => {
+    setDeleteQuantity(1)
+    setDeletingItemId(itemId)
+  }, [])
 
   const handleConfirmDelete = useCallback(() => {
     if (!deletingItemId) return
-    const entry = inventory.find((e) => e.itemId === deletingItemId)
-    removeFromInventory(deletingItemId, 1)
-    if (selectedItemId === deletingItemId && entry && entry.quantity <= 1) {
-      setSelectedItemId(null)
+    // Log deletion to usage history
+    const item = shopItems.find((i) => i.id === deletingItemId)
+    if (item && activeProfileId) {
+      useRpgStore.setState((s) => ({
+        usageHistory: [
+          ...s.usageHistory,
+          {
+            profileId: activeProfileId,
+            itemId: deletingItemId,
+            itemName: item.name,
+            timestamp: Date.now(),
+            action: 'deleted' as const,
+            deletedQuantity: deleteQuantity,
+          },
+        ].slice(-500),
+      }))
+    }
+    removeFromInventory(deletingItemId, deleteQuantity)
+    rpgToast({ title: `${item?.name ?? 'Предмет'} удалён из инвентаря`, type: 'info', category: 'toastTaskActions' })
+    // Close modal if removing last units
+    if (detailModalItemId === deletingItemId) {
+      const entry = inventory.find((e) => e.itemId === deletingItemId)
+      if (entry && entry.quantity <= deleteQuantity) {
+        setDetailModalItemId(null)
+      }
     }
     setDeletingItemId(null)
-  }, [deletingItemId, selectedItemId, inventory, removeFromInventory])
+  }, [deletingItemId, deleteQuantity, detailModalItemId, inventory, removeFromInventory, shopItems, activeProfileId])
+
+  const handleCancelDelete = useCallback(() => setDeletingItemId(null), [])
+  const handleCloseModal = useCallback(() => setDetailModalItemId(null), [])
+  const handleSelectItem = useCallback((itemId: string) => setDetailModalItemId(itemId), [])
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ─── RENDER ────────────────────────────────────────────────────────────────
   // ═══════════════════════════════════════════════════════════════════════════
 
-  const nonEmptyGroupIds = useMemo(
-    () => orderedGroupIds.filter((id) => (groupedInventory.get(id)?.items.length ?? 0) > 0),
-    [orderedGroupIds, groupedInventory],
-  )
-
-  const hasGroups = nonEmptyGroupIds.length > 1
-
   return (
-    <div className="flex h-full min-h-0 overflow-hidden gap-4">
-      {/* ─── LEFT PANEL ─────────────────────────────────────────────────── */}
-      <div className="flex w-full md:basis-[42%] md:max-w-[560px] md:min-w-[420px] md:shrink-0 flex-col gap-4">
-        {/* Header */}
-        <div className="glass-card rounded-2xl p-3 md:p-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 md:gap-3 min-w-0">
-              <div className="flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 shadow-lg shadow-purple-500/30">
-                <Package className="h-4.5 w-4.5 md:h-5 md:w-5 text-white" />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-base md:text-lg font-bold text-[var(--fg)]">Инвентарь</h1>
-                <p className="text-[10px] md:text-xs text-[var(--fg-muted)]">
-                  {totalUniqueItems} предметов, {totalQuantity} шт.
-                </p>
-              </div>
+    <div className="flex h-full min-h-0 flex-col gap-4">
+      {/* ─── HEADER ─────────────────────────────────────────────────────── */}
+      <div className="glass-card rounded-2xl p-3 md:p-4 shrink-0">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 md:gap-3 min-w-0">
+            <div className="flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 shadow-lg shadow-purple-500/30">
+              <Package className="h-4.5 w-4.5 md:h-5 md:w-5 text-white" />
             </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowSearch(!showSearch)}
-                className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
-                  'border border-[var(--border)] text-[var(--fg-muted)]',
-                  'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
-                  showSearch && 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-subtle)]',
-                )}
-                title="Поиск"
-              >
-                <Search className="h-4 w-4" />
-              </button>
+            <div className="min-w-0">
+              <h1 className="text-base md:text-lg font-bold text-[var(--fg)]">Инвентарь</h1>
+              <p className="text-[10px] md:text-xs text-[var(--fg-muted)]">
+                {totalQuantity} предметов
+              </p>
             </div>
           </div>
 
-          {/* Search input */}
-          {showSearch && (
-            <div className="relative mt-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--fg-muted)] pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    setSearchQuery('')
-                    setShowSearch(false)
-                  }
-                }}
-                placeholder="Поиск по предметам..."
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-9 pr-9 py-2.5 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all"
-                autoFocus
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-md text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] transition-colors"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+          <div className="flex items-center gap-2">
+            {/* Mobile history button */}
+            <button
+              type="button"
+              onClick={() => setShowMobileHistory(true)}
+              className={cn(
+                'md:hidden flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
+                'border border-[var(--border)] text-[var(--fg-muted)]',
+                'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
               )}
-            </div>
-          )}
+              title="История"
+            >
+              <Clock className="h-4 w-4" />
+            </button>
+
+            {/* Search button */}
+            <button
+              type="button"
+              onClick={() => setShowSearch(!showSearch)}
+              className={cn(
+                'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
+                'border border-[var(--border)] text-[var(--fg-muted)]',
+                'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
+                showSearch && 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-subtle)]',
+              )}
+              title="Поиск"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
-        {/* ─── Scrollable content ────────────────────────────────────────── */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto thin-scrollbar pr-3">
+        {/* Search input */}
+        {showSearch && (
+          <div className="relative mt-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--fg-muted)] pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setSearchQuery('')
+                  setShowSearch(false)
+                }
+              }}
+              placeholder="Поиск по предметам..."
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-9 pr-9 py-2.5 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all"
+              autoFocus
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-md text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ─── MAIN CONTENT: CARDS + HISTORY SIDEBAR ──────────────────────── */}
+      <div className="flex flex-1 min-h-0 gap-2 md:gap-3">
+        {/* Cards area */}
+        <div ref={scrollContainerRef} className="flex-1 min-w-0 overflow-y-auto no-scrollbar">
           {/* Sticky group navigation */}
           {hasGroups && (
-            <div className="sticky top-0 z-10 pb-2 pt-1 px-1" style={{ background: 'linear-gradient(to bottom, var(--bg-solid) 60%, transparent)' }}>
+            <div className="sticky top-0 z-10 pb-2 pt-1 px-1 bg-[var(--bg)]/95 backdrop-blur-md">
               <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
                 {nonEmptyGroupIds.map((groupId) => {
                   const groupData = groupedInventory.get(groupId)
@@ -266,9 +410,7 @@ export default function InventoryPage() {
                         'flex items-center gap-1.5',
                         isActive
                           ? 'bg-[var(--accent)] text-white shadow-md'
-                          : itemCount === 0
-                            ? 'bg-[var(--surface)] text-[var(--fg-muted)] opacity-50'
-                            : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]',
+                          : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]',
                       )}
                     >
                       {groupName}
@@ -287,7 +429,7 @@ export default function InventoryPage() {
             </div>
           )}
 
-          {/* Empty state (no items at all) */}
+          {/* Empty state */}
           {enrichedInventory.length === 0 ? (
             <div className="glass-card flex flex-col items-center justify-center rounded-2xl py-16">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-500/10">
@@ -305,9 +447,8 @@ export default function InventoryPage() {
             <div className="space-y-6 pb-4">
               {nonEmptyGroupIds.map((groupId) => {
                 const groupData = groupedInventory.get(groupId)
-                if (!groupData) return null
+                if (!groupData || groupData.items.length === 0) return null
                 const { group, items } = groupData
-                if (items.length === 0) return null
                 const groupName = groupId === '__no_group__'
                   ? 'Без группы'
                   : group?.name ?? 'Группа'
@@ -319,7 +460,6 @@ export default function InventoryPage() {
                     ref={(el) => setSectionRef(groupId, el)}
                     data-group-id={groupId}
                   >
-                    {/* Section header */}
                     <div className="flex items-center gap-2 mb-3 px-1">
                       <div
                         className="h-1 w-6 rounded-full"
@@ -329,14 +469,14 @@ export default function InventoryPage() {
                       <span className="text-xs text-[var(--fg-muted)]">({items.length})</span>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {items.map(({ entry, item }) => (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3 p-1">
+                      {items.map(({ entry, item, group: itemGroup }) => (
                         <InventoryItemCard
                           key={entry.itemId}
                           item={item}
                           quantity={entry.quantity}
-                          selected={entry.itemId === selectedItemId}
-                          onSelect={() => setSelectedItemId(entry.itemId)}
+                          group={itemGroup}
+                          onClick={() => handleSelectItem(entry.itemId)}
                         />
                       ))}
                     </div>
@@ -346,60 +486,270 @@ export default function InventoryPage() {
             </div>
           )}
         </div>
-      </div>
 
-      {/* ─── RIGHT PANEL (desktop) ──────────────────────────────────────── */}
-      <div className="hidden md:block md:min-w-0 md:flex-1 md:min-h-0 relative">
-        {selectedEntry ? (
-          <div className="absolute inset-0">
-            <InventoryDetailPanel
-              item={selectedEntry.item}
-              quantity={selectedEntry.entry.quantity}
-              acquiredAt={selectedEntry.entry.acquiredAt}
-              onDeselect={() => setSelectedItemId(null)}
-              onUse={handleUse}
-              onDelete={() => setDeletingItemId(selectedEntry.item.id)}
-            />
-          </div>
-        ) : (
-          <div className="glass-card flex h-full flex-col items-center justify-center rounded-2xl">
-            <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-[var(--surface)] mb-4">
-              <Package className="h-10 w-10 text-[var(--fg-muted)]" />
-            </div>
-            <p className="font-medium text-[var(--fg)]">Выберите предмет</p>
-            <p className="mt-1 text-sm text-[var(--fg-muted)]">из инвентаря слева</p>
-          </div>
-        )}
-      </div>
-
-      {/* ─── MOBILE OVERLAY ─────────────────────────────────────────────── */}
-      {selectedEntry && (
-        <div
-          className="fixed inset-0 z-40 md:hidden overflow-y-auto p-4 animate-habit-slide-up"
-          style={{ background: 'var(--bg)', backgroundColor: 'var(--bg-solid)' }}
-        >
-          <InventoryDetailPanel
-            item={selectedEntry.item}
-            quantity={selectedEntry.entry.quantity}
-            acquiredAt={selectedEntry.entry.acquiredAt}
-            onDeselect={() => setSelectedItemId(null)}
-            onUse={handleUse}
-            onDelete={() => setDeletingItemId(selectedEntry.item.id)}
-          />
+        {/* ─── HISTORY SIDEBAR (desktop) ──────────────────────────────── */}
+        <div className="hidden md:flex md:w-[300px] shrink-0 min-h-0">
+          <InventoryHistorySidebar />
         </div>
-      )}
+      </div>
 
       {/* ─── MODALS ─────────────────────────────────────────────────────── */}
-      <ConfirmModal
-        isOpen={deletingItemId !== null}
-        title="Удалить предмет?"
-        message="Предмет будет удалён из инвентаря."
-        confirmText="Удалить"
-        cancelText="Отмена"
-        variant="danger"
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setDeletingItemId(null)}
+
+      {/* Item detail modal */}
+      <InventoryItemModal
+        isOpen={detailModalItemId !== null}
+        itemId={detailModalItemId}
+        onClose={handleCloseModal}
+        onUse={handleUse}
+        onDelete={handleDelete}
+        onOpenAll={handleOpenAll}
       />
+
+      {/* Streak multiplier task selection */}
+      <StreakMultiplierModal
+        isOpen={multiplierItemId !== null}
+        itemId={multiplierItemId}
+        onClose={() => setMultiplierItemId(null)}
+        onApplied={() => setMultiplierItemId(null)}
+      />
+
+      {/* Delete confirmation with quantity picker */}
+      {deletingItemId !== null && (() => {
+        const entry = inventory.find((e) => e.itemId === deletingItemId)
+        const delItem = shopItems.find((i) => i.id === deletingItemId)
+        const maxQty = entry?.quantity ?? 1
+        return (
+          <Modal isOpen onClose={handleCancelDelete} size="sm" showCloseButton={false} closeOnBackdropClick={false} zIndex={10001}>
+            <div className="p-6 flex flex-col items-center text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/15 mb-4">
+                <Trash2 className="h-7 w-7 text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-[var(--fg)] mb-1">Удалить предмет?</h3>
+              <p className="text-sm text-[var(--fg-muted)] mb-5 max-w-[280px]">
+                {delItem?.name ?? 'Предмет'} будет удалён из инвентаря
+              </p>
+
+              {maxQty > 1 && (
+                <div className="flex items-center gap-3 mb-5">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteQuantity((q) => Math.max(1, q - 1))}
+                    disabled={deleteQuantity <= 1}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] disabled:opacity-30 transition-all active:scale-90"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="text-2xl font-bold text-[var(--fg)] min-w-[3ch] tabular-nums">{deleteQuantity}</span>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteQuantity((q) => Math.min(maxQty, q + 1))}
+                    disabled={deleteQuantity >= maxQty}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] disabled:opacity-30 transition-all active:scale-90"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteQuantity(maxQty)}
+                    className={cn(
+                      'rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all',
+                      deleteQuantity === maxQty
+                        ? 'bg-red-500/15 text-red-500 ring-1 ring-inset ring-red-400/25'
+                        : 'bg-[var(--surface)] text-[var(--fg-muted)] border border-[var(--border)] hover:bg-[var(--surface-elevated)]',
+                    )}
+                  >
+                    Все ({maxQty})
+                  </button>
+                </div>
+              )}
+
+              <div className="flex gap-3 w-full">
+                <button type="button" onClick={handleCancelDelete} className="btn-secondary flex-1 py-2.5">
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  className="flex-1 rounded-xl py-2.5 font-semibold transition-all duration-200 active:scale-95 bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/25"
+                >
+                  Удалить{maxQty > 1 ? ` (${deleteQuantity})` : ''}
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )
+      })()}
+
+      {/* Lootbox result modal */}
+      {lootResult !== null && (
+        <Modal
+          isOpen
+          onClose={() => setLootResult(null)}
+          size="sm"
+          showCloseButton={false}
+        >
+          <div className="p-6 flex flex-col items-center text-center">
+            <div className={cn(
+              'flex h-14 w-14 items-center justify-center rounded-2xl mb-4',
+              lootResult === 'empty' ? 'bg-gray-500/15' : lootResult.compensated ? 'bg-amber-500/15' : 'bg-violet-500/15',
+            )}>
+              {lootResult === 'empty'
+                ? <Frown className="h-7 w-7 text-gray-500" />
+                : lootResult.compensated
+                  ? <Coins className="h-7 w-7 text-amber-500" />
+                  : <Gift className="h-7 w-7 text-violet-500" />
+              }
+            </div>
+            <h3 className="text-lg font-bold text-[var(--fg)] mb-1">
+              {lootResult === 'empty'
+                ? 'Ничего не выпало'
+                : lootResult.compensated
+                  ? 'Компенсация!'
+                  : 'Вы получили!'}
+            </h3>
+            {lootResult !== 'empty' && lootResult.compensated && (
+              <p className="text-xs text-amber-500 font-medium mb-1">
+                {lootResult.compensationReason === 'out_of_stock'
+                  ? `«${lootResult.itemName}» — запас исчерпан`
+                  : `«${lootResult.itemName}» уже есть`}
+              </p>
+            )}
+            {lootResult !== 'empty' && lootResult.compensated && lootResult.compensationLabel && (
+              <div className="flex items-center justify-center gap-2 mb-4 mt-1 rounded-xl bg-amber-500/10 px-4 py-2.5">
+                {lootResult.compensationLabel.split(' + ').map((part, i) => {
+                  const coinMatch = part.match(/🪙\s*(\d+)/)
+                  const gemMatch = part.match(/💎\s*(\d+)/)
+                  if (coinMatch) return (
+                    <span key={i} className="flex items-center gap-1.5 text-sm font-bold text-amber-500">
+                      <Coins className="h-4 w-4" /> +{coinMatch[1]}
+                    </span>
+                  )
+                  if (gemMatch) return (
+                    <span key={i} className="flex items-center gap-1.5 text-sm font-bold text-purple-500">
+                      <Gem className="h-4 w-4" /> +{gemMatch[1]}
+                    </span>
+                  )
+                  return <span key={i} className="text-sm font-medium text-[var(--fg)]">{part}</span>
+                })}
+              </div>
+            )}
+            <p className="text-sm text-[var(--fg-muted)] mb-6 max-w-[280px]">
+              {lootResult === 'empty'
+                ? 'В этот раз не повезло, попробуйте ещё раз!'
+                : lootResult.compensated
+                  ? 'Вы получили 80% от стоимости предмета'
+                  : lootResult.itemId === CURRENCY_IDS.COINS || lootResult.itemId === CURRENCY_IDS.GEMS
+                    ? `${lootResult.itemName} добавлены к балансу`
+                    : `${lootResult.itemName} добавлен в инвентарь`
+              }
+            </p>
+            <button
+              type="button"
+              onClick={() => setLootResult(null)}
+              className="btn-primary w-full py-2.5"
+            >
+              Понятно
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Batch lootbox results modal */}
+      {batchLootResults !== null && (
+        <Modal
+          isOpen
+          onClose={() => setBatchLootResults(null)}
+          size="md"
+          showCloseButton={false}
+        >
+          <div className="p-6">
+            <div className="flex flex-col items-center text-center mb-5">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/15 mb-4">
+                <Gift className="h-7 w-7 text-violet-500" />
+              </div>
+              <h3 className="text-lg font-bold text-[var(--fg)] mb-1">
+                Открыто {batchLootResults.length} лутбоксов
+              </h3>
+            </div>
+
+            <div className="max-h-[40vh] overflow-y-auto no-scrollbar space-y-1.5 mb-5">
+              {batchLootResults.map((r, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    'flex items-center gap-2.5 rounded-xl px-3 py-2.5',
+                    r === 'empty' ? 'bg-zinc-500/5' : r.compensated ? 'bg-amber-500/5' : 'bg-violet-500/5',
+                  )}
+                >
+                  <span className={cn(
+                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sm',
+                    r === 'empty' ? 'bg-zinc-500/10 text-zinc-400' : r.compensated ? 'bg-amber-500/10 text-amber-400' : 'bg-violet-500/10 text-violet-400',
+                  )}>
+                    {r === 'empty' ? <Frown className="h-4 w-4" /> : r.compensated ? <Coins className="h-4 w-4" /> : <Gift className="h-4 w-4" />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <span className={cn(
+                      'text-sm font-medium truncate block',
+                      r === 'empty' ? 'text-[var(--fg-muted)]' : 'text-[var(--fg)]',
+                    )}>
+                      {r === 'empty' ? 'Ничего не выпало' : r.itemName}
+                    </span>
+                    {r !== 'empty' && r.compensated && (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] text-amber-500/70">
+                          {r.compensationReason === 'out_of_stock' ? 'Запас исчерпан' : 'Уже есть'}
+                        </span>
+                        <span className="text-[10px] text-[var(--fg-muted)]">·</span>
+                        <span className="flex items-center gap-1 text-xs font-semibold text-amber-500">
+                          {r.compensationLabel?.split(' + ').map((part, j) => {
+                            const coinMatch = part.match(/🪙\s*(\d+)/)
+                            const gemMatch = part.match(/💎\s*(\d+)/)
+                            if (coinMatch) return <span key={j} className="flex items-center gap-0.5"><Coins className="h-3 w-3" />+{coinMatch[1]}</span>
+                            if (gemMatch) return <span key={j} className="flex items-center gap-0.5 text-cyan-400"><Gem className="h-3 w-3" />+{gemMatch[1]}</span>
+                            return <span key={j}>{part}</span>
+                          })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Summary */}
+            {(() => {
+              const won = batchLootResults.filter((r) => r !== 'empty')
+              const empty = batchLootResults.length - won.length
+              return (
+                <p className="text-xs text-[var(--fg-muted)] text-center mb-4">
+                  Получено: <span className="text-violet-400 font-medium">{won.length}</span>
+                  {empty > 0 && <> · Пусто: <span className="text-zinc-400 font-medium">{empty}</span></>}
+                </p>
+              )
+            })()}
+
+            <button
+              type="button"
+              onClick={() => setBatchLootResults(null)}
+              className="btn-primary w-full py-2.5"
+            >
+              Понятно
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Mobile history modal */}
+      <Modal
+        isOpen={showMobileHistory}
+        onClose={() => setShowMobileHistory(false)}
+        size="md"
+        title="История"
+      >
+        <div className="h-[60vh]">
+          <InventoryHistorySidebar />
+        </div>
+      </Modal>
     </div>
   )
 }

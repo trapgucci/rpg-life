@@ -1,10 +1,9 @@
-import { useState } from 'react'
+import { memo, useMemo } from 'react'
 import { cn } from '../../lib/cn'
-import { Trash2, CheckCircle2, Sparkles, Dice5, Crosshair, Flame } from 'lucide-react'
+import { CheckCircle2, Sparkles, Dice5, Crosshair } from 'lucide-react'
 import { useRpgStore } from '../../store/useRpgStore'
-import ConfirmModal from '../ConfirmModal'
 import type { CraftRecipe } from '../../types/domain'
-import { RARITY_COLORS, RARITY_LABELS, RARITY_BADGE_CLASSES, migrateIcon } from './shopUtils'
+import { migrateIcon, getItemTypeColor } from './shopUtils'
 import { HabitIcon } from '../HabitIcon'
 
 interface RecipeCardProps {
@@ -13,17 +12,14 @@ interface RecipeCardProps {
   onSelect: () => void
 }
 
-export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardProps) {
-  const deleteRecipe = useRpgStore((s) => s.deleteCraftRecipe)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+export default memo(function RecipeCard({ recipe, selected, onSelect }: RecipeCardProps) {
+  const allShopItems = useRpgStore((s) => s.shopItems)
+
+  const resultItem = useMemo(() => recipe?.resultItemId ? allShopItems.find((i) => i.id === recipe.resultItemId) : null, [recipe?.resultItemId, allShopItems])
 
   if (!recipe) return null
 
-  const rawSource = (recipe as any).fragmentSource
-  const fragmentSource: { type?: string; dropChance?: number; linkedTaskIds?: string[]; streakRequired?: number } =
-    rawSource != null && typeof rawSource === 'object'
-      ? rawSource
-      : { type: 'random_drop', dropChance: 0 }
+  const fragmentSource = recipe.fragmentSource ?? { type: 'random_drop' as const, dropChance: 0 }
   const rawType = fragmentSource?.type ?? 'random_drop'
   const sourceType = rawType === 'habit_linked' ? 'random_drop' : rawType
 
@@ -32,8 +28,8 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
     : 0
 
   const canCraft = recipe.fragmentsCollected >= recipe.fragmentsRequired && !recipe.crafted
-  const rarityColor = RARITY_COLORS[recipe.resultRarity]
-  const fragmentIconImage = (recipe as any).fragmentIconImage ?? ''
+  const themeColor = getItemTypeColor(resultItem)
+  const fragmentIconImage = recipe.fragmentIconImage ?? ''
 
   return (
     <button
@@ -49,24 +45,46 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
       )}
     >
       <div className="flex items-start gap-3">
-        {/* Neumorphic icon */}
-        <div
-          className={cn(
-            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl transition-all overflow-hidden',
-            'ring-1 ring-inset shadow-sm',
-          )}
-          style={{
-            background: `linear-gradient(to bottom, ${rarityColor}30, ${rarityColor}15)`,
-            color: rarityColor,
-            boxShadow: `0 1px 2px ${rarityColor}20`,
-            '--tw-ring-color': `${rarityColor}40`,
-          } as React.CSSProperties}
-        >
-          {fragmentIconImage ? (
-            <img src={fragmentIconImage} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <HabitIcon iconName={migrateIcon(recipe.fragmentIcon, 'Puzzle')} size={22} />
-          )}
+        {/* Prismatic crystal icon */}
+        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center">
+          {/* Outer glow */}
+          <div
+            className="absolute inset-0 rounded-xl blur-[6px] opacity-50"
+            style={{
+              background: `linear-gradient(135deg, ${themeColor}60, ${themeColor}20)`,
+            }}
+          />
+          {/* Crystal shape */}
+          <div
+            className="relative flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden"
+            style={{
+              background: `
+                linear-gradient(135deg,
+                  ${themeColor}dd 0%,
+                  ${themeColor}90 30%,
+                  ${themeColor}bb 50%,
+                  ${themeColor}70 70%,
+                  ${themeColor}dd 100%
+                )
+              `,
+              boxShadow: `
+                inset 2px 2px 4px rgba(255,255,255,0.35),
+                inset -1px -1px 3px rgba(0,0,0,0.15),
+                0 2px 6px ${themeColor}40
+              `,
+            }}
+          >
+            {/* Glass refraction highlight */}
+            <div
+              className="absolute top-0 left-0 w-[60%] h-[60%] rounded-bl-full opacity-30"
+              style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.8), transparent)' }}
+            />
+            {fragmentIconImage ? (
+              <img src={fragmentIconImage} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <HabitIcon iconName={migrateIcon(recipe.fragmentIcon, 'Puzzle')} size={18} className="text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]" />
+            )}
+          </div>
         </div>
 
         {/* Content */}
@@ -83,14 +101,15 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
 
           {/* Badges */}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span className={cn('inline-flex items-center rounded-xl px-2 py-0.5 text-xs font-semibold', RARITY_BADGE_CLASSES[recipe.resultRarity])}>
-              {RARITY_LABELS[recipe.resultRarity]}
-            </span>
             <span className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 px-2 py-0.5 text-xs font-semibold text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10">
               {sourceType === 'task_linked' && <><Crosshair className="h-3 w-3" /> Задачи{typeof fragmentSource?.dropChance === 'number' && fragmentSource.dropChance > 0 && ` ${fragmentSource.dropChance}%`}</>}
-              {sourceType === 'streak_reward' && <><Flame className="h-3 w-3" /> Стрик</>}
               {sourceType === 'random_drop' && <><Dice5 className="h-3 w-3" /> Дроп{typeof fragmentSource?.dropChance === 'number' && fragmentSource.dropChance > 0 && ` ${fragmentSource.dropChance}%`}</>}
             </span>
+            {(recipe.maxCrafts ?? 1) > 1 && (
+              <span className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-b from-violet-500/15 to-violet-500/5 px-2 py-0.5 text-xs font-semibold text-violet-500 ring-1 ring-inset ring-violet-400/20 shadow-sm shadow-violet-500/10">
+                {recipe.craftCount ?? 0}/{recipe.maxCrafts}
+              </span>
+            )}
           </div>
 
           {/* Progress */}
@@ -108,7 +127,7 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
                   width: `${progress * 100}%`,
                   background: canCraft
                     ? 'linear-gradient(90deg, #10b981, #34d399)'
-                    : `linear-gradient(90deg, ${rarityColor}, ${rarityColor}cc)`
+                    : `linear-gradient(90deg, ${themeColor}, ${themeColor}cc)`
                 }}
               />
             </div>
@@ -123,29 +142,6 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
         )}
       </div>
 
-      {/* Hover actions */}
-      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true) }}
-          className="icon-btn icon-btn-danger icon-btn-compact"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      <ConfirmModal
-        isOpen={showDeleteConfirm}
-        title="Удалить фрагмент?"
-        message="Фрагмент будет удалён безвозвратно."
-        variant="danger"
-        confirmText="Удалить"
-        onConfirm={() => {
-          deleteRecipe(recipe.id)
-          setShowDeleteConfirm(false)
-        }}
-        onCancel={() => setShowDeleteConfirm(false)}
-      />
     </button>
   )
-}
+})

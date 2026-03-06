@@ -12,6 +12,14 @@ dist
 dist-ssr
 *.local
 
+# Vault data files (user data, should not be committed)
+*.json
+!package.json
+!package-lock.json
+!tsconfig*.json
+!tailwind.config.js
+!postcss.config.js
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +30,28 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# npm artifacts
+concurrently
+rpg-life@*
+
+# License server (private)
+license-server/
+
+# Build output
+release/
+
+# AI tool configs
+.claude/
+.cursorrules
+CLAUDE.md
+
+# Internal docs
+CHANGELOG.md
+roadmap.md
+
+# Media files
+media/
+
+# Sync scripts
+scripts/

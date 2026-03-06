@@ -22,7 +22,8 @@ interface ShopItemFormProps {
 
 export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: ShopItemFormProps) {
   const addItem = useRpgStore((s) => s.addShopItem)
-  const shopItems = useRpgStore((s) => s.shopItems)
+  const allShopItems = useRpgStore((s) => s.shopItems)
+  const shopItems = useMemo(() => allShopItems.filter((i) => !i.deletedFromShop), [allShopItems])
   const allItemGroups = useRpgStore((s) => s.itemGroups)
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
 
@@ -49,6 +50,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
   const [isLootBox, setIsLootBox] = useState(false)
   const [lootTable, setLootTable] = useState<LootTableEntry[]>([])
   const [streakMultiplierEnabled, setStreakMultiplierEnabled] = useState(false)
+  const [streakMultiplierMode, setStreakMultiplierMode] = useState<'streak' | 'instant'>('streak')
   const [streakMultiplierValue, setStreakMultiplierValue] = useState(1.5)
   const [streakMultiplierInterval, setStreakMultiplierInterval] = useState(3)
   const [isDiscountVoucher, setIsDiscountVoucher] = useState(false)
@@ -89,6 +91,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
       canGetForFree,
       groupId,
       streakMultiplierEnabled: streakMultiplierEnabled || undefined,
+      streakMultiplierMode: streakMultiplierEnabled ? streakMultiplierMode : undefined,
       streakMultiplierValue: streakMultiplierEnabled ? streakMultiplierValue : undefined,
       streakMultiplierInterval: streakMultiplierEnabled ? streakMultiplierInterval : undefined,
       isDiscountVoucher: isDiscountVoucher || undefined,
@@ -231,7 +234,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                     <span className="text-sm font-bold">−</span>
                   </button>
                   <input type="number" min={0} value={coinCost || ''} placeholder="0" onChange={(e) => setCoinCost(e.target.value === '' ? 0 : Math.max(0, Number(e.target.value)))} onBlur={(e) => { if (e.target.value === '') setCoinCost(0) }} className="input w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold placeholder:text-[var(--fg-muted)]/40" />
-                  <button type="button" onClick={() => setCoinCost((p) => p + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
+                  <button type="button" onClick={() => setCoinCost((p) => p + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-indigo-500/35 to-indigo-600/20 text-indigo-400 ring-1 ring-inset ring-indigo-500/35 shadow-sm shadow-indigo-600/10 hover:from-indigo-500/50 hover:to-indigo-600/35 hover:text-indigo-300 hover:scale-105 active:scale-95">
                     <span className="text-sm font-bold">+</span>
                   </button>
                 </div>
@@ -244,7 +247,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                     <span className="text-sm font-bold">−</span>
                   </button>
                   <input type="number" min={0} value={gemCost || ''} placeholder="0" onChange={(e) => setGemCost(e.target.value === '' ? 0 : Math.max(0, Number(e.target.value)))} onBlur={(e) => { if (e.target.value === '') setGemCost(0) }} className="input w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold placeholder:text-[var(--fg-muted)]/40" />
-                  <button type="button" onClick={() => setGemCost((p) => p + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
+                  <button type="button" onClick={() => setGemCost((p) => p + 1)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-indigo-500/35 to-indigo-600/20 text-indigo-400 ring-1 ring-inset ring-indigo-500/35 shadow-sm shadow-indigo-600/10 hover:from-indigo-500/50 hover:to-indigo-600/35 hover:text-indigo-300 hover:scale-105 active:scale-95">
                     <span className="text-sm font-bold">+</span>
                   </button>
                 </div>
@@ -260,7 +263,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                       <span className="text-sm font-bold">−</span>
                     </button>
                     <input type="number" min={1} value={stock ?? ''} onChange={(e) => { const v = e.target.value; setStock(v ? Math.max(1, Number(v) || 1) : undefined) }} placeholder="∞" className="input input-stock-infinite w-full flex-1 min-w-0 h-9 py-0 text-center text-sm font-bold" />
-                    <button type="button" onClick={() => setStock((p) => (p == null ? 1 : p + 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-gray-500/30 to-gray-600/15 text-gray-300 ring-1 ring-inset ring-gray-500/30 shadow-sm shadow-gray-600/10 hover:from-gray-500/40 hover:to-gray-600/25 hover:scale-105 active:scale-95">
+                    <button type="button" onClick={() => setStock((p) => (p == null ? 1 : p + 1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all bg-gradient-to-b from-indigo-500/35 to-indigo-600/20 text-indigo-400 ring-1 ring-inset ring-indigo-500/35 shadow-sm shadow-indigo-600/10 hover:from-indigo-500/50 hover:to-indigo-600/35 hover:text-indigo-300 hover:scale-105 active:scale-95">
                       <span className="text-sm font-bold">+</span>
                     </button>
                   </div>
@@ -327,7 +330,7 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
       </form>
 
       {/* Modals (portaled to body to escape glass-card containing block) */}
-      {showAdvancedSettings && createPortal(
+      {showAdvancedSettings && !showLootboxModal && !showDiscountModal && createPortal(
         <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setShowAdvancedSettings(false)}>
           <div className="modal-content max-w-lg">
             <div className="flex items-center justify-between mb-4">
@@ -362,6 +365,38 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                 </div>
                 {streakMultiplierEnabled && (
                   <div className="mt-4 pt-4 border-t border-[var(--border)] space-y-4">
+                    {/* Mode selector */}
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Режим</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setStreakMultiplierMode('streak')}
+                          className={cn(
+                            'flex flex-col items-center gap-1 rounded-xl border py-2.5 px-2 text-center transition-all',
+                            streakMultiplierMode === 'streak'
+                              ? 'border-[var(--accent)] bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]/30'
+                              : 'border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
+                          )}
+                        >
+                          <span className={cn('text-sm font-bold', streakMultiplierMode === 'streak' ? 'text-[var(--accent)]' : 'text-[var(--fg)]')}>За стрик</span>
+                          <span className="text-[10px] text-[var(--fg-muted)]">Классический режим</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setStreakMultiplierMode('instant')}
+                          className={cn(
+                            'flex flex-col items-center gap-1 rounded-xl border py-2.5 px-2 text-center transition-all',
+                            streakMultiplierMode === 'instant'
+                              ? 'border-[var(--accent)] bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]/30'
+                              : 'border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-elevated)]'
+                          )}
+                        >
+                          <span className={cn('text-sm font-bold', streakMultiplierMode === 'instant' ? 'text-[var(--accent)]' : 'text-[var(--fg)]')}>Для инстант</span>
+                          <span className="text-[10px] text-[var(--fg-muted)]">Ограничен N выполнениями</span>
+                        </button>
+                      </div>
+                    </div>
                     <div>
                       <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Множитель</label>
                       <div className="grid grid-cols-3 gap-2">
@@ -384,9 +419,15 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Срабатывает каждые</label>
+                      <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">
+                        {streakMultiplierMode === 'streak' ? 'Срабатывает каждые' : 'Действует на'}
+                      </label>
                       <div className="grid grid-cols-3 gap-2">
-                        {([{ value: 3, label: '3', desc: 'выполнения' }, { value: 5, label: '5', desc: 'выполнений' }, { value: 7, label: '7', desc: 'выполнений' }] as const).map((opt) => (
+                        {([
+                          { value: 3, label: '3', desc: streakMultiplierMode === 'streak' ? 'выполнения' : 'выполнения' },
+                          { value: 5, label: '5', desc: 'выполнений' },
+                          { value: 7, label: '7', desc: 'выполнений' },
+                        ] as const).map((opt) => (
                           <button
                             key={opt.value}
                             type="button"
@@ -404,6 +445,11 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                         ))}
                       </div>
                     </div>
+                    {streakMultiplierMode === 'instant' && (
+                      <p className="text-xs text-[var(--fg-muted)] bg-[var(--surface-elevated)] rounded-lg p-2.5">
+                        Множитель будет действовать на следующие {streakMultiplierInterval} выполнений мгновенной задачи. Инстант задачу нельзя пропустить, поэтому множитель не теряется.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -675,6 +721,15 @@ export default function ShopItemForm({ defaultGroupId, onCreated, onClose }: Sho
                 )}
               </div>
             </div>
+            {(isLootBox || streakMultiplierEnabled || isDiscountVoucher || isVideoGame || isTvSerial) && (
+              <button
+                type="button"
+                onClick={() => setShowAdvancedSettings(false)}
+                className="mt-4 w-full rounded-xl bg-[var(--accent)] py-3 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+              >
+                Готово
+              </button>
+            )}
           </div>
         </div>,
         document.body

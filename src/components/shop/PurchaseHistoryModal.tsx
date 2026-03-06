@@ -1,11 +1,25 @@
 import { useMemo } from 'react'
-import { X } from 'lucide-react'
+import { X, Gift, TrendingUp, Percent, Gamepad2, Clapperboard } from 'lucide-react'
+import { cn } from '../../lib/cn'
 import { useRpgStore } from '../../store/useRpgStore'
-import { getItemIcon } from './shopUtils'
-import { HabitIcon } from '../HabitIcon'
+import { getItemTypeBadge } from './shopUtils'
+import { ItemIconBadge } from '../ItemIconBadge'
 
 interface PurchaseHistoryModalProps {
   onClose: () => void
+}
+
+
+function formatDateKey(timestamp: number): string {
+  const d = new Date(timestamp)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today.getTime() - 86_400_000)
+  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+
+  if (target.getTime() === today.getTime()) return 'Сегодня'
+  if (target.getTime() === yesterday.getTime()) return 'Вчера'
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 export default function PurchaseHistoryModal({ onClose }: PurchaseHistoryModalProps) {
@@ -24,12 +38,16 @@ export default function PurchaseHistoryModal({ onClose }: PurchaseHistoryModalPr
     [purchaseHistory, activeProfileId]
   )
 
-  const getItemDisplay = (itemId: string) => {
-    const it = shopItems.find((i) => i.id === itemId)
-    if (!it) return { type: 'icon' as const, value: 'Sword' }
-    if (it.iconImage) return { type: 'image' as const, value: it.iconImage }
-    return { type: 'icon' as const, value: getItemIcon(it) }
-  }
+  const grouped = useMemo(() => {
+    const map = new Map<string, typeof entries>()
+    for (const e of entries) {
+      const key = formatDateKey(e.timestamp)
+      const arr = map.get(key)
+      if (arr) arr.push(e)
+      else map.set(key, [e])
+    }
+    return [...map.entries()]
+  }, [entries])
 
   return (
     <div
@@ -49,37 +67,76 @@ export default function PurchaseHistoryModal({ onClose }: PurchaseHistoryModalPr
               Покупок пока нет. Совершённые покупки появятся здесь.
             </div>
           ) : (
-            <ul className="space-y-2">
-              {entries.map((e, idx) => {
-                const display = getItemDisplay(e.itemId)
-                return (
-                  <li
-                    key={`${e.timestamp}-${e.itemId}-${idx}`}
-                    className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5"
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-elevated)] overflow-hidden text-[var(--fg-muted)]">
-                      {display.type === 'image' ? (
-                        <img src={display.value} alt="" className="h-6 w-6 rounded object-cover" />
-                      ) : (
-                        <HabitIcon iconName={display.value} size={18} />
-                      )}
-                    </span>
-                    <span className="flex-1 min-w-0 text-sm font-medium text-[var(--fg)] truncate">
-                      {e.itemName}
-                    </span>
-                    <span className="text-xs text-[var(--fg-muted)] shrink-0">
-                      {new Date(e.timestamp).toLocaleString('ru-RU', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
+            <div className="space-y-5">
+              {grouped.map(([dateLabel, items]) => (
+                <div key={dateLabel}>
+                  <p className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-2 px-1">
+                    {dateLabel}
+                  </p>
+                  <ul className="space-y-1.5">
+                    {items.map((e, idx) => {
+                      const it = shopItems.find((i) => i.id === e.itemId)
+                      const typeBadge = it ? getItemTypeBadge(it) : null
+
+                      return (
+                        <li
+                          key={`${e.timestamp}-${e.itemId}-${idx}`}
+                          className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5"
+                        >
+                          <div className="relative shrink-0">
+                            {it ? (
+                              <ItemIconBadge item={it} size="sm" className="h-9 w-9" />
+                            ) : (
+                              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--surface-elevated)]" />
+                            )}
+                            {typeBadge && (
+                              <div
+                                className={cn(
+                                  'absolute -top-1 -right-1 z-20 flex h-4.5 w-4.5 items-center justify-center rounded-md',
+                                  'shadow-sm ring-1.5 ring-[var(--surface)]',
+                                  typeBadge.type === 'lootbox' && 'bg-gradient-to-br from-violet-400 to-violet-600',
+                                  typeBadge.type === 'multiplier' && 'bg-gradient-to-br from-amber-400 to-orange-500',
+                                  typeBadge.type === 'discount' && 'bg-gradient-to-br from-red-400 to-rose-600',
+                                  typeBadge.type === 'videogame' && 'bg-gradient-to-br from-cyan-400 to-cyan-600',
+                                  typeBadge.type === 'serial' && 'bg-gradient-to-br from-pink-400 to-rose-600',
+                                )}
+                              >
+                                {typeBadge.type === 'lootbox' && <Gift className="h-2.5 w-2.5 text-white" />}
+                                {typeBadge.type === 'multiplier' && <TrendingUp className="h-2.5 w-2.5 text-white" />}
+                                {typeBadge.type === 'discount' && <Percent className="h-2.5 w-2.5 text-white" />}
+                                {typeBadge.type === 'videogame' && <Gamepad2 className="h-2.5 w-2.5 text-white" />}
+                                {typeBadge.type === 'serial' && <Clapperboard className="h-2.5 w-2.5 text-white" />}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium text-[var(--fg)] truncate block">
+                              {e.itemName}
+                            </span>
+                            {e.seasonNumber != null && e.episodeNumber != null && (
+                              <span className="text-[10px] text-pink-500 font-medium">
+                                Сезон {e.seasonNumber}, Серия {e.episodeNumber}
+                              </span>
+                            )}
+                            {e.packageName && (
+                              <span className="text-[10px] text-cyan-500 font-medium">
+                                Пакет: {e.packageName}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-[var(--fg-muted)] shrink-0">
+                            {new Date(e.timestamp).toLocaleTimeString('ru-RU', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>

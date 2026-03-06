@@ -1,7 +1,9 @@
-import { CheckSquare, Hash, ListChecks, Clock, Repeat, Flag, Archive, CalendarClock, Timer, Award, XCircle, AlertTriangle } from 'lucide-react'
+import { memo } from 'react'
+import { CheckSquare, Hash, ListChecks, Repeat, Flag, Archive, CalendarClock, Timer, Award, XCircle, AlertTriangle, TrendingUp } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRpg } from '../types/domain'
 import RewardBadge from './RewardBadge'
+import { HabitIcon } from './HabitIcon'
 import { getNextAvailableDate, getRelativeTimeRu } from '../lib/taskCycleUtils'
 
 // Glow keyframes moved to index.css (global, not per-card)
@@ -12,37 +14,28 @@ const KIND_ICON = {
   nested: ListChecks,
 } as const
 
-const DIFFICULTY_COLORS = {
-  easy: { bg: 'bg-emerald-500/10', text: 'text-emerald-500', border: 'border-emerald-500/20', xp: 'text-emerald-500' },
-  medium: { bg: 'bg-blue-500/10', text: 'text-blue-500', border: 'border-blue-500/20', xp: 'text-blue-500' },
-  hard: { bg: 'bg-orange-500/10', text: 'text-orange-500', border: 'border-orange-500/20', xp: 'text-orange-500' },
-  veryHard: { bg: 'bg-red-500/10', text: 'text-red-500', border: 'border-red-500/20', xp: 'text-red-500' },
+
+export interface TaskCardFragment {
+  id: string
+  fragmentName: string
+  fragmentIcon: string
+  fragmentIconImage?: string
+  fragmentColor: string
+  dropChance: number
+  sourceType: 'random_drop' | 'task_linked'
 }
-
-const DIFFICULTY_LABELS = {
-  easy: 'Лёгкая',
-  medium: 'Средняя',
-  hard: 'Сложная',
-  veryHard: 'Сложная+',
-}
-
-
-const PRIORITY_LABELS = {
-  none: '',
-  low: 'Низкий',
-  medium: 'Средний',
-  high: 'Высокий',
-} as const
 
 interface TaskCardProps {
   task: TaskRpg
   selected?: boolean
   onSelect: () => void
   /** Предвычисленные награды (для оптимизации) */
-  rewards?: { xp: number; coins: number; gems: number }
+  rewards?: { xp: number; coins: number; gems: number; multiplierActive?: boolean }
+  /** Фрагменты, которые могут выпасть из этой задачи */
+  fragments?: TaskCardFragment[]
 }
 
-export default function TaskCard({ task, selected, onSelect, rewards }: TaskCardProps) {
+export default memo(function TaskCard({ task, selected, onSelect, rewards, fragments }: TaskCardProps) {
   const Icon = KIND_ICON[task.kind]
   const priority = task.priority ?? 'none'
 
@@ -73,10 +66,10 @@ export default function TaskCard({ task, selected, onSelect, rewards }: TaskCard
         {/* Icon */}
         <div
           className={cn(
-            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all',
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all overflow-hidden',
             task.isCompleted
               ? 'bg-gradient-to-b from-emerald-400/20 to-emerald-600/10 text-emerald-500 ring-1 ring-inset ring-emerald-400/25 shadow-sm shadow-emerald-500/15'
-              : 'bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10 group-hover:from-[var(--accent)] group-hover:to-[var(--accent)] group-hover:text-white group-hover:ring-[var(--accent)]/40 group-hover:shadow-md group-hover:shadow-[var(--accent)]/25'
+              : 'bg-gradient-to-b from-[var(--accent)]/15 to-[var(--accent)]/5 text-[var(--accent)] ring-1 ring-inset ring-[var(--accent)]/20 shadow-sm shadow-[var(--accent)]/10 group-hover:from-[var(--accent)] group-hover:to-[var(--accent)] group-hover:text-white group-hover:ring-transparent group-hover:shadow-none'
           )}
         >
           <Icon className="h-5 w-5" />
@@ -160,11 +153,28 @@ export default function TaskCard({ task, selected, onSelect, rewards }: TaskCard
               />
             )}
 
+            {/* Fragment drop indicator (task_linked only) */}
+            {fragments && fragments.some(f => f.sourceType === 'task_linked') && (
+              <span
+                className="inline-flex items-center justify-center rounded-xl p-1.5 shadow-sm ring-1 ring-inset ring-purple-400/25 bg-gradient-to-b from-purple-500/20 to-purple-500/10 text-purple-500"
+              >
+                <HabitIcon iconName="Puzzle" size={14} />
+              </span>
+            )}
+
             {/* Recurrence */}
             {task.recurrence !== 'once' && (
               <span className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-b from-blue-500/20 to-blue-500/10 px-2.5 py-1 text-xs font-semibold text-blue-500 ring-1 ring-inset ring-blue-400/25 shadow-sm shadow-blue-500/10">
                 <Repeat className="h-3.5 w-3.5" />
                 {task.recurrence === 'daily' ? 'Ежедневно' : task.recurrence === 'weekly' ? 'Еженедельно' : task.recurrence === 'monthly' ? 'Ежемесячно' : task.recurrence === 'yearly' ? 'Ежегодно' : task.recurrence === 'instant' ? 'Инстант' : 'Повтор'}
+              </span>
+            )}
+
+            {/* Streak multiplier badge */}
+            {task.streakMultiplier && (
+              <span className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-b from-amber-500/20 to-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-500 ring-1 ring-inset ring-amber-400/25 shadow-sm shadow-amber-500/10">
+                <TrendingUp className="h-3.5 w-3.5" />
+                x{task.streakMultiplier.value}
               </span>
             )}
 
@@ -246,4 +256,4 @@ export default function TaskCard({ task, selected, onSelect, rewards }: TaskCard
       </div>
     </button>
   )
-}
+})
