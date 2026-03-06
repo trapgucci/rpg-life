@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Notification, dialog, safeStorage, Tray, Menu } = require('electron')
+const { app, BrowserWindow, ipcMain, Notification, dialog, safeStorage, Tray, Menu, nativeImage } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const os = require('os')
@@ -17,7 +17,9 @@ function createTray() {
   const iconPath = isDev
     ? path.join(__dirname, '../build/icon.png')
     : path.join(process.resourcesPath, 'icon.png')
-  tray = new Tray(iconPath)
+  const trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 })
+  if (process.platform === 'darwin') trayIcon.setTemplateImage(true)
+  tray = new Tray(trayIcon)
   tray.setToolTip('RPG Life')
 
   const contextMenu = Menu.buildFromTemplate([

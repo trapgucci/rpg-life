@@ -3,13 +3,13 @@ import {
   X, Trash2, Zap, Folder, Clock,
   Gift, TrendingUp, Percent, Gamepad2, Clapperboard,
 } from 'lucide-react'
-import { HabitIcon } from './HabitIcon'
 import { useRpgStore } from '../store/useRpgStore'
 import type { ShopItem } from '../types/domain'
 import {
-  getItemIcon, getItemTypeBadge,
+  getItemTypeBadge, getItemTypeColor,
   RARITY_LABELS, RARITY_BADGE_CLASSES, RARITY_COLORS,
 } from './shop/shopUtils'
+import { ItemIconBadge } from './ItemIconBadge'
 
 interface InventoryDetailPanelProps {
   item: ShopItem
@@ -25,7 +25,8 @@ export default function InventoryDetailPanel({
 }: InventoryDetailPanelProps) {
   const allItemGroups = useRpgStore((s) => s.itemGroups)
   const group = item.groupId ? allItemGroups.find((g) => g.id === item.groupId) : null
-  const iconBgColor = group?.color ?? RARITY_COLORS[item.rarity]
+  const typeColor = getItemTypeColor(item)
+  const iconBgColor = (typeColor !== '#9ca3af' ? typeColor : null) ?? group?.color ?? RARITY_COLORS[item.rarity]
   const typeBadge = getItemTypeBadge(item)
 
   const isUsable = item.isDiscountVoucher || item.streakMultiplierEnabled
@@ -58,25 +59,7 @@ export default function InventoryDetailPanel({
         <div className="flex items-start justify-between gap-4 mb-6">
           <div className="flex items-center gap-3 min-w-0">
             {/* Icon */}
-            <div
-              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl overflow-hidden ring-2 ring-inset shadow-md"
-              style={{
-                background: `linear-gradient(135deg, ${iconBgColor}40, ${iconBgColor}20)`,
-                boxShadow: `0 4px 12px ${iconBgColor}30`,
-                '--tw-ring-color': `${iconBgColor}35`,
-              } as React.CSSProperties}
-            >
-              {!item.iconImage && (
-                <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-transparent opacity-60" />
-              )}
-              {item.iconImage ? (
-                <img src={item.iconImage} alt="" className="h-full w-full object-cover" style={{ imageRendering: 'auto' }} />
-              ) : (
-                <span className="relative z-10 drop-shadow-sm">
-                  <HabitIcon iconName={getItemIcon(item)} size={28} />
-                </span>
-              )}
-            </div>
+            <ItemIconBadge item={item} size="lg" groupColor={group?.color} />
             <div className="min-w-0">
               <h2 className="text-xl font-bold text-[var(--fg)] break-words">{item.name}</h2>
             </div>

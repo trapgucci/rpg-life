@@ -123,7 +123,7 @@ const ModalContent = memo(function ModalContent({
         {/* ── Header ────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-4 mb-5">
           {/* Icon — enamel pin */}
-          <ItemIconBadge item={item} size="lg" className="h-16 w-16" />
+          <ItemIconBadge item={item} size="lg" groupColor={group?.color} className="h-16 w-16" />
 
           {/* Title */}
           <div className="flex-1 min-w-0 flex items-center">

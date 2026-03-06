@@ -91,7 +91,8 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
     : []
 
   const group = item.groupId ? allItemGroups.find((g) => g.id === item.groupId) : null
-  const iconBgColor = group?.color ?? '#9ca3af'
+  const typeColor = getItemTypeColor(item)
+  const iconBgColor = (typeColor !== '#9ca3af' ? typeColor : null) ?? group?.color ?? typeColor
 
   // ── Cost calculations ────────────────────────────────────────────────────
   const coinCostRaw = item.cost?.[CURRENCY_IDS.COINS] ?? 0
@@ -1006,7 +1007,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
               <div className="flex-1 min-w-0 overflow-hidden">
                 {/* Icon + name */}
                 <div className="flex items-center gap-3 mb-3">
-                  <ItemIconBadge item={item} size="md" />
+                  <ItemIconBadge item={item} size="md" groupColor={group?.color} />
                   <h2 className="text-base md:text-xl font-bold text-[var(--fg)] break-words min-w-0">
                     {item.name}
                   </h2>
