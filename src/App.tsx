@@ -69,7 +69,9 @@ function App() {
     const b = parseInt(accentHex.slice(5, 7), 16)
     root.style.setProperty('--accent-subtle', `rgba(${r},${g},${b},${isDark ? 0.15 : 0.1})`)
     root.style.setProperty('--accent-glow', `rgba(${r},${g},${b},${isDark ? 0.3 : 0.4})`)
-  }, [settings.theme, settings.accentColor])
+
+    root.classList.toggle('hide-scrollbars', !(settings.showScrollbars ?? true))
+  }, [settings.theme, settings.accentColor, settings.showScrollbars])
 
   // Show nothing while checking license
   if (checkingLicense) return null

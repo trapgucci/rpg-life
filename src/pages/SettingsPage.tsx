@@ -570,19 +570,12 @@ function AppearanceSection() {
         </div>
       </div>
 
-      {/* Compact mode & Animations */}
+      {/* Scrollbars */}
       <div className="flex flex-col gap-3">
-        <NeuSettingRow label="Компактный режим" desc="Уменьшенные отступы и элементы">
+        <NeuSettingRow label="Полосы прокрутки" desc="Отображать скроллбары в интерфейсе">
           <NeuToggle
-            checked={settings.compactMode ?? false}
-            onChange={(v) => updateSettings({ compactMode: v })}
-          />
-        </NeuSettingRow>
-
-        <NeuSettingRow label="Анимации" desc="Эффекты и переходы">
-          <NeuToggle
-            checked={settings.animationsEnabled ?? true}
-            onChange={(v) => updateSettings({ animationsEnabled: v })}
+            checked={settings.showScrollbars ?? true}
+            onChange={(v) => updateSettings({ showScrollbars: v })}
           />
         </NeuSettingRow>
       </div>

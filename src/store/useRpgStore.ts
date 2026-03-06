@@ -172,6 +172,19 @@ function deductXpFromAttribute(
   })
 }
 
+/** Add XP to the profile-level bar (profile.xp / profile.level), handling level-ups */
+function addXpToProfile(profile: Profile, xpGain: number): Pick<Profile, 'xp' | 'level'> {
+  let { level, xp } = profile
+  xp += xpGain
+  let required = xpRequiredForNextLevel(profile, level)
+  while (required > 0 && xp >= required) {
+    xp -= required
+    level += 1
+    required = xpRequiredForNextLevel({ ...profile, level }, level)
+  }
+  return { xp, level }
+}
+
 // ─── Store State Interface ──────────────────────────────────────────────────
 
 interface RpgStoreState {
@@ -1004,11 +1017,8 @@ export const useRpgStore = create<RpgStoreState>()(
 
         getTaskRewardPreview: (task) => {
           const { settings } = get()
-          // Если атрибуты не выбраны, XP = 0
-          const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
-          const baseXp = attrIds.length > 0
-            ? (task.customXp ?? settings.taskDifficultyXp?.[task.difficulty] ?? TASK_XP_BY_DIFFICULTY[task.difficulty])
-            : 0
+          // XP всегда начисляется в профиль (и в атрибуты если выбраны)
+          const baseXp = task.customXp ?? settings.taskDifficultyXp?.[task.difficulty] ?? TASK_XP_BY_DIFFICULTY[task.difficulty]
           const baseCoins = task.coinReward
           const baseGems = task.gemReward ?? 0
 
@@ -1097,21 +1107,22 @@ export const useRpgStore = create<RpgStoreState>()(
             }
           }
 
-          // XP начисляется только если есть атрибуты
-          const baseXp = attrIds.length > 0
-            ? (task.customXp ?? settings.taskDifficultyXp?.[task.difficulty] ?? TASK_XP_BY_DIFFICULTY[task.difficulty])
-            : 0
+          // XP всегда начисляется в профиль; в атрибуты — только если они выбраны
+          const baseXp = task.customXp ?? settings.taskDifficultyXp?.[task.difficulty] ?? TASK_XP_BY_DIFFICULTY[task.difficulty]
           const xpGain = Math.round(baseXp * multiplierFactor)
           const coinGain = Math.round(task.coinReward * multiplierFactor)
           const gemGain = Math.round((task.gemReward ?? 0) * multiplierFactor)
 
-          if (attrIds.length > 0 && xpGain > 0) {
+          {
             let currentAttrs = profile.attributes
-            for (const attrId of attrIds) {
-              const tempProfile = { ...profile, attributes: currentAttrs }
-              currentAttrs = addXpToAttribute(tempProfile, attrId, xpGain)
+            if (attrIds.length > 0 && xpGain > 0) {
+              for (const attrId of attrIds) {
+                const tempProfile = { ...profile, attributes: currentAttrs }
+                currentAttrs = addXpToAttribute(tempProfile, attrId, xpGain)
+              }
             }
-            updateProfile(profile.id, (p) => ({ ...p, attributes: currentAttrs }))
+            const profileXp = xpGain > 0 ? addXpToProfile(profile, xpGain) : {}
+            updateProfile(profile.id, (p) => ({ ...p, attributes: currentAttrs, ...profileXp }))
           }
 
           // Add coins
@@ -1717,13 +1728,16 @@ export const useRpgStore = create<RpgStoreState>()(
               // Award per-subtask rewards when toggling ON
               if (coinRwd > 0) get().addCurrency(CURRENCY_IDS.COINS, coinRwd)
               if (gemRwd > 0) get().addCurrency(CURRENCY_IDS.GEMS, gemRwd)
-              if (xpRwd > 0 && attrIds.length > 0) {
+              if (xpRwd > 0) {
                 let currentAttrs = profile.attributes
-                for (const attrId of attrIds) {
-                  const tempProfile = { ...profile, attributes: currentAttrs }
-                  currentAttrs = addXpToAttribute(tempProfile, attrId, xpRwd)
+                if (attrIds.length > 0) {
+                  for (const attrId of attrIds) {
+                    const tempProfile = { ...profile, attributes: currentAttrs }
+                    currentAttrs = addXpToAttribute(tempProfile, attrId, xpRwd)
+                  }
                 }
-                updateProfile(profile.id, (p) => ({ ...p, attributes: currentAttrs }))
+                const profileXp = addXpToProfile(profile, xpRwd)
+                updateProfile(profile.id, (p) => ({ ...p, attributes: currentAttrs, ...profileXp }))
               }
             } else {
               // Revoke per-subtask rewards when toggling OFF
@@ -1991,14 +2005,17 @@ export const useRpgStore = create<RpgStoreState>()(
           if (ach.rewardCoins > 0) addCurrency(CURRENCY_IDS.COINS, ach.rewardCoins)
           if (ach.rewardGems > 0) addCurrency(CURRENCY_IDS.GEMS, ach.rewardGems)
 
-          // Give XP to attribute
-          if (ach.rewardAttributeId && ach.rewardXp > 0) {
+          // Give XP to attribute + profile
+          if (ach.rewardXp > 0) {
             const profile = get().getActiveProfile()
             if (profile) {
-              const nextAttrs = addXpToAttribute(profile, ach.rewardAttributeId, ach.rewardXp)
+              const nextAttrs = ach.rewardAttributeId
+                ? addXpToAttribute(profile, ach.rewardAttributeId, ach.rewardXp)
+                : profile.attributes
+              const profileXp = addXpToProfile(profile, ach.rewardXp)
               set((s) => ({
                 profiles: s.profiles.map((p) =>
-                  p.id === profile.id ? { ...p, attributes: nextAttrs } : p
+                  p.id === profile.id ? { ...p, attributes: nextAttrs, ...profileXp } : p
                 ),
               }))
             }

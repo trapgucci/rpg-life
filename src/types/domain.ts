@@ -908,10 +908,8 @@ export interface AppSettings {
   accentColor: AccentColor
   /** Аватар персонажа (эмодзи) */
   avatar: string
-  /** Компактный режим интерфейса */
-  compactMode: boolean
-  /** Анимации вкл/выкл */
-  animationsEnabled: boolean
+  /** Показывать полосы прокрутки */
+  showScrollbars: boolean
   notificationsEnabled: boolean
   notifyDailyTasks: boolean
   notifyAchievements: boolean
@@ -946,8 +944,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'light',
   accentColor: 'blue',
   avatar: '🧙',
-  compactMode: false,
-  animationsEnabled: true,
+  showScrollbars: true,
   notificationsEnabled: true,
   notifyDailyTasks: true,
   notifyAchievements: true,

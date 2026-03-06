@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useRpgStore } from '../store/useRpgStore'
-import { xpForLevelStandard } from '../types/domain'
+import { xpForLevelStandard, xpForLevelFast, xpForLevelCustom } from '../types/domain'
+import type { Profile } from '../types/domain'
 import {
   CheckCircle2, Coins, Hammer,
   Gem, Sparkles, TrendingUp, ShieldCheck
@@ -32,6 +33,23 @@ function getTitleColor(level: number): string {
     if (level >= RANKS[i].minLevel) return RANKS[i].color
   }
   return RANKS[0].color
+}
+
+function getProfileXpForNext(profile: Profile): number {
+  const l = profile.level
+  if (profile.levelingMode === 'fast') return xpForLevelFast(l + 1) - xpForLevelFast(l)
+  if (profile.levelingMode === 'custom') {
+    const segs = profile.levelCurve
+    return xpForLevelCustom(l + 1, segs) - xpForLevelCustom(l, segs)
+  }
+  return xpForLevelStandard(l + 1) - xpForLevelStandard(l)
+}
+
+function getProfileTotalXp(profile: Profile): number {
+  const l = profile.level
+  if (profile.levelingMode === 'fast') return xpForLevelFast(l) + profile.xp
+  if (profile.levelingMode === 'custom') return xpForLevelCustom(l, profile.levelCurve) + profile.xp
+  return xpForLevelStandard(l) + profile.xp
 }
 
 // ─── Ranks Modal ───────────────────────────────────────────────────────────
@@ -464,14 +482,14 @@ export default function StatusPage() {
     )
   }
 
-  const xpForNext = xpForLevelStandard(profile.level + 1) - xpForLevelStandard(profile.level)
+  const xpForNext = getProfileXpForNext(profile)
   const profileProgress = xpForNext > 0 ? Math.min((profile.xp / xpForNext) * 100, 100) : 0
   const title = getTitleByLevel(profile.level)
   const titleColor = getTitleColor(profile.level)
 
   const totalXpEarned = useMemo(() => {
-    return xpForLevelStandard(profile.level) + profile.xp
-  }, [profile.level, profile.xp])
+    return getProfileTotalXp(profile)
+  }, [profile.level, profile.xp, profile.levelingMode, profile.levelCurve])
 
   const radarData = attributes.map((attr) => ({
     label: attr.name,
