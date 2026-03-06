@@ -11,6 +11,7 @@ declare global {
         silent?: boolean
       }) => Promise<boolean>
       getAppVersion: () => Promise<string>
+      updateTitleBar: (color: string, symbolColor: string) => Promise<void>
     }
   }
 }

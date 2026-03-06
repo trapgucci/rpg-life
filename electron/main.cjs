@@ -16,7 +16,7 @@ function createWindow() {
     minHeight: 600,
     titleBarStyle: 'hidden',
     titleBarOverlay: {
-      color: '#202020',
+      color: '#0f172a',
       symbolColor: '#e8e8e8',
       height: 32,
     },
@@ -72,6 +72,13 @@ ipcMain.handle('show-notification', async (_, { title, body, icon, silent }) => 
 // Get app version
 ipcMain.handle('get-app-version', () => {
   return app.getVersion()
+})
+
+// Update title bar overlay colors (Windows)
+ipcMain.handle('titlebar:update', (_, { color, symbolColor }) => {
+  if (mainWindow && process.platform === 'win32') {
+    mainWindow.setTitleBarOverlay({ color, symbolColor, height: 32 })
+  }
 })
 
 // ─── License System ─────────────────────────────────────────────────────────

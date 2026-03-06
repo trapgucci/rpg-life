@@ -10,6 +10,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // App info
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+
+  // Title bar
+  updateTitleBar: (color, symbolColor) => ipcRenderer.invoke('titlebar:update', { color, symbolColor }),
 })
 
 // License API
