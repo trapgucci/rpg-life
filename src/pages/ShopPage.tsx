@@ -389,13 +389,13 @@ export default function ShopPage() {
   // ═══════════════════════════════════════════════════════════════════════════
 
   return (
-    <div className="flex h-full min-h-0 gap-4">
+    <div className="flex h-full min-h-0 gap-2 md:gap-4 overflow-hidden">
       {/* ─── LEFT PANEL ─────────────────────────────────────────────────── */}
-      <div className="flex w-full md:basis-[42%] md:max-w-[560px] md:min-w-[420px] md:shrink-0 flex-col gap-4">
+      <div className="flex w-full md:basis-[42%] md:max-w-[560px] md:min-w-[320px] md:shrink-0 flex-col gap-2 md:gap-4">
         {/* Header */}
         <div className="glass-card rounded-2xl p-3 md:p-4">
           {/* Title row */}
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 md:gap-3 min-w-0">
               <div className="flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/30">
                 <ShoppingBag className="h-4.5 w-4.5 md:h-5 md:w-5 text-white" />
@@ -410,7 +410,7 @@ export default function ShopPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
               {/* Cart */}
               {tab === 'shop' && (
                 <button
@@ -970,7 +970,7 @@ export default function ShopPage() {
       </div>
 
       {/* ─── RIGHT PANEL (desktop) ──────────────────────────────────────── */}
-      <div className="hidden md:block min-w-0 flex-1">
+      <div className="hidden md:block flex-1 min-w-[240px]">
         {/* Shop item form */}
         {tab === 'shop' && showItemForm ? (
           <ShopItemForm

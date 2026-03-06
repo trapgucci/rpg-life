@@ -260,14 +260,14 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
         style={{ background: `linear-gradient(90deg, ${themeColor}, ${themeColor}40)` }}
       />
 
-      <div className="flex-1 min-h-0 overflow-y-auto p-6">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6">
 
         {/* ═══ VIEW MODE ═══ */}
         {!isEditing && (
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-4 md:gap-5">
 
             {/* Header */}
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-3 md:gap-4">
               <div className="flex-1 min-w-0">
                 {/* Large fragment icon + name */}
                 <div className="flex items-center gap-3 mb-3">
@@ -311,7 +311,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                       )}
                     </div>
                   </div>
-                  <h2 className="text-xl font-bold text-[var(--fg)] break-words min-w-0">
+                  <h2 className="text-base md:text-xl font-bold text-[var(--fg)] break-words min-w-0">
                     {recipe.fragmentName}
                   </h2>
                 </div>

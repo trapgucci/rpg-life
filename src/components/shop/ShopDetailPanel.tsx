@@ -339,10 +339,10 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
         style={{ background: `linear-gradient(90deg, ${typeBadge ? ({ lootbox: '#8b5cf6', multiplier: '#f59e0b', discount: '#ef4444', videogame: '#06b6d4', serial: '#ec4899' })[typeBadge.type] : '#9ca3af'}, ${typeBadge ? ({ lootbox: '#8b5cf640', multiplier: '#f59e0b40', discount: '#ef444440', videogame: '#06b6d440', serial: '#ec489940' })[typeBadge.type] : '#9ca3af40'})` }}
       />
 
-      <div className="flex-1 min-h-0 overflow-y-auto p-6">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6">
 
         {/* ── HEADER ─────────────────────────────────────────────────────── */}
-        <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex items-start justify-between gap-3 md:gap-4 mb-4 md:mb-6">
           {isEditing ? (
             /* ── EDIT MODE (Glassmorphic Neumorphism) ─────────────────── */
             <div className="flex-1 flex flex-col gap-5">
@@ -1007,7 +1007,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                 {/* Icon + name */}
                 <div className="flex items-center gap-3 mb-3">
                   <ItemIconBadge item={item} size="md" />
-                  <h2 className="text-xl font-bold text-[var(--fg)] break-words min-w-0">
+                  <h2 className="text-base md:text-xl font-bold text-[var(--fg)] break-words min-w-0">
                     {item.name}
                   </h2>
                 </div>

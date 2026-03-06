@@ -414,11 +414,11 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 gap-4">
-      <div className="flex w-full md:basis-[42%] md:max-w-[560px] md:min-w-[420px] md:shrink-0 flex-col gap-4">
+    <div className="flex h-full min-h-0 gap-2 md:gap-4 overflow-hidden">
+      <div className="flex w-full md:basis-[42%] md:max-w-[560px] md:min-w-[320px] md:shrink-0 flex-col gap-2 md:gap-4">
         {/* Header */}
         <div className="glass-card rounded-2xl p-3 md:p-4">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 md:gap-3 min-w-0">
               <div className="flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30">
                 <Target className="h-4.5 w-4.5 md:h-5 md:w-5 text-white" />
@@ -433,7 +433,7 @@ export default function TasksPage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
               {/* Sort button */}
               <div className="relative" ref={sortMenuRef}>
                 <button
@@ -875,7 +875,7 @@ export default function TasksPage() {
       </div>
 
       {/* Desktop right panel */}
-      <div className="hidden md:block min-w-0 flex-1">
+      <div className="hidden md:block flex-1 min-w-[240px]">
         {showForm ? (
           <div className="glass-card relative flex h-full flex-col rounded-2xl overflow-hidden">
             {/* Accent strip */}

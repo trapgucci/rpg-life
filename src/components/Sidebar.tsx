@@ -12,7 +12,7 @@ import {
   Gamepad2,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const navItems = [
   { to: '/', label: 'Задачи', icon: CheckSquare, color: '#6366f1' },
@@ -28,7 +28,18 @@ const bottomItems = [
 ] as const
 
 export default function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false)
+  const [userCollapsed, setUserCollapsed] = useState(false)
+  const [isSmallDesktop, setIsSmallDesktop] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)')
+    const onChange = (e: MediaQueryListEvent | MediaQueryList) => setIsSmallDesktop(e.matches)
+    onChange(mq)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  const collapsed = isSmallDesktop || userCollapsed
 
   return (
     <aside
@@ -123,10 +134,11 @@ export default function Sidebar() {
           </NavLink>
         ))}
 
-        {/* Collapse button */}
+        {/* Collapse button — hidden when auto-collapsed on small screens */}
+        {!isSmallDesktop && (
         <button
           type="button"
-          onClick={() => setCollapsed((c) => !c)}
+          onClick={() => setUserCollapsed((c) => !c)}
           className={cn(
             'mt-2 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm transition-all duration-200',
             'text-[var(--fg-muted)] hover:bg-[var(--surface)] hover:text-[var(--fg)]',
@@ -143,6 +155,7 @@ export default function Sidebar() {
             </>
           )}
         </button>
+        )}
       </div>
     </aside>
   )
