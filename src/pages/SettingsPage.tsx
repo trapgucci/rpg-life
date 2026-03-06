@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Settings, User, Palette, Bell, Database, Gamepad2, MessageCircle,
@@ -786,18 +786,22 @@ function DataSection() {
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [showResetFinalConfirm, setShowResetFinalConfirm] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const SEED_BACKUP_KEY = 'rpg-life-pre-seed-backup'
-  const [preSeedBackup, setPreSeedBackup] = useState<string | null>(
-    () => localStorage.getItem(SEED_BACKUP_KEY)
-  )
+  const SEED_BACKUP_FILE = 'seed-backup.json'
+  const [preSeedBackup, setPreSeedBackup] = useState<string | null>(null)
 
-  const savePreSeedBackup = (json: string) => {
-    localStorage.setItem(SEED_BACKUP_KEY, json)
+  useEffect(() => {
+    vaultStorage.read<string>(SEED_BACKUP_FILE).then((data) => {
+      if (data) setPreSeedBackup(typeof data === 'string' ? data : JSON.stringify(data))
+    })
+  }, [])
+
+  const savePreSeedBackup = async (json: string) => {
+    await vaultStorage.write(SEED_BACKUP_FILE, JSON.parse(json))
     setPreSeedBackup(json)
   }
 
-  const clearPreSeedBackup = () => {
-    localStorage.removeItem(SEED_BACKUP_KEY)
+  const clearPreSeedBackup = async () => {
+    await vaultStorage.write(SEED_BACKUP_FILE, null)
     setPreSeedBackup(null)
   }
 
@@ -916,9 +920,9 @@ function DataSection() {
           {/* Seed data */}
           <button
             type="button"
-            onClick={() => {
+            onClick={async () => {
               if (confirm('Загрузить тестовые данные? Ваши данные будут сохранены и вы сможете вернуть их обратно.')) {
-                savePreSeedBackup(exportData())
+                await savePreSeedBackup(exportData())
                 const json = generateSeedData()
                 if (importData(json)) {
                   setTimeout(() => window.location.reload(), 700)

@@ -1353,7 +1353,7 @@ export const useRpgStore = create<RpgStoreState>()(
             status: 'skipped',
           }
           // Log multiplier deactivation when streak breaks
-          if (task.streakMultiplier?.mode === 'streak') {
+          if (task.streakMultiplier) {
             logMultiplierDeactivation(task, 'streak_break')
           }
 
@@ -1361,8 +1361,8 @@ export const useRpgStore = create<RpgStoreState>()(
             completionHistory: [...(task.completionHistory ?? []), skipRecord].slice(-365),
             currentStreak: 0,
             totalSkipped: (task.totalSkipped ?? 0) + 1,
-            // При сбросе стрика снимаем множитель за стрик (streak mode)
-            ...(task.streakMultiplier?.mode === 'streak' ? { streakMultiplier: undefined } : {}),
+            // При сбросе стрика снимаем множитель (streak mode или instant mode)
+            ...(task.streakMultiplier ? { streakMultiplier: undefined } : {}),
           }
 
           // Для instant — сбрасываем задачу (без наград), чтобы можно было выполнить снова
@@ -1552,9 +1552,9 @@ export const useRpgStore = create<RpgStoreState>()(
             // нужно сбросить weeklyCompletedThisWeek, чтобы в новой неделе счёт начинался с 0
             if (task.recurrence === 'weekly' && !task.isCompleted && !task.canceledAt) {
               const rsw = task.recurrenceSettings
-              if (rsw?.weeklyMode === 'timesPerWeek' && rsw.weeklyWeekStart != null) {
+              if (rsw?.weeklyMode === 'timesPerWeek') {
                 const currentWeek = getStartOfWeek(nowTime)
-                if (rsw.weeklyWeekStart !== currentWeek) {
+                if ((rsw.weeklyWeekStart ?? 0) !== currentWeek) {
                   updateTask(task.id, t => ({
                     ...t,
                     currentCycleStart: nowTime,
