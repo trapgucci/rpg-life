@@ -5,7 +5,7 @@ import { cn } from '../../lib/cn'
 import {
   X, Pencil, Trash2, Coins, Gem, Gift, Percent, ShoppingCart,
   ChevronRight, Settings, Folder, TrendingUp, Gamepad2, Plus, Clock,
-  Clapperboard, ChevronDown, Check, Package, Hammer, Puzzle, Crosshair, Dice5,
+  Clapperboard, ChevronDown, Check, Package, Hammer, Crosshair, Dice5,
   BarChart3, Sparkles, Trophy, ExternalLink,
 } from 'lucide-react'
 import ItemGroupSelectModal from './ItemGroupSelectModal'
@@ -16,7 +16,7 @@ import { useRpgStore } from '../../store/useRpgStore'
 import type { ShopItem, GameTimePackage, SerialSeason } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
 import {
-  getItemIcon, getItemTypeBadge, getItemTypeColor, migrateIcon, RARITY_COLORS,
+  getItemIcon, getItemTypeBadge, getItemTypeColor, migrateIcon,
 } from './shopUtils'
 import type { LootTableEntry } from './shopUtils'
 import Modal from '../Modal'

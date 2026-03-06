@@ -5,7 +5,7 @@ import {
   FolderOpen, ChevronDown, Minus, Package, ShoppingBag,
   Search, Folder, ListChecks, BarChart3,
   Hand, TrendingUp, Gamepad2, Clapperboard, Gift, Percent, RefreshCw,
-  CalendarCheck, History, Flame, Wallet, Repeat, Calendar, CheckSquare, Hash, ClipboardList, ClipboardCheck
+  CalendarCheck, History, Flame, Wallet, CheckSquare, Hash, ClipboardList, ClipboardCheck
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
@@ -17,7 +17,7 @@ import { getItemTypeBadge, getItemTypeColor } from '../components/shop/shopUtils
 import { useNotifications } from '../hooks/useNotifications'
 import type {
   Achievement, AchievementConditionType, AchievementGroup,
-  AchievementGroupId, AttributeId, TaskDifficulty, ItemId, TaskId,
+  AchievementGroupId, AchievementId, AttributeId, TaskDifficulty, ItemId, TaskId,
   ShopItem, TaskRpg, TaskRecurrence, DailyCondition, DailyConditionId,
 } from '../types/domain'
 import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
@@ -296,7 +296,7 @@ function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDet
                 gems: achievement.rewardGems,
                 items: rewardItemsList.map((ri) => ({
                   name: ri.item!.name,
-                  emoji: ri.item!.emoji,
+                  emoji: ri.item!.icon,
                   quantity: ri.quantity,
                 })),
                 duration: 6000,
@@ -661,8 +661,6 @@ function ConditionPickerModal({
       setItemSearch('')
     }
   }, [isOpen, selectedType, targetValue, conditionAttributeId, conditionTaskId, conditionItemId, conditionConditionId, conditionCoinMode])
-
-  const selectedCondition = CONDITION_TYPES.find((c) => c.value === localType)!
 
   const needsTask = TASK_CONDITION_TYPES.includes(localType)
   const needsItem = localType === 'item_used'
@@ -1349,10 +1347,10 @@ function AchievementForm({ achievement, onClose, defaultGroupId }: AchievementFo
       condition: {
         type: conditionType,
         targetValue,
-        attributeId: conditionType === 'attribute_level' ? conditionAttributeId : undefined,
-        taskId: TASK_CONDITION_TYPES.includes(conditionType) ? conditionTaskId : undefined,
-        itemId: conditionType === 'item_used' ? conditionItemId : undefined,
-        conditionId: conditionType === 'condition_checked' ? conditionConditionId : undefined,
+        attributeId: conditionType === 'attribute_level' ? conditionAttributeId || undefined : undefined,
+        taskId: TASK_CONDITION_TYPES.includes(conditionType) ? conditionTaskId || undefined : undefined,
+        itemId: conditionType === 'item_used' ? conditionItemId || undefined : undefined,
+        conditionId: conditionType === 'condition_checked' ? conditionConditionId || undefined : undefined,
         coinMode: (conditionType === 'coins_earned_spent' || conditionType === 'gems_earned_spent') ? conditionCoinMode : undefined,
       },
       rewardXp: rewardAttributeId ? effectiveXp : 0,

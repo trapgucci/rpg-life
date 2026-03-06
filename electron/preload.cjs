@@ -12,6 +12,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
 })
 
+// License API
+contextBridge.exposeInMainWorld('electronLicense', {
+  getMachineId: () => ipcRenderer.invoke('license:getMachineId'),
+  check: () => ipcRenderer.invoke('license:check'),
+  save: (data) => ipcRenderer.invoke('license:save', data),
+})
+
 // Vault storage API
 contextBridge.exposeInMainWorld('electronVault', {
   getPath: () => ipcRenderer.invoke('vault:getPath'),

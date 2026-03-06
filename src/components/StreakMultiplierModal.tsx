@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react'
 import { cn } from '../lib/cn'
-import { TrendingUp, Flame, Zap, Check, Search, X } from 'lucide-react'
+import { TrendingUp, Flame, Check, Search, X } from 'lucide-react'
 import Modal from './Modal'
 import { useRpgStore } from '../store/useRpgStore'
-import type { ShopItem, TaskRpg, TaskRecurrence } from '../types/domain'
+import type { TaskRpg, TaskRecurrence } from '../types/domain'
 import { rpgToast } from './RpgToast'
 
 /* ─── Recurrence labels ──────────────────────────────────────────────────── */

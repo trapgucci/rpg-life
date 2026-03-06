@@ -13,7 +13,7 @@ const KIND_ICON_MAP = {
 import { useRpgStore } from '../../store/useRpgStore'
 import type { CraftRecipe, ItemRarity, FragmentSourceType } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
-import { RARITY_LABELS, RARITY_COLORS, RARITY_BADGE_CLASSES, migrateIcon, getItemTypeBadge, getItemTypeColor } from './shopUtils'
+import { RARITY_LABELS, RARITY_BADGE_CLASSES, migrateIcon, getItemTypeBadge, getItemTypeColor } from './shopUtils'
 import ConfirmModal from '../ConfirmModal'
 import { HabitIcon } from '../HabitIcon'
 import { ItemIconBadge } from '../ItemIconBadge'
@@ -240,7 +240,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
       setCraftCompensation({ coins: result.coins, gems: result.gems, outOfStock: result.outOfStock })
       rpgToast({ title: `Компенсация за ${resultItem?.name ?? 'предмет'}`, type: 'info', coins: result.coins, gems: result.gems, category: 'toastCraft' })
     } else {
-      rpgToast({ title: `Скрафчено: ${resultItem?.name ?? recipe.name}!`, type: 'loot' })
+      rpgToast({ title: `Скрафчено: ${resultItem?.name ?? recipe.resultName}!`, type: 'loot' })
     }
   }
 
@@ -1022,8 +1022,6 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
             {/* Item list */}
             <div className="max-h-72 overflow-y-auto rounded-xl bg-[var(--surface)] p-2 mb-4">
               {filteredPickerItems.map((item) => {
-                const group = itemGroups.find((g) => g.id === item.groupId)
-                const iconBg = group?.color ?? RARITY_COLORS[item.rarity]
                 return (
                   <button
                     key={item.id}
@@ -1194,7 +1192,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
                           : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)]'
                       )}
                     >
-                      <Folder className="h-3.5 w-3.5 shrink-0" style={{ color: g.color || undefined }} />
+                      <Folder className="h-3.5 w-3.5 shrink-0" />
                       {g.name}
                     </button>
                   ))}

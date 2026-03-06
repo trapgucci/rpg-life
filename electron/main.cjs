@@ -1,6 +1,8 @@
 const { app, BrowserWindow, ipcMain, Notification, dialog } = require('electron')
 const path = require('path')
 const fs = require('fs')
+const os = require('os')
+const crypto = require('crypto')
 
 const isDev = process.env.NODE_ENV !== 'production'
 
@@ -72,6 +74,53 @@ ipcMain.handle('get-app-version', () => {
   return app.getVersion()
 })
 
+// ─── License System ─────────────────────────────────────────────────────────
+
+const LICENSE_FILE = 'license.json'
+
+function getLicenseFilePath() {
+  return path.join(app.getPath('userData'), LICENSE_FILE)
+}
+
+function generateMachineId() {
+  const data = [
+    os.hostname(),
+    os.platform(),
+    os.arch(),
+    os.cpus()[0]?.model || '',
+    os.homedir(),
+  ].join('|')
+  return crypto.createHash('sha256').update(data).digest('hex').slice(0, 32)
+}
+
+function readLicense() {
+  try {
+    const raw = fs.readFileSync(getLicenseFilePath(), 'utf-8')
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+function saveLicense(data) {
+  fs.writeFileSync(getLicenseFilePath(), JSON.stringify(data, null, 2), 'utf-8')
+}
+
+ipcMain.handle('license:getMachineId', () => {
+  return generateMachineId()
+})
+
+ipcMain.handle('license:check', () => {
+  const license = readLicense()
+  if (!license || !license.token || !license.machineId) return false
+  return license.machineId === generateMachineId()
+})
+
+ipcMain.handle('license:save', (_, { token, machineId, code }) => {
+  saveLicense({ token, machineId, code, activatedAt: new Date().toISOString() })
+  return true
+})
+
 // ─── Vault Storage ──────────────────────────────────────────────────────────
 
 const VAULT_PATH_FILE = 'vault-path.txt'
@@ -101,6 +150,15 @@ function atomicWriteFileSync(filePath, data) {
   const tmpPath = filePath + '.tmp'
   fs.writeFileSync(tmpPath, data, 'utf-8')
   fs.renameSync(tmpPath, filePath)
+}
+
+// Sanitize filename — prevent path traversal
+function safePath(vaultPath, filename) {
+  const resolved = path.resolve(vaultPath, filename)
+  if (!resolved.startsWith(vaultPath + path.sep) && resolved !== vaultPath) {
+    return null // path traversal detected
+  }
+  return resolved
 }
 
 // Get current vault path
@@ -135,7 +193,8 @@ ipcMain.handle('vault:init', async (_, customPath) => {
 ipcMain.handle('vault:read', async (_, filename) => {
   const vaultPath = getSavedVaultPath()
   if (!vaultPath) return null
-  const filePath = path.join(vaultPath, filename)
+  const filePath = safePath(vaultPath, filename)
+  if (!filePath) return null
   try {
     const raw = fs.readFileSync(filePath, 'utf-8')
     return JSON.parse(raw)
@@ -148,7 +207,8 @@ ipcMain.handle('vault:read', async (_, filename) => {
 ipcMain.handle('vault:write', async (_, filename, data) => {
   const vaultPath = getSavedVaultPath()
   if (!vaultPath) return null
-  const filePath = path.join(vaultPath, filename)
+  const filePath = safePath(vaultPath, filename)
+  if (!filePath) return null
   // Ensure parent directory exists (for subdirectory writes like notes/note-xxx.json)
   const dir = path.dirname(filePath)
   if (dir !== vaultPath) {
@@ -163,7 +223,8 @@ ipcMain.handle('vault:deleteFile', async (_, filename) => {
   if (!vaultPath) return false
   // Safety: only allow notes/ subdirectory
   if (!filename.startsWith('notes/')) return false
-  const filePath = path.join(vaultPath, filename)
+  const filePath = safePath(vaultPath, filename)
+  if (!filePath) return false
   try {
     fs.unlinkSync(filePath)
     return true
@@ -178,10 +239,11 @@ ipcMain.handle('vault:writeMedia', async (_, filename, base64data) => {
   if (!vaultPath) return null
   const mediaDir = path.join(vaultPath, 'media')
   fs.mkdirSync(mediaDir, { recursive: true })
+  const filePath = safePath(mediaDir, filename)
+  if (!filePath) return null
   // Strip data URL prefix if present
   const base64 = base64data.replace(/^data:[^;]+;base64,/, '')
   const buffer = Buffer.from(base64, 'base64')
-  const filePath = path.join(mediaDir, filename)
   fs.writeFileSync(filePath, buffer)
   return 'media/' + filename
 })
@@ -190,7 +252,8 @@ ipcMain.handle('vault:writeMedia', async (_, filename, base64data) => {
 ipcMain.handle('vault:readMedia', async (_, relativePath) => {
   const vaultPath = getSavedVaultPath()
   if (!vaultPath) return null
-  const filePath = path.join(vaultPath, relativePath)
+  const filePath = safePath(vaultPath, relativePath)
+  if (!filePath) return null
   try {
     const buffer = fs.readFileSync(filePath)
     const ext = path.extname(filePath).slice(1).toLowerCase()
@@ -207,10 +270,11 @@ ipcMain.handle('vault:readMedia', async (_, relativePath) => {
 ipcMain.handle('vault:deleteMedia', async (_, relativePath) => {
   const vaultPath = getSavedVaultPath()
   if (!vaultPath) return false
-  const filePath = path.join(vaultPath, relativePath)
+  // Safety: only delete files inside media/ directory
+  if (!relativePath.startsWith('media/')) return false
+  const filePath = safePath(vaultPath, relativePath)
+  if (!filePath) return false
   try {
-    // Safety: only delete files inside media/ directory
-    if (!relativePath.startsWith('media/')) return false
     fs.unlinkSync(filePath)
     return true
   } catch {

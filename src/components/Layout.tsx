@@ -2,10 +2,9 @@ import { Outlet } from 'react-router-dom'
 import WindowTitleBar from './WindowTitleBar'
 import Sidebar from './Sidebar'
 import MobileBottomNav from './MobileBottomNav'
-import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
 import { CURRENCY_IDS, xpForLevelStandard } from '../types/domain'
-import { Coins, Gem, Zap, TrendingUp } from 'lucide-react'
+import { Coins, Gem } from 'lucide-react'
 
 function CurrencyDisplay() {
   const profiles = useRpgStore((s) => s.profiles)

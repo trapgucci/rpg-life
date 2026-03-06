@@ -355,8 +355,6 @@ export default function TasksPage() {
     return map
   }, [tasks, activeProfileId, taskFilter])
 
-  const countNoGroup = taskCountByGroup.get(null) ?? 0
-
   const handleSelectTask = useCallback((taskId: string) => {
     setSelectedId(taskId)
     if (showSearch && searchQuery) {

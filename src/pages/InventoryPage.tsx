@@ -131,7 +131,7 @@ export default function InventoryPage() {
     [orderedGroupIds, groupedInventory],
   )
 
-  const { totalUniqueItems, totalQuantity } = useMemo(() => {
+  const { totalQuantity } = useMemo(() => {
     let unique = 0
     let qty = 0
     for (const e of enrichedInventory) {
@@ -242,7 +242,7 @@ export default function InventoryPage() {
 
   const handleOpenAll = useCallback((itemId: string, quantity: number) => {
     setDetailModalItemId(null)
-    const results: Array<{ itemId: string; itemName: string } | 'empty'> = []
+    const results: Array<{ itemId: string; itemName: string; compensated?: boolean; compensationLabel?: string; compensationReason?: 'duplicate' | 'out_of_stock' } | 'empty'> = []
     for (let i = 0; i < quantity; i++) {
       const result = useItem(itemId)
       if (result && typeof result === 'object' && 'loot' in result) {

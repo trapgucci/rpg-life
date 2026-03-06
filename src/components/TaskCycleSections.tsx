@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import {
   ChevronDown, ChevronRight, RefreshCw, CalendarClock, BarChart3, History,
   Check, SkipForward, XCircle, Zap, Coins, Gem, ListChecks, TrendingUp,
@@ -8,7 +8,7 @@ import { cn } from '../lib/cn'
 import type { TaskRpg, TaskCompletionRecord } from '../types/domain'
 import {
   getNextAvailableDate,
-  getCompletionRate, formatCycleDateRu, formatDateShortRu, getRelativeTimeRu,
+  getCompletionRate, formatDateShortRu, getRelativeTimeRu,
   isTodayScheduled, getNextScheduledDayName
 } from '../lib/taskCycleUtils'
 
@@ -301,7 +301,7 @@ export function TaskCurrentCycleBlock({ task, nowMs = Date.now() }: TaskBlockPro
 }
 
 // Оставляем для обратной совместимости (можно удалить позже)
-export function TaskNextCycleBlock({ task }: TaskBlockProps) {
+export function TaskNextCycleBlock({ task: _task }: TaskBlockProps) {
   return null
 }
 
@@ -895,7 +895,7 @@ function HistoryRecordCard({ record, task }: { record: TaskCompletionRecord; tas
 }
 
 /** Сводная карточка для инстант-задач: «Выполнено (x100)» + разворачиваемый список */
-function InstantDaySummary({ records, task }: { records: TaskCompletionRecord[]; task: TaskRpg }) {
+function InstantDaySummary({ records, task: _task }: { records: TaskCompletionRecord[]; task: TaskRpg }) {
   const [expanded, setExpanded] = useState(false)
   const count = records.length
 

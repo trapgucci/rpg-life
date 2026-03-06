@@ -14,8 +14,15 @@ export interface ElectronVaultAPI {
   restoreBackup: (backupName: string) => Promise<{ restoredFiles: number; preRestoreBackup: string }>
 }
 
+export interface ElectronLicenseAPI {
+  getMachineId: () => Promise<string>
+  check: () => Promise<boolean>
+  save: (data: { token: string; machineId: string; code: string }) => Promise<boolean>
+}
+
 declare global {
   interface Window {
     electronVault?: ElectronVaultAPI
+    electronLicense?: ElectronLicenseAPI
   }
 }

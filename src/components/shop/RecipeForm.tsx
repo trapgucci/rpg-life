@@ -39,7 +39,7 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
   const [fragmentIcon, setFragmentIcon] = useState(migrateIcon(recipe?.fragmentIcon, 'Puzzle'))
   const [fragmentIconImage, setFragmentIconImage] = useState(recipe?.fragmentIconImage ?? '')
   const [fragmentsRequired, setFragmentsRequired] = useState(recipe?.fragmentsRequired ?? 5)
-  const [resultRarity, setResultRarity] = useState<ItemRarity>(recipe?.resultRarity ?? 'common')
+  const [resultRarity, _setResultRarity] = useState<ItemRarity>(recipe?.resultRarity ?? 'common')
 
   // Result item
   const [resultItemId, setResultItemId] = useState<string | null>(recipe?.resultItemId ?? null)
@@ -739,7 +739,7 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
                           : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)]'
                       )}
                     >
-                      <Folder className="h-3.5 w-3.5 shrink-0" style={{ color: g.color || undefined }} />
+                      <Folder className="h-3.5 w-3.5 shrink-0" />
                       {g.name}
                     </button>
                   ))}

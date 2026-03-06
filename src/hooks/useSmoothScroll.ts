@@ -25,11 +25,6 @@ export function useSmoothScroll() {
       return null
     }
 
-    function ease(t: number): number {
-      // deceleration easing — fast start, smooth stop
-      return 1 - Math.pow(1 - t, 3)
-    }
-
     function animate(el: Element) {
       const state = targets.get(el)
       if (!state) return

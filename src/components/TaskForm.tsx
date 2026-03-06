@@ -2,13 +2,13 @@ import { useState } from 'react'
 import type { TaskDifficulty, TaskKind } from '../types/domain'
 
 interface Props {
-  onSubmit: (data: { title: string; kind: TaskKind; difficulty: 'easy' | 'normal' | 'hard' }) => void
+  onSubmit: (data: { title: string; kind: TaskKind; difficulty: TaskDifficulty }) => void
 }
 
 function TaskForm({ onSubmit }: Props) {
   const [title, setTitle] = useState('')
   const [kind, setKind] = useState<TaskKind>('todo')
-  const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal')
+  const [difficulty, setDifficulty] = useState<TaskDifficulty>('medium')
 
   return (
     <form
@@ -18,7 +18,7 @@ function TaskForm({ onSubmit }: Props) {
         onSubmit({ title: title.trim(), kind, difficulty })
         setTitle('')
         setKind('todo')
-        setDifficulty('normal')
+        setDifficulty('medium')
       }}
       style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}
     >

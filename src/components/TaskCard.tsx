@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { CheckSquare, Hash, ListChecks, Clock, Repeat, Flag, Archive, CalendarClock, Timer, Award, XCircle, AlertTriangle, TrendingUp } from 'lucide-react'
+import { CheckSquare, Hash, ListChecks, Repeat, Flag, Archive, CalendarClock, Timer, Award, XCircle, AlertTriangle, TrendingUp } from 'lucide-react'
 import { cn } from '../lib/cn'
 import type { TaskRpg } from '../types/domain'
 import RewardBadge from './RewardBadge'
@@ -14,27 +14,6 @@ const KIND_ICON = {
   nested: ListChecks,
 } as const
 
-const DIFFICULTY_COLORS = {
-  easy: { bg: 'bg-emerald-500/10', text: 'text-emerald-500', border: 'border-emerald-500/20', xp: 'text-emerald-500' },
-  medium: { bg: 'bg-blue-500/10', text: 'text-blue-500', border: 'border-blue-500/20', xp: 'text-blue-500' },
-  hard: { bg: 'bg-orange-500/10', text: 'text-orange-500', border: 'border-orange-500/20', xp: 'text-orange-500' },
-  veryHard: { bg: 'bg-red-500/10', text: 'text-red-500', border: 'border-red-500/20', xp: 'text-red-500' },
-}
-
-const DIFFICULTY_LABELS = {
-  easy: 'Лёгкая',
-  medium: 'Средняя',
-  hard: 'Сложная',
-  veryHard: 'Сложная+',
-}
-
-
-const PRIORITY_LABELS = {
-  none: '',
-  low: 'Низкий',
-  medium: 'Средний',
-  high: 'Высокий',
-} as const
 
 export interface TaskCardFragment {
   id: string

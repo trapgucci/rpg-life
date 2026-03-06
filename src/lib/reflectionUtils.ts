@@ -17,7 +17,6 @@ export function formatTimeRu(ts: number): string {
 /** Относительная дата: "Сегодня", "Вчера", "2 марта" */
 export function relativeDateRu(ts: number): string {
   const now = new Date()
-  const d = new Date(ts)
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
   const yesterdayStart = todayStart - 86400000
 

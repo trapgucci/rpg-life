@@ -12,7 +12,6 @@ import { CURRENCY_IDS } from '../types/domain'
 import {
   getItemTypeBadge,
   RARITY_COLORS,
-  type ItemTypeBadge,
 } from './shop/shopUtils'
 import { ItemIconBadge } from './ItemIconBadge'
 

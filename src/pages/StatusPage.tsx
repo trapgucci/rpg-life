@@ -57,7 +57,7 @@ function RanksModal({ currentLevel, onClose }: { currentLevel: number; onClose: 
           </button>
         </div>
         <div className="flex flex-col gap-2">
-          {RANKS.map((rank, i) => {
+          {RANKS.map((rank) => {
             const isActive = currentLevel >= rank.minLevel
             const isCurrent = getTitleByLevel(currentLevel) === rank.title
             return (

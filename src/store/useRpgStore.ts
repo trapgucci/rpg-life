@@ -36,7 +36,6 @@ import type {
   Note,
   NoteId,
   DailyReport,
-  DailyReportId,
   MoodLevel,
   DailySnapshot,
   DailyCondition,
@@ -283,7 +282,7 @@ interface RpgStoreState {
 
   // Craft actions
   getCraftRecipes: () => CraftRecipe[]
-  addCraftRecipe: (recipe: Omit<CraftRecipe, 'id' | 'createdAt' | 'updatedAt' | 'profileId' | 'fragmentsCollected' | 'crafted' | 'craftedAt'>) => CraftRecipe
+  addCraftRecipe: (recipe: Omit<CraftRecipe, 'id' | 'createdAt' | 'updatedAt' | 'profileId' | 'fragmentsCollected' | 'crafted' | 'craftedAt' | 'fragmentColor' | 'resultItemId' | 'resultIcon'> & { fragmentColor?: string; resultItemId?: ItemId; resultIcon?: string }) => CraftRecipe
   updateCraftRecipe: (id: CraftRecipeId, updater: (r: CraftRecipe) => CraftRecipe) => void
   deleteCraftRecipe: (id: CraftRecipeId) => void
   addFragment: (recipeId: CraftRecipeId, amount?: number) => void
@@ -404,7 +403,7 @@ const VAULT_SLICES: SliceWriter[] = [
   { file: 'usage-history.json', getData: (s) => s.usageHistory, getKeys: (s) => [s.usageHistory] },
   { file: 'stats.json', getData: (s) => s.stats, getKeys: (s) => [s.stats] },
   { file: 'note-folders.json', getData: (s) => s.noteFolders, getKeys: (s) => [s.noteFolders] },
-  { file: 'notes.json', getData: (s) => (s.notes ?? []).map((n: Record<string, unknown>) => ({ ...n, content: '' })), getKeys: (s) => [s.notes] },
+  { file: 'notes.json', getData: (s) => (s.notes ?? []).map((n) => ({ ...n, content: '' })), getKeys: (s) => [s.notes] },
   { file: 'daily-reports.json', getData: (s) => s.dailyReports, getKeys: (s) => [s.dailyReports] },
   { file: 'daily-conditions.json', getData: (s) => s.dailyConditions ?? [], getKeys: (s) => [s.dailyConditions] },
   { file: 'daily-condition-entries.json', getData: (s) => s.dailyConditionEntries ?? [], getKeys: (s) => [s.dailyConditionEntries] },
@@ -647,7 +646,7 @@ const _purchasingLock = new Set<string>()
 export const useRpgStore = create<RpgStoreState>()(
   persist(
     (set, get) => {
-      const updateStats = (updater: (s: typeof get extends () => infer S ? S['stats'] : never) => Partial<typeof get extends () => infer S ? S['stats'] : never>) => {
+      const updateStats = (updater: (s: RpgStoreState['stats']) => Partial<RpgStoreState['stats']>) => {
         set((s) => ({ stats: { ...s.stats, ...updater(s.stats) } }))
       }
 
@@ -784,10 +783,9 @@ export const useRpgStore = create<RpgStoreState>()(
         addCurrency: (currencyId, amount) => {
           const profile = get().getActiveProfile()
           if (!profile) return
-          const current = profile.currencies[currencyId] ?? 0
           get().updateProfile(profile.id, (p) => ({
             ...p,
-            currencies: { ...p.currencies, [currencyId]: current + amount },
+            currencies: { ...p.currencies, [currencyId]: (p.currencies[currencyId] ?? 0) + amount },
           }))
           if (currencyId === CURRENCY_IDS.COINS) {
             updateStats((s) => ({ totalCoinsEarned: s.totalCoinsEarned + amount }))
@@ -814,10 +812,14 @@ export const useRpgStore = create<RpgStoreState>()(
           if (!profile) return false
           const current = profile.currencies[currencyId] ?? 0
           if (current < amount) return false
-          get().updateProfile(profile.id, (p) => ({
-            ...p,
-            currencies: { ...p.currencies, [currencyId]: current - amount },
-          }))
+          get().updateProfile(profile.id, (p) => {
+            const actual = p.currencies[currencyId] ?? 0
+            if (actual < amount) return p
+            return {
+              ...p,
+              currencies: { ...p.currencies, [currencyId]: actual - amount },
+            }
+          })
           if (currencyId === CURRENCY_IDS.COINS) {
             updateStats((s) => ({ totalCoinsSpent: (s.totalCoinsSpent ?? 0) + amount }))
             get().checkAchievements()
@@ -1025,7 +1027,7 @@ export const useRpgStore = create<RpgStoreState>()(
           }
         },
 
-        getTaskPenaltyPreview: (task) => {
+        getTaskPenaltyPreview: (_task) => {
           // Penalty system removed
           return { xp: 0, coins: 0 }
         },
@@ -1562,7 +1564,7 @@ export const useRpgStore = create<RpgStoreState>()(
                       subtasks: t.subtasks.map(s => ({ ...s, isCompleted: false, completedAt: undefined }))
                     } : {}),
                     recurrenceSettings: {
-                      ...t.recurrenceSettings,
+                      ...t.recurrenceSettings!,
                       weeklyCompletedThisWeek: 0,
                       weeklyWeekStart: currentWeek,
                     },
@@ -1863,7 +1865,7 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         checkAchievements: () => {
-          const { achievements, stats, getAttributes, unlockAchievement, tasks, usageHistory } = get()
+          const { achievements, stats, getAttributes, tasks, usageHistory } = get()
           const attributes = getAttributes()
           const todayStart = getTodayStart()
 
@@ -1951,7 +1953,7 @@ export const useRpgStore = create<RpgStoreState>()(
               const toastItems = rewardItems
                 .map((ri) => {
                   const item = items.find((i) => i.id === ri.itemId)
-                  return item ? { name: item.name, emoji: item.emoji, quantity: ri.quantity } : null
+                  return item ? { name: item.name, emoji: item.icon, quantity: ri.quantity } : null
                 })
                 .filter(Boolean) as { name: string; emoji?: string; quantity: number }[]
 
@@ -2032,7 +2034,7 @@ export const useRpgStore = create<RpgStoreState>()(
               if (available > 0) {
                 addToInventory(ri.itemId, available)
                 updateShopItem(ri.itemId, (prev) => ({ ...prev, stock: Math.max(0, (prev.stock ?? 0) - available) }))
-                givenItems.push({ name: item.name, emoji: item.emoji, quantity: available })
+                givenItems.push({ name: item.name, emoji: item.icon, quantity: available })
               }
               const deficit = qty - available
               let compCoins = 0, compGems = 0
@@ -2047,7 +2049,7 @@ export const useRpgStore = create<RpgStoreState>()(
               compensations.push({ name: item.name, coins: compCoins, gems: compGems, reason: 'out_of_stock' })
             } else {
               addToInventory(ri.itemId, qty)
-              givenItems.push({ name: item.name, emoji: item.emoji, quantity: qty })
+              givenItems.push({ name: item.name, emoji: item.icon, quantity: qty })
               // Вычесть из запаса магазина
               if (item.stock !== undefined) {
                 updateShopItem(ri.itemId, (prev) => ({ ...prev, stock: Math.max(0, (prev.stock ?? 0) - qty) }))
@@ -2082,6 +2084,9 @@ export const useRpgStore = create<RpgStoreState>()(
           const profile = get().getActiveProfile()
           if (!profile) throw new Error('No active profile')
           const newRecipe: CraftRecipe = {
+            fragmentColor: '#9ca3af',
+            resultIcon: recipe.fragmentIcon,
+            resultItemId: '' as ItemId,
             ...recipe,
             id: crypto.randomUUID(),
             profileId: profile.id,
@@ -2278,7 +2283,7 @@ export const useRpgStore = create<RpgStoreState>()(
           _purchasingLock.add(itemId)
 
           try {
-          const { shopItems, deductCurrency, addToInventory, openLootbox, activeShopDiscountPercent, activeProfileId, updateShopItem, getCurrency } = get()
+          const { shopItems, deductCurrency, addCurrency, addToInventory, activeShopDiscountPercent, activeProfileId, updateShopItem, getCurrency } = get()
           const item = shopItems.find((i) => i.id === itemId)
           if (!item) return false
           if (item.availableForPurchase === false) return false
@@ -2301,7 +2306,7 @@ export const useRpgStore = create<RpgStoreState>()(
             deductCurrency(currencyId as CurrencyId, cost)
           }
 
-          set((s) => ({ activeShopDiscountPercent: null }))
+          set(() => ({ activeShopDiscountPercent: null }))
 
           if (activeProfileId) {
             set((s) => ({
@@ -2658,7 +2663,7 @@ export const useRpgStore = create<RpgStoreState>()(
         },
 
         useItem: (itemId, quantity = 1) => {
-          const { shopItems, inventory, getActiveProfile, updateProfile, removeFromInventory, openLootbox, activeProfileId, checkAchievements } = get()
+          const { shopItems, inventory, removeFromInventory, openLootbox, activeProfileId, checkAchievements } = get()
           const item = shopItems.find((i) => i.id === itemId)
           if (!item) return false
           const invEntry = inventory.find((e) => e.itemId === itemId)

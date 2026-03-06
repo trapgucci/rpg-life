@@ -93,7 +93,7 @@ export default function NotificationWatcher() {
       if (lastReminderDateRef.current === todayStr) return
 
       if (now.getHours() === hours && now.getMinutes() === minutes) {
-        const pendingCount = tasks.filter((t) => !t.completed && !t.archived).length
+        const pendingCount = tasks.filter((t) => !t.isCompleted && !t.canceledAt).length
         if (pendingCount > 0) {
           notifyDailyReminder(pendingCount)
           lastReminderDateRef.current = todayStr

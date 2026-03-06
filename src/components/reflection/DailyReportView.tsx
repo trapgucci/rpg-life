@@ -404,7 +404,7 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
   // Debounced thoughts
   const [localThoughts, setLocalThoughts] = useState(report?.thoughts ?? '')
   const thoughtsRef = useRef(localThoughts)
-  const thoughtsTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const thoughtsTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => { thoughtsRef.current = localThoughts }, [localThoughts])
 

@@ -79,7 +79,7 @@ export function generateSeedData(): string {
     return {
       id: uid(), profileId, kind: 'counter', difficulty: 'medium', attributeIds: [],
       coinReward: 15, gemReward: 0, dueAt: null, deadlineAt: null, recurrence: 'once',
-      current: 0, target: 10, isCompleted: false,
+      current: 0, isCompleted: false,
       createdAt: ts - Math.floor(Math.random() * 15 * DAY), updatedAt: ts, groupId: null,
       ...p,
     }
@@ -89,7 +89,7 @@ export function generateSeedData(): string {
     return {
       id: uid(), profileId, kind: 'nested', difficulty: 'hard', attributeIds: [],
       coinReward: 20, gemReward: 1, dueAt: null, deadlineAt: null, recurrence: 'once',
-      subtasks: [], isCompleted: false,
+      isCompleted: false,
       createdAt: ts - Math.floor(Math.random() * 15 * DAY), updatedAt: ts, groupId: null,
       ...p,
     }

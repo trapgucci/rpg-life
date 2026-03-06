@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { useRpgStore } from '../store/useRpgStore'
 import { CURRENCY_IDS } from '../types/domain'
 import type { ShopItem, TaskRpg } from '../types/domain'
@@ -269,6 +269,9 @@ describe('Счётчик задач (counter)', () => {
       difficulty: 'medium',
       attributeIds: [],
       subtasks: [],
+      dueAt: null,
+      coinReward: 10,
+      gemReward: 0,
     } as Omit<TaskRpg, 'id' | 'createdAt' | 'updatedAt' | 'profileId'>)
     return task.id
   }

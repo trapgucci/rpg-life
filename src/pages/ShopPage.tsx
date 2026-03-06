@@ -289,16 +289,12 @@ export default function ShopPage() {
   }, [profileItems])
 
   const totalItemCount = profileItems.length
-  const countNoGroup = itemCountByGroup.get(null) ?? 0
 
   // Look up selected items in ALL items (not just filtered) to persist selection across filter changes
   const selectedItem = selectedItemId ? shopItems.find((i) => i.id === selectedItemId) ?? null : null
   const selectedRecipe = selectedRecipeId ? craftRecipes.find((r) => r.id === selectedRecipeId) ?? null : null
 
   // ── Helpers ──────────────────────────────────────────────────────────────
-
-  const showForm = tab === 'shop' ? showItemForm : showRecipeForm
-  const hasRightPanel = showForm || (tab === 'shop' ? !!selectedItem : !!selectedRecipe)
 
   const handleNewClick = () => {
     if (tab === 'shop') {

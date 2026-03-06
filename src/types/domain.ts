@@ -637,7 +637,7 @@ export interface Achievement {
   /** Текущий прогресс (для отображения) */
   currentProgress: number
   /** Порядок сортировки внутри папки (меньше = выше) */
-  sortOrder: number
+  sortOrder?: number
   createdAt: number
   updatedAt: number
 }
@@ -665,7 +665,7 @@ export interface AchievementToggleConditions {
 // ─── Crafting System ────────────────────────────────────────────────────────
 
 /** Источник получения фрагментов */
-export type FragmentSourceType = 'task_linked' | 'streak_reward' | 'random_drop'
+export type FragmentSourceType = 'task_linked' | 'habit_linked' | 'streak_reward' | 'random_drop'
 
 export interface FragmentSource {
   type: FragmentSourceType

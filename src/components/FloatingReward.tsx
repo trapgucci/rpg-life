@@ -6,7 +6,7 @@ interface FloatingRewardProps {
   onComplete: () => void
 }
 
-export default function FloatingReward({ type, amount, onComplete }: FloatingRewardProps) {
+export default function FloatingReward({ type, onComplete }: FloatingRewardProps) {
   useEffect(() => {
     const target = document.querySelector(`[data-currency="${type}"]`) as HTMLElement | null
     if (!target) {

@@ -12,6 +12,8 @@ import SettingsPage from './pages/SettingsPage'
 import RewardNotifications from './components/RewardNotifications'
 import NotificationWatcher from './components/NotificationWatcher'
 import VaultSetup from './components/VaultSetup'
+import LicenseGate from './components/LicenseGate'
+import { licenseService } from './lib/licenseService'
 import { useRpgStore } from './store/useRpgStore'
 import { ACCENT_COLORS } from './types/domain'
 import { vaultStorage } from './lib/vaultStorage'
@@ -23,6 +25,17 @@ function App() {
   const hasHydrated = useRpgStore((s) => s._hasHydrated)
   const [vaultReady, setVaultReady] = useState(!vaultStorage.isElectron())
   const [checkingVault, setCheckingVault] = useState(vaultStorage.isElectron())
+  const [licensed, setLicensed] = useState(!vaultStorage.isElectron()) // dev mode = always licensed
+  const [checkingLicense, setCheckingLicense] = useState(vaultStorage.isElectron())
+
+  // Check license on mount (Electron only)
+  useEffect(() => {
+    if (!vaultStorage.isElectron()) return
+    licenseService.isLicensed().then((valid) => {
+      setLicensed(valid)
+      setCheckingLicense(false)
+    })
+  }, [])
 
   // Check if vault is already configured on mount, and init it
   useEffect(() => {
@@ -57,6 +70,14 @@ function App() {
     root.style.setProperty('--accent-subtle', `rgba(${r},${g},${b},${isDark ? 0.15 : 0.1})`)
     root.style.setProperty('--accent-glow', `rgba(${r},${g},${b},${isDark ? 0.3 : 0.4})`)
   }, [settings.theme, settings.accentColor])
+
+  // Show nothing while checking license
+  if (checkingLicense) return null
+
+  // Show license activation screen if not licensed (Electron only)
+  if (!licensed) {
+    return <LicenseGate onActivated={() => setLicensed(true)} />
+  }
 
   // Show nothing while checking vault configuration
   if (checkingVault) return null

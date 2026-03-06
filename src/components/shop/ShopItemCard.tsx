@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { cn } from '../../lib/cn'
-import { Coins, Gem, Gift, Percent, ShoppingCart, TrendingUp, Gamepad2, Clapperboard, Check, Hammer, Trophy } from 'lucide-react'
+import { Coins, Gem, Gift, Percent, ShoppingCart, TrendingUp, Gamepad2, Clapperboard, Hammer, Trophy } from 'lucide-react'
 import type { ShopItem } from '../../types/domain'
 import { CURRENCY_IDS } from '../../types/domain'
 import { getItemTypeBadge, getItemTypeColor } from './shopUtils'

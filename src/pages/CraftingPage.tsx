@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Hammer, Plus, Pencil, Trash2, X, Sparkles,
-  Target, CheckCircle2, Package
+  CheckCircle2, Package
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
@@ -122,7 +122,7 @@ function RecipeCard({ recipe, onEdit }: RecipeCardProps) {
             {RARITY_LABELS[recipe.resultRarity]}
           </span>
           <span className="text-xs text-[var(--fg-muted)]">→</span>
-          <span className="text-sm text-[var(--fg)]">{recipe.resultItemName}</span>
+          <span className="text-sm text-[var(--fg)]">{recipe.resultName}</span>
         </div>
 
         {/* Source info */}
@@ -226,7 +226,7 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
   const [fragmentName, setFragmentName] = useState(recipe?.fragmentName ?? '')
   const [fragmentIcon, setFragmentIcon] = useState(migrateIcon(recipe?.fragmentIcon, 'Puzzle'))
   const [fragmentsRequired, setFragmentsRequired] = useState(recipe?.fragmentsRequired ?? 10)
-  const [resultItemName, setResultItemName] = useState(recipe?.resultItemName ?? '')
+  const [resultName, setResultName] = useState(recipe?.resultName ?? '')
   const [resultRarity, setResultRarity] = useState<ItemRarity>(recipe?.resultRarity ?? 'rare')
   const [sourceType, setSourceType] = useState<FragmentSourceType>(
     recipe?.fragmentSource?.type ?? 'random_drop'
@@ -238,13 +238,13 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!fragmentName.trim() || !resultItemName.trim()) return
+    if (!fragmentName.trim() || !resultName.trim()) return
 
     const data = {
       fragmentName: fragmentName.trim(),
       fragmentIcon,
       fragmentsRequired,
-      resultItemName: resultItemName.trim(),
+      resultName: resultName.trim(),
       resultRarity,
       fragmentSource: sourceType === 'task_linked'
         ? { type: 'task_linked' as const, linkedTaskIds }
@@ -324,8 +324,8 @@ function RecipeForm({ recipe, onClose }: RecipeFormProps) {
               <label className="block text-sm font-medium text-[var(--fg-muted)] mb-2">Результат крафта</label>
               <input
                 type="text"
-                value={resultItemName}
-                onChange={(e) => setResultItemName(e.target.value)}
+                value={resultName}
+                onChange={(e) => setResultName(e.target.value)}
                 placeholder="Меч тьмы"
                 className="input w-full"
               />

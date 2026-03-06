@@ -618,7 +618,6 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Приоритет</label>
                 <div className="grid grid-cols-4 gap-2">
                   {(['none', 'low', 'medium', 'high'] as const).map((p) => {
-                    const priorityStyle = PRIORITY_COLORS[p]
                     return (
                       <button
                         key={p}

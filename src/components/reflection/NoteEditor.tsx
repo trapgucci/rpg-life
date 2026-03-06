@@ -51,8 +51,8 @@ export default function NoteEditor({ note, onBack, onDelete }: NoteEditorProps) 
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>()
-  const savedIndicatorRef = useRef<ReturnType<typeof setTimeout>>()
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const savedIndicatorRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const titleRef = useRef(title)
   const contentRef = useRef(content)
 
