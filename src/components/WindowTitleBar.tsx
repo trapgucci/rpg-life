@@ -6,21 +6,36 @@ interface WindowTitleBarProps {
   className?: string
 }
 
-const isElectronWindows =
-  typeof window !== 'undefined' &&
-  (window as any).electronAPI?.platform === 'win32'
+const electronPlatform =
+  typeof window !== 'undefined'
+    ? (window as any).electronAPI?.platform
+    : undefined
+
+const isWindows = electronPlatform === 'win32'
+const isMac = electronPlatform === 'darwin'
 
 export default function WindowTitleBar({ className }: WindowTitleBarProps) {
   const [maximized, setMaximized] = useState(false)
 
   useEffect(() => {
-    if (!isElectronWindows) return
+    if (!isWindows) return
     const api = (window as any).electronAPI
     api.isMaximized?.().then((v: boolean) => setMaximized(v))
     api.onMaximizeChange?.((v: boolean) => setMaximized(v))
   }, [])
 
-  if (!isElectronWindows) return null
+  // macOS: invisible drag region at the top (native traffic lights handle the rest)
+  if (isMac) {
+    return (
+      <div
+        className="h-7 shrink-0 w-full"
+        data-electron-drag
+        style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+      />
+    )
+  }
+
+  if (!isWindows) return null
 
   const api = (window as any).electronAPI
 

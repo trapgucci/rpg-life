@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FolderOpen, Plus, Loader2, CheckCircle2 } from 'lucide-react'
+import { FolderOpen, Loader2, CheckCircle2 } from 'lucide-react'
 import { vaultStorage } from '../lib/vaultStorage'
 
 interface VaultSetupProps {
@@ -51,25 +51,6 @@ export default function VaultSetup({ onComplete }: VaultSetupProps) {
     }
   }
 
-  const handleCreate = async () => {
-    setError(null)
-    setPhase('migrating')
-    try {
-      const path = await vaultStorage.init()
-      setVaultPath(path)
-
-      // Migrate existing localStorage data if available
-      if (vaultStorage.isElectron()) {
-        await migrateFromLocalStorage()
-      }
-
-      setPhase('done')
-    } catch (err) {
-      setError(`Не удалось создать хранилище: ${err}`)
-      setPhase('choose')
-    }
-  }
-
   const handleChoose = async () => {
     setError(null)
     try {
@@ -115,27 +96,17 @@ export default function VaultSetup({ onComplete }: VaultSetupProps) {
               <p className="text-sm text-red-500 mb-4">{error}</p>
             )}
 
-            <div className="flex flex-col gap-3 w-full">
-              <button
-                type="button"
-                onClick={handleCreate}
-                className="btn-primary w-full py-3 flex items-center justify-center gap-2 font-semibold"
-              >
-                <Plus className="h-5 w-5" />
-                Создать хранилище
-              </button>
-              <button
-                type="button"
-                onClick={handleChoose}
-                className="btn-secondary w-full py-3 flex items-center justify-center gap-2"
-              >
-                <FolderOpen className="h-5 w-5" />
-                Выбрать папку
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleChoose}
+              className="btn-primary w-full py-3 flex items-center justify-center gap-2 font-semibold"
+            >
+              <FolderOpen className="h-5 w-5" />
+              Выбрать папку
+            </button>
 
             <p className="text-xs text-[var(--fg-muted)] mt-4 opacity-60">
-              По умолчанию: ~/Documents/RPGLife
+              Выберите, где хранить данные (по умолчанию откроется ~/Documents/RPGLife)
             </p>
           </div>
         )}

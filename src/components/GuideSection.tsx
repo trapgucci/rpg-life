@@ -6,8 +6,8 @@ import {
   Zap, Shield, Clock, Repeat, BarChart3, Layers,
   Gift, Sparkles, Puzzle, Palette, Settings, Heart,
   Info, Lightbulb, AlertTriangle, TrendingUp, Flag,
-  Dumbbell, Scale, Calculator, PiggyBank, Timer, Percent,
-  Box, CircleDollarSign, Award,
+  Dumbbell, Scale, Calculator, PiggyBank, Timer,
+  Award,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
