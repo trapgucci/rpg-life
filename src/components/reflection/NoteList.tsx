@@ -1,6 +1,7 @@
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, CheckSquare, Trash2, X } from 'lucide-react'
 import { useState, useMemo, useRef, useCallback } from 'react'
 import type { Note, NoteFolderId, NoteId } from '../../types/domain'
+import { useRpgStore } from '../../store/useRpgStore'
 import NoteCard from './NoteCard'
 
 interface NoteListProps {
@@ -21,8 +22,40 @@ export default function NoteList({
   onReorder,
 }: NoteListProps) {
   const [search, setSearch] = useState('')
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [dragOverId, setDragOverId] = useState<string | null>(null)
   const draggedId = useRef<string | null>(null)
+  const deleteNote = useRpgStore((s) => s.deleteNote)
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(filtered.map((n) => n.id)))
+    }
+  }
+
+  const handleBulkDelete = () => {
+    if (selectedIds.size === 0) return
+    selectedIds.forEach((id) => deleteNote(id as NoteId))
+    setSelectedIds(new Set())
+    setSelectMode(false)
+  }
+
+  const exitSelectMode = () => {
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }
 
   const filtered = useMemo(() => {
     let list = notes
@@ -94,7 +127,7 @@ export default function NoteList({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Search + Create */}
+      {/* Search + Create + Select */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--fg-muted)]" />
@@ -106,13 +139,50 @@ export default function NoteList({
             className="input w-full pl-9 text-sm"
           />
         </div>
-        <button
-          onClick={onCreateNote}
-          className="btn-primary flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm"
-        >
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Заметка</span>
-        </button>
+        {!selectMode && (
+          <>
+            <button
+              onClick={() => setSelectMode(true)}
+              className="flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm border border-[var(--border)] text-[var(--fg-muted)] hover:border-[var(--border-accent)] hover:text-[var(--fg)] transition-colors"
+            >
+              <CheckSquare className="h-4 w-4" />
+              <span className="hidden sm:inline">Выбрать</span>
+            </button>
+            <button
+              onClick={onCreateNote}
+              className="btn-primary flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Заметка</span>
+            </button>
+          </>
+        )}
+        {selectMode && (
+          <>
+            <button
+              onClick={handleSelectAll}
+              className="flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm border border-[var(--border)] text-[var(--fg-muted)] hover:border-[var(--border-accent)] hover:text-[var(--fg)] transition-colors"
+            >
+              {selectedIds.size === filtered.length ? 'Снять все' : 'Все'}
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              disabled={selectedIds.size === 0}
+              className="flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="hidden sm:inline">
+                Удалить{selectedIds.size > 0 && ` (${selectedIds.size})`}
+              </span>
+            </button>
+            <button
+              onClick={exitSelectMode}
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--fg-muted)] hover:border-[var(--border-accent)] hover:text-[var(--fg)] transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </>
+        )}
       </div>
 
       {/* Notes */}
@@ -135,18 +205,36 @@ export default function NoteList({
           {filtered.map((note) => (
             <div
               key={note.id}
-              draggable={canDrag}
+              draggable={canDrag && !selectMode}
               onDragStart={(e) => handleDragStart(e, note.id)}
               onDragOver={(e) => handleDragOver(e, note.id)}
               onDrop={(e) => handleDrop(e, note.id)}
               onDragEnd={handleDragEnd}
-              className={dragOverId === note.id ? 'border-t-2 border-[var(--accent)] rounded-t-sm' : ''}
+              className={`flex items-start gap-2 ${dragOverId === note.id ? 'border-t-2 border-[var(--accent)] rounded-t-sm' : ''}`}
             >
-              <NoteCard
-                note={note}
-                isSelected={selectedNoteId === note.id}
-                onClick={() => onSelectNote(note.id)}
-              />
+              {selectMode && (
+                <button
+                  onClick={() => toggleSelect(note.id)}
+                  className="mt-4 shrink-0 flex items-center justify-center h-5 w-5 rounded-md border-2 transition-all duration-150"
+                  style={{
+                    borderColor: selectedIds.has(note.id) ? 'var(--accent)' : 'var(--border)',
+                    backgroundColor: selectedIds.has(note.id) ? 'var(--accent)' : 'transparent',
+                  }}
+                >
+                  {selectedIds.has(note.id) && (
+                    <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
+                      <path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </button>
+              )}
+              <div className="flex-1 min-w-0">
+                <NoteCard
+                  note={note}
+                  isSelected={selectedNoteId === note.id}
+                  onClick={() => selectMode ? toggleSelect(note.id) : onSelectNote(note.id)}
+                />
+              </div>
             </div>
           ))}
         </div>

@@ -416,8 +416,8 @@ export default function TasksPage() {
   return (
     <div className="flex h-full min-h-0 gap-2 md:gap-4 overflow-hidden">
       <div className="flex w-full md:basis-[42%] md:max-w-[560px] md:min-w-[320px] md:shrink-0 flex-col gap-2 md:gap-4">
-        {/* Header */}
-        <div className="glass-card rounded-2xl p-3 md:p-4">
+        {/* Header — glassmorphic neumorphism */}
+        <div className="glass-neu rounded-2xl p-3 md:p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 md:gap-3 min-w-0">
               <div className="flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30">
@@ -440,10 +440,9 @@ export default function TasksPage() {
                   type="button"
                   onClick={() => setShowSortMenu((v) => !v)}
                   className={cn(
-                    'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
-                    'border border-[var(--border)] text-[var(--fg-muted)]',
-                    'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
-                    showSortMenu && 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-subtle)]'
+                    'neu-icon-btn flex h-9 w-9 items-center justify-center rounded-xl text-[var(--fg-muted)]',
+                    'hover:text-[var(--accent)]',
+                    showSortMenu && 'neu-pressed text-[var(--accent)]'
                   )}
                   title="Сортировка"
                 >
@@ -494,10 +493,9 @@ export default function TasksPage() {
                 type="button"
                 onClick={() => setShowSearch(!showSearch)}
                 className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
-                  'border border-[var(--border)] text-[var(--fg-muted)]',
-                  'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
-                  showSearch && 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-subtle)]'
+                  'neu-icon-btn flex h-9 w-9 items-center justify-center rounded-xl text-[var(--fg-muted)]',
+                  'hover:text-[var(--accent)]',
+                  showSearch && 'neu-pressed text-[var(--accent)]'
                 )}
                 title="Поиск"
               >
@@ -530,7 +528,7 @@ export default function TasksPage() {
                   }
                 }}
                 placeholder="Поиск по названию..."
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-9 pr-9 py-2.5 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all"
+                className="neu-input w-full rounded-xl pl-9 pr-9 py-2.5 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] outline-none transition-all"
                 autoFocus
               />
               {searchQuery && (
@@ -547,17 +545,17 @@ export default function TasksPage() {
 
           {/* Компактный селектор групп */}
           <div className="mt-4">
+            <div className="neu-divider mb-3" />
             <p className="mb-2 text-xs font-medium text-[var(--fg-muted)]">Группа</p>
             <button
               ref={groupButtonRef}
               type="button"
               onClick={() => setShowGroupSelector(!showGroupSelector)}
               className={cn(
-                'flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition-all',
-                'border border-[var(--border)]',
+                'neu-selector flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm',
                 showGroupSelector
-                  ? 'border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]'
-                  : 'text-[var(--fg-secondary)] hover:border-[var(--border-accent)] hover:bg-[var(--surface)]'
+                  ? 'text-[var(--accent)]'
+                  : 'text-[var(--fg-secondary)]'
               )}
             >
               <div className={cn(
@@ -773,17 +771,18 @@ export default function TasksPage() {
           )}
 
           {/* Фильтр по статусу задач */}
-          <div className="mt-4 border-t border-[var(--border)] pt-4">
+          <div className="mt-4 pt-4">
+            <div className="neu-divider mb-4" />
             <p className="mb-2 text-xs font-medium text-[var(--fg-muted)]">Статус задач</p>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="neu-tab-bar grid grid-cols-4 gap-1.5 rounded-2xl p-1.5">
               <button
                 type="button"
                 onClick={() => setTaskFilter('all')}
                 className={cn(
                   'flex items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
                   taskFilter === 'all'
-                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
-                    : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
+                    ? 'neu-tab-active text-[var(--accent)]'
+                    : 'text-[var(--fg-secondary)]'
                 )}
                 title="Все задачи"
               >
@@ -795,8 +794,8 @@ export default function TasksPage() {
                 className={cn(
                   'flex items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
                   taskFilter === 'active'
-                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
-                    : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
+                    ? 'neu-tab-active text-[var(--accent)]'
+                    : 'text-[var(--fg-secondary)]'
                 )}
                 title="Активные"
               >
@@ -808,8 +807,8 @@ export default function TasksPage() {
                 className={cn(
                   'flex items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
                   taskFilter === 'completed'
-                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
-                    : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
+                    ? 'neu-tab-active text-[var(--accent)]'
+                    : 'text-[var(--fg-secondary)]'
                 )}
                 title="Выполненные"
               >
@@ -821,8 +820,8 @@ export default function TasksPage() {
                 className={cn(
                   'flex items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
                   taskFilter === 'canceled'
-                    ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
-                    : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]'
+                    ? 'neu-tab-active text-[var(--accent)]'
+                    : 'text-[var(--fg-secondary)]'
                 )}
                 title="Архив"
               >

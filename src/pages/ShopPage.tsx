@@ -392,8 +392,8 @@ export default function ShopPage() {
     <div className="flex h-full min-h-0 gap-2 md:gap-4 overflow-hidden">
       {/* ─── LEFT PANEL ─────────────────────────────────────────────────── */}
       <div className="flex w-full md:basis-[42%] md:max-w-[560px] md:min-w-[320px] md:shrink-0 flex-col gap-2 md:gap-4">
-        {/* Header */}
-        <div className="glass-card rounded-2xl p-3 md:p-4">
+        {/* Header — glassmorphic neumorphism */}
+        <div className="glass-neu rounded-2xl p-3 md:p-4">
           {/* Title row */}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 md:gap-3 min-w-0">
@@ -416,11 +416,7 @@ export default function ShopPage() {
                 <button
                   type="button"
                   onClick={() => setShowCart(true)}
-                  className={cn(
-                    'relative flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
-                    'border border-[var(--border)] text-[var(--fg-muted)]',
-                    'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
-                  )}
+                  className="neu-icon-btn relative flex h-9 w-9 items-center justify-center rounded-xl text-[var(--fg-muted)] hover:text-[var(--accent)]"
                   title="Корзина"
                 >
                   <ShoppingCart className="h-4 w-4" />
@@ -437,11 +433,7 @@ export default function ShopPage() {
                 <button
                   type="button"
                   onClick={() => setShowPurchaseHistory(true)}
-                  className={cn(
-                    'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
-                    'border border-[var(--border)] text-[var(--fg-muted)]',
-                    'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
-                  )}
+                  className="neu-icon-btn flex h-9 w-9 items-center justify-center rounded-xl text-[var(--fg-muted)] hover:text-[var(--accent)]"
                   title="История покупок"
                 >
                   <History className="h-4 w-4" />
@@ -454,10 +446,9 @@ export default function ShopPage() {
                   type="button"
                   onClick={() => setShowSortMenu((v) => !v)}
                   className={cn(
-                    'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
-                    'border border-[var(--border)] text-[var(--fg-muted)]',
-                    'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
-                    showSortMenu && 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-subtle)]',
+                    'neu-icon-btn flex h-9 w-9 items-center justify-center rounded-xl text-[var(--fg-muted)]',
+                    'hover:text-[var(--accent)]',
+                    showSortMenu && 'neu-pressed text-[var(--accent)]',
                   )}
                   title="Сортировка"
                 >
@@ -508,10 +499,9 @@ export default function ShopPage() {
                 type="button"
                 onClick={() => setShowSearch(!showSearch)}
                 className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200',
-                  'border border-[var(--border)] text-[var(--fg-muted)]',
-                  'hover:border-[var(--border-accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)]',
-                  showSearch && 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-subtle)]',
+                  'neu-icon-btn flex h-9 w-9 items-center justify-center rounded-xl text-[var(--fg-muted)]',
+                  'hover:text-[var(--accent)]',
+                  showSearch && 'neu-pressed text-[var(--accent)]',
                 )}
                 title="Поиск"
               >
@@ -531,14 +521,14 @@ export default function ShopPage() {
           </div>
 
           {/* Tab switcher */}
-          <div className="mt-4 flex rounded-2xl bg-[var(--surface)] p-1">
+          <div className="neu-tab-bar mt-4 flex rounded-2xl p-1.5">
             <button
               type="button"
               onClick={() => { setTab('shop'); setSearchQuery('') }}
               className={cn(
                 'flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all',
                 tab === 'shop'
-                  ? 'bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/25'
+                  ? 'neu-tab-active text-[var(--accent)]'
                   : 'text-[var(--fg-muted)] hover:text-[var(--fg)]',
               )}
             >
@@ -551,7 +541,7 @@ export default function ShopPage() {
               className={cn(
                 'flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all',
                 tab === 'fragments'
-                  ? 'bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/25'
+                  ? 'neu-tab-active text-[var(--accent)]'
                   : 'text-[var(--fg-muted)] hover:text-[var(--fg)]',
               )}
             >
@@ -575,7 +565,7 @@ export default function ShopPage() {
                   }
                 }}
                 placeholder={tab === 'shop' ? 'Поиск по предметам...' : 'Поиск по рецептам...'}
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-9 pr-9 py-2.5 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all"
+                className="neu-input w-full rounded-xl pl-9 pr-9 py-2.5 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] outline-none transition-all"
                 autoFocus
               />
               {searchQuery && (
@@ -595,17 +585,17 @@ export default function ShopPage() {
             <>
               {/* Group selector */}
               <div className="mt-4">
+                <div className="neu-divider mb-3" />
                 <p className="mb-2 text-xs font-medium text-[var(--fg-muted)]">Группа</p>
                 <button
                   ref={groupButtonRef}
                   type="button"
                   onClick={() => setShowGroupSelector(!showGroupSelector)}
                   className={cn(
-                    'flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition-all',
-                    'border border-[var(--border)]',
+                    'neu-selector flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm',
                     showGroupSelector
-                      ? 'border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]'
-                      : 'text-[var(--fg-secondary)] hover:border-[var(--border-accent)] hover:bg-[var(--surface)]',
+                      ? 'text-[var(--accent)]'
+                      : 'text-[var(--fg-secondary)]',
                   )}
                 >
                   {(() => {
@@ -878,9 +868,10 @@ export default function ShopPage() {
 
           {/* ── Fragments tab controls ─────────────────────────────────── */}
           {tab === 'fragments' && (
-            <div className="mt-4 border-t border-[var(--border)] pt-4">
+            <div className="mt-4 pt-4">
+              <div className="neu-divider mb-4" />
               <p className="mb-2 text-xs font-medium text-[var(--fg-muted)]">Статус рецепта</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="neu-tab-bar grid grid-cols-3 gap-1.5 rounded-2xl p-1.5">
                 {([
                   { key: 'all', icon: <List className="h-5 w-5" />, title: 'Все' },
                   { key: 'active', icon: <Sparkles className="h-5 w-5" />, title: 'Активные' },
@@ -893,8 +884,8 @@ export default function ShopPage() {
                     className={cn(
                       'flex items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all',
                       recipeFilter === key
-                        ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
-                        : 'text-[var(--fg-secondary)] hover:bg-[var(--surface)]',
+                        ? 'neu-tab-active text-[var(--accent)]'
+                        : 'text-[var(--fg-secondary)]',
                     )}
                     title={title}
                   >

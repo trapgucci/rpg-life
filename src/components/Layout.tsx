@@ -53,28 +53,28 @@ function CurrencyDisplay() {
         </div>
       </div>
 
-      {/* Currency section */}
+      {/* Currency section — glassmorphic neumorphism */}
       <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
         <div
           data-currency="coins"
-          className="flex items-center gap-1.5 md:gap-2 rounded-xl bg-amber-500/10 px-2 py-1.5 md:px-3 md:py-2 transition-all hover:bg-amber-500/15"
+          className="glass-neu-coin flex items-center gap-1.5 md:gap-2 rounded-2xl px-2.5 py-1.5 md:px-3.5 md:py-2 transition-all"
         >
-          <div className="flex h-6 w-6 md:h-7 md:w-7 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 shadow-sm">
-            <Coins className="h-3.5 w-3.5 md:h-4 md:w-4 text-white" />
+          <div className="flex h-6 w-6 md:h-7 md:w-7 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-md shadow-amber-500/30">
+            <Coins className="h-3.5 w-3.5 md:h-4 md:w-4 text-white drop-shadow-sm" />
           </div>
-          <span className="font-semibold text-amber-600 dark:text-amber-400 text-sm md:text-base">
+          <span className="font-bold text-amber-600 dark:text-amber-400 text-sm md:text-base">
             {coins.toLocaleString('ru-RU')}
           </span>
         </div>
 
         <div
           data-currency="gems"
-          className="flex items-center gap-1.5 md:gap-2 rounded-xl bg-purple-500/10 px-2 py-1.5 md:px-3 md:py-2 transition-all hover:bg-purple-500/15"
+          className="glass-neu-gem flex items-center gap-1.5 md:gap-2 rounded-2xl px-2.5 py-1.5 md:px-3.5 md:py-2 transition-all"
         >
-          <div className="flex h-6 w-6 md:h-7 md:w-7 items-center justify-center rounded-lg bg-gradient-to-br from-purple-400 to-violet-600 shadow-sm">
-            <Gem className="h-3.5 w-3.5 md:h-4 md:w-4 text-white" />
+          <div className="flex h-6 w-6 md:h-7 md:w-7 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 to-cyan-500 shadow-md shadow-sky-500/30">
+            <Gem className="h-3.5 w-3.5 md:h-4 md:w-4 text-white drop-shadow-sm" />
           </div>
-          <span className="font-semibold text-purple-600 dark:text-purple-400 text-sm md:text-base">
+          <span className="font-bold text-sky-600 dark:text-sky-400 text-sm md:text-base">
             {gems.toLocaleString('ru-RU')}
           </span>
         </div>
