@@ -9,6 +9,13 @@ files:
   - package.json
 asar: true
 
+extraResources:
+  - from: build/icon.png
+    to: icon.png
+
+toolsets:
+  winCodeSign: "1.0.0"
+
 mac:
   category: public.app-category.productivity
   target:
@@ -22,6 +29,8 @@ win:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
 
 linux:
   target:

@@ -1,12 +1,53 @@
-const { app, BrowserWindow, ipcMain, Notification, dialog, safeStorage } = require('electron')
+const { app, BrowserWindow, ipcMain, Notification, dialog, safeStorage, Tray, Menu } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const os = require('os')
 const crypto = require('crypto')
 
-const isDev = process.env.NODE_ENV !== 'production'
+const isDev = !app.isPackaged
+
+// Performance: enable GPU rasterization and disable throttling
+app.commandLine.appendSwitch('enable-gpu-rasterization')
+app.commandLine.appendSwitch('disable-renderer-backgrounding')
 
 let mainWindow = null
+let tray = null
+
+function createTray() {
+  const iconPath = isDev
+    ? path.join(__dirname, '../build/icon.png')
+    : path.join(process.resourcesPath, 'icon.png')
+  tray = new Tray(iconPath)
+  tray.setToolTip('RPG Life')
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Открыть RPG Life',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show()
+          mainWindow.focus()
+        }
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Выход',
+      click: () => {
+        app.isQuitting = true
+        app.quit()
+      },
+    },
+  ])
+
+  tray.setContextMenu(contextMenu)
+  tray.on('double-click', () => {
+    if (mainWindow) {
+      mainWindow.show()
+      mainWindow.focus()
+    }
+  })
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -22,6 +63,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       scrollBounce: true,
+      backgroundThrottling: false,
     },
   })
 
@@ -35,17 +77,12 @@ function createWindow() {
   mainWindow.on('maximize', () => mainWindow.webContents.send('window:maximized'))
   mainWindow.on('unmaximize', () => mainWindow.webContents.send('window:unmaximized'))
 
-  // Flush pending vault writes before closing
-  let isClosing = false
+  // Minimize to tray instead of closing
   mainWindow.on('close', (e) => {
-    if (isClosing) return
-    isClosing = true
-    e.preventDefault()
-    mainWindow.webContents.executeJavaScript('window.__flushAndClose && window.__flushAndClose()').catch(() => {})
-    // Fallback: если рендерер не отвечает за 3 секунды — закрыть принудительно
-    setTimeout(() => {
-      mainWindow.destroy()
-    }, 3000)
+    if (!app.isQuitting) {
+      e.preventDefault()
+      mainWindow.hide()
+    }
   })
 }
 
@@ -317,18 +354,24 @@ ipcMain.handle('vault:deleteMedia', async (_, relativePath) => {
 
 app.whenReady().then(() => {
   createWindow()
+  createTray()
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (mainWindow) {
+      mainWindow.show()
+      mainWindow.focus()
+    } else {
       createWindow()
     }
   })
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
+  // Don't quit — app lives in tray
+})
+
+app.on('before-quit', () => {
+  app.isQuitting = true
 })
 
 // Handle uncaught exceptions
