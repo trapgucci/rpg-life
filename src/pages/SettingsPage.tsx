@@ -642,8 +642,7 @@ function AppearanceSection() {
         </div>
       </div>
 
-      {/* Font Family — only on Windows where system font renders poorly */}
-      {navigator.platform.startsWith('Win') && (
+      {/* Font Family */}
       <div className="mb-6">
         <label className="block text-xs font-medium text-[var(--fg-muted)] mb-3 uppercase tracking-wider">Шрифт</label>
         <div className="grid grid-cols-1 gap-2">
@@ -685,7 +684,6 @@ function AppearanceSection() {
           })}
         </div>
       </div>
-      )}
 
       {/* Scrollbars */}
       <div className="flex flex-col gap-3">

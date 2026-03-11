@@ -2,7 +2,7 @@ import { toast } from 'sonner'
 import { Coins, Gem, Zap, Check, ShoppingBag, Package, Trophy, Swords, Star } from 'lucide-react'
 import { useRpgStore } from '../store/useRpgStore'
 
-type RpgToastType = 'success' | 'error' | 'info' | 'reward' | 'purchase' | 'loot' | 'achievement' | 'achievement_complete'
+type RpgToastType = 'success' | 'error' | 'info' | 'reward' | 'purchase' | 'loot' | 'achievement' | 'achievement_complete' | 'fragment'
 
 type ToastSettingKey = 'toastTaskComplete' | 'toastTaskCreate' | 'toastTaskActions' | 'toastPurchases' | 'toastAchievements' | 'toastCraft' | 'toastErrors'
 
@@ -14,7 +14,16 @@ const TOAST_TYPE_TO_SETTING: Record<RpgToastType, ToastSettingKey> = {
   achievement: 'toastAchievements',
   achievement_complete: 'toastAchievements',
   loot: 'toastCraft',
+  fragment: 'toastCraft',
   error: 'toastErrors',
+}
+
+export interface FragmentDropInfo {
+  fragmentName: string
+  fragmentColor: string
+  collected: number
+  required: number
+  resultName: string
 }
 
 interface RpgToastRewardItem {
@@ -34,6 +43,8 @@ interface RpgToastOptions {
   type?: RpgToastType
   /** Override setting key for filtering (e.g. 'toastTaskActions' for action toasts that use 'success' type) */
   category?: ToastSettingKey
+  /** Fragment drop info for fragment toast type */
+  fragment?: FragmentDropInfo
 }
 
 const TYPE_CONFIG: Record<RpgToastType, {
@@ -98,6 +109,13 @@ const TYPE_CONFIG: Record<RpgToastType, {
     border: 'border-yellow-400/50',
     glow: 'shadow-yellow-500/30',
     iconBg: 'from-yellow-300 to-amber-500',
+  },
+  fragment: {
+    icon: Package,
+    gradient: 'from-purple-500/20 via-purple-500/5 to-transparent',
+    border: 'border-purple-500/30',
+    glow: 'shadow-purple-500/20',
+    iconBg: 'from-purple-400 to-violet-600',
   },
 }
 
@@ -266,6 +284,124 @@ function AchievementCompleteToastContent({ options, toastId }: { options: RpgToa
   )
 }
 
+function FragmentDropToastContent({ options, toastId }: { options: RpgToastOptions; toastId: string | number }) {
+  const frag = options.fragment!
+  const progress = Math.round((frag.collected / frag.required) * 100)
+  const isComplete = frag.collected >= frag.required
+
+  return (
+    <div
+      onClick={() => toast.dismiss(toastId)}
+      className="
+        relative overflow-hidden cursor-pointer
+        min-w-[300px] max-w-[380px]
+        rounded-xl border-2
+        bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800
+        shadow-lg
+      "
+      style={{
+        borderColor: `${frag.fragmentColor}60`,
+        boxShadow: `0 0 20px ${frag.fragmentColor}20, 0 4px 12px rgba(0,0,0,0.3)`,
+      }}
+    >
+      {/* Color gradient overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-15"
+        style={{ background: `linear-gradient(135deg, ${frag.fragmentColor}40, transparent 60%)` }}
+      />
+
+      {/* Shimmer */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div
+          className="absolute inset-y-0 -left-full w-full"
+          style={{
+            background: `linear-gradient(90deg, transparent, ${frag.fragmentColor}20, transparent)`,
+            animation: 'rpg-toast-shimmer 1.5s ease-in-out 0.2s 1 forwards',
+          }}
+        />
+      </div>
+
+      {/* Floating particles */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-1 right-6 w-2 h-2 rounded-full" style={{ backgroundColor: `${frag.fragmentColor}50`, animation: 'rpg-achievement-particle 2s ease-in-out infinite' }} />
+        <div className="absolute bottom-2 left-10 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `${frag.fragmentColor}40`, animation: 'rpg-achievement-particle 2.3s ease-in-out 0.5s infinite' }} />
+      </div>
+
+      <div className="relative px-4 py-3.5">
+        {/* Top row: icon + info */}
+        <div className="flex items-center gap-3">
+          {/* Fragment icon with glow */}
+          <div className="relative flex-shrink-0">
+            <div
+              className="absolute inset-0 rounded-xl blur-md"
+              style={{ backgroundColor: `${frag.fragmentColor}30`, animation: 'rpg-achievement-glow 2s ease-in-out infinite' }}
+            />
+            <div
+              className="relative flex items-center justify-center h-10 w-10 rounded-xl shadow-lg"
+              style={{
+                background: `linear-gradient(135deg, ${frag.fragmentColor}, ${frag.fragmentColor}cc)`,
+                boxShadow: `0 4px 12px ${frag.fragmentColor}40`,
+              }}
+            >
+              <Package className="h-5 w-5 text-white drop-shadow-sm" strokeWidth={2.5} />
+            </div>
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: `${frag.fragmentColor}cc` }}>
+              {isComplete ? 'Все фрагменты собраны!' : 'Выпал фрагмент!'}
+            </p>
+            <p className="font-bold text-[14px] text-white leading-tight mt-0.5 truncate">
+              {frag.fragmentName}
+            </p>
+          </div>
+
+          {/* Counter badge */}
+          <div className="flex-shrink-0 text-right">
+            <div
+              className="inline-flex items-center gap-0.5 rounded-lg px-2.5 py-1 text-[13px] font-bold"
+              style={{
+                backgroundColor: `${frag.fragmentColor}20`,
+                color: frag.fragmentColor,
+                boxShadow: `inset 0 0 0 1px ${frag.fragmentColor}30`,
+              }}
+            >
+              {frag.collected}<span className="text-[11px] opacity-60">/{frag.required}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="mt-3">
+          <div className="h-2 rounded-full bg-zinc-800 overflow-hidden" style={{ boxShadow: `inset 0 0 0 1px ${frag.fragmentColor}15` }}>
+            <div
+              className="h-full rounded-full transition-all duration-700 ease-out"
+              style={{
+                width: `${progress}%`,
+                background: isComplete
+                  ? `linear-gradient(90deg, ${frag.fragmentColor}, ${frag.fragmentColor}cc, ${frag.fragmentColor})`
+                  : `linear-gradient(90deg, ${frag.fragmentColor}cc, ${frag.fragmentColor})`,
+                boxShadow: `0 0 8px ${frag.fragmentColor}60`,
+              }}
+            />
+          </div>
+          <div className="flex items-center justify-between mt-1.5">
+            <p className="text-[11px] text-zinc-500">
+              {isComplete
+                ? <span style={{ color: frag.fragmentColor }}>Можно крафтить: <span className="font-semibold text-white">{frag.resultName}</span></span>
+                : <>Осталось: <span className="font-semibold text-zinc-300">{frag.required - frag.collected}</span></>
+              }
+            </p>
+            <p className="text-[11px] font-semibold" style={{ color: `${frag.fragmentColor}aa` }}>
+              {progress}%
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function rpgToast(options: RpgToastOptions) {
   const type = options.type ?? 'success'
   const settingKey = options.category ?? TOAST_TYPE_TO_SETTING[type]
@@ -276,6 +412,12 @@ export function rpgToast(options: RpgToastOptions) {
     return toast.custom(
       (id) => <AchievementCompleteToastContent options={options} toastId={id} />,
       { duration: options.duration ?? 5000, position: 'bottom-right', unstyled: true },
+    )
+  }
+  if (options.type === 'fragment' && options.fragment) {
+    return toast.custom(
+      (id) => <FragmentDropToastContent options={options} toastId={id} />,
+      { duration: options.duration ?? 4000, position: 'bottom-right', unstyled: true },
     )
   }
   return toast.custom(

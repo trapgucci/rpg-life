@@ -882,9 +882,10 @@ export interface DailySnapshot {
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 
-export type FontFamily = 'nunito' | 'inter' | 'manrope' | 'rubik' | 'comfortaa'
+export type FontFamily = 'system' | 'nunito' | 'inter' | 'manrope' | 'rubik' | 'comfortaa'
 
 export const FONT_FAMILIES: Record<FontFamily, { name: string; css: string; preview: string }> = {
+  system:     { name: 'Системный',  css: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', preview: 'San Francisco / Segoe UI' },
   nunito:     { name: 'Nunito',     css: '"Nunito Variable", Nunito',         preview: 'Мягкий и округлый' },
   inter:      { name: 'Inter',      css: '"Inter Variable", Inter',           preview: 'Чистый и современный' },
   manrope:    { name: 'Manrope',    css: '"Manrope Variable", Manrope',       preview: 'Геометричный' },
