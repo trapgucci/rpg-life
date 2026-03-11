@@ -72,11 +72,9 @@ function App() {
 
     root.classList.toggle('hide-scrollbars', !(settings.showScrollbars ?? true))
 
-    // Apply font family (Windows only; macOS uses system font)
-    if (navigator.platform.startsWith('Win')) {
-      const font = FONT_FAMILIES[settings.fontFamily ?? 'nunito']
-      root.style.setProperty('--font-family', font.css)
-    }
+    // Apply font family
+    const font = FONT_FAMILIES[settings.fontFamily ?? 'nunito']
+    root.style.setProperty('--font-family', font.css)
   }, [settings.theme, settings.accentColor, settings.showScrollbars, settings.fontFamily])
 
   // Show nothing while checking license

@@ -2261,10 +2261,12 @@ export const useRpgStore = create<RpgStoreState>()(
             if (isSubtask && !fs.allowSubtaskDrop) return
 
             const chance = typeof fs.dropChance === 'number' ? fs.dropChance / 100 : 0
+            let dropped = false
 
             if (fs.type === 'random_drop' && chance > 0) {
               if (Math.random() < chance) {
                 get().addFragment(recipe.id, 1)
+                dropped = true
               }
             }
 
@@ -2273,7 +2275,26 @@ export const useRpgStore = create<RpgStoreState>()(
               if (linked.includes(taskId)) {
                 if (Math.random() < chance) {
                   get().addFragment(recipe.id, 1)
+                  dropped = true
                 }
+              }
+            }
+
+            if (dropped) {
+              // Read updated recipe to get current fragment count
+              const updated = get().getCraftRecipes().find((r) => r.id === recipe.id)
+              if (updated) {
+                rpgToast({
+                  title: updated.fragmentName,
+                  type: 'fragment',
+                  fragment: {
+                    fragmentName: updated.fragmentName,
+                    fragmentColor: updated.fragmentColor,
+                    collected: updated.fragmentsCollected,
+                    required: updated.fragmentsRequired,
+                    resultName: updated.resultName,
+                  },
+                })
               }
             }
           })
