@@ -172,6 +172,27 @@ function deductXpFromAttribute(
   })
 }
 
+/** Deduct XP from the profile-level bar, handling level-downs */
+function deductXpFromProfile(profile: Profile, xpDeduct: number): Pick<Profile, 'xp' | 'level'> {
+  let { level, xp } = profile
+  let debt = xpDeduct - xp
+  if (debt <= 0) {
+    return { xp: xp - xpDeduct, level }
+  }
+  xp = 0
+  while (level > 1 && debt > 0) {
+    level -= 1
+    const prevRequired = xpRequiredForNextLevel({ ...profile, level }, level)
+    if (debt >= prevRequired) {
+      debt -= prevRequired
+    } else {
+      xp = prevRequired - debt
+      debt = 0
+    }
+  }
+  return { xp, level }
+}
+
 /** Add XP to the profile-level bar (profile.xp / profile.level), handling level-ups */
 function addXpToProfile(profile: Profile, xpGain: number): Pick<Profile, 'xp' | 'level'> {
   let { level, xp } = profile
@@ -1743,13 +1764,16 @@ export const useRpgStore = create<RpgStoreState>()(
               // Revoke per-subtask rewards when toggling OFF
               if (coinRwd > 0) get().deductCurrency(CURRENCY_IDS.COINS, coinRwd)
               if (gemRwd > 0) get().deductCurrency(CURRENCY_IDS.GEMS, gemRwd)
-              if (xpRwd > 0 && attrIds.length > 0) {
+              if (xpRwd > 0) {
                 let currentAttrs = profile.attributes
-                for (const attrId of attrIds) {
-                  const tempProfile = { ...profile, attributes: currentAttrs }
-                  currentAttrs = deductXpFromAttribute(tempProfile, attrId, xpRwd)
+                if (attrIds.length > 0) {
+                  for (const attrId of attrIds) {
+                    const tempProfile = { ...profile, attributes: currentAttrs }
+                    currentAttrs = deductXpFromAttribute(tempProfile, attrId, xpRwd)
+                  }
                 }
-                updateProfile(profile.id, (p) => ({ ...p, attributes: currentAttrs }))
+                const profileXp = deductXpFromProfile(profile, xpRwd)
+                updateProfile(profile.id, (p) => ({ ...p, attributes: currentAttrs, ...profileXp }))
               }
             }
           }
