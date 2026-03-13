@@ -375,7 +375,7 @@ function FragmentDropToastContent({ options, toastId }: { options: RpgToastOptio
         <div className="mt-3">
           <div className="h-2 rounded-full bg-zinc-800 overflow-hidden" style={{ boxShadow: `inset 0 0 0 1px ${frag.fragmentColor}15` }}>
             <div
-              className="h-full rounded-full transition-all duration-700 ease-out"
+              className="h-full rounded-full transition-[width] duration-700 ease-out"
               style={{
                 width: `${progress}%`,
                 background: isComplete

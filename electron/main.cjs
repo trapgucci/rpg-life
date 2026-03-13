@@ -6,9 +6,8 @@ const crypto = require('crypto')
 
 const isDev = !app.isPackaged
 
-// Performance: enable GPU rasterization and disable throttling
+// Performance: enable GPU rasterization for smoother rendering
 app.commandLine.appendSwitch('enable-gpu-rasterization')
-app.commandLine.appendSwitch('disable-renderer-backgrounding')
 
 let mainWindow = null
 let tray = null
@@ -65,7 +64,6 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       scrollBounce: true,
-      backgroundThrottling: false,
     },
   })
 
@@ -354,27 +352,42 @@ ipcMain.handle('vault:deleteMedia', async (_, relativePath) => {
 
 // ─── App Lifecycle ──────────────────────────────────────────────────────────
 
-app.whenReady().then(() => {
-  createWindow()
-  createTray()
+// Prevent duplicate instances — focus existing window instead
+const gotTheLock = app.requestSingleInstanceLock()
 
-  app.on('activate', () => {
+if (!gotTheLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
     if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
       mainWindow.show()
       mainWindow.focus()
-    } else {
-      createWindow()
     }
   })
-})
 
-app.on('window-all-closed', () => {
-  // Don't quit — app lives in tray
-})
+  app.whenReady().then(() => {
+    createWindow()
+    createTray()
 
-app.on('before-quit', () => {
-  app.isQuitting = true
-})
+    app.on('activate', () => {
+      if (mainWindow) {
+        mainWindow.show()
+        mainWindow.focus()
+      } else {
+        createWindow()
+      }
+    })
+  })
+
+  app.on('window-all-closed', () => {
+    // Don't quit — app lives in tray
+  })
+
+  app.on('before-quit', () => {
+    app.isQuitting = true
+  })
+}
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {

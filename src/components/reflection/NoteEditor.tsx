@@ -19,13 +19,16 @@ interface NoteEditorProps {
   onDelete: () => void
 }
 
-/** Auto-resize textarea to fit content */
+/** Auto-resize textarea to fit content (batched via rAF to avoid per-keystroke reflow) */
 function useAutoResize(ref: React.RefObject<HTMLTextAreaElement | null>, value: string) {
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    el.style.height = 'auto'
-    el.style.height = el.scrollHeight + 'px'
+    let rafId = requestAnimationFrame(() => {
+      el.style.height = 'auto'
+      el.style.height = el.scrollHeight + 'px'
+    })
+    return () => cancelAnimationFrame(rafId)
   }, [ref, value])
 }
 

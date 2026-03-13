@@ -1038,8 +1038,9 @@ export const useRpgStore = create<RpgStoreState>()(
 
         getTaskRewardPreview: (task) => {
           const { settings } = get()
-          // XP всегда начисляется в профиль (и в атрибуты если выбраны)
-          const baseXp = task.customXp ?? settings.taskDifficultyXp?.[task.difficulty] ?? TASK_XP_BY_DIFFICULTY[task.difficulty]
+          // XP начисляется только если выбран хотя бы один атрибут
+          const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
+          const baseXp = attrIds.length > 0 ? (task.customXp ?? settings.taskDifficultyXp?.[task.difficulty] ?? TASK_XP_BY_DIFFICULTY[task.difficulty]) : 0
           const baseCoins = task.coinReward
           const baseGems = task.gemReward ?? 0
 
@@ -1128,8 +1129,9 @@ export const useRpgStore = create<RpgStoreState>()(
             }
           }
 
-          // XP всегда начисляется в профиль; в атрибуты — только если они выбраны
-          const baseXp = task.customXp ?? settings.taskDifficultyXp?.[task.difficulty] ?? TASK_XP_BY_DIFFICULTY[task.difficulty]
+          // XP начисляется только если выбран хотя бы один атрибут
+          const hasAttributes = attrIds.length > 0
+          const baseXp = hasAttributes ? (task.customXp ?? settings.taskDifficultyXp?.[task.difficulty] ?? TASK_XP_BY_DIFFICULTY[task.difficulty]) : 0
           const xpGain = Math.round(baseXp * multiplierFactor)
           const coinGain = Math.round(task.coinReward * multiplierFactor)
           const gemGain = Math.round((task.gemReward ?? 0) * multiplierFactor)

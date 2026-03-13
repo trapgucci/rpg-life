@@ -127,7 +127,7 @@ export default memo(function TaskCard({ task, selected, onSelect, rewards, fragm
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--border)]">
                 <div
-                  className="h-full rounded-full transition-all duration-500 ease-out"
+                  className="h-full rounded-full transition-[width] duration-500 ease-out"
                   style={{
                     width: `${progress * 100}%`,
                     background: task.isCompleted

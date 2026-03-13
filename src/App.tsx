@@ -21,6 +21,16 @@ import { Toaster } from 'sonner'
 
 function App() {
   useSmoothScroll()
+
+  // Pause CSS animations when the window is hidden (minimized / tray)
+  useEffect(() => {
+    const handleVisibility = () => {
+      document.documentElement.classList.toggle('app-hidden', document.hidden)
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [])
+
   const settings = useRpgStore((s) => s.settings)
   const hasHydrated = useRpgStore((s) => s._hasHydrated)
   const [vaultReady, setVaultReady] = useState(!vaultStorage.isElectron())

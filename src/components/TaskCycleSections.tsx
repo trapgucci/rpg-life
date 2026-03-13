@@ -60,11 +60,13 @@ function CollapsibleBlock({ icon, title, defaultOpen = false, children }: Collap
         }
       </button>
       <div className={cn(
-        'overflow-hidden transition-all duration-300 ease-out',
-        open ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'
+        'grid transition-[grid-template-rows,opacity] duration-300 ease-out',
+        open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
       )}>
-        <div className="px-4 pb-4 pt-0 border-t border-[var(--border)]">
-          {children}
+        <div className="overflow-hidden">
+          <div className="px-4 pb-4 pt-0 border-t border-[var(--border)]">
+            {children}
+          </div>
         </div>
       </div>
     </div>
@@ -359,7 +361,7 @@ export function TaskMultiplierBlock({ task }: TaskBlockProps) {
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--border)]">
               <div
-                className="h-full rounded-full transition-all duration-500 ease-out"
+                className="h-full rounded-full transition-[width] duration-500 ease-out"
                 style={{
                   width: `${(completedInCycle / sm.interval) * 100}%`,
                   background: 'linear-gradient(90deg, #f59e0b, #f97316)',
@@ -415,7 +417,7 @@ export function TaskMultiplierBlock({ task }: TaskBlockProps) {
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--border)]">
             <div
-              className="h-full rounded-full transition-all duration-500 ease-out"
+              className="h-full rounded-full transition-[width] duration-500 ease-out"
               style={{
                 width: `${(remaining / sm.interval) * 100}%`,
                 background: 'linear-gradient(90deg, #f59e0b, #f97316)',
@@ -656,7 +658,7 @@ export function TaskStatsBlock({ task }: TaskBlockProps) {
               </div>
               <div className="h-2.5 w-full overflow-hidden rounded-full bg-[var(--border)]">
                 <div
-                  className="h-full rounded-full transition-all duration-500 ease-out"
+                  className="h-full rounded-full transition-[width] duration-500 ease-out"
                   style={{
                     width: `${rate}%`,
                     background: rate >= 80

@@ -3,10 +3,18 @@ import { useEffect } from 'react'
 /**
  * Smooth scroll hook — перехватывает wheel-события на элементах с overflow scroll/auto
  * и анимирует скролл через requestAnimationFrame с easing.
- * Даёт плавный 60fps скролл в Electron на macOS (где нет нативной инерции).
+ *
+ * Активен ТОЛЬКО на macOS — там нет нативной инерции в Electron.
+ * На Windows используется нативный скролл (как в Проводнике).
  */
 export function useSmoothScroll() {
   useEffect(() => {
+    // На Windows не перехватываем скролл — используем нативное поведение
+    const isMac =
+      navigator.platform?.toLowerCase().includes('mac') ||
+      navigator.userAgent?.toLowerCase().includes('macintosh')
+    if (!isMac) return
+
     const targets = new Map<Element, { current: number; target: number; animId: number }>()
 
     function getScrollableParent(el: Element | null): Element | null {
@@ -40,7 +48,7 @@ export function useSmoothScroll() {
         return
       }
 
-      // Lerp — smoothing factor (higher = snappier, lower = smoother)
+      // Lerp — smoothing factor
       state.current += diff * 0.14
       el.scrollTop = state.current
 

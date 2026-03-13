@@ -57,7 +57,7 @@ function CurrencyDisplay() {
           <div className="mt-1 md:mt-1.5 flex items-center gap-2">
             <div className="h-1.5 w-20 md:w-32 overflow-hidden rounded-full bg-[var(--border)]">
               <div
-                className="h-full rounded-full transition-all duration-500 ease-out"
+                className="h-full rounded-full transition-[width] duration-500 ease-out"
                 style={{
                   width: `${progress}%`,
                   background: 'linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)'

@@ -1288,7 +1288,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 </div>
                 <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-[var(--border)]">
                   <div
-                    className="h-full rounded-full transition-all duration-500 ease-out"
+                    className="h-full rounded-full transition-[width] duration-500 ease-out"
                     style={{
                       width: `${progress * 100}%`,
                       background: 'linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)'
@@ -1333,7 +1333,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                 {!task.isCompleted && (
                   <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--border)] mb-4">
                     <div
-                      className="h-full rounded-full transition-all duration-500 ease-out"
+                      className="h-full rounded-full transition-[width] duration-500 ease-out"
                       style={{
                         width: `${subtaskProgress * 100}%`,
                         background: 'linear-gradient(90deg, #10b981, #34d399)'

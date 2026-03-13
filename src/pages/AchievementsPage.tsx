@@ -219,7 +219,7 @@ function AchievementDetailModal({ achievement, onClose, onEdit }: AchievementDet
           <div className="mt-4">
             <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--border)]">
               <div
-                className="h-full rounded-full transition-all duration-500 ease-out"
+                className="h-full rounded-full transition-[width] duration-500 ease-out"
                 style={{
                   width: `${progress * 100}%`,
                   background: 'linear-gradient(90deg, #f59e0b, #eab308)',
@@ -1300,12 +1300,14 @@ function AchievementForm({ achievement, onClose, defaultGroupId }: AchievementFo
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const emojiPickerRef = useRef<HTMLDivElement>(null)
 
-  // Auto-resize textarea
+  // Auto-resize textarea (batched via rAF)
   const autoResizeTextarea = useCallback(() => {
     const el = textareaRef.current
     if (!el) return
-    el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px'
+    requestAnimationFrame(() => {
+      el.style.height = 'auto'
+      el.style.height = Math.min(el.scrollHeight, 120) + 'px'
+    })
   }, [])
 
   useEffect(() => { autoResizeTextarea() }, [description, autoResizeTextarea])
@@ -2083,7 +2085,7 @@ function FolderCard({ group, achievements, onOpen, onEditIcon, onEdit, onDelete 
       <div className="w-full">
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--border)]">
           <div
-            className="h-full rounded-full transition-all duration-500 ease-out"
+            className="h-full rounded-full transition-[width] duration-500 ease-out"
             style={{
               width: `${progress * 100}%`,
               background: `linear-gradient(90deg, ${color}, ${color}bb)`,
@@ -2223,7 +2225,7 @@ function AchievementListItem({ achievement, onClick, groupColor, draggable, onDr
           <div className="flex items-center gap-2 mt-1.5">
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--border)]">
               <div
-                className="h-full rounded-full transition-all duration-500 ease-out"
+                className="h-full rounded-full transition-[width] duration-500 ease-out"
                 style={{
                   width: `${progress * 100}%`,
                   background: 'linear-gradient(90deg, #f59e0b, #eab308)',
@@ -2529,7 +2531,7 @@ export default function AchievementsPage() {
                   <div className="w-full">
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--border)]">
                       <div
-                        className="h-full rounded-full transition-all duration-500 ease-out"
+                        className="h-full rounded-full transition-[width] duration-500 ease-out"
                         style={{
                           width: `${ungroupedAchievements.length > 0
                             ? (ungroupedAchievements.filter((a) => a.unlocked).length / ungroupedAchievements.length) * 100

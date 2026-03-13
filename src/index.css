@@ -1,6 +1,13 @@
 @import 'tailwindcss';
 @config "../tailwind.config.js";
 
+/* Pause all infinite animations when the window is hidden (minimized / tray) */
+.app-hidden *,
+.app-hidden *::before,
+.app-hidden *::after {
+  animation-play-state: paused !important;
+}
+
 /* Electron window drag region */
 [data-electron-drag] {
   -webkit-app-region: drag;
@@ -566,7 +573,7 @@ html.dark,
       3px 3px 8px rgba(0,0,0,0.06),
       -2px -2px 6px rgba(255,255,255,0.7),
       inset 1px 1px 1px rgba(255,255,255,0.4);
-    transition: all 0.2s;
+    transition: box-shadow 0.2s, background 0.2s;
   }
   .neu-icon-btn:hover {
     box-shadow:
@@ -626,7 +633,7 @@ html.dark,
     box-shadow:
       inset 2px 2px 5px rgba(0,0,0,0.04),
       inset -2px -2px 4px rgba(255,255,255,0.5);
-    transition: all 0.2s;
+    transition: box-shadow 0.2s, background 0.2s, border-color 0.2s;
   }
   .dark .neu-selector,
   [data-theme="dark"] .neu-selector {
@@ -806,7 +813,8 @@ html.dark,
 
   /* Buttons */
   .btn-primary {
-    @apply px-4 py-2 rounded-xl font-medium text-white transition-all duration-200;
+    @apply px-4 py-2 rounded-xl font-medium text-white duration-200;
+    transition: transform 0.2s, box-shadow 0.2s;
     background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
     box-shadow: 0 2px 8px var(--accent-glow);
   }
@@ -821,7 +829,8 @@ html.dark,
   }
 
   .btn-secondary {
-    @apply px-4 py-2 rounded-xl font-medium transition-all duration-200;
+    @apply px-4 py-2 rounded-xl font-medium duration-200;
+    transition: background 0.2s, border-color 0.2s;
     background: var(--surface-elevated);
     color: var(--fg);
     border: 1px solid var(--border);
@@ -833,7 +842,8 @@ html.dark,
   }
 
   .btn-ghost {
-    @apply px-4 py-2 rounded-xl font-medium transition-all duration-200;
+    @apply px-4 py-2 rounded-xl font-medium duration-200;
+    transition: background 0.2s, color 0.2s;
     color: var(--fg-secondary);
   }
 
@@ -844,7 +854,8 @@ html.dark,
 
   /* Cards */
   .card {
-    @apply rounded-2xl p-4 transition-all duration-200;
+    @apply rounded-2xl p-4 duration-200;
+    transition: border-color 0.2s, box-shadow 0.2s;
     background: var(--surface-card);
     backdrop-filter: blur(16px) saturate(180%);
     -webkit-backdrop-filter: blur(16px) saturate(180%);
@@ -871,7 +882,8 @@ html.dark,
 
   /* Inputs */
   .input {
-    @apply px-4 py-2.5 rounded-xl text-sm transition-all duration-200;
+    @apply px-4 py-2.5 rounded-xl text-sm duration-200;
+    transition: border-color 0.2s, box-shadow 0.2s;
     background: var(--input-bg);
     border: 1px solid var(--border);
     color: var(--fg);
@@ -945,7 +957,8 @@ html.dark,
 
   /* Select */
   .select {
-    @apply px-3 py-2 rounded-xl text-sm transition-all duration-200 cursor-pointer;
+    @apply px-3 py-2 rounded-xl text-sm duration-200 cursor-pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
     background: var(--input-bg);
     border: 1px solid var(--border);
     color: var(--fg);
@@ -968,7 +981,8 @@ html.dark,
   }
 
   .progress-bar {
-    @apply h-full rounded-full transition-all duration-500 ease-out;
+    @apply h-full rounded-full duration-500 ease-out;
+    transition: width 0.5s ease-out;
     background: var(--xp-gradient);
   }
 
@@ -1034,7 +1048,8 @@ html.dark,
 
   /* Icon buttons */
   .icon-btn {
-    @apply p-2 rounded-xl transition-all duration-200;
+    @apply p-2 rounded-xl duration-200;
+    transition: background 0.2s, color 0.2s;
     color: var(--fg-muted);
   }
 
@@ -1059,7 +1074,8 @@ html.dark,
 
   /* Tab styles */
   .tab {
-    @apply px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200;
+    @apply px-4 py-2 rounded-xl text-sm font-medium duration-200;
+    transition: background 0.2s, color 0.2s;
     color: var(--fg-muted);
   }
 
@@ -1075,7 +1091,8 @@ html.dark,
 
   /* Floating action button */
   .fab {
-    @apply fixed bottom-6 right-6 p-4 rounded-2xl text-white shadow-lg transition-all duration-200;
+    @apply fixed bottom-6 right-6 p-4 rounded-2xl text-white shadow-lg duration-200;
+    transition: transform 0.2s, box-shadow 0.2s;
     background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
     box-shadow: 0 4px 20px var(--accent-glow);
   }
@@ -1313,13 +1330,12 @@ html.dark,
   background: var(--accent);
   box-shadow: 0 2px 8px var(--accent-glow);
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.15s ease;
   border: 3px solid white;
 }
 
 .target-slider::-webkit-slider-thumb:hover {
   transform: scale(1.15);
-  box-shadow: 0 3px 12px var(--accent-glow);
 }
 
 .target-slider::-webkit-slider-thumb:active {
@@ -1334,12 +1350,11 @@ html.dark,
   box-shadow: 0 2px 8px var(--accent-glow);
   cursor: pointer;
   border: 3px solid white;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.15s ease;
 }
 
 .target-slider::-moz-range-thumb:hover {
   transform: scale(1.15);
-  box-shadow: 0 3px 12px var(--accent-glow);
 }
 
 .target-slider::-moz-range-track {
@@ -1664,7 +1679,7 @@ html.dark,
     6px 6px 16px var(--neu-shadow-dark),
     -4px -4px 12px var(--neu-shadow-light),
     inset 0 1px 0 var(--neu-inset-light);
-  transition: all 0.3s ease;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .neu-card-hover:hover {
@@ -1703,7 +1718,7 @@ html.dark,
   background: var(--surface);
   backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid rgba(255,255,255,0.06);
-  transition: all 0.25s ease;
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
 }
 
 .neu-pill:hover {
