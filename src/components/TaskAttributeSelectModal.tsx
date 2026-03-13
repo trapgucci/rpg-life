@@ -245,8 +245,13 @@ export default function TaskAttributeSelectModal({
             </div>
           )}
 
-          {/* Summary - только если есть XP */}
-          {effectiveXp > 0 && (
+          {/* Summary */}
+          {selectedAttributeIds.length === 0 ? (
+            <div className="mt-2 flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 bg-[var(--surface)]">
+              <Zap className="h-3.5 w-3.5 text-[var(--fg-muted)]" />
+              <span className="text-sm font-semibold text-[var(--fg-muted)]">Без XP</span>
+            </div>
+          ) : effectiveXp > 0 ? (
             <div className={cn(
               'mt-2 flex items-center gap-2 rounded-lg px-3 py-2 border',
               xpColors.bg,
@@ -259,13 +264,11 @@ export default function TaskAttributeSelectModal({
               <span className={cn('text-[11px]', xpColors.text, 'opacity-70')}>
                 • {difficultyLabel}
               </span>
-              {selectedAttributeIds.length > 0 && (
-                <span className={cn('text-[11px]', xpColors.text, 'opacity-70')}>
-                  → {selectedAttributeIds.length} {selectedAttributeIds.length === 1 ? 'атрибут' : selectedAttributeIds.length < 5 ? 'атрибута' : 'атрибутов'}
-                </span>
-              )}
+              <span className={cn('text-[11px]', xpColors.text, 'opacity-70')}>
+                → {selectedAttributeIds.length} {selectedAttributeIds.length === 1 ? 'атрибут' : selectedAttributeIds.length < 5 ? 'атрибута' : 'атрибутов'}
+              </span>
             </div>
-          )}
+          ) : null}
 
           {/* Кнопка Готово */}
           <button

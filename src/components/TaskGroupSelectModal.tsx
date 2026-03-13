@@ -95,7 +95,7 @@ export default function TaskGroupSelectModal({
               <button
                 type="button"
                 onClick={handleAddGroup}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)] text-white hover:brightness-110 transition-all"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-white hover:brightness-110 transition-all"
               >
                 <Check className="h-4 w-4" />
               </button>
@@ -105,7 +105,7 @@ export default function TaskGroupSelectModal({
                   setShowAddGroup(false)
                   setNewGroupName('')
                 }}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] transition-all"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] transition-all"
               >
                 <X className="h-4 w-4" />
               </button>

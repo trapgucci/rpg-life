@@ -5,13 +5,15 @@ import { useRpgStore } from '../store/useRpgStore'
 import { useShallow } from 'zustand/react/shallow'
 import type { TaskPreset } from '../types/domain'
 import Modal from './Modal'
+import ConfirmModal from './ConfirmModal'
 import { Trash2, Coins, Gem } from 'lucide-react'
 
 interface PresetBarProps {
   onApplyPreset: (preset: TaskPreset) => void
+  onClearPreset?: () => void
 }
 
-export default function PresetBar({ onApplyPreset }: PresetBarProps) {
+export default function PresetBar({ onApplyPreset, onClearPreset }: PresetBarProps) {
   const { taskPresetsRaw, activeProfileId, taskGroupsRaw } = useRpgStore(
     useShallow((s) => ({
       taskPresetsRaw: s.taskPresets,
@@ -37,9 +39,13 @@ export default function PresetBar({ onApplyPreset }: PresetBarProps) {
   const [appliedId, setAppliedId] = useState<string | null>(null)
 
   const handleApply = (preset: TaskPreset) => {
+    if (appliedId === preset.id) {
+      setAppliedId(null)
+      onClearPreset?.()
+      return
+    }
     setAppliedId(preset.id)
     onApplyPreset(preset)
-    setTimeout(() => setAppliedId(null), 600)
   }
 
   // Если нет пресетов — ничего не рендерим
@@ -116,75 +122,92 @@ const REC_LABELS: Record<string, string> = {
 }
 
 function ManagePresetsOverlay({ presets, groups, onDelete, onClose }: ManagePresetsOverlayProps) {
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const presetToDelete = deleteId ? presets.find((p) => p.id === deleteId) : null
+
   return (
-    <Modal
-      isOpen
-      onClose={onClose}
-      size="sm"
-      title="Управление пресетами"
-      showCloseButton
-      closeOnBackdropClick
-      closeOnEscape
-    >
-      <div className="px-4 pb-4 pt-3 max-h-[65vh] overflow-y-auto">
-        {presets.length === 0 ? (
-          <p className="text-sm text-[var(--fg-muted)] text-center py-8">Нет сохранённых пресетов</p>
-        ) : (
-          <div className="space-y-2">
-            {presets.map((preset) => {
-              const group = groups.find((g) => g.id === preset.groupId)
-              return (
-                <div
-                  key={preset.id}
-                  className="group flex items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition-all hover:border-[var(--border-strong)]"
-                >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-base">
-                    {preset.icon || '⚡'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[var(--fg)] truncate">{preset.name}</p>
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                      {group && (
-                        <span className="text-[10px] text-[var(--fg-muted)] bg-[var(--surface-elevated)] px-1.5 py-0.5 rounded">
-                          {group.name}
-                        </span>
-                      )}
-                      {preset.difficulty && (
-                        <span className="text-[10px] text-[var(--fg-muted)] bg-[var(--surface-elevated)] px-1.5 py-0.5 rounded">
-                          {DIFF_LABELS[preset.difficulty] ?? preset.difficulty}
-                        </span>
-                      )}
-                      {preset.recurrence && preset.recurrence !== 'once' && (
-                        <span className="text-[10px] text-[var(--fg-muted)] bg-[var(--surface-elevated)] px-1.5 py-0.5 rounded">
-                          {REC_LABELS[preset.recurrence] ?? preset.recurrence}
-                        </span>
-                      )}
-                      {(preset.coinReward ?? 0) > 0 && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-500">
-                          <Coins className="h-3 w-3" />{preset.coinReward}
-                        </span>
-                      )}
-                      {(preset.gemReward ?? 0) > 0 && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] text-cyan-500">
-                          <Gem className="h-3 w-3" />{preset.gemReward}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onDelete(preset.id)}
-                    className="icon-btn icon-btn-danger h-7 w-7 shrink-0 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Удалить"
+    <>
+      <Modal
+        isOpen
+        onClose={onClose}
+        size="sm"
+        title="Управление пресетами"
+        showCloseButton
+        closeOnBackdropClick
+        closeOnEscape
+      >
+        <div className="px-4 pb-4 pt-3 max-h-[65vh] overflow-y-auto">
+          {presets.length === 0 ? (
+            <p className="text-sm text-[var(--fg-muted)] text-center py-8">Нет сохранённых пресетов</p>
+          ) : (
+            <div className="space-y-2">
+              {presets.map((preset) => {
+                const group = groups.find((g) => g.id === preset.groupId)
+                return (
+                  <div
+                    key={preset.id}
+                    className="group flex items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition-all hover:border-[var(--border-strong)]"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    </Modal>
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-base">
+                      {preset.icon || '⚡'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[var(--fg)] truncate">{preset.name}</p>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                        {group && (
+                          <span className="text-[10px] text-[var(--fg-muted)] bg-[var(--surface-elevated)] px-1.5 py-0.5 rounded">
+                            {group.name}
+                          </span>
+                        )}
+                        {preset.difficulty && (
+                          <span className="text-[10px] text-[var(--fg-muted)] bg-[var(--surface-elevated)] px-1.5 py-0.5 rounded">
+                            {DIFF_LABELS[preset.difficulty] ?? preset.difficulty}
+                          </span>
+                        )}
+                        {preset.recurrence && preset.recurrence !== 'once' && (
+                          <span className="text-[10px] text-[var(--fg-muted)] bg-[var(--surface-elevated)] px-1.5 py-0.5 rounded">
+                            {REC_LABELS[preset.recurrence] ?? preset.recurrence}
+                          </span>
+                        )}
+                        {(preset.coinReward ?? 0) > 0 && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-500">
+                            <Coins className="h-3 w-3" />{preset.coinReward}
+                          </span>
+                        )}
+                        {(preset.gemReward ?? 0) > 0 && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-cyan-500">
+                            <Gem className="h-3 w-3" />{preset.gemReward}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteId(preset.id)}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--fg-muted)] hover:bg-[var(--danger-subtle)] hover:text-[var(--danger)] opacity-0 group-hover:opacity-100 transition-all"
+                      title="Удалить"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </Modal>
+      <ConfirmModal
+        isOpen={!!deleteId}
+        title="Удалить пресет"
+        message={`Удалить пресет «${presetToDelete?.name ?? ''}»? Это действие нельзя отменить.`}
+        confirmText="Удалить"
+        variant="danger"
+        onConfirm={() => {
+          if (deleteId) onDelete(deleteId)
+          setDeleteId(null)
+        }}
+        onCancel={() => setDeleteId(null)}
+      />
+    </>
   )
 }

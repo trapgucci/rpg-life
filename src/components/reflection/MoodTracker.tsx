@@ -3,7 +3,7 @@ import { MOOD_CONFIG, type MoodLevel } from '../../types/domain'
 
 interface MoodTrackerProps {
   value: MoodLevel | null
-  onChange: (mood: MoodLevel) => void
+  onChange: (mood: MoodLevel | null) => void
 }
 
 const LEVELS: MoodLevel[] = [1, 2, 3, 4, 5]
@@ -17,7 +17,7 @@ export default function MoodTracker({ value, onChange }: MoodTrackerProps) {
         return (
           <button
             key={level}
-            onClick={() => onChange(level)}
+            onClick={() => onChange(isSelected ? null : level)}
             title={cfg.label}
             className={cn(
               'flex h-12 w-12 items-center justify-center rounded-xl text-2xl transition-all duration-200',

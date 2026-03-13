@@ -353,6 +353,8 @@ function pluralMonths(n: number): string {
 export function getSubtaskXp(subtask: SubtaskItem, task: TaskRpg, settings: AppSettings): number {
   const attrIds = task.attributeIds?.length ? task.attributeIds : (task.attributeId ? [task.attributeId] : [])
   if (attrIds.length === 0) return 0
-  const diff: TaskDifficulty = subtask.difficulty ?? 'medium'
-  return subtask.customXp ?? settings.taskDifficultyXp?.[diff] ?? TASK_XP_BY_DIFFICULTY[diff] ?? subtask.xpReward ?? 0
+  if (subtask.customXp != null) return subtask.customXp
+  if (subtask.difficulty == null) return subtask.xpReward ?? 0
+  const diff: TaskDifficulty = subtask.difficulty
+  return settings.taskDifficultyXp?.[diff] ?? TASK_XP_BY_DIFFICULTY[diff] ?? subtask.xpReward ?? 0
 }

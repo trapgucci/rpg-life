@@ -406,7 +406,7 @@ interface RpgStoreState {
   // Daily report actions
   getDailyReports: () => DailyReport[]
   getDailyReport: (dateKey: string) => DailyReport | null
-  setDailyMood: (dateKey: string, mood: MoodLevel) => void
+  setDailyMood: (dateKey: string, mood: MoodLevel | null) => void
   setDailyThoughts: (dateKey: string, thoughts: string) => void
   addDailyPhoto: (dateKey: string, mediaPath: string) => void
   removeDailyPhoto: (dateKey: string, mediaPath: string) => void

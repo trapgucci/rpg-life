@@ -243,7 +243,7 @@ function ConditionsSection({
                 <button
                   onClick={() => setStatsCondition(cond)}
                   className={`flex-1 text-left text-sm transition-colors hover:text-[var(--accent)] ${
-                    checked ? 'text-[var(--fg-muted)] line-through' : 'text-[var(--fg)]'
+                    checked ? 'text-[var(--fg-muted)]' : 'text-[var(--fg)]'
                   }`}
                 >
                   {cond.name}
@@ -620,7 +620,7 @@ export default function DailyReportView({ dateKey }: DailyReportViewProps) {
         style={sectionNeuStyle}
       >
         <p className="text-sm font-medium text-[var(--fg)]">Как прошёл день?</p>
-        <MoodTracker value={report?.mood ?? null} onChange={(mood: MoodLevel) => setMood(dateKey, mood)} />
+        <MoodTracker value={report?.mood ?? null} onChange={(mood) => setMood(dateKey, mood)} />
       </div>
 
       {/* Daily Conditions */}

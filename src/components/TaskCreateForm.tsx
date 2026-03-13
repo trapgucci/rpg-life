@@ -86,7 +86,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   }
 
   const editSubtask = (sub: SubtaskEditData) => {
-    setSubtasks((prev) => prev.map((s) => s.id === sub.id ? { id: s.id, title: sub.title, description: sub.description, coinReward: sub.coinReward, gemReward: sub.gemReward ?? 0, difficulty: sub.difficulty ?? 'medium', customXp: sub.customXp ?? null } : s))
+    setSubtasks((prev) => prev.map((s) => s.id === sub.id ? { id: s.id, title: sub.title, description: sub.description, coinReward: sub.coinReward, gemReward: sub.gemReward ?? 0, difficulty: sub.difficulty ?? null, customXp: sub.customXp ?? null } : s))
   }
 
   const removeSubtask = (id: string) => {
@@ -138,6 +138,22 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
     }
 
     rpgToast({ title: `Пресет «${preset.name}» применён`, type: 'info' })
+  }
+
+  const clearPreset = () => {
+    setSelectedGroupId(defaultGroupId)
+    setDifficulty(null)
+    setPriority('none')
+    setSelectedAttributeIds([])
+    setCustomXp(null)
+    setCoinReward(10)
+    setGemReward(0)
+    setRecurrence('once')
+    setRecurrenceSettings({ type: 'once', endMode: 'never' })
+    setCountingTaskEnabled(false)
+    setTargetQuantity(2)
+    setCountUnit('раз')
+    setSubtasks([])
   }
 
   const handleSavePreset = (name: string, icon: string) => {
@@ -335,7 +351,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         />
         {/* Пресеты — компактная полоска под описанием */}
         <div className="mt-3">
-          <PresetBar onApplyPreset={applyPreset} />
+          <PresetBar onApplyPreset={applyPreset} onClearPreset={clearPreset} />
         </div>
       </div>
 

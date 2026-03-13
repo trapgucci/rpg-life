@@ -181,8 +181,8 @@ export interface SubtaskItem {
   gemReward?: number
   /** @deprecated Prefer difficulty + customXp. XP за подзадачу, если не заданы difficulty/customXp */
   xpReward?: number
-  /** Сложность подзадачи (Легко / Средне / Сложно / Импосибл) */
-  difficulty?: TaskDifficulty
+  /** Сложность подзадачи (Легко / Средне / Сложно / Импосибл). null = без XP */
+  difficulty?: TaskDifficulty | null
   /** Свой XP — переопределяет XP по сложности */
   customXp?: number | null
 }
@@ -929,7 +929,7 @@ export const FONT_FAMILIES: Record<FontFamily, { name: string; css: string; prev
   comfortaa:  { name: 'Comfortaa',  css: '"Comfortaa Variable", Comfortaa',   preview: 'Игровой и стильный' },
 }
 
-export type AccentColor = 
+export type AccentColor =
   | 'blue'      // #0078d4
   | 'purple'    // #8764b8
   | 'pink'      // #e3008c

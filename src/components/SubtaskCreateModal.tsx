@@ -27,7 +27,7 @@ export interface SubtaskFormData {
   description: string
   coinReward: number
   gemReward?: number
-  difficulty: TaskDifficulty
+  difficulty: TaskDifficulty | null
   customXp: number | null
 }
 
@@ -37,7 +37,7 @@ export interface SubtaskEditData {
   description: string
   coinReward: number
   gemReward?: number
-  difficulty?: TaskDifficulty
+  difficulty?: TaskDifficulty | null
   customXp?: number | null
   /** @deprecated Обратная совместимость — используйте difficulty + customXp */
   xpReward?: number
@@ -56,20 +56,21 @@ export default function SubtaskCreateModal({ isOpen, editingSubtask, onAdd, onEd
   const [description, setDescription] = useState('')
   const [coinReward, setCoinReward] = useState(0)
   const [gemReward, setGemReward] = useState(0)
-  const [difficulty, setDifficulty] = useState<TaskDifficulty>('medium')
+  const [difficulty, setDifficulty] = useState<TaskDifficulty | null>(null)
   const [customXp, setCustomXp] = useState<number | null>(null)
   const settings = useRpgStore((s) => s.settings)
-  const difficultyXp = settings.taskDifficultyXp?.[difficulty] ?? TASK_XP_BY_DIFFICULTY[difficulty]
+  const difficultyXp = difficulty != null ? (settings.taskDifficultyXp?.[difficulty] ?? TASK_XP_BY_DIFFICULTY[difficulty]) : 0
   const effectiveXp = customXp ?? difficultyXp
 
   const getInitialDifficultyAndXp = (editing: SubtaskEditData | undefined) => {
-    if (!editing) return { difficulty: 'medium' as TaskDifficulty, customXp: null as number | null }
-    if (editing.difficulty != null || editing.customXp != null)
-      return { difficulty: editing.difficulty ?? 'medium', customXp: editing.customXp ?? null }
+    if (!editing) return { difficulty: null as TaskDifficulty | null, customXp: null as number | null }
+    if (editing.difficulty !== undefined || editing.customXp != null)
+      return { difficulty: editing.difficulty ?? null, customXp: editing.customXp ?? null }
     const xp = (editing as { xpReward?: number }).xpReward ?? 0
+    if (xp === 0) return { difficulty: null as TaskDifficulty | null, customXp: null as number | null }
     const match = DIFFICULTY_OPTIONS.find((o) => (settings.taskDifficultyXp?.[o.value] ?? o.defaultXp) === xp)
-    if (match) return { difficulty: match.value, customXp: null }
-    return { difficulty: 'medium' as TaskDifficulty, customXp: xp > 0 ? xp : null }
+    if (match) return { difficulty: match.value as TaskDifficulty | null, customXp: null as number | null }
+    return { difficulty: 'medium' as TaskDifficulty | null, customXp: xp > 0 ? xp : null }
   }
 
   // Загрузка данных при редактировании
@@ -87,7 +88,7 @@ export default function SubtaskCreateModal({ isOpen, editingSubtask, onAdd, onEd
       setDescription('')
       setCoinReward(0)
       setGemReward(0)
-      setDifficulty('medium')
+      setDifficulty(null)
       setCustomXp(null)
     }
   }, [isOpen, editingSubtask])
@@ -268,7 +269,11 @@ export default function SubtaskCreateModal({ isOpen, editingSubtask, onAdd, onEd
                     key={opt.value}
                     type="button"
                     onClick={() => {
-                      setDifficulty(opt.value)
+                      if (difficulty === opt.value && customXp == null) {
+                        setDifficulty(null)
+                      } else {
+                        setDifficulty(opt.value)
+                      }
                       setCustomXp(null)
                     }}
                     className={cn(
@@ -343,7 +348,15 @@ export default function SubtaskCreateModal({ isOpen, editingSubtask, onAdd, onEd
             </div>
             {/* XP bar — цвет зависит от сложности, фиолетовый только для custom */}
             {(() => {
-              const barStyle = customXp != null ? CUSTOM_XP_STYLE : DIFFICULTY_STYLE[difficulty]
+              if (difficulty == null && customXp == null) {
+                return (
+                  <div className="mt-2 flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 bg-[var(--surface)]">
+                    <Zap className="h-3.5 w-3.5 text-[var(--fg-muted)]" />
+                    <span className="text-sm font-semibold text-[var(--fg-muted)]">Без XP</span>
+                  </div>
+                )
+              }
+              const barStyle = customXp != null ? CUSTOM_XP_STYLE : DIFFICULTY_STYLE[difficulty!]
               return (
                 <div
                   className={cn('mt-2 flex items-center gap-2 rounded-lg border px-3 py-2 transition-all', barStyle.bg, barStyle.border)}
