@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
-import { Plus, X, ChevronRight, Calendar, BarChart3, Gift, Target, ListPlus, Flag, Folder, Edit2, Coins, Gem, Zap } from 'lucide-react'
+import { Plus, X, ChevronRight, Calendar, BarChart3, Gift, Target, ListPlus, Flag, Folder, Edit2, Coins, Gem, Zap, Save } from 'lucide-react'
 import { cn } from '../lib/cn'
-import type { TaskRecurrence, SubtaskItem, TaskDifficulty, AttributeId, TaskPriority, RecurrenceSettings } from '../types/domain'
+import type { TaskRecurrence, SubtaskItem, TaskDifficulty, AttributeId, TaskPriority, RecurrenceSettings, TaskPreset } from '../types/domain'
 import { TASK_XP_BY_DIFFICULTY } from '../types/domain'
 import { useRpgStore } from '../store/useRpgStore'
 import type { TaskGroupId } from '../types/domain'
@@ -11,6 +11,8 @@ import TaskAttributeSelectModal from './TaskAttributeSelectModal'
 import TaskRewardsModal from './TaskRewardsModal'
 import SubtaskCreateModal, { type SubtaskEditData, type SubtaskFormData } from './SubtaskCreateModal'
 import RecurrenceSelectModal from './RecurrenceSelectModal'
+import PresetBar from './PresetBar'
+import SavePresetModal from './SavePresetModal'
 
 const RECURRENCE_STATUS_LABEL: Record<TaskRecurrence, string> = {
   once: 'Без повтора',
@@ -34,6 +36,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   const getTaskGroups = useRpgStore((s) => s.getTaskGroups)
   const getAttributes = useRpgStore((s) => s.getAttributes)
   const settings = useRpgStore((s) => s.settings)
+  const addTaskPreset = useRpgStore((s) => s.addTaskPreset)
 
   const [title, setTitle] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -67,6 +70,9 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
   const [targetQuantity, setTargetQuantity] = useState(2)
   const [countUnit, setCountUnit] = useState('раз')
 
+  // Пресеты
+  const [showSavePreset, setShowSavePreset] = useState(false)
+
 
   const counterSectionRef = useRef<HTMLDivElement>(null)
   const scrollToCounterSection = () => {
@@ -96,6 +102,75 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
     setShowSubtaskModal(false)
     setEditingSubtask(null)
   }
+
+  const applyPreset = (preset: TaskPreset) => {
+    if (preset.groupId) setSelectedGroupId(preset.groupId)
+    if (preset.difficulty) setDifficulty(preset.difficulty)
+    if (preset.priority) setPriority(preset.priority)
+    if (preset.attributeIds) setSelectedAttributeIds(preset.attributeIds)
+    if (preset.customXp !== undefined) setCustomXp(preset.customXp)
+    if (preset.coinReward !== undefined) setCoinReward(preset.coinReward)
+    if (preset.gemReward !== undefined) setGemReward(preset.gemReward)
+    if (preset.recurrence) setRecurrence(preset.recurrence)
+    if (preset.recurrenceSettings) setRecurrenceSettings(preset.recurrenceSettings)
+
+    if (preset.kind === 'counter') {
+      setCountingTaskEnabled(true)
+      if (preset.counterTarget) setTargetQuantity(preset.counterTarget)
+      if (preset.countUnit) setCountUnit(preset.countUnit)
+      setSubtasks([])
+    } else if (preset.kind === 'nested' && preset.subtaskTemplates?.length) {
+      setCountingTaskEnabled(false)
+      setSubtasks(
+        preset.subtaskTemplates.map((st) => ({
+          id: crypto.randomUUID(),
+          title: st.title,
+          description: st.description ?? '',
+          difficulty: st.difficulty ?? 'medium',
+          coinReward: st.coinReward ?? 0,
+          gemReward: st.gemReward ?? 0,
+          customXp: st.customXp ?? null,
+        }))
+      )
+    } else {
+      setCountingTaskEnabled(false)
+      setSubtasks([])
+    }
+
+    rpgToast({ title: `Пресет «${preset.name}» применён`, type: 'info' })
+  }
+
+  const handleSavePreset = (name: string, icon: string) => {
+    addTaskPreset({
+      name,
+      icon,
+      kind: countingTaskEnabled ? 'counter' : subtasks.length > 0 ? 'nested' : 'checkbox',
+      groupId: selectedGroupId,
+      difficulty: difficulty ?? 'medium',
+      priority,
+      attributeIds: selectedAttributeIds,
+      customXp,
+      coinReward,
+      gemReward,
+      recurrence,
+      recurrenceSettings,
+      counterTarget: countingTaskEnabled ? targetQuantity : undefined,
+      countUnit: countingTaskEnabled ? countUnit : undefined,
+      subtaskTemplates: subtasks.length > 0
+        ? subtasks.map((s) => ({
+            title: s.title,
+            description: s.description || undefined,
+            difficulty: s.difficulty,
+            coinReward: s.coinReward,
+            gemReward: s.gemReward,
+            customXp: s.customXp,
+          }))
+        : undefined,
+    })
+    rpgToast({ title: `Пресет «${name}» сохранён`, type: 'success' })
+  }
+
+  const canSavePreset = !!(selectedGroupId || selectedAttributeIds.length > 0 || difficulty || recurrence !== 'once' || countingTaskEnabled || subtasks.length > 0)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -258,6 +333,10 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
           rows={3}
           className="input w-full resize-none"
         />
+        {/* Пресеты — компактная полоска под описанием */}
+        <div className="mt-3">
+          <PresetBar onApplyPreset={applyPreset} />
+        </div>
       </div>
 
       {/* 2.5. Группа задачи */}
@@ -668,13 +747,30 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         </div>
       )}
 
-      <button
-        type="submit"
-        className="flex items-center justify-center gap-2 rounded-2xl py-3.5 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-[var(--accent)] to-[var(--accent)]/80 shadow-lg shadow-[var(--accent)]/25 hover:shadow-xl hover:shadow-[var(--accent)]/35 hover:scale-[1.02] active:scale-[0.98]"
-      >
-        <Plus className="h-4 w-4" />
-        Добавить задачу
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          className="flex flex-[7] items-center justify-center gap-2 rounded-2xl py-3.5 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-[var(--accent)] to-[var(--accent)]/80 shadow-lg shadow-[var(--accent)]/25 hover:shadow-xl hover:shadow-[var(--accent)]/35 hover:scale-[1.02] active:scale-[0.98]"
+        >
+          <Plus className="h-4 w-4" />
+          Добавить задачу
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowSavePreset(true)}
+          disabled={!canSavePreset}
+          className={cn(
+            'flex flex-[3] items-center justify-center gap-1.5 rounded-2xl py-3.5 text-sm font-semibold transition-all duration-200',
+            canSavePreset
+              ? 'bg-[var(--surface)] text-[var(--fg-secondary)] ring-1 ring-inset ring-[var(--border)] hover:ring-[var(--accent)]/30 hover:text-[var(--accent)] hover:bg-[var(--accent-subtle)] hover:scale-[1.02] active:scale-[0.98]'
+              : 'bg-[var(--surface)] text-[var(--fg-muted)]/40 ring-1 ring-inset ring-[var(--border)]/50 cursor-not-allowed opacity-50'
+          )}
+          title="Сохранить как пресет"
+        >
+          <Save className="h-4 w-4" />
+          Пресет
+        </button>
+      </div>
     </form>
 
     {/* Модальные окна */}
@@ -714,6 +810,11 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
       settings={recurrenceSettings}
       onSave={handleRecurrenceSettingsChange}
       onClose={() => setShowRecurrenceModal(false)}
+    />
+    <SavePresetModal
+      isOpen={showSavePreset}
+      onSave={handleSavePreset}
+      onClose={() => setShowSavePreset(false)}
     />
     </>
   )
