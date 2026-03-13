@@ -196,12 +196,12 @@ export const ITEM_TYPE_COLORS: Record<string, string> = {
   serial: '#ec4899',
 }
 
-/** Get a theme color for an item based on its type. Falls back to gray for regular items. */
-export function getItemTypeColor(item: ShopItem | null | undefined): string {
-  if (!item) return '#9ca3af'
+/** Get a theme color for an item based on its type. Falls back to groupColor, then gray. */
+export function getItemTypeColor(item: ShopItem | null | undefined, groupColor?: string | null): string {
+  if (!item) return groupColor || '#9ca3af'
   const badge = getItemTypeBadge(item)
   if (badge) return ITEM_TYPE_COLORS[badge.type] ?? '#9ca3af'
-  return '#9ca3af'
+  return groupColor || '#9ca3af'
 }
 
 // ─── Filtering ──────────────────────────────────────────────────────────────

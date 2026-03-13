@@ -47,12 +47,13 @@ const PRIORITY_ORDER: Record<string, number> = {
 }
 
 export default function TasksPage() {
-  const { tasks, activeProfileId, taskGroupsRaw, shopItems } = useRpgStore(
+  const { tasks, activeProfileId, taskGroupsRaw, shopItems, itemGroups: allItemGroups } = useRpgStore(
     useShallow((s) => ({
       tasks: s.tasks,
       activeProfileId: s.activeProfileId,
       taskGroupsRaw: s.taskGroups,
       shopItems: s.shopItems,
+      itemGroups: s.itemGroups,
     }))
   )
 
@@ -229,7 +230,11 @@ export default function TasksPage() {
         fragmentName: recipe.fragmentName,
         fragmentIcon: recipe.fragmentIcon,
         fragmentIconImage: recipe.fragmentIconImage,
-        fragmentColor: recipe.fragmentColor || getItemTypeColor(shopItems.find((i) => i.id === recipe.resultItemId)),
+        fragmentColor: recipe.fragmentColor || (() => {
+          const ri = shopItems.find((i) => i.id === recipe.resultItemId)
+          const gc = ri?.groupId ? allItemGroups.find((g) => g.id === ri.groupId)?.color ?? null : null
+          return getItemTypeColor(ri, gc)
+        })(),
         dropChance: fs.dropChance ?? 0,
         sourceType: fs.type === 'task_linked' ? 'task_linked' : 'random_drop',
       }

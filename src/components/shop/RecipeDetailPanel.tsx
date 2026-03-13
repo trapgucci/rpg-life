@@ -50,6 +50,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
 
   // --- Result item ---
   const resultItem = useMemo(() => recipe.resultItemId ? allShopItems.find((i) => i.id === recipe.resultItemId) : null, [recipe.resultItemId, allShopItems])
+  const resultGroupColor = useMemo(() => resultItem?.groupId ? allItemGroups.find((g) => g.id === resultItem.groupId)?.color ?? null : null, [resultItem?.groupId, allItemGroups])
   const craftCost = recipe.craftCost
   const coinCost = craftCost?.coins ?? 0
   const gemCost = craftCost?.gems ?? 0
@@ -61,7 +62,7 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
     ? Math.min(1, recipe.fragmentsCollected / recipe.fragmentsRequired)
     : 0
   const canCraft = recipe.fragmentsCollected >= recipe.fragmentsRequired && !recipe.crafted
-  const themeColor = getItemTypeColor(resultItem)
+  const themeColor = getItemTypeColor(resultItem, resultGroupColor)
 
   // --- UI state ---
   const [isEditing, setIsEditing] = useState(false)
@@ -95,7 +96,8 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
   const [editMaxCrafts, setEditMaxCrafts] = useState(recipe.maxCrafts ?? 1)
 
   const editSelectedItem = useMemo(() => editResultItemId ? allShopItems.find((i) => i.id === editResultItemId) : null, [editResultItemId, allShopItems])
-  const editThemeColor = getItemTypeColor(editSelectedItem)
+  const editGroupColor = useMemo(() => editSelectedItem?.groupId ? allItemGroups.find((g) => g.id === editSelectedItem.groupId)?.color ?? null : null, [editSelectedItem?.groupId, allItemGroups])
+  const editThemeColor = getItemTypeColor(editSelectedItem, editGroupColor)
 
   const filteredPickerItems = useMemo(() => {
     let items = profileItems
@@ -199,12 +201,13 @@ export default function RecipeDetailPanel({ recipe, onDeselect }: RecipeDetailPa
         : { type: 'random_drop' as const, dropChance: editDropChance, allowSubtaskDrop: editAllowSubtaskDrop }
 
     const selItem = editResultItemId ? allShopItems.find((i) => i.id === editResultItemId) : null
+    const selGroupColor = selItem?.groupId ? allItemGroups.find((g) => g.id === selItem.groupId)?.color ?? null : null
 
     const data = {
       fragmentName: editFragmentName.trim(),
       fragmentIcon: editFragmentIcon,
       fragmentIconImage: editFragmentIconImage || undefined,
-      fragmentColor: getItemTypeColor(selItem),
+      fragmentColor: getItemTypeColor(selItem, selGroupColor),
       fragmentsRequired: editFragmentsRequired,
       resultRarity: editResultRarity,
       fragmentSource: fragmentSourceData,

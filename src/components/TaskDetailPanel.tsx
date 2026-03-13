@@ -81,6 +81,7 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
   const activeProfileId = useRpgStore((s) => s.activeProfileId)
   const getCraftRecipes = useRpgStore((s) => s.getCraftRecipes)
   const shopItems = useRpgStore((s) => s.shopItems)
+  const allItemGroups = useRpgStore((s) => s.itemGroups)
   const getNotes = useRpgStore((s) => s.getNotes)
 
   const [isEditing, setIsEditing] = useState(false)
@@ -1203,7 +1204,11 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                   {linkedFragments.map((recipe) => {
                     const fs = recipe.fragmentSource
                     const chance = fs?.dropChance ?? 0
-                    const fragmentColor = recipe.fragmentColor || getItemTypeColor(shopItems.find((i) => i.id === recipe.resultItemId))
+                    const fragmentColor = recipe.fragmentColor || (() => {
+                      const ri = shopItems.find((i) => i.id === recipe.resultItemId)
+                      const gc = ri?.groupId ? allItemGroups.find((g) => g.id === ri.groupId)?.color ?? null : null
+                      return getItemTypeColor(ri, gc)
+                    })()
                     const isTaskLinked = fs?.type === 'task_linked'
                     return (
                       <div

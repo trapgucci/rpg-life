@@ -28,7 +28,7 @@ export default memo(function ShopItemCard({
     ? ({ lootbox: '#8b5cf6', multiplier: '#f59e0b', discount: '#ef4444', videogame: '#06b6d4', serial: '#ec4899' })[typeBadge.type]
     : '#9ca3af'
   const iconBgColor = groupColor ?? typeColor
-  const craftColor = hasCraftRecipe ? getItemTypeColor(item) : '#9ca3af'
+  const craftColor = hasCraftRecipe ? getItemTypeColor(item, groupColor) : '#9ca3af'
 
   const coinCost = item.cost?.[CURRENCY_IDS.COINS] ?? 0
   const gemCost = item.cost?.[CURRENCY_IDS.GEMS] ?? 0

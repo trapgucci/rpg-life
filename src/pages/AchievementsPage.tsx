@@ -506,7 +506,7 @@ function ItemPickerModal({ isOpen, onClose, onSelect, selectedItemId, items }: I
 
         {/* Group filter */}
         {groups.length > 0 && (
-          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
             <button
               type="button"
               onClick={() => setSelectedGroupId(null)}
@@ -546,6 +546,7 @@ function ItemPickerModal({ isOpen, onClose, onSelect, selectedItemId, items }: I
             filteredItems.map((item) => {
               const badge = getItemTypeBadge(item)
               const isSelected = item.id === selectedItemId
+              const itemGroupColor = item.groupId ? allItemGroups.find((g) => g.id === item.groupId)?.color ?? undefined : undefined
               return (
                 <button
                   key={item.id}
@@ -559,7 +560,7 @@ function ItemPickerModal({ isOpen, onClose, onSelect, selectedItemId, items }: I
                   )}
                 >
                   <div className="relative shrink-0">
-                    <ItemIconBadge item={item} size="sm" />
+                    <ItemIconBadge item={item} size="sm" groupColor={itemGroupColor} />
                     {badge && (
                       <div className={cn(
                         'absolute -top-1 -right-1 z-20 flex h-4 w-4 items-center justify-center rounded-md',
@@ -1015,7 +1016,8 @@ function ConditionPickerModal({
               const selectedItem = shopItems.find((i) => i.id === localItemId)
               if (!selectedItem) return null
               const badge = getItemTypeBadge(selectedItem)
-              const itemColor = getItemTypeColor(selectedItem)
+              const selGroupColor = selectedItem.groupId ? allItemGroups.find((g) => g.id === selectedItem.groupId)?.color ?? undefined : undefined
+              const itemColor = getItemTypeColor(selectedItem, selGroupColor)
               const badgeStyle = badge ? ITEM_TYPE_BADGE_STYLES[badge.type] : null
               return (
                 <div
@@ -1023,7 +1025,7 @@ function ConditionPickerModal({
                   style={{ background: 'var(--accent-subtle)' }}
                 >
                   <div className="relative shrink-0">
-                    <ItemIconBadge item={selectedItem} size="sm" />
+                    <ItemIconBadge item={selectedItem} size="sm" groupColor={selGroupColor} />
                     {badgeStyle && (() => {
                       const BadgeIcon = badgeStyle.Icon
                       return (
@@ -1067,7 +1069,8 @@ function ConditionPickerModal({
                   ) : (
                     filteredItems.map((item) => {
                       const badge = getItemTypeBadge(item)
-                      const itemColor = getItemTypeColor(item)
+                      const itemGroupColor = item.groupId ? allItemGroups.find((g) => g.id === item.groupId)?.color ?? undefined : undefined
+                      const itemColor = getItemTypeColor(item, itemGroupColor)
                       const badgeStyle = badge ? ITEM_TYPE_BADGE_STYLES[badge.type] : null
                       return (
                         <button
@@ -1077,7 +1080,7 @@ function ConditionPickerModal({
                           className="w-full flex items-center gap-2.5 rounded-xl border border-transparent px-3 py-2.5 text-left transition-all hover:bg-[var(--surface-elevated)]"
                         >
                           <div className="relative shrink-0">
-                            <ItemIconBadge item={item} size="sm" />
+                            <ItemIconBadge item={item} size="sm" groupColor={itemGroupColor} />
                             {badgeStyle && (() => {
                               const BadgeIcon = badgeStyle.Icon
                               return (

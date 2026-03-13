@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useRef } from 'react'
 import { cn } from '../../lib/cn'
-import { X, Plus, Sparkles, Box, Lightbulb, Check, Search, Percent, Hash, Gift, Minus, Scale, Coins, Gem, Folder, TrendingUp, Gamepad2, Clapperboard } from 'lucide-react'
+import { X, Plus, Sparkles, Box, Lightbulb, Check, Search, Percent, Hash, Gift, Minus, Scale, Coins, Gem, Folder, TrendingUp, Gamepad2, Clapperboard, ChevronLeft, ChevronRight } from 'lucide-react'
 import { CURRENCY_IDS } from '../../types/domain'
 import type { ShopItem } from '../../types/domain'
 import { getItemIcon, getItemTypeColor, getItemTypeBadge } from './shopUtils'
@@ -39,10 +39,100 @@ function ItemIconBadge({ iconName, iconImage, color }: { iconName: string; iconI
 
 // ─── Helper: get color for a given item/currency id ──────────────────────────
 
-function getColorForId(id: string, shopItems: ShopItem[]): string {
+function getColorForId(id: string, shopItems: ShopItem[], itemGroups?: { id: string; color?: string | null }[]): string {
   if (CURRENCY_COLORS[id]) return CURRENCY_COLORS[id]
   const item = shopItems.find((i) => i.id === id)
-  return item ? getItemTypeColor(item) : '#9ca3af'
+  if (!item) return '#9ca3af'
+  const gc = item.groupId && itemGroups ? itemGroups.find((g) => g.id === item.groupId)?.color ?? null : null
+  return getItemTypeColor(item, gc)
+}
+
+// ─── Scrollable group filter with arrow buttons ─────────────────────────────
+
+function ScrollableGroupFilter({
+  groups,
+  activeId,
+  onSelect,
+}: {
+  groups: { id: string; name: string; color?: string | null }[]
+  activeId: string | null
+  onSelect: (id: string | null) => void
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  const checkScroll = useCallback(() => {
+    const el = containerRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 2)
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 2)
+  }, [])
+
+  const scroll = useCallback((dir: 'left' | 'right') => {
+    const el = containerRef.current
+    if (!el) return
+    el.scrollBy({ left: dir === 'left' ? -120 : 120, behavior: 'smooth' })
+  }, [])
+
+  return (
+    <div className="relative flex items-center gap-1 mb-3 shrink-0">
+      {canScrollLeft && (
+        <button
+          type="button"
+          onClick={() => scroll('left')}
+          className="shrink-0 flex h-[30px] w-6 items-center justify-center rounded-lg text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] transition-colors"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+      )}
+      <div
+        ref={containerRef}
+        onScroll={checkScroll}
+        className="flex-1 overflow-x-auto no-scrollbar"
+      >
+        <div className="flex gap-1.5 py-1 px-0.5" ref={() => checkScroll()}>
+          <button
+            type="button"
+            onClick={() => onSelect(null)}
+            className={cn(
+              'shrink-0 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all border whitespace-nowrap h-[30px]',
+              activeId === null
+                ? 'bg-[var(--accent)] text-white shadow-md border-transparent'
+                : 'text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] border-[var(--border)]'
+            )}
+          >
+            Все
+          </button>
+          {groups.map((group) => (
+            <button
+              key={group.id}
+              type="button"
+              onClick={() => onSelect(activeId === group.id ? null : group.id)}
+              className={cn(
+                'shrink-0 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all border whitespace-nowrap h-[30px]',
+                activeId === group.id
+                  ? 'bg-[var(--accent)] text-white shadow-md border-transparent'
+                  : 'text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] border-[var(--border)]'
+              )}
+            >
+              <Folder className="h-3.5 w-3.5 shrink-0" style={group.color && activeId !== group.id ? { color: group.color } : undefined} />
+              {group.name}
+            </button>
+          ))}
+        </div>
+      </div>
+      {canScrollRight && (
+        <button
+          type="button"
+          onClick={() => scroll('right')}
+          className="shrink-0 flex h-[30px] w-6 items-center justify-center rounded-lg text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] transition-colors"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  )
 }
 
 // ─── Reward Picker Modal (multi-select) ──────────────────────────────────────
@@ -89,14 +179,17 @@ function RewardPickerModal({ shopItems, excludeIds = [], onSelect, onClose }: Re
     const q = search.toLowerCase().trim()
     const itemOptions: PickerOption[] = shopItems
       .filter((i) => !excludeIds.includes(i.id))
-      .map((i) => ({
-        id: i.id,
-        name: i.name,
-        iconName: getItemIcon(i),
-        iconImage: i.iconImage,
-        groupId: i.groupId,
-        color: getItemTypeColor(i),
-      }))
+      .map((i) => {
+        const gc = i.groupId ? allItemGroups.find((g) => g.id === i.groupId)?.color ?? null : null
+        return {
+          id: i.id,
+          name: i.name,
+          iconName: getItemIcon(i),
+          iconImage: i.iconImage,
+          groupId: i.groupId,
+          color: getItemTypeColor(i, gc),
+        }
+      })
 
     const filteredItems = itemOptions.filter((o) => {
       if (q && !o.name.toLowerCase().includes(q)) return false
@@ -107,7 +200,7 @@ function RewardPickerModal({ shopItems, excludeIds = [], onSelect, onClose }: Re
       ? currencyOptions.filter((o) => o.name.toLowerCase().includes(q))
       : groupFilter ? [] : currencyOptions
     return [...filteredCurrencies, ...filteredItems]
-  }, [search, groupFilter, shopItems, excludeIds])
+  }, [search, groupFilter, shopItems, excludeIds, allItemGroups])
 
   // Reset visible count when filter changes
   const prevFilterKey = useRef('')
@@ -151,40 +244,9 @@ function RewardPickerModal({ shopItems, excludeIds = [], onSelect, onClose }: Re
           />
         </div>
 
-        {/* Group filter — pill buttons */}
+        {/* Group filter — scrollable with arrow buttons */}
         {itemGroups.length > 0 && (
-          <div className="overflow-x-auto mb-3 shrink-0" style={{ scrollbarWidth: 'none' }}>
-            <div className="flex gap-1.5 py-1 px-0.5">
-            <button
-              type="button"
-              onClick={() => setGroupFilter(null)}
-              className={cn(
-                'shrink-0 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all border whitespace-nowrap h-[30px]',
-                groupFilter === null
-                  ? 'bg-[var(--accent)] text-white shadow-md border-transparent'
-                  : 'text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] border-[var(--border)]'
-              )}
-            >
-              Все
-            </button>
-            {itemGroups.map((group) => (
-              <button
-                key={group.id}
-                type="button"
-                onClick={() => setGroupFilter(groupFilter === group.id ? null : group.id)}
-                className={cn(
-                  'shrink-0 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all border whitespace-nowrap h-[30px]',
-                  groupFilter === group.id
-                    ? 'bg-[var(--accent)] text-white shadow-md border-transparent'
-                    : 'text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] border-[var(--border)]'
-                )}
-              >
-                <Folder className="h-3.5 w-3.5 shrink-0" style={group.color && groupFilter !== group.id ? { color: group.color } : undefined} />
-                {group.name}
-              </button>
-            ))}
-            </div>
-          </div>
+          <ScrollableGroupFilter groups={itemGroups} activeId={groupFilter} onSelect={setGroupFilter} />
         )}
 
         <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto space-y-1 mb-4">
@@ -209,7 +271,7 @@ function RewardPickerModal({ shopItems, excludeIds = [], onSelect, onClose }: Re
               >
                 {shopItem ? (
                   <div className="relative shrink-0">
-                    <SharedItemIconBadge item={shopItem} size="sm" />
+                    <SharedItemIconBadge item={shopItem} size="sm" groupColor={shopItem.groupId ? allItemGroups.find((g) => g.id === shopItem.groupId)?.color ?? undefined : undefined} />
                     {badge && (
                       <div className={cn(
                         'absolute -top-1 -right-1 z-20 flex h-4 w-4 items-center justify-center rounded-md',
@@ -307,14 +369,17 @@ function RewardPickerModalSingle({
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim()
-    const itemOptions: PickerOption[] = shopItems.map((i) => ({
-      id: i.id,
-      name: i.name,
-      iconName: getItemIcon(i),
-      iconImage: i.iconImage,
-      groupId: i.groupId,
-      color: getItemTypeColor(i),
-    }))
+    const itemOptions: PickerOption[] = shopItems.map((i) => {
+      const gc = i.groupId ? allItemGroups.find((g) => g.id === i.groupId)?.color ?? null : null
+      return {
+        id: i.id,
+        name: i.name,
+        iconName: getItemIcon(i),
+        iconImage: i.iconImage,
+        groupId: i.groupId,
+        color: getItemTypeColor(i, gc),
+      }
+    })
 
     const filteredItems = itemOptions.filter((o) => {
       if (q && !o.name.toLowerCase().includes(q)) return false
@@ -325,7 +390,7 @@ function RewardPickerModalSingle({
       ? currencyOptions.filter((o) => o.name.toLowerCase().includes(q))
       : groupFilter ? [] : currencyOptions
     return [...filteredCurrencies, ...filteredItems]
-  }, [search, groupFilter, shopItems])
+  }, [search, groupFilter, shopItems, allItemGroups])
 
   // Reset visible count when filter changes
   const prevFilterKey = useRef('')
@@ -369,40 +434,9 @@ function RewardPickerModalSingle({
           />
         </div>
 
-        {/* Group filter — pill buttons */}
+        {/* Group filter — scrollable with arrow buttons */}
         {itemGroups.length > 0 && (
-          <div className="overflow-x-auto mb-3 shrink-0" style={{ scrollbarWidth: 'none' }}>
-            <div className="flex gap-1.5 py-1 px-0.5">
-            <button
-              type="button"
-              onClick={() => setGroupFilter(null)}
-              className={cn(
-                'shrink-0 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all border whitespace-nowrap h-[30px]',
-                groupFilter === null
-                  ? 'bg-[var(--accent)] text-white shadow-md border-transparent'
-                  : 'text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] border-[var(--border)]'
-              )}
-            >
-              Все
-            </button>
-            {itemGroups.map((group) => (
-              <button
-                key={group.id}
-                type="button"
-                onClick={() => setGroupFilter(groupFilter === group.id ? null : group.id)}
-                className={cn(
-                  'shrink-0 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all border whitespace-nowrap h-[30px]',
-                  groupFilter === group.id
-                    ? 'bg-[var(--accent)] text-white shadow-md border-transparent'
-                    : 'text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] border-[var(--border)]'
-                )}
-              >
-                <Folder className="h-3.5 w-3.5 shrink-0" style={group.color && groupFilter !== group.id ? { color: group.color } : undefined} />
-                {group.name}
-              </button>
-            ))}
-            </div>
-          </div>
+          <ScrollableGroupFilter groups={itemGroups} activeId={groupFilter} onSelect={setGroupFilter} />
         )}
 
         <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto space-y-1 mb-4">
@@ -427,7 +461,7 @@ function RewardPickerModalSingle({
               >
                 {shopItem ? (
                   <div className="relative shrink-0">
-                    <SharedItemIconBadge item={shopItem} size="sm" />
+                    <SharedItemIconBadge item={shopItem} size="sm" groupColor={shopItem.groupId ? allItemGroups.find((g) => g.id === shopItem.groupId)?.color ?? undefined : undefined} />
                     {badge && (
                       <div className={cn(
                         'absolute -top-1 -right-1 z-20 flex h-4 w-4 items-center justify-center rounded-md',
@@ -510,6 +544,7 @@ interface LootboxEffectModalProps {
 }
 
 export default function LootboxEffectModal({ lootTable: initial, shopItems, onSave, onClose }: LootboxEffectModalProps) {
+  const allItemGroups = useRpgStore((s) => s.itemGroups)
   const safeInitial = Array.isArray(initial)
     ? initial.filter((e): e is LootTableEntry => e != null && typeof e.id === 'string' && typeof e.weight === 'number')
     : []
@@ -583,7 +618,7 @@ export default function LootboxEffectModal({ lootTable: initial, shopItems, onSa
     return shopItems.find((i) => i.id === id)?.iconImage
   }
 
-  const getEntryColor = (id: string): string => getColorForId(id, shopItems)
+  const getEntryColor = (id: string): string => getColorForId(id, shopItems, allItemGroups)
 
   const sectionStyle = {
     background: 'linear-gradient(135deg, var(--surface-card) 0%, var(--surface) 100%)',

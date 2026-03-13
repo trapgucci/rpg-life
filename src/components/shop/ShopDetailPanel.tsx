@@ -1383,7 +1383,7 @@ export default function ShopDetailPanel({ item, onDeselect, onNavigateToRecipe }
                 ? Math.min(1, itemRecipe.fragmentsCollected / itemRecipe.fragmentsRequired)
                 : 0
 
-              const craftThemeColor = getItemTypeColor(item)
+              const craftThemeColor = getItemTypeColor(item, group?.color)
 
               return (
                 <div

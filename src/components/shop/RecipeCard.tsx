@@ -14,8 +14,10 @@ interface RecipeCardProps {
 
 export default memo(function RecipeCard({ recipe, selected, onSelect }: RecipeCardProps) {
   const allShopItems = useRpgStore((s) => s.shopItems)
+  const allItemGroups = useRpgStore((s) => s.itemGroups)
 
   const resultItem = useMemo(() => recipe?.resultItemId ? allShopItems.find((i) => i.id === recipe.resultItemId) : null, [recipe?.resultItemId, allShopItems])
+  const resultGroupColor = useMemo(() => resultItem?.groupId ? allItemGroups.find((g) => g.id === resultItem.groupId)?.color ?? null : null, [resultItem?.groupId, allItemGroups])
 
   if (!recipe) return null
 
@@ -28,7 +30,7 @@ export default memo(function RecipeCard({ recipe, selected, onSelect }: RecipeCa
     : 0
 
   const canCraft = recipe.fragmentsCollected >= recipe.fragmentsRequired && !recipe.crafted
-  const themeColor = getItemTypeColor(resultItem)
+  const themeColor = getItemTypeColor(resultItem, resultGroupColor)
   const fragmentIconImage = recipe.fragmentIconImage ?? ''
 
   return (

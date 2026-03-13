@@ -96,11 +96,13 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
         ? { type: 'task_linked' as const, linkedTaskIds, dropChance, allowSubtaskDrop }
         : { type: 'random_drop' as const, dropChance, allowSubtaskDrop }
 
+    const selGroupColor = selectedItem?.groupId ? allItemGroups.find((g) => g.id === selectedItem.groupId)?.color ?? null : null
+
     const data: any = {
       fragmentName: fragmentName.trim(),
       fragmentIcon,
       fragmentIconImage: fragmentIconImage || undefined,
-      fragmentColor: getItemTypeColor(selectedItem),
+      fragmentColor: getItemTypeColor(selectedItem, selGroupColor),
       fragmentsRequired,
       resultRarity,
       fragmentSource,
@@ -121,7 +123,8 @@ export default function RecipeForm({ recipe, onClose, onCreated }: RecipeFormPro
     }
   }
 
-  const themeColor = getItemTypeColor(selectedItem)
+  const selectedGroupColor = useMemo(() => selectedItem?.groupId ? allItemGroups.find((g) => g.id === selectedItem.groupId)?.color ?? null : null, [selectedItem?.groupId, allItemGroups])
+  const themeColor = getItemTypeColor(selectedItem, selectedGroupColor)
 
   return (
     <div className="glass-card relative flex h-full flex-col rounded-2xl overflow-hidden">
