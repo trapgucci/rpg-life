@@ -2024,6 +2024,7 @@ interface FolderCardProps {
 function FolderCard({ group, achievements, onOpen, onEditIcon, onEdit, onDelete }: FolderCardProps) {
   const total = achievements.length
   const unlocked = achievements.filter((a) => a.unlocked).length
+  const claimable = achievements.filter((a) => !a.unlocked && a.readyToUnlock).length
   const progress = total > 0 ? unlocked / total : 0
   const color = group.color ?? '#6b7280'
 
@@ -2063,17 +2064,32 @@ function FolderCard({ group, achievements, onOpen, onEditIcon, onEdit, onDelete 
       </div>
 
       {/* Folder icon */}
-      <div
-        className="flex h-16 w-16 items-center justify-center rounded-2xl text-3xl transition-transform duration-200 group-hover/folder:scale-105 cursor-pointer"
-        onClick={(e) => { e.stopPropagation(); onEditIcon() }}
-        title="Изменить иконку"
-        style={{
-          background: 'var(--surface-elevated)',
-          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 8px rgba(0,0,0,0.15)',
-          border: '1.5px solid var(--border)',
-        }}
-      >
-        {group.icon || '📁'}
+      <div className="relative">
+        <div
+          className="flex h-16 w-16 items-center justify-center rounded-2xl text-3xl transition-transform duration-200 group-hover/folder:scale-105 cursor-pointer"
+          onClick={(e) => { e.stopPropagation(); onEditIcon() }}
+          title="Изменить иконку"
+          style={{
+            background: 'var(--surface-elevated)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 8px rgba(0,0,0,0.15)',
+            border: '1.5px solid var(--border)',
+          }}
+        >
+          {group.icon || '📁'}
+        </div>
+
+        {/* Claimable badge */}
+        {claimable > 0 && (
+          <span
+            className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white shadow-md animate-pulse"
+            style={{
+              background: 'linear-gradient(135deg, #f59e0b, #f97316)',
+              boxShadow: '0 2px 8px rgba(245,158,11,0.4)',
+            }}
+          >
+            {claimable}
+          </span>
+        )}
       </div>
 
       {/* Folder name */}
