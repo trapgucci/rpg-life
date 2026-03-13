@@ -5,12 +5,13 @@ import {
   Plus, Pencil, Trash2, X, Save, Download, Upload, ImagePlus,
   Sun, Moon, Monitor, Check, AlertTriangle, Clock, FolderOpen, FlaskConical,
   Sparkles, Zap, Shield, Swords, ExternalLink,
-  ChevronRight, BookOpen, Type
+  ChevronRight, BookOpen, Type,
+  Coins, Gem, Minus, History,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
-import type { Attribute, ThemeMode, AccentColor, FontFamily } from '../types/domain'
-import { ACCENT_COLORS, FONT_FAMILIES } from '../types/domain'
+import type { Attribute, ThemeMode, AccentColor, FontFamily, DeletionLogEntry } from '../types/domain'
+import { ACCENT_COLORS, FONT_FAMILIES, CURRENCY_IDS, xpForLevelStandard, xpForLevelFast, xpForLevelCustom } from '../types/domain'
 import ConfirmModal from '../components/ConfirmModal'
 import { vaultStorage } from '../lib/vaultStorage'
 import { generateSeedData } from '../lib/seedData'
@@ -703,8 +704,20 @@ function AppearanceSection() {
 function GameplaySection() {
   const settings = useRpgStore((s) => s.settings)
   const updateSettings = useRpgStore((s) => s.updateSettings)
+  const profile = useRpgStore((s) => s.getActiveProfile())
+  const adminRemoveCurrency = useRpgStore((s) => s.adminRemoveCurrency)
+  const adminRemoveXp = useRpgStore((s) => s.adminRemoveXp)
+  const deletionHistory = useRpgStore((s) => s.deletionHistory)
+  const activeProfileId = useRpgStore((s) => s.activeProfileId)
 
   const xp = settings.taskDifficultyXp ?? { easy: 10, medium: 30, hard: 100, veryHard: 300 }
+
+  // Removal state
+  const [coinRemoveAmt, setCoinRemoveAmt] = useState('')
+  const [gemRemoveAmt, setGemRemoveAmt] = useState('')
+  const [xpRemoveAmt, setXpRemoveAmt] = useState('')
+  const [selectedAttrId, setSelectedAttrId] = useState('')
+  const [confirmAction, setConfirmAction] = useState<null | { type: 'coins' | 'gems' | 'xp'; amount: number; attrId?: string }>(null)
 
   const handleXpChange = (key: string, value: string) => {
     const num = parseInt(value, 10)
@@ -714,51 +727,288 @@ function GameplaySection() {
     })
   }
 
+  const handleConfirmRemoval = () => {
+    if (!confirmAction) return
+    if (confirmAction.type === 'coins') {
+      adminRemoveCurrency(CURRENCY_IDS.COINS, confirmAction.amount)
+      setCoinRemoveAmt('')
+    } else if (confirmAction.type === 'gems') {
+      adminRemoveCurrency(CURRENCY_IDS.GEMS, confirmAction.amount)
+      setGemRemoveAmt('')
+    } else if (confirmAction.type === 'xp' && confirmAction.attrId) {
+      adminRemoveXp(confirmAction.attrId, confirmAction.amount)
+      setXpRemoveAmt('')
+    }
+    setConfirmAction(null)
+  }
+
+  const currentCoins = profile?.currencies[CURRENCY_IDS.COINS] ?? 0
+  const currentGems = profile?.currencies[CURRENCY_IDS.GEMS] ?? 0
+  const attributes = profile?.attributes ?? []
+
+  // Calculate total accumulated XP for an attribute (all levels + current)
+  const getTotalAttrXp = (attr: Attribute) => {
+    if (!profile) return 0
+    const mode = profile.levelingMode ?? 'standard'
+    let cumulativeXp = 0
+    if (mode === 'standard') {
+      cumulativeXp = xpForLevelStandard(attr.level)
+    } else if (mode === 'fast') {
+      cumulativeXp = xpForLevelFast(attr.level)
+    } else {
+      cumulativeXp = xpForLevelCustom(attr.level, profile.levelCurve ?? [])
+    }
+    return cumulativeXp + attr.current_xp
+  }
+
+  const selectedAttr = attributes.find((a) => a.id === selectedAttrId)
+  const selectedAttrTotalXp = selectedAttr ? getTotalAttrXp(selectedAttr) : 0
+
+  // History filtered by active profile, sorted newest first
+  const profileHistory = deletionHistory
+    .filter((e) => e.profileId === activeProfileId)
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, 20)
+
+  const formatDate = (ts: number) => {
+    const d = new Date(ts)
+    return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) + ' ' +
+      d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+  }
+
   return (
-    <div className="neu-card p-6">
-      <SectionHeader
-        icon={<Gamepad2 className="h-5 w-5" />}
-        gradient="from-amber-500 to-orange-600"
-        title="Геймплей"
-        desc="Награды и баланс"
-      />
+    <div className="flex flex-col gap-4">
+      <div className="neu-card p-6">
+        <SectionHeader
+          icon={<Gamepad2 className="h-5 w-5" />}
+          gradient="from-amber-500 to-orange-600"
+          title="Геймплей"
+          desc="Награды и баланс"
+        />
 
-      <label className="block text-xs font-medium text-[var(--fg-muted)] mb-3 uppercase tracking-wider">
-        XP по сложности задач
-      </label>
+        <label className="block text-xs font-medium text-[var(--fg-muted)] mb-3 uppercase tracking-wider">
+          XP по сложности задач
+        </label>
 
-      <div className="grid grid-cols-2 gap-3">
-        {Object.entries(DIFFICULTY_LABELS).map(([key, { label, color }]) => (
-          <div key={key} className="rounded-2xl p-4 neu-inset">
-            <div className="flex items-center gap-2 mb-2">
-              <span
-                className="inline-block h-4 w-4 rounded-full shrink-0"
-                style={{
-                  background: `radial-gradient(circle at 35% 35%, ${color}90, ${color})`,
-                  boxShadow: `0 0 8px ${color}60, inset 0 1px 2px rgba(255,255,255,0.4)`,
-                }}
-              />
-              <span className="text-xs font-medium" style={{ color }}>{label}</span>
+        <div className="grid grid-cols-2 gap-3">
+          {Object.entries(DIFFICULTY_LABELS).map(([key, { label, color }]) => (
+            <div key={key} className="rounded-2xl p-4 neu-inset">
+              <div className="flex items-center gap-2 mb-2">
+                <span
+                  className="inline-block h-4 w-4 rounded-full shrink-0"
+                  style={{
+                    background: `radial-gradient(circle at 35% 35%, ${color}90, ${color})`,
+                    boxShadow: `0 0 8px ${color}60, inset 0 1px 2px rgba(255,255,255,0.4)`,
+                  }}
+                />
+                <span className="text-xs font-medium" style={{ color }}>{label}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  value={xp[key as keyof typeof xp]}
+                  onChange={(e) => handleXpChange(key, e.target.value)}
+                  className="settings-input text-center text-lg font-bold w-full no-spin"
+                  style={{ color }}
+                />
+                <span className="text-xs text-[var(--fg-muted)] whitespace-nowrap">XP</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min={0}
-                value={xp[key as keyof typeof xp]}
-                onChange={(e) => handleXpChange(key, e.target.value)}
-                className="settings-input text-center text-lg font-bold w-full no-spin"
-                style={{ color }}
-              />
-              <span className="text-xs text-[var(--fg-muted)] whitespace-nowrap">XP</span>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
+
+        <p className="text-xs text-[var(--fg-muted)] mt-3 flex items-center gap-1.5">
+          <Zap className="h-3.5 w-3.5" />
+          Эти значения определяют сколько XP начисляется за выполнение задачи каждой сложности
+        </p>
       </div>
 
-      <p className="text-xs text-[var(--fg-muted)] mt-3 flex items-center gap-1.5">
-        <Zap className="h-3.5 w-3.5" />
-        Эти значения определяют сколько XP начисляется за выполнение задачи каждой сложности
-      </p>
+      {/* ─── Remove Currency / XP ──────────────────────────────────────────── */}
+      <div className="neu-card p-6">
+        <SectionHeader
+          icon={<Minus className="h-5 w-5" />}
+          gradient="from-red-500 to-rose-600"
+          title="Удаление ресурсов"
+          desc="Ручное снятие валюты и опыта"
+        />
+
+        {/* Remove Coins */}
+        <div className="rounded-2xl p-4 neu-inset mb-3">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm">
+              <Coins className="h-3.5 w-3.5 text-white" />
+            </div>
+            <span className="text-sm font-medium text-[var(--fg)]">Монеты</span>
+            <span className="text-xs text-[var(--fg-muted)] ml-auto">Баланс: {currentCoins}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={1}
+              max={currentCoins}
+              placeholder="Количество"
+              value={coinRemoveAmt}
+              onChange={(e) => setCoinRemoveAmt(e.target.value)}
+              className="settings-input text-center text-sm font-medium flex-1 no-spin"
+            />
+            <button
+              disabled={!coinRemoveAmt || Number(coinRemoveAmt) <= 0 || Number(coinRemoveAmt) > currentCoins}
+              onClick={() => setConfirmAction({ type: 'coins', amount: Number(coinRemoveAmt) })}
+              className="px-3 py-2 rounded-xl text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              Удалить
+            </button>
+          </div>
+        </div>
+
+        {/* Remove Gems */}
+        <div className="rounded-2xl p-4 neu-inset mb-3">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-sky-400 to-cyan-500 flex items-center justify-center shadow-sm">
+              <Gem className="h-3.5 w-3.5 text-white" />
+            </div>
+            <span className="text-sm font-medium text-[var(--fg)]">Кристаллы</span>
+            <span className="text-xs text-[var(--fg-muted)] ml-auto">Баланс: {currentGems}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={1}
+              max={currentGems}
+              placeholder="Количество"
+              value={gemRemoveAmt}
+              onChange={(e) => setGemRemoveAmt(e.target.value)}
+              className="settings-input text-center text-sm font-medium flex-1 no-spin"
+            />
+            <button
+              disabled={!gemRemoveAmt || Number(gemRemoveAmt) <= 0 || Number(gemRemoveAmt) > currentGems}
+              onClick={() => setConfirmAction({ type: 'gems', amount: Number(gemRemoveAmt) })}
+              className="px-3 py-2 rounded-xl text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              Удалить
+            </button>
+          </div>
+        </div>
+
+        {/* Remove XP */}
+        <div className="rounded-2xl p-4 neu-inset">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-sm">
+              <Zap className="h-3.5 w-3.5 text-white" />
+            </div>
+            <span className="text-sm font-medium text-[var(--fg)]">Опыт (XP)</span>
+          </div>
+          {attributes.length > 0 ? (
+            <>
+              <select
+                value={selectedAttrId}
+                onChange={(e) => setSelectedAttrId(e.target.value)}
+                className="settings-input text-sm w-full mb-2"
+              >
+                <option value="">Выберите атрибут...</option>
+                {attributes.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.icon} {a.name} — ур. {a.level} (всего {getTotalAttrXp(a)} XP)
+                  </option>
+                ))}
+              </select>
+              {selectedAttr && (
+                <p className="text-[11px] text-[var(--fg-muted)] mb-2">
+                  {selectedAttr.icon} {selectedAttr.name}: ур. {selectedAttr.level}, текущий XP в уровне: {selectedAttr.current_xp}, всего накоплено: {selectedAttrTotalXp} XP
+                </p>
+              )}
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={selectedAttrTotalXp || undefined}
+                  placeholder="Количество XP"
+                  value={xpRemoveAmt}
+                  onChange={(e) => setXpRemoveAmt(e.target.value)}
+                  className="settings-input text-center text-sm font-medium flex-1 no-spin"
+                />
+                <button
+                  disabled={!selectedAttrId || !xpRemoveAmt || Number(xpRemoveAmt) <= 0 || Number(xpRemoveAmt) > selectedAttrTotalXp}
+                  onClick={() => setConfirmAction({ type: 'xp', amount: Number(xpRemoveAmt), attrId: selectedAttrId })}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  Удалить
+                </button>
+              </div>
+              <p className="text-[11px] text-[var(--fg-muted)] mt-2">
+                XP снимается с атрибута и с основной полоски опыта. Уровень может понизиться.
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-[var(--fg-muted)]">Нет атрибутов для удаления XP</p>
+          )}
+        </div>
+      </div>
+
+      {/* ─── Deletion History ──────────────────────────────────────────────── */}
+      {profileHistory.length > 0 && (
+        <div className="neu-card p-6">
+          <SectionHeader
+            icon={<History className="h-5 w-5" />}
+            gradient="from-slate-500 to-gray-600"
+            title="История удалений"
+            desc="Последние операции"
+          />
+
+          <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
+            {profileHistory.map((entry) => (
+              <div key={entry.id} className="flex items-center gap-3 rounded-xl p-3 neu-inset text-xs">
+                <div className={cn(
+                  'h-7 w-7 rounded-lg flex items-center justify-center shrink-0 shadow-sm',
+                  entry.type === 'coins' && 'bg-gradient-to-br from-amber-400 to-orange-500',
+                  entry.type === 'gems' && 'bg-gradient-to-br from-sky-400 to-cyan-500',
+                  entry.type === 'xp' && 'bg-gradient-to-br from-violet-500 to-purple-600',
+                )}>
+                  {entry.type === 'coins' && <Coins className="h-3.5 w-3.5 text-white" />}
+                  {entry.type === 'gems' && <Gem className="h-3.5 w-3.5 text-white" />}
+                  {entry.type === 'xp' && <Zap className="h-3.5 w-3.5 text-white" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-medium text-[var(--fg)]">
+                    −{entry.amount}{' '}
+                    {entry.type === 'coins' ? 'монет' : entry.type === 'gems' ? 'кристаллов' : 'XP'}
+                  </span>
+                  {entry.attributeName && (
+                    <span className="text-[var(--fg-muted)]"> ({entry.attributeName})</span>
+                  )}
+                </div>
+                <span className="text-[var(--fg-muted)] whitespace-nowrap">{formatDate(entry.timestamp)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Confirm modal */}
+      <ConfirmModal
+        isOpen={!!confirmAction}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={handleConfirmRemoval}
+        title="Подтвердите удаление"
+        message={
+          confirmAction ? (
+            <span>
+              Вы уверены, что хотите удалить{' '}
+              <strong>
+                {confirmAction.amount}{' '}
+                {confirmAction.type === 'coins' ? 'монет' : confirmAction.type === 'gems' ? 'кристаллов' : 'XP'}
+              </strong>
+              {confirmAction.type === 'xp' && confirmAction.attrId && (
+                <> из атрибута <strong>{attributes.find((a) => a.id === confirmAction.attrId)?.name}</strong></>
+              )}
+              ? Это действие необратимо.
+            </span>
+          ) : ''
+        }
+        confirmText="Удалить"
+        variant="danger"
+      />
     </div>
   )
 }

@@ -187,6 +187,42 @@ export interface SubtaskItem {
   customXp?: number | null
 }
 
+/** Шаблон подзадачи для пресета */
+export interface PresetSubtaskTemplate {
+  title: string
+  description?: string
+  difficulty?: TaskDifficulty
+  coinReward?: number
+  gemReward?: number
+  customXp?: number | null
+}
+
+/** Пресет задачи — шаблон для быстрого создания */
+export interface TaskPreset {
+  id: string
+  profileId: ProfileId
+  name: string
+  icon?: string
+  kind: TaskKindRpg
+  groupId?: TaskGroupId | null
+  difficulty?: TaskDifficulty
+  priority?: TaskPriority
+  attributeIds?: AttributeId[]
+  customXp?: number | null
+  coinReward?: number
+  gemReward?: number
+  recurrence?: TaskRecurrence
+  recurrenceSettings?: RecurrenceSettings
+  /** Для counter-задач */
+  counterTarget?: number
+  countUnit?: string
+  /** Для nested-задач */
+  subtaskTemplates?: PresetSubtaskTemplate[]
+  sortOrder: number
+  createdAt: number
+  updatedAt: number
+}
+
 /** Запись о подзадаче (сохраняется в истории цикла) */
 export interface CompletedSubtaskRecord {
   id: string
@@ -1000,6 +1036,21 @@ export interface TaskRow {
   due_at: number | null
   archived: 0 | 1
   payload: string // JSON: { isCompleted, current, target, subtasks, completedAt, ... }
+}
+
+// ─── Deletion Log ──────────────────────────────────────────────────────────
+
+export type DeletionType = 'coins' | 'gems' | 'xp'
+
+export interface DeletionLogEntry {
+  id: string
+  profileId: ProfileId
+  type: DeletionType
+  amount: number
+  /** For xp deletion — which attribute was affected */
+  attributeId?: AttributeId
+  attributeName?: string
+  timestamp: number
 }
 
 export interface AttributeRow {

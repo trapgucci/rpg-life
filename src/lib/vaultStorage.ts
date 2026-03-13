@@ -119,6 +119,8 @@ export const VAULT_FILES = {
   dailyReports: 'daily-reports.json',
   dailyConditions: 'daily-conditions.json',
   dailyConditionEntries: 'daily-condition-entries.json',
+  taskPresets: 'task-presets.json',
+  deletionHistory: 'deletion-history.json',
 } as const
 
 // Files that need to be read (deduplicated since profile.json and settings.json
@@ -142,4 +144,6 @@ export const VAULT_READ_FILES = [
   'daily-reports.json',
   'daily-conditions.json',
   'daily-condition-entries.json',
+  'task-presets.json',
+  'deletion-history.json',
 ] as const

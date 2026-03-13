@@ -41,6 +41,9 @@ import type {
   DailyCondition,
   DailyConditionId,
   DailyConditionEntry,
+  TaskPreset,
+  DeletionLogEntry,
+  DeletionType,
 } from '../types/domain'
 import {
   TASK_XP_BY_DIFFICULTY,
@@ -344,6 +347,18 @@ interface RpgStoreState {
   // Streak multiplier
   applyStreakMultiplier: (taskId: TaskId, itemId: ItemId) => boolean
 
+  // ─── Task Presets ──────────────────────────────────────────────────────
+  taskPresets: TaskPreset[]
+  getTaskPresets: () => TaskPreset[]
+  addTaskPreset: (preset: Omit<TaskPreset, 'id' | 'profileId' | 'createdAt' | 'updatedAt' | 'sortOrder'>) => TaskPreset
+  updateTaskPreset: (id: string, updater: Partial<TaskPreset>) => void
+  deleteTaskPreset: (id: string) => void
+
+  // ─── Deletion History ─────────────────────────────────────────────────
+  deletionHistory: DeletionLogEntry[]
+  adminRemoveCurrency: (currencyId: CurrencyId, amount: number) => boolean
+  adminRemoveXp: (attributeId: AttributeId, amount: number) => boolean
+
   // ─── Reflection (Notes + Daily Reports) ────────────────────────────────
   noteFolders: NoteFolder[]
   notes: Note[]
@@ -450,6 +465,8 @@ const VAULT_SLICES: SliceWriter[] = [
   { file: 'daily-reports.json', getData: (s) => s.dailyReports, getKeys: (s) => [s.dailyReports] },
   { file: 'daily-conditions.json', getData: (s) => s.dailyConditions ?? [], getKeys: (s) => [s.dailyConditions] },
   { file: 'daily-condition-entries.json', getData: (s) => s.dailyConditionEntries ?? [], getKeys: (s) => [s.dailyConditionEntries] },
+  { file: 'task-presets.json', getData: (s) => s.taskPresets ?? [], getKeys: (s) => [s.taskPresets] },
+  { file: 'deletion-history.json', getData: (s) => s.deletionHistory ?? [], getKeys: (s) => [s.deletionHistory] },
 ]
 
 function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
@@ -483,6 +500,8 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
         vaultStorage.write('daily-reports.json', s.dailyReports ?? []),
         vaultStorage.write('daily-conditions.json', s.dailyConditions ?? []),
         vaultStorage.write('daily-condition-entries.json', s.dailyConditionEntries ?? []),
+        vaultStorage.write('task-presets.json', s.taskPresets ?? []),
+        vaultStorage.write('deletion-history.json', s.deletionHistory ?? []),
       ])
       localStorage.removeItem('rpg-life-store-v2')
       console.info('[vault] Migration complete, old key removed.')
@@ -506,6 +525,8 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
         usageHistory, stats,
         noteFolders, notes, dailyReports,
         dailyConditions, dailyConditionEntries,
+        taskPresets,
+        deletionHistory,
       ] = results as [
         { profiles: unknown[]; activeProfileId: string | null } | null,
         { settings: unknown; activeShopDiscountPercent: number | null } | null,
@@ -520,6 +541,8 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
         unknown[] | null,
         unknown[] | null,
         unknown | null,
+        unknown[] | null,
+        unknown[] | null,
         unknown[] | null,
         unknown[] | null,
         unknown[] | null,
@@ -556,6 +579,8 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
         dailyReports: dailyReports as DailyReport[] ?? [],
         dailyConditions: dailyConditions as DailyCondition[] ?? [],
         dailyConditionEntries: dailyConditionEntries as DailyConditionEntry[] ?? [],
+        taskPresets: taskPresets as TaskPreset[] ?? [],
+        deletionHistory: deletionHistory as DeletionLogEntry[] ?? [],
       }
 
       // Migrate: move note content from notes.json to separate files
@@ -745,6 +770,7 @@ export const useRpgStore = create<RpgStoreState>()(
         purchaseHistory: [],
         usageHistory: [],
         activeShopDiscountPercent: null,
+        deletionHistory: [],
         settings: { ...DEFAULT_SETTINGS },
         _hasHydrated: false,
         stats: {
@@ -877,6 +903,59 @@ export const useRpgStore = create<RpgStoreState>()(
         getCurrency: (currencyId) => {
           const profile = get().getActiveProfile()
           return profile?.currencies[currencyId] ?? 0
+        },
+
+        // ─── Admin removal (settings) ─────────────────────────────────────
+        adminRemoveCurrency: (currencyId, amount) => {
+          const profile = get().getActiveProfile()
+          if (!profile) return false
+          const current = profile.currencies[currencyId] ?? 0
+          if (current <= 0 || amount <= 0) return false
+          const toRemove = Math.min(amount, current)
+          get().updateProfile(profile.id, (p) => ({
+            ...p,
+            currencies: { ...p.currencies, [currencyId]: Math.max(0, (p.currencies[currencyId] ?? 0) - toRemove) },
+          }))
+          const entry: DeletionLogEntry = {
+            id: crypto.randomUUID(),
+            profileId: profile.id,
+            type: currencyId === CURRENCY_IDS.GEMS ? 'gems' : 'coins',
+            amount: toRemove,
+            timestamp: now(),
+          }
+          set((s) => ({ deletionHistory: [...s.deletionHistory, entry] }))
+          return true
+        },
+
+        adminRemoveXp: (attributeId, amount) => {
+          const profile = get().getActiveProfile()
+          if (!profile) return false
+          if (amount <= 0) return false
+          const attr = profile.attributes.find((a) => a.id === attributeId)
+          if (!attr) return false
+
+          // Deduct from attribute
+          const newAttrs = deductXpFromAttribute(profile, attributeId, amount)
+          // Deduct from profile bar too
+          const profileXp = deductXpFromProfile(profile, amount)
+
+          get().updateProfile(profile.id, (p) => ({
+            ...p,
+            attributes: newAttrs,
+            ...profileXp,
+          }))
+
+          const entry: DeletionLogEntry = {
+            id: crypto.randomUUID(),
+            profileId: profile.id,
+            type: 'xp',
+            amount,
+            attributeId,
+            attributeName: attr.name,
+            timestamp: now(),
+          }
+          set((s) => ({ deletionHistory: [...s.deletionHistory, entry] }))
+          return true
         },
 
         // ─── Task groups ────────────────────────────────────────────────────
@@ -2997,6 +3076,45 @@ export const useRpgStore = create<RpgStoreState>()(
           return { totalDays, checkedDays, missedDays: totalDays - checkedDays, currentStreak, bestStreak, history }
         },
 
+        // ─── Task Presets ────────────────────────────────────────────────
+
+        taskPresets: [],
+
+        getTaskPresets: () => {
+          const { taskPresets, activeProfileId } = get()
+          return taskPresets
+            .filter((p) => p.profileId === activeProfileId)
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+        },
+
+        addTaskPreset: (preset) => {
+          const { activeProfileId, taskPresets } = get()
+          const newPreset: TaskPreset = {
+            ...preset,
+            id: crypto.randomUUID(),
+            profileId: activeProfileId!,
+            sortOrder: taskPresets.filter((p) => p.profileId === activeProfileId).length,
+            createdAt: now(),
+            updatedAt: now(),
+          }
+          set({ taskPresets: [...taskPresets, newPreset] })
+          return newPreset
+        },
+
+        updateTaskPreset: (id, updater) => {
+          set((s) => ({
+            taskPresets: s.taskPresets.map((p) =>
+              p.id === id ? { ...p, ...updater, updatedAt: now() } : p
+            ),
+          }))
+        },
+
+        deleteTaskPreset: (id) => {
+          set((s) => ({
+            taskPresets: s.taskPresets.filter((p) => p.id !== id),
+          }))
+        },
+
         // ─── Reflection (Notes + Daily Reports) ──────────────────────────
 
         noteFolders: [],
@@ -3531,6 +3649,7 @@ export const useRpgStore = create<RpgStoreState>()(
             dailyReports: state.dailyReports,
             dailyConditions: state.dailyConditions,
             dailyConditionEntries: state.dailyConditionEntries,
+            taskPresets: state.taskPresets,
           }
           return JSON.stringify(exportObj, null, 2)
         },
@@ -3560,6 +3679,7 @@ export const useRpgStore = create<RpgStoreState>()(
               dailyReports: data.dailyReports ?? [],
               dailyConditions: data.dailyConditions ?? [],
               dailyConditionEntries: data.dailyConditionEntries ?? [],
+              taskPresets: data.taskPresets ?? [],
             })
             return true
           } catch {
@@ -3588,6 +3708,7 @@ export const useRpgStore = create<RpgStoreState>()(
             dailyReports: [],
             dailyConditions: [],
             dailyConditionEntries: [],
+            taskPresets: [],
             stats: {
               totalTasksCompleted: 0,
               totalCoinsEarned: 0,
@@ -3627,6 +3748,8 @@ export const useRpgStore = create<RpgStoreState>()(
         dailyReports: s.dailyReports,
         dailyConditions: s.dailyConditions,
         dailyConditionEntries: s.dailyConditionEntries,
+        taskPresets: s.taskPresets,
+        deletionHistory: s.deletionHistory,
       }),
       onRehydrateStorage: () => (state) => {
         _hydrationComplete = true
@@ -3653,6 +3776,8 @@ export const useRpgStore = create<RpgStoreState>()(
             dailyReports: state.dailyReports,
             dailyConditions: state.dailyConditions,
             dailyConditionEntries: state.dailyConditionEntries,
+            taskPresets: state.taskPresets,
+            deletionHistory: state.deletionHistory,
           }
         }
         if (!state) {
@@ -3683,6 +3808,7 @@ export const useRpgStore = create<RpgStoreState>()(
         if (!state.dailyReports) useRpgStore.setState({ dailyReports: [] })
         if (!state.dailyConditions) useRpgStore.setState({ dailyConditions: [] })
         if (!state.dailyConditionEntries) useRpgStore.setState({ dailyConditionEntries: [] })
+        if (!state.taskPresets) useRpgStore.setState({ taskPresets: [] })
 
         // Migrate notes: TiptapContent → plain text string, add tags
         if (state.notes && state.notes.length > 0) {
