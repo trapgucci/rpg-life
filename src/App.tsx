@@ -77,6 +77,7 @@ function App() {
     const r = parseInt(accentHex.slice(1, 3), 16)
     const g = parseInt(accentHex.slice(3, 5), 16)
     const b = parseInt(accentHex.slice(5, 7), 16)
+    root.style.setProperty('--accent-rgb', `${r},${g},${b}`)
     root.style.setProperty('--accent-subtle', `rgba(${r},${g},${b},${isDark ? 0.15 : 0.1})`)
     root.style.setProperty('--accent-glow', `rgba(${r},${g},${b},${isDark ? 0.3 : 0.4})`)
 

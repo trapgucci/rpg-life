@@ -685,15 +685,20 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
               {task.kind !== 'nested' && (
                 <div className="glass rounded-2xl p-4">
                   <label className="block text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-3">Целевые показатели</label>
-                  <div className="rounded-xl bg-[var(--surface)] overflow-hidden ring-1 ring-inset ring-[var(--border)]">
+                  <div className="counter-glass-card rounded-2xl overflow-hidden">
                     {/* Toggle header */}
                     <button
                       type="button"
                       onClick={() => setEditCounterEnabled((v) => !v)}
-                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-[var(--surface-elevated)]"
+                      className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left text-sm transition-all duration-300"
                     >
                       <span className="flex items-center gap-3">
-                        <Target className="h-5 w-5 text-[var(--accent)]" />
+                        <div className={cn(
+                          'counter-icon-well flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-300',
+                          editCounterEnabled && 'counter-icon-well--active'
+                        )}>
+                          <Target className="h-4.5 w-4.5 text-[var(--accent)]" />
+                        </div>
                         <div>
                           <p className="font-semibold text-[var(--fg)]">Счётчик</p>
                           <p className="text-xs text-[var(--fg-muted)] mt-0.5">
@@ -711,14 +716,14 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                           setEditCounterEnabled((v) => !v)
                         }}
                         className={cn(
-                          'relative h-6 w-11 shrink-0 rounded-full transition-colors duration-300 cursor-pointer',
-                          editCounterEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
+                          'counter-toggle relative h-7 w-12 shrink-0 rounded-full transition-all duration-300 cursor-pointer',
+                          editCounterEnabled ? 'counter-toggle--on' : 'counter-toggle--off'
                         )}
                       >
                         <span
                           className={cn(
-                            'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300',
-                            editCounterEnabled ? 'right-0.5 left-auto' : 'left-0.5 right-auto'
+                            'counter-toggle-thumb absolute top-[3px] h-[22px] w-[22px] rounded-full transition-all duration-300',
+                            editCounterEnabled ? 'right-[3px] left-auto' : 'left-[3px] right-auto'
                           )}
                         />
                       </div>
@@ -728,89 +733,104 @@ export default function TaskDetailPanel({ task, onDeselect }: TaskDetailPanelPro
                     <div
                       className={cn(
                         'overflow-hidden transition-all duration-400 ease-out',
-                        editCounterEnabled ? 'max-h-[400px] opacity-100' : 'max-h-0 opacity-0'
+                        editCounterEnabled ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
                       )}
                     >
-                      <div className="border-t border-[var(--border)] px-4 py-3 space-y-3">
-                        {/* Target quantity */}
-                        <div>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <label className="text-xs font-medium text-[var(--fg-muted)]">Количество</label>
-                          </div>
-                          {/* Slider row — кнопки и полоска на одной линии */}
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setEditTarget((n) => Math.max(2, n - 1))}
-                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--fg)] transition-all active:scale-90 text-sm font-medium"
-                            >
-                              −
-                            </button>
+                      <div className="counter-settings-panel px-5 py-4 space-y-4">
+                        {/* Numeric stepper */}
+                        <div className="flex items-center justify-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setEditTarget((n) => Math.max(2, n - 10))}
+                            className="counter-btn-step counter-btn-step--sub flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[10px] font-bold transition-all duration-200 active:scale-90"
+                          >
+                            −10
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditTarget((n) => Math.max(2, n - 1))}
+                            className="counter-btn-step counter-btn-step--sub flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold transition-all duration-200 active:scale-90"
+                          >
+                            −
+                          </button>
+                          <div className="counter-display flex flex-col items-center justify-center h-16 w-20 rounded-2xl">
                             <input
-                              type="range"
+                              type="number"
                               min={2}
-                              max={100}
-                              value={Math.min(editTarget, 100)}
-                              onChange={(e) => setEditTarget(Math.max(2, parseInt(e.target.value, 10)))}
-                              className="target-slider flex-1"
+                              value={editTarget}
+                              onChange={(e) => {
+                                const v = parseInt(e.target.value, 10)
+                                if (!isNaN(v) && v >= 2) setEditTarget(v)
+                              }}
+                              className="counter-display-input w-full text-center text-2xl font-bold bg-transparent border-none outline-none"
                             />
-                            <button
-                              type="button"
-                              onClick={() => setEditTarget((n) => n + 1)}
-                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)] text-white hover:brightness-110 transition-all active:scale-90 text-sm font-medium"
-                            >
-                              +
-                            </button>
+                            <span className="text-[9px] font-medium text-[var(--fg-muted)] -mt-0.5 uppercase tracking-wider">цель</span>
                           </div>
-                          {/* Marks — цифры под слайдером */}
-                          <div className="relative h-4 mt-1" style={{ marginLeft: 40, marginRight: 40 }}>
-                            {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((val) => (
-                              <button
-                                key={val}
-                                type="button"
-                                onClick={() => setEditTarget(val)}
-                                className={cn(
-                                  'absolute top-0 text-[8px] leading-none font-medium transition-colors -translate-x-1/2',
-                                  editTarget === val
-                                    ? 'text-[var(--accent)] font-bold'
-                                    : 'text-[var(--fg-muted)] hover:text-[var(--fg-secondary)]'
-                                )}
-                                style={{ left: `${((val - 2) / (100 - 2)) * 100}%` }}
-                              >
-                                {val}
-                              </button>
-                            ))}
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setEditTarget((n) => n + 1)}
+                            className="counter-btn-step counter-btn-step--add flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold transition-all duration-200 active:scale-90"
+                          >
+                            +
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditTarget((n) => n + 10)}
+                            className="counter-btn-step counter-btn-step--add flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[10px] font-bold transition-all duration-200 active:scale-90"
+                          >
+                            +10
+                          </button>
                         </div>
+
+                        {/* Quick presets */}
+                        <div className="flex justify-center gap-1.5">
+                          {[5, 10, 15, 20, 30, 50, 100].map((val) => (
+                            <button
+                              key={val}
+                              type="button"
+                              onClick={() => setEditTarget(val)}
+                              className={cn(
+                                'counter-preset rounded-lg px-2 py-1 text-[10px] font-semibold transition-all duration-200 active:scale-90',
+                                editTarget === val && 'counter-preset--active'
+                              )}
+                            >
+                              {val}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Divider */}
+                        <div className="counter-divider" />
 
                         {/* Unit of measurement */}
                         <div>
-                          <label className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">Единица</label>
-                          <div className="flex gap-1.5">
-                            {['раз', 'мин', 'км', 'стр', 'шт'].map((unit) => (
-                              <button
-                                key={unit}
-                                type="button"
-                                onClick={() => setEditCountUnit(unit)}
-                                className={cn(
-                                  'flex-1 rounded-lg py-1.5 text-[11px] font-medium transition-all active:scale-95',
-                                  editCountUnit === unit
-                                    ? 'bg-[var(--accent)] text-white shadow-sm'
-                                    : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)] hover:text-[var(--fg-secondary)] border border-[var(--border)]'
-                                )}
-                              >
-                                {unit}
-                              </button>
-                            ))}
+                          <div className="flex items-center gap-2">
+                            <div className="counter-unit-chips flex gap-1.5 flex-1">
+                              {['раз', 'мин', 'км', 'стр', 'шт'].map((unit) => (
+                                <button
+                                  key={unit}
+                                  type="button"
+                                  onClick={() => setEditCountUnit(unit)}
+                                  className={cn(
+                                    'counter-chip flex-1 rounded-xl py-1.5 text-[11px] font-semibold transition-all duration-200 active:scale-90',
+                                    editCountUnit === unit && 'counter-chip--active'
+                                  )}
+                                >
+                                  {unit}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                          <input
-                            type="text"
-                            value={editCountUnit}
-                            onChange={(e) => e.target.value.length <= 8 && setEditCountUnit(e.target.value)}
-                            maxLength={8}
-                            placeholder="своя единица…"
-                            className="input w-full h-8 text-xs mt-1.5"
-                          />
+                          <div className="counter-input-well mt-2 rounded-xl">
+                            <input
+                              type="text"
+                              value={editCountUnit}
+                              onChange={(e) => e.target.value.length <= 8 && setEditCountUnit(e.target.value)}
+                              maxLength={8}
+                              placeholder="своя единица…"
+                              className="counter-custom-input w-full h-8 text-xs bg-transparent border-none outline-none px-3"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>

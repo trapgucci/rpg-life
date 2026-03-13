@@ -38,33 +38,34 @@ function CurrencyDisplay() {
       {/* Profile section */}
       <div className="flex items-center gap-2 md:gap-4 min-w-0">
         <div className="relative shrink-0">
-          <div className="flex h-9 w-9 md:h-11 md:w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-base md:text-lg shadow-lg shadow-indigo-500/30">
+          <div className="glass-neu-avatar flex h-9 w-9 md:h-11 md:w-11 items-center justify-center rounded-xl overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 text-base md:text-lg">
             {avatarImageUrl ? (
-              <img src={avatarImageUrl} alt="avatar" className="h-full w-full rounded-xl object-cover" />
+              <img src={avatarImageUrl} alt="avatar" className="h-full w-full object-cover" />
             ) : (
               settings.avatar || '👤'
             )}
-          </div>
-          <div className="absolute -bottom-1 -right-1 flex h-4 w-4 md:h-5 md:w-5 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-[8px] md:text-[10px] font-bold text-white shadow-md">
-            {profile.level}
           </div>
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-[var(--fg)] text-sm md:text-base truncate">{profile.name}</span>
-            <span className="badge badge-accent hidden sm:inline-flex">Ур. {profile.level}</span>
+            <span className="glass-neu-level hidden sm:inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold">Ур. {profile.level}</span>
           </div>
           <div className="mt-1 md:mt-1.5 flex items-center gap-2">
-            <div className="h-1.5 w-20 md:w-32 overflow-hidden rounded-full bg-[var(--border)]">
+            <div className="h-1.5 w-20 md:w-32 overflow-hidden rounded-full" style={{
+              background: 'var(--surface)',
+              boxShadow: 'inset 1px 1px 3px var(--neu-item-dark), inset -1px -1px 2px var(--neu-item-light)'
+            }}>
               <div
                 className="h-full rounded-full transition-[width] duration-500 ease-out"
                 style={{
                   width: `${progress}%`,
-                  background: 'linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)'
+                  background: `linear-gradient(90deg, rgba(var(--accent-rgb),0.85) 0%, rgba(var(--accent-rgb),0.6) 50%, rgba(var(--accent-rgb),0.85) 100%)`,
+                  boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.3), 0 0 6px rgba(var(--accent-rgb),0.3)'
                 }}
               />
             </div>
-            <span className="text-[10px] md:text-xs text-[var(--fg-muted)] hidden sm:inline">
+            <span className="glass-neu-xp-label hidden sm:inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] md:text-xs font-medium">
               {profile.xp.toLocaleString('ru-RU')} / {xpForNext.toLocaleString('ru-RU')} XP
             </span>
           </div>
