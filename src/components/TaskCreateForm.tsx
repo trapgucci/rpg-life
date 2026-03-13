@@ -176,7 +176,7 @@ export default function TaskCreateForm({ defaultGroupId = null, onCreated, class
         ? subtasks.map((s) => ({
             title: s.title,
             description: s.description || undefined,
-            difficulty: s.difficulty,
+            difficulty: s.difficulty ?? undefined,
             coinReward: s.coinReward,
             gemReward: s.gemReward,
             customXp: s.customXp,

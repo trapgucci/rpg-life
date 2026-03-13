@@ -43,7 +43,6 @@ import type {
   DailyConditionEntry,
   TaskPreset,
   DeletionLogEntry,
-  DeletionType,
 } from '../types/domain'
 import {
   TASK_XP_BY_DIFFICULTY,

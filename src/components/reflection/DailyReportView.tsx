@@ -12,7 +12,7 @@ import { formatDateRu } from '../../lib/reflectionUtils'
 import { vaultStorage } from '../../lib/vaultStorage'
 import { resizeImageFile } from '../../lib/resizeImage'
 import ConditionStatsModal from './ConditionStatsModal'
-import type { DailySnapshot, MoodLevel, DailyCondition } from '../../types/domain'
+import type { DailySnapshot, DailyCondition } from '../../types/domain'
 
 interface DailyReportViewProps {
   dateKey: string

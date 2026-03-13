@@ -647,6 +647,7 @@ function ConditionPickerModal({
   const [localCoinMode, setLocalCoinMode] = useState<'earned' | 'spent'>(conditionCoinMode)
   const [taskSearch, setTaskSearch] = useState('')
   const [itemSearch, setItemSearch] = useState('')
+  const allItemGroups = useRpgStore((s) => s.itemGroups)
 
   // Reset when modal opens
   useEffect(() => {

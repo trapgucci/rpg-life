@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useRpgStore } from '../store/useRpgStore'
-import type { Attribute, ThemeMode, AccentColor, FontFamily, DeletionLogEntry } from '../types/domain'
+import type { Attribute, ThemeMode, AccentColor, FontFamily } from '../types/domain'
 import { ACCENT_COLORS, FONT_FAMILIES, CURRENCY_IDS, xpForLevelStandard, xpForLevelFast, xpForLevelCustom } from '../types/domain'
 import ConfirmModal from '../components/ConfirmModal'
 import { vaultStorage } from '../lib/vaultStorage'
