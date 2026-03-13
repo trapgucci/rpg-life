@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, Notification, dialog, safeStorage, Tray, Menu, nativeImage } = require('electron')
 const path = require('path')
 const fs = require('fs')
+const fsp = fs.promises
 const os = require('os')
 const crypto = require('crypto')
 
@@ -220,6 +221,13 @@ function atomicWriteFileSync(filePath, data) {
   fs.renameSync(tmpPath, filePath)
 }
 
+// Async atomic write: write to .tmp then rename (non-blocking)
+async function atomicWriteFile(filePath, data) {
+  const tmpPath = filePath + '.tmp'
+  await fsp.writeFile(tmpPath, data, 'utf-8')
+  await fsp.rename(tmpPath, filePath)
+}
+
 // Sanitize filename — prevent path traversal
 function safePath(vaultPath, filename) {
   const resolved = path.resolve(vaultPath, filename)
@@ -250,9 +258,9 @@ ipcMain.handle('vault:choosePath', async () => {
 // Initialize vault directory structure
 ipcMain.handle('vault:init', async (_, customPath) => {
   const vaultPath = customPath || getSavedVaultPath() || getDefaultVaultPath()
-  fs.mkdirSync(vaultPath, { recursive: true })
-  fs.mkdirSync(path.join(vaultPath, 'media'), { recursive: true })
-  fs.mkdirSync(path.join(vaultPath, 'notes'), { recursive: true })
+  await fsp.mkdir(vaultPath, { recursive: true })
+  await fsp.mkdir(path.join(vaultPath, 'media'), { recursive: true })
+  await fsp.mkdir(path.join(vaultPath, 'notes'), { recursive: true })
   saveVaultPath(vaultPath)
   return vaultPath
 })
@@ -264,7 +272,7 @@ ipcMain.handle('vault:read', async (_, filename) => {
   const filePath = safePath(vaultPath, filename)
   if (!filePath) return null
   try {
-    const raw = fs.readFileSync(filePath, 'utf-8')
+    const raw = await fsp.readFile(filePath, 'utf-8')
     return JSON.parse(raw)
   } catch {
     return null
@@ -280,9 +288,9 @@ ipcMain.handle('vault:write', async (_, filename, data) => {
   // Ensure parent directory exists (for subdirectory writes like notes/note-xxx.json)
   const dir = path.dirname(filePath)
   if (dir !== vaultPath) {
-    fs.mkdirSync(dir, { recursive: true })
+    await fsp.mkdir(dir, { recursive: true })
   }
-  atomicWriteFileSync(filePath, JSON.stringify(data, null, 2))
+  await atomicWriteFile(filePath, JSON.stringify(data, null, 2))
 })
 
 // Delete a file from vault
@@ -294,7 +302,7 @@ ipcMain.handle('vault:deleteFile', async (_, filename) => {
   const filePath = safePath(vaultPath, filename)
   if (!filePath) return false
   try {
-    fs.unlinkSync(filePath)
+    await fsp.unlink(filePath)
     return true
   } catch {
     return false
@@ -306,13 +314,13 @@ ipcMain.handle('vault:writeMedia', async (_, filename, base64data) => {
   const vaultPath = getSavedVaultPath()
   if (!vaultPath) return null
   const mediaDir = path.join(vaultPath, 'media')
-  fs.mkdirSync(mediaDir, { recursive: true })
+  await fsp.mkdir(mediaDir, { recursive: true })
   const filePath = safePath(mediaDir, filename)
   if (!filePath) return null
   // Strip data URL prefix if present
   const base64 = base64data.replace(/^data:[^;]+;base64,/, '')
   const buffer = Buffer.from(base64, 'base64')
-  fs.writeFileSync(filePath, buffer)
+  await fsp.writeFile(filePath, buffer)
   return 'media/' + filename
 })
 
@@ -323,7 +331,7 @@ ipcMain.handle('vault:readMedia', async (_, relativePath) => {
   const filePath = safePath(vaultPath, relativePath)
   if (!filePath) return null
   try {
-    const buffer = fs.readFileSync(filePath)
+    const buffer = await fsp.readFile(filePath)
     const ext = path.extname(filePath).slice(1).toLowerCase()
     const mime = ext === 'webp' ? 'image/webp'
       : ext === 'png' ? 'image/png'
@@ -343,7 +351,7 @@ ipcMain.handle('vault:deleteMedia', async (_, relativePath) => {
   const filePath = safePath(vaultPath, relativePath)
   if (!filePath) return false
   try {
-    fs.unlinkSync(filePath)
+    await fsp.unlink(filePath)
     return true
   } catch {
     return false

@@ -656,7 +656,7 @@ function createVaultStorage(): PersistStorage<Partial<RpgStoreState>> {
         // Превышен maxWait — записать немедленно
         _firstChangeAt = null
         _writeTimer = null
-        doWrite()
+        doWrite().catch(err => console.error('[vault] maxWait write failed:', err))
       } else {
         // Обычный дебаунс, но не дольше оставшегося maxWait
         const delay = Math.min(WRITE_DEBOUNCE_MS, WRITE_MAX_WAIT_MS - elapsed)
